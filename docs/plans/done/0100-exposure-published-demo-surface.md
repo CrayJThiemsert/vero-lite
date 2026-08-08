@@ -1,6 +1,8 @@
 # PLAN-0100: The vero-lite exposure PLAN — a coherent published demo surface behind the ADR-0035 portal
 
-**Status:** Draft
+**Status:** Complete — 2026-08-08 (session 216). All 13 ACs closed; Step 11's live run
+executed under Cray's typed §8 go and every pass/fail read discharged. Closeout record:
+§"Step 11 closure verdict".
 **Owner:** Claude Code (execution) + Cray (gates: ratification, live-evidence go, allowlist revision)
 **Created:** 2026-08-03
 **Related ADRs:** ADR-0035 (owner contract, `0035:978-990`), ADR-0032 (D1 wedge / D5 vocabulary), ADR-002 + ADR-0003 (amended-in-place context), ADR-007 (write gate — untouched). Related PLANs: PLAN-0095 (the image), PLAN-0093 (arm disclosure the degrade path rides), PLAN-0018 (llmctl), PLAN-0047 (authn seam), PLAN-0017/0040 (the intake/draft surfaces this PLAN hides in the published profile).
@@ -734,10 +736,43 @@ degrade, or writer under test.
   window, watched vero-lite answer first, and concluded the cut-off was unreachable.
   The difference is the path: this is a **`cloudflared` Tunnel**, not a proxied
   origin, and the documented figure does not govern it.
-- [ ] **AC-12 (ADR amendment recorded, not performed).** §"ADR amendment owed"
-  below names the exact ADR-0035 lines and proposed replacement text, and the
-  closeout confirms Code routed it as a separate artifact. This PLAN's diff
-  touches no file under `docs/adr/`.
+- [x] **AC-12 (ADR amendment recorded, not performed) — CLOSED 2026-08-08
+  (session 216).** §"ADR amendment owed" below names the exact ADR-0035 lines and
+  proposed replacement text, and the closeout confirms Code routed it as a separate
+  artifact. This PLAN's diff touches no file under `docs/adr/`.
+
+  ✅ **Closeout confirmation — all four entries routed and landed; verified against
+  the ADR on disk, not from the PLAN's own prose.** The three "record-and-route-later"
+  entries were **already discharged on 2026-08-06** and nobody had said so; s216 found
+  it by checking before dispatching a drafter to write an amendment that already
+  existed. Same shape as #1089's unmet "Record which was used" — found by grepping the
+  claim, not by review.
+
+  | Entry | Landed as | Evidence on disk |
+  |---|---|---|
+  | `0035` "Env only — no code." | `06e2b84` | the `Amended 2026-08-06 — factual correction (PLAN-proposed by PLAN-0100 §"ADR amendment owed")` block that directly follows that sentence |
+  | `0035` "(all config, zero app code, per L1)" | `06e2b84` | ditto, directly following |
+  | `0035` Consequences: "env + edge config + a log writer + a banner" | `06e2b84` | ditto, directly following |
+  | `0035` D4/L5 connector-ownership boundary | **#1057** (Cray's typed reading **(a)**) | already recorded below; it BLOCKED Step 8, which then shipped in #1063 |
+
+  `git show 06e2b84 -- docs/adr/0035-*.md` adds **exactly three** lines matching
+  `^+.*Amended 2026-08-06 — factual correction`, and `git log -L` attributes all
+  three blocks to that commit.
+
+  ⚠️ **The line numbers in the bullets below are STALE and deliberately not
+  rewritten** — inserting the amendment blocks shifted the file, so `0035:484` no
+  longer lands on "Env only — no code." (it is now `:563`, with its amendment at
+  `:565`). Left as authored because they are the citations the amendment was
+  *proposed against*; the entries are matched by **quoted sentence**, which is stable,
+  not by line number.
+
+  **On the "no file under `docs/adr/`" clause.** `06e2b84` touched both the ADR and
+  this PLAN, so the clause is worth stating precisely rather than waving through: it
+  is a `docs(adr):` amendment commit whose PLAN hunk is *citation renumbering forced
+  by the ADR edit itself*. The clause's substance — that no PLAN-0100 implementation
+  PR smuggles an ADR edit — holds: `docs/adr/0035-*.md` has exactly three commits in
+  its history (`234c40f` creation, `bfcf8db`, `06e2b84`), all of them dedicated
+  `docs(adr):` artifacts.
   ⚠️ **Widened s207-R2 — one entry was BLOCKING; ✅ DISCHARGED 2026-08-06.**
   The D4/L5 connector-ownership conflict (the fourth entry) was not a
   documentation-tidying amendment like the other three: SD-3's ruling relocates
@@ -1762,10 +1797,21 @@ and the 125 s figure, along with the finding that Cloudflare's documented 100 s 
 not govern a Tunnel, would never have been measured.
 
 **Therefore:** Step 11's pass/fail reads are all discharged and the step is complete.
-**The PLAN nevertheless stays `Draft` and is NOT `git mv`-ed to `done/`** — its
-closeout (§Verification) also requires the ADR amendment routed, and **AC-12** is
-still unticked: three ADR-0035 amendments remain record-and-route-later. Code does
-not author ADRs (CLAUDE.md §6 / ADR-009 D1), so that routes to a drafter.
+
+**3. AC-12 — CLOSED, and it needed no work.** This was expected to be the one thing
+still blocking the PLAN: three ADR-0035 amendments recorded as "route-later", and
+Code cannot author an ADR (CLAUDE.md §6 / ADR-009 D1), so the next move looked like a
+`plan-drafter` dispatch. Verifying the fact-pack first — the standing rule before any
+drafter dispatch — showed **all three had already landed on 2026-08-06 in `06e2b84`**;
+only the tick was missing. A drafter would have been asked to write an amendment that
+was already in the file. Evidence at that AC.
+
+**All thirteen ACs are now closed**, so the PLAN's own §Verification closeout is
+satisfied: every AC checked with its closing artifact, the PROVISIONAL allowlist
+resolved, the ADR amendment routed. **`Draft` → `Complete`, and the file moves to
+`docs/plans/done/`.** The status flip and the move ride the same commit as this text,
+because flipping first would put the file behind the G1 gate and block the very edit
+that justifies the flip.
 
 **Do not re-drive the case list** — cases 0–8 are on record and nothing above
 re-opens them.
@@ -1793,6 +1839,13 @@ Must contain, verbatim obligations from D6:
   operator, and the §8 reminder that every MS-S1 command needs Cray's go.
 
 ## ADR amendment owed (recorded here; routed separately — AC-12)
+
+✅ **ALL FOUR ENTRIES ARE DISCHARGED.** The three below landed in **`06e2b84`**
+(2026-08-06) and the fourth in **#1057**; verified against the ADR on disk in s216 —
+see **AC-12** for the evidence table and for why the line numbers below are stale
+but deliberately unrewritten. Nothing here is owed. The entries are kept rather than
+deleted: they are the proposals the landed amendments were written against, and each
+amendment block in the ADR names this section as its source.
 
 - `docs/adr/0035-hosting-and-exposure-model.md:484` — "Env only — no code."
   Should say (proposed): *"The two settings above are env-only. The published
