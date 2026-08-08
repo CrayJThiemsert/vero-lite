@@ -14,6 +14,7 @@ upstream Ollama server (``tests/support/ollama_stub``), per the AC preamble.
 from __future__ import annotations
 
 import json
+import re
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
@@ -24,6 +25,8 @@ from services.api.config import settings
 from services.engine.llm import prompt_log
 from services.engine.ontology_meta import load_ontology_meta
 from tests.support.ollama_stub import ollama_stub
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 _TYPED = "which sites breached the threshold last night?"
 
@@ -95,6 +98,24 @@ async def test_query_writes_one_row_with_the_closed_field_set(
     assert row["vertical"] == settings.oct_vertical
     assert row["arm"] in ("llm", "deterministic")
     datetime.fromisoformat(str(row["ts_utc"]))  # parses, or this raises
+
+    # This case drives the real route into the real writer, yet it said nothing
+    # about `model` — so it stayed green while the row named a model that never
+    # ran (PLAN-0100 Step 11, D-2). The set-equality above only checks that the
+    # KEY is present; a wrong VALUE is exactly what it cannot see.
+    # ⚠️ Honest limitation, stated rather than papered over: this assertion is
+    # VACUOUS on a box whose .env sets OLLAMA_DEFAULT_MODEL to the same value as
+    # recommender_model — which the dev box does (.env: OLLAMA_DEFAULT_MODEL=
+    # gpt-oss:20b). That is a second reason D-2 survived locally, on top of the
+    # routers being source-correct-looking. The non-vacuous check is
+    # `test_logged_model_is_the_one_the_llm_path_actually_uses`, which compares
+    # the setting NAMES in the two real modules and so cannot be fooled by two
+    # settings that happen to agree. This one earns its place by covering the
+    # other half: that the value actually reaches the row through the live path.
+    assert row["model"] == settings.recommender_model, (
+        f"the row records {row['model']!r}, but this route runs on "
+        f"{settings.recommender_model!r}"
+    )
 
 
 async def test_nothing_is_written_when_disabled(
@@ -175,3 +196,49 @@ def test_rotation_reads_the_date_from_the_name_not_the_mtime(tmp_path: Path) -> 
 
     assert prompt_log.rotate(directory, now=now) == [old_by_name]
     assert not old_by_name.exists()
+
+
+def test_logged_model_is_the_one_the_llm_path_actually_uses() -> None:
+    """The row's `model` must name the model that ran, not a stale config default.
+
+    PLAN-0100 Step 11 (D-2) caught the two disagreeing on the deployed demo: a
+    single row recorded ``"model": "gemma4:26b"`` while the very same response
+    reported ``phrased_by: "gpt-oss:20b"``. The routers were passing
+    ``settings.ollama_default_model`` — the ADR-001 baseline, which nothing on this
+    path reads — while ``nl_query`` builds its client from
+    ``settings.recommender_model``.
+
+    A wrong name is worse than a missing one for a D6 audit trail: ``gemma4:26b``
+    is genuinely present on MS-S1, so nothing about the row looks suspect.
+
+    Derived from both real modules rather than asserted against a literal — the
+    invariant is "these two agree", so it survives either value being retuned.
+    """
+    sources = {
+        "services/engine/nl_query.py": None,
+        "services/api/routers/query.py": None,
+        "services/api/routers/insights.py": None,
+    }
+    for relative in sources:
+        sources[relative] = (REPO_ROOT / relative).read_text(encoding="utf-8")
+
+    engine = re.search(
+        r"OllamaClient\(\s*[^)]*?model=settings\.(\w+)",
+        sources["services/engine/nl_query.py"],
+        re.S,
+    )
+    assert engine, "could not find the OllamaClient construction in nl_query.py"
+    engine_setting = engine.group(1)
+
+    for router in ("services/api/routers/query.py", "services/api/routers/insights.py"):
+        logged = re.search(
+            r"prompt_log\.record\((?:[^()]|\([^()]*\))*?model=settings\.(\w+)",
+            sources[router],
+            re.S,
+        )
+        assert logged, f"could not find the prompt_log.record model argument in {router}"
+        assert logged.group(1) == engine_setting, (
+            f"{router} logs settings.{logged.group(1)} while the LLM path runs on "
+            f"settings.{engine_setting}. The prompt log would name a model that never "
+            f"served the request."
+        )

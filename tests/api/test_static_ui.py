@@ -9,10 +9,13 @@ status + content-type, not shell exit codes).
 
 from __future__ import annotations
 
+import mimetypes
 import re
 from pathlib import Path
 
 from httpx import AsyncClient
+
+from services.api import main
 
 
 async def test_root_serves_the_oct_ui(client: AsyncClient) -> None:
@@ -146,4 +149,65 @@ def test_header_ladder_collapses_inactive_tab_labels_by_default() -> None:
         f"but the measured full-label header width is 2253px. Between those two "
         f"widths every tab renders its label and the bar overflows (measured: "
         f"411px at 1440, 95px at 1920)."
+    )
+
+
+def test_static_types_do_not_depend_on_the_base_images_mime_files() -> None:
+    """Every served extension must type correctly in the DEPLOYED image, not just here.
+
+    Starlette types a static file with ``guess_type(...)[0] or "text/plain"``, and
+    ``mimetypes`` seeds itself from the OS's mime files. The runtime image
+    (``python:3.12-slim``) ships none — ``mimetypes.knownfiles`` resolves to ``[]``
+    inside the container — so anything the built-in table does not know is served
+    as ``text/plain``. PLAN-0100 Step 11 measured exactly that against the live
+    edge: the bundled IBM Plex ``.woff2`` fonts came back
+    ``content-type: text/plain; charset=utf-8`` (D-3).
+
+    ⚠️ A naive version of this test — serve a font, assert the header — passes on a
+    developer box WITHOUT the fix, because this box HAS ``/etc/mime.types``. That
+    is why the check runs against a pristine ``MimeTypes()``, which seeds from the
+    built-in table alone and therefore reproduces the image's condition rather
+    than this machine's.
+    """
+    image_like = mimetypes.MimeTypes()  # built-in table only == the slim image
+
+    extensions = {
+        path.suffix.lower() for path in (ASSETS.parent).rglob("*") if path.is_file() and path.suffix
+    }
+    assert extensions, f"no static files found under {ASSETS.parent} — guard would be vacuous"
+
+    unresolved = {
+        extension for extension in extensions if image_like.guess_type(f"x{extension}")[0] is None
+    }
+    registered = {extension for _type, extension in main._STATIC_MIME_TYPES}
+
+    uncovered = sorted(unresolved - registered)
+    assert not uncovered, (
+        f"static file extension(s) {uncovered} are served from this tree, cannot be "
+        f"typed by a mimetypes seeded only from Python's built-in table — which is "
+        f"what the deployed image has — and are not registered in "
+        f"main._STATIC_MIME_TYPES. Starlette will serve them as text/plain. "
+        f"Registered today: {sorted(registered)}."
+    )
+
+
+async def test_a_bundled_font_is_served_with_a_font_content_type(
+    client: AsyncClient,
+) -> None:
+    """The end-to-end half: drive the real static mount and read the real header.
+
+    Weaker than the guard above on its own (it cannot fail on a box that has
+    /etc/mime.types), but it is the only check that proves the registration is
+    actually reached by the serving path rather than merely present in a module.
+    """
+    fonts = sorted((ASSETS / "fonts").glob("*.woff2"))
+    assert fonts, "no bundled .woff2 fonts found — the CSP sets font-src 'self'"
+
+    response = await client.get(f"/assets/fonts/{fonts[0].name}")
+    assert response.status_code == 200
+    content_type = response.headers["content-type"]
+    assert content_type.startswith("font/"), (
+        f"{fonts[0].name} is served as {content_type!r}. `font-src 'self'` allows it "
+        f"today only because no X-Content-Type-Options: nosniff header is set; "
+        f"adding that ordinary hardening step would break every bundled font."
     )

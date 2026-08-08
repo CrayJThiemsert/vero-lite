@@ -295,7 +295,10 @@ async def run_corpus_query(
         route="/insights/query",
         vertical=settings.oct_vertical,
         text=payload.question,
-        model=settings.ollama_default_model,
+        # Same correction as POST /query (PLAN-0100 Step 11, D-2): record the model
+        # this path actually routes to, not `ollama_default_model`, which nothing
+        # on the LLM path reads.
+        model=settings.recommender_model,
         outcome="grounded" if answer.grounded else "ungrounded",
         arm=arm_of(answer.phrased_by),
     )

@@ -1408,15 +1408,32 @@ ordinary hardening step. Fix direction: `mimetypes.add_type("font/woff2",
 ".woff2")` at app import, which does not depend on the base image.
 **Not fixed here — routed separately.**
 
-**D-4 🔴 The energy ontology's own `verified_queries` are not answerable.** Both
-questions the ontology advertises — *"How many active assets are hosted at each
-site?"* and *"มีสินทรัพย์ประเภท feeder ที่ยัง active อยู่กี่ตัว?"* — return
-`grounded=false, outcome=no_data`, while ordinary retrieval questions ("List all
-assets", "Show me the assets", "What is the temperature reading on
-asset-battery-01?") return `grounded=true` with `phrased_by=gpt-oss:20b`. The
-pattern is aggregation / group-by versus retrieval. The wedge itself works; what
-is wrong is that the ontology's declared answerable set does not match the
-engine's capability. **Not fixed here — routed separately.**
+**D-4 🔴 One of the energy ontology's two `verified_queries` does not translate.**
+⚠️ **Narrowed 2026-08-08 after a second measurement; the first write-up of this
+finding was WRONG in both directions and is corrected here rather than quietly
+edited.** It said *both* advertised questions were unanswerable and that the
+pattern was "aggregation / group-by versus retrieval". Neither holds:
+
+| Probe | `structured_query` | Reading |
+|---|---|---|
+| *"How many active assets are hosted **at each site**?"* | **`null`** | **the real gap** — translation fails on `group_by` |
+| *"มีสินทรัพย์ประเภท feeder ที่ยัง active อยู่กี่ตัว?"* | `count` + `asset_type eq feeder` + `status eq active` — **correct** | **not a defect** |
+| control *"How many assets are there?"* | `operation: count` | **PASS**, `n=4`, grounded |
+| control *"Count the active assets"* | `count` + `status eq active` | **PASS**, `n=4`, grounded |
+
+Aggregation is **not** broken: `count`, with and without filters, works. The
+second `verified_query` translated perfectly and returned an empty set — and the
+empty set is **the correct answer**: the deployed dataset holds `battery`,
+`inverter`, `battery`, `meter` and **no `feeder` asset at all**. Calling that a
+failure was reading `grounded=false` as "the system broke" when it means "nothing
+matched".
+
+What remains is narrow and real: **`group_by` ("at each site") is not produced by
+the translate stage**, although `StructuredQuery` carries the field and the data
+has two sites. Whether that is a prompt/example gap or a genuine engine
+limitation is undetermined. **Not fixed here — routed separately, with the
+direction (teach the translator vs. correct the ontology's advertised set)
+still open.**
 
 **Observation (not a defect, but it shapes the visitor's first impression).**
 The published demo pins no `keep_alive`, so after an idle period the model is

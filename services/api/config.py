@@ -438,7 +438,15 @@ class Settings(BaseSettings):
         default="30m",
         description=(
             "How long a warmed model stays resident in MS-S1 VRAM (Ollama keep_alive; "
-            "env OLLAMA_KEEP_ALIVE) — also used by the /warm route + the ping's warm one-liner"
+            "env OLLAMA_KEEP_ALIVE) — the /warm route, the ping's warm one-liner, AND "
+            "every /api/chat call. The chat path was added 2026-08-08: before it, chat "
+            "calls sent no keep_alive at all and silently inherited Ollama's 5-minute "
+            "default, so a warm here could be undone by ordinary traffic. PLAN-0100 "
+            "Step 11 measured the cost on the published demo — a ~22 s cold load "
+            "against a 25 s request timeout, so the first visitor after a quiet spell "
+            "waited the whole timeout and then got a degraded, ungrounded answer. "
+            "Deliberately ONE knob rather than a separate chat setting: two values "
+            "that have to agree are a bug waiting for the day they do not."
         ),
     )
     oct_public_base_url: str = Field(
