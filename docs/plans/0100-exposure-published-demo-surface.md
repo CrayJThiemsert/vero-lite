@@ -1055,6 +1055,15 @@ unwritten until s207). Record the full transcript in the PR.
 >    `postgres` absent from `docker compose ps`, **and** that the fail-soft boot
 >    lines (`main.py:284`, `:307`) appear in the app log, **and** that a known
 >    DB-backed *excluded* route 404s at the edge rather than 500ing.
+>    ⚠️ **Those two citations are STALE — annotated, deliberately not rewritten,
+>    because a pass/fail read must not be edited after the run that used it**
+>    (s215). `:284` is `known = registry.verticals()`. The emitter is
+>    **`main.py:264`**, and the call sites are **`main.py:351`** (fleet PM
+>    overrides) and **`main.py:374`** (fleet live cases). Classified `was an
+>    error` in the pointers only: the criterion itself — fail-soft lines present,
+>    on the unreachable-DB branch rather than the `PROGRAMMING error` branch at
+>    `:268` — was unaffected, satisfiable, and satisfied. Whoever next edits this
+>    read should fold the correct citations in and drop this note.
 >    ⚠️ Do **not** diagnose a 500 as "a DB-backed row survived on the allow table"
 >    — the deliberate `RuntimeError` at `main.py:138-142` (published index missing
 >    the `ui-profile` anchor) is a likelier cause. Require the traceback in the
@@ -1268,6 +1277,215 @@ Pass/fail reads, fixed before the run:
 > observation is NOT case 0 closed** — it was taken before the Step 10 reads were
 > fixed and under a configuration still missing the rate cap and `API_KEYS`; it is
 > recorded as orientation, and the case still runs for real under Step 11.
+
+**Step 11 RUN RECORD — 2026-08-08, session 215. Outcome: cases 0, 2, 3, 4, 6, 8
+CLOSE; case 1 closes 17/21; case 5 FAILED, was FIXED (#1084) and re-verified
+PASS on the redeployed image. P5 PASS. P4(ii) PASS; P4(i)'s exact `T_edge` is
+UNMEASURED, but a measured lower bound excludes its FAIL condition.**
+
+Run under Cray's typed §8 go. Driven with a `CF_Authorization` cookie from a real
+one-time-PIN login (the s214 route), so every probe below passed through the
+ratified Access gate rather than around it. The unauthenticated control was
+re-run alongside: `/health`, `/`, `/whoami` with no cookie → **302, 302, 302**.
+
+| Case | Verdict | Evidence |
+|---|---|---|
+| 0 preflight | **PASS** | exactly two services, `app` running + `healthy`, **no `postgres`** |
+| 1 allowed routes served | **19/21 on this case's own read** (17/21 counting two extra probes the runner added — see below) | the two misses are D-3 |
+| 2 excluded routes denied | **PASS** | 22/22 → **exactly 404**; and the edge-denial proof WITH its positive control — **0** excluded requests reached the app while **18** allowed requests appear in the same `docker logs` transcript |
+| 3 DB-less posture | **PASS** | `postgres` absent; **2** fail-soft boot lines, both on the benign unreachable-DB branch; **0** on the `PROGRAMMING error` branch; DB-backed excluded routes 404 rather than 500 |
+| 4 arm posture | **PASS** | `arm-pin-disclosure` present, `recommendation_mode == "rule-by-design"` (**not** `rule-fail-safe`), `confidence == 0.8` |
+| 5 prompt log | **FAIL → FIXED → PASS** | see D-1 |
+| 6 rate cap | **PASS** | **27 × HTTP 429** carrying `error code: 1015` — a Cloudflare body, not a vero-lite one — against **33** served by the origin, then recovery after the window |
+| 8 no `ports:` exposure | **PASS** | `PublishedPort: 0` on `app`, none on `cloudflared` (meaningful only because case 0 showed both running) |
+
+**What case 1 actually failed on, stated carefully because AC-6(c) hangs on it.**
+Against **this case's own read**, the only misses are the **two font files**
+(D-3): 200 with the wrong content-type, where the read asks for "200 with the
+right content-type". Every other row this case names passed, including the wedge
+(`POST /query` → 200, grounded, `phrased_by=gpt-oss:20b`), keyless `/whoami` →
+**exactly 401**, its keyed positive control → 200 with a non-null `person_id`,
+and both halves of the approve row.
+
+The two further failures the run reported are **probes the runner added**, not
+rows this case asks for: the energy ontology's own `verified_queries` (D-4).
+They are a real finding and are recorded as one, but folding them into case 1's
+score would be scoring the system against a bar that was never fixed in advance —
+the same move this read forbids everywhere else. **Case 1 = 19/21 on its own
+terms; 17/21 counting the additions.**
+
+**P5 — eviction-coexistence: PASS.** The scenario was staged rather than
+observed opportunistically: the neighbour (`gemma4:12b`) was made resident, then
+`gpt-oss:20b` was *unloaded* so the published call had to cold-load it — the
+moment eviction would occur if it ever did. The timeline is the artifact:
+
+```
+04:52:32  after unload   gemma4:12b 8.4GiB
+04:52:32→52  during      gemma4:12b 8.4GiB          <- published /query cold-loading
+04:52:54  during         gpt-oss:20b 12.1GiB | gemma4:12b 8.4GiB
+04:53:24  after settle   gpt-oss:20b 12.1GiB | gemma4:12b 8.4GiB
+```
+
+The neighbour was never evicted, so the decision rule fixed above does **not**
+fire: no `assisted` allowlist row drops to `deterministic`.
+
+**P4 — edge timeout.**
+*(ii) **PASS**, observed twice independently:* with the pinned 25/1 profile and a
+genuinely slow upstream (nothing resident, the model cold-loading), `POST /query`
+returned vero-lite's **own** HTTP 200 disclosed degrade at **25 s** — inside the
+< 35 s bar — and **no vendor 5xx page was observed** in any run.
+
+*(i) `T_edge` is **UNMEASURED**, and that is recorded as INSUFFICIENT-EVIDENCE
+rather than as a pass or a failure.* Four attempts, each defeated by the
+instrument rather than by the system, are listed under "instrument failures"
+below. The final attempt did satisfy its precondition (`RECOMMENDER_MODEL =
+qwen3.6:35b`, `LLM_REQUEST_TIMEOUT_S = 120`, both read back off the running
+container before the measurement was allowed to count) and produced a **measured
+lower bound**: an in-flight request survived **54 s** at the edge and was then
+answered by vero-lite — the vendor never cut in. Since `T_edge ≥ 54 s > 40 s`,
+**the FAIL condition this clause states is excluded by measurement** even though
+the exact cut-off was never reached. The 25 s pinned profile therefore has
+demonstrated headroom. Incidental: `qwen3.6:35b` (23.9 GB) cold-loaded **and
+answered correctly** in 54 s, against the `ms-s1-ollama` skill's conservative
+"qwen3.x can exceed 150 s".
+
+### Defects the live run found
+
+**D-1 🔴 The published demo could not write a single prompt-log row.** 90+
+`POST /query` requests through the published surface; `/var/log/vero/prompt-log`
+held **zero** files. Measured cause: the container runs as `uid=999(vero)`
+(`Dockerfile:17,29`) while Docker created the named volume's mount point as
+`root:root 0755`, because the image did not contain that path — only a path
+already present in the image passes its ownership to a volume. `prompt_log.record`
+swallows `OSError` by design (`services/engine/llm/prompt_log.py:120`) so that
+logging can never fail a request, and `PermissionError` is an `OSError`; the
+failure was therefore completely silent. ADR-0035 D6's whole regime — the RoPA
+instance, 90-day retention, the runbook purge command, the DSR path — described a
+file that did not exist. No offline test could have caught it: AC-8 exercises the
+writer against a `tmp_path`, never the deployed volume's ownership.
+**Fixed in #1084** (image creates + chowns the mount point before the `USER`
+switch; a derived guard reads the writable named-volume mount points out of the
+compose files, so a new volume inherits the check). Re-verified on the redeployed
+image — the row now exists and matches the D6 closed field set exactly, with no
+identity or network fields present:
+
+```json
+{"ts_utc":"2026-08-08T04:59:17.379847+00:00","route":"/query","vertical":"energy",
+ "text":"List all assets","model":"gemma4:26b","outcome":"answered","arm":"llm"}
+```
+
+⚠️ **#1084's commit message overstates one thing**, corrected here: it says the
+existing volume must be removed for the fix to take effect. Measured afterwards —
+an **empty** named volume is re-initialised from the image's directory (ownership
+included) on every mount, so the redeploy alone corrected it and the removal was
+never needed. Removal or a `chown` *would* be required for a volume that already
+held rows.
+
+**D-2 🔴 The prompt log names a model that never ran.** The row above records
+`"model": "gemma4:26b"` while the same response reports `phrased_by:
+"gpt-oss:20b"`. `query.py:60` passes `settings.ollama_default_model`
+(`config.py:83-86`, default `gemma4:26b`, the ADR-001 baseline), but the NL-query
+engine calls `settings.recommender_model` (`nl_query.py:293`, `gpt-oss:20b`) and
+reports the real one at `nl_query.py:1159`. `ollama_default_model` is read by
+nothing on this path. `insights.py:298` carries the identical bug. For an audit
+trail whose purpose is *what the LLM actually did*, this is a correctness defect,
+and it is worse than a blank: `gemma4:26b` is genuinely present on MS-S1, so the
+wrong name reads as plausible. **Not fixed here — routed separately.**
+
+**D-3 🔴 Self-hosted fonts are served as `text/plain`.** `/assets/fonts/*.woff2`
+returns 200 with the correct bytes (63 020 B, magic `wOF2`) under
+`content-type: text/plain; charset=utf-8`, while `.css` and `.svg` resolve
+correctly. Root cause measured **inside the container**: `python:3.12-slim` ships
+no `/etc/mime.types` (`knownfiles present: []`) and Python's built-in table has no
+`.woff2` (`'.woff2' in mimetypes.types_map` → `False`), so `guess_type` returns
+`None` and Starlette falls back to `"text/plain"`
+(`starlette/responses.py:315`). **This is invisible on the dev box**, which has
+`/etc/mime.types` and therefore serves the fonts correctly — the defect exists
+only in the deployed image. Impact today is limited: the CSP sets `font-src
+'self'` but **no `X-Content-Type-Options: nosniff`**, so browsers sniff the woff2
+and render it. It becomes a real outage the day anyone adds `nosniff`, which is an
+ordinary hardening step. Fix direction: `mimetypes.add_type("font/woff2",
+".woff2")` at app import, which does not depend on the base image.
+**Not fixed here — routed separately.**
+
+**D-4 🔴 The energy ontology's own `verified_queries` are not answerable.** Both
+questions the ontology advertises — *"How many active assets are hosted at each
+site?"* and *"มีสินทรัพย์ประเภท feeder ที่ยัง active อยู่กี่ตัว?"* — return
+`grounded=false, outcome=no_data`, while ordinary retrieval questions ("List all
+assets", "Show me the assets", "What is the temperature reading on
+asset-battery-01?") return `grounded=true` with `phrased_by=gpt-oss:20b`. The
+pattern is aggregation / group-by versus retrieval. The wedge itself works; what
+is wrong is that the ontology's declared answerable set does not match the
+engine's capability. **Not fixed here — routed separately.**
+
+**Observation (not a defect, but it shapes the visitor's first impression).**
+The published demo pins no `keep_alive`, so after an idle period the model is
+evicted and the next visitor waits the full `LLM_REQUEST_TIMEOUT_S` and then
+receives a **degraded, ungrounded** answer — measured three times independently
+(P5 and both P4(ii) runs: cold load ≈ 22 s against the 25 s timeout). For a demo
+whose headline is natural-language query, that is the experience of *every first
+visitor after a quiet spell*. Options — a longer `keep_alive`, a boot-time warm,
+or a wider timeout — are a product call, not a defect fix.
+
+### Corrections owed to this PLAN, found by running it
+
+- **Case 3's citations are stale.** It cites `main.py:284` and `:307` for the
+  fail-soft boot lines. `:284` is `known = registry.verticals()`. The emitter is
+  **`main.py:264`** (the `_is_environment_absent` branch, distinct from the
+  `PROGRAMMING error` branch at `:268`), and the call sites are **`main.py:351`**
+  (fleet PM overrides) and **`main.py:374`** (fleet live cases). The case's
+  substance was satisfiable and was satisfied; only the pointers had drifted.
+
+### Instrument failures — recorded because they nearly became findings
+
+Eleven checks in this run failed on the instrument rather than on the system. They
+are listed because a run that does not distinguish the two is worth nothing, and
+because the pattern is one thing repeated:
+
+1. **The whole probe matrix scored 0/43 against a healthy demo.** The harness used
+   `urllib`, and Cloudflare's Browser Integrity Check rejects a `Python-urllib/*`
+   User-Agent with **403 / error code 1010** before Access is even consulted.
+   Isolated by changing one variable at a time — curl with a spoofed
+   `Python-urllib` UA also 403s, `urllib` with a browser UA 200s — so the cause is
+   the UA string, not the TLS or HTTP fingerprint. Transport switched to curl.
+2. **The `/query` oracle passed a refusal.** "200 + non-empty answer +
+   `phrased_by` present" is satisfied by
+   *"I couldn't translate that question into a query over the operational data."*
+   with `grounded=false, outcome=no_data, result_count=0`. Strengthened to require
+   `grounded` and `outcome`.
+3. **`/procedures` scored a FAIL against an 88 KB non-empty response** — the
+   extractor looked for a top-level `procedures` key; the payload is
+   `{"verticals":[{…,"procedures":[…]}]}`.
+4. **Case 6 reported `blocked at edge: 0` while its own status histogram showed
+   27 × 429** — the body classifier looked for the literal `error 1015`;
+   Cloudflare sends `error code: 1015`.
+5. **A sequential 15-request burst could not exercise a 10 s window**, because
+   each `/query` waits on the LLM; 25 concurrent did not trip it either, and only
+   60 concurrent did.
+6. **P5's first timeline came back empty on every sample** — a nested-quote
+   python one-liner inside a bash function, the exact hazard the `ms-s1-ollama`
+   skill names. Its scorer nonetheless returned INSUFFICIENT-EVIDENCE rather than
+   a pass, which is the behaviour that kept it honest.
+7–10. **P4 failed four times, each for a different instrument reason**: an sshd
+   banner (37 ms fast fail, not a stall); a closed host port that stalls from the
+   LAN but not from the container (**validated at the wrong vantage point**);
+   blackhole addresses that stall only 14–20 s before the OS gives up; and a
+   heredoc-authored override that was never written, whose `compose -f <missing>`
+   error was redirected to `/dev/null`, so the run measured the committed profile
+   and reported it as the 120 s one. Fixed by a **precondition gate** — the applied
+   env is read back off the running container and the measurement is refused
+   unless it matches.
+11. **A "the built-in table already knows `.woff2`" conclusion was itself
+    vacuous**: `mimetypes.init([])` reuses an already-populated `_db` rather than
+    resetting it, so the test read a table that had already loaded
+    `/etc/mime.types`. Settled by measuring inside the container instead.
+
+The common root is one habit, not eleven mistakes: **checking a proxy for the
+thing rather than the thing** — a stand-in client, a stand-in vantage point, a
+stand-in field, a stand-in reset. What repeatedly saved the run was the discipline
+of fixing each pass/fail read *before* the run and refusing to reinterpret it
+afterwards: every one of these surfaced as an implausible verdict against
+criteria that had already been written down.
 
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
