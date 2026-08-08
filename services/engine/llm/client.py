@@ -182,7 +182,12 @@ class OllamaClient:
             # first visitor after any quiet spell waited the whole timeout and
             # then got a DEGRADED, ungrounded answer — on the one surface whose
             # headline is natural-language query.
-            "keep_alive": settings.llm_keep_alive,
+            #
+            # Reuses `ollama_keep_alive` — the knob /warm and the Telegram ping
+            # already drive — rather than adding a chat-specific twin. A warm that
+            # says 30m while chat says something else is a warm that ordinary
+            # traffic can silently undo.
+            "keep_alive": settings.ollama_keep_alive,
         }
         if think is not None:
             body["think"] = think

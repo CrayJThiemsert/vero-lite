@@ -76,9 +76,11 @@ async def test_chat_sends_keep_alive_so_the_model_survives_between_visitors() ->
     timeout, so the FIRST visitor after any quiet spell waited the whole timeout
     and then received a degraded, ungrounded answer.
 
-    Asserted against `settings.llm_keep_alive` rather than a literal, so retuning
-    the value is a one-line config change and not a test edit — the invariant
-    under test is "the wire carries what the setting says", not any one duration.
+    Asserted against `settings.ollama_keep_alive` rather than a literal, so
+    retuning the value is a one-line config change and not a test edit — the
+    invariant under test is "the wire carries what the setting says", not any one
+    duration. That is deliberately the SAME knob `/warm` drives: a warm that says
+    30m while chat says something else is a warm ordinary traffic can undo.
     """
     captured: dict[str, Any] = {}
 
@@ -92,7 +94,7 @@ async def test_chat_sends_keep_alive_so_the_model_survives_between_visitors() ->
         "the /api/chat body carries no keep_alive, so Ollama applies its 5-minute "
         "default and the published demo goes cold between visitors"
     )
-    assert captured["body"]["keep_alive"] == settings.llm_keep_alive
+    assert captured["body"]["keep_alive"] == settings.ollama_keep_alive
 
 
 async def test_chat_includes_think_only_when_set() -> None:

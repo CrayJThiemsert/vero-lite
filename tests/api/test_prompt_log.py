@@ -99,6 +99,24 @@ async def test_query_writes_one_row_with_the_closed_field_set(
     assert row["arm"] in ("llm", "deterministic")
     datetime.fromisoformat(str(row["ts_utc"]))  # parses, or this raises
 
+    # This case drives the real route into the real writer, yet it said nothing
+    # about `model` — so it stayed green while the row named a model that never
+    # ran (PLAN-0100 Step 11, D-2). The set-equality above only checks that the
+    # KEY is present; a wrong VALUE is exactly what it cannot see.
+    # ⚠️ Honest limitation, stated rather than papered over: this assertion is
+    # VACUOUS on a box whose .env sets OLLAMA_DEFAULT_MODEL to the same value as
+    # recommender_model — which the dev box does (.env: OLLAMA_DEFAULT_MODEL=
+    # gpt-oss:20b). That is a second reason D-2 survived locally, on top of the
+    # routers being source-correct-looking. The non-vacuous check is
+    # `test_logged_model_is_the_one_the_llm_path_actually_uses`, which compares
+    # the setting NAMES in the two real modules and so cannot be fooled by two
+    # settings that happen to agree. This one earns its place by covering the
+    # other half: that the value actually reaches the row through the live path.
+    assert row["model"] == settings.recommender_model, (
+        f"the row records {row['model']!r}, but this route runs on "
+        f"{settings.recommender_model!r}"
+    )
+
 
 async def test_nothing_is_written_when_disabled(
     client: AsyncClient, log_dir: Path, monkeypatch: pytest.MonkeyPatch
