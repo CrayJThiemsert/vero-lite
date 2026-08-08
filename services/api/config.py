@@ -116,6 +116,20 @@ class Settings(BaseSettings):
         gt=0.0,
         description="Per-request timeout for a single Ollama chat call, in seconds",
     )
+    llm_keep_alive: str = Field(
+        default="60m",
+        description=(
+            "How long Ollama keeps the model resident after a chat call, sent as the "
+            "`keep_alive` field on every /api/chat request. Ollama's own default is 5 "
+            "minutes, and nothing set this before, so on the published demo the model "
+            "was evicted between visitors: PLAN-0100 Step 11 measured a cold load of "
+            "~22 s against a 25 s request timeout, meaning the FIRST visitor after any "
+            "quiet spell waited the full timeout and then received a degraded, "
+            "ungrounded answer — on the surface whose headline is natural-language "
+            "query. Holding the model resident is safe on MS-S1: Step 11's P5 measured "
+            "a capped call co-residing with a neighbour model rather than evicting it."
+        ),
+    )
     llm_status_timeout_s: float = Field(
         default=3.0,
         gt=0.0,

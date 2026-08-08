@@ -57,7 +57,15 @@ async def nl_query(request: NlQueryRequest) -> NlQueryResponse:
         route="/query",
         vertical=settings.oct_vertical,
         text=request.question,
-        model=settings.ollama_default_model,
+        # The model this route ACTUALLY routes to. It used to record
+        # `ollama_default_model` (gemma4:26b, the ADR-001 baseline), which nothing
+        # on this path reads: nl_query builds its client from
+        # `recommender_model`. PLAN-0100 Step 11 caught the two disagreeing in one
+        # row — the log said gemma4:26b while the same response reported
+        # `phrased_by: "gpt-oss:20b"` (D-2). A wrong name is worse than a blank
+        # one here, because gemma4:26b IS present on the box, so an auditor
+        # reading the log has no reason to doubt it.
+        model=settings.recommender_model,
         outcome=answer.outcome or "unknown",
         arm=arm_of(answer.phrased_by),
     )

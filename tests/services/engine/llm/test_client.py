@@ -15,6 +15,7 @@ from typing import Any
 import httpx
 import pytest
 
+from services.api.config import settings
 from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
 
 Handler = Callable[[httpx.Request], httpx.Response]
@@ -64,6 +65,34 @@ async def test_chat_posts_to_api_chat_with_model_and_stream_false() -> None:
     assert captured["body"]["model"] == "gpt-oss:20b"
     assert captured["body"]["stream"] is False
     assert captured["body"]["messages"] == [{"role": "user", "content": "hi"}]
+
+
+async def test_chat_sends_keep_alive_so_the_model_survives_between_visitors() -> None:
+    """Every chat call must carry `keep_alive`, and it must be the configured value.
+
+    Nothing sent this before, so calls inherited Ollama's own 5-minute default and
+    the model was evicted between visitors. PLAN-0100 Step 11 measured what that
+    costs on the published surface: a ~22 s cold load against a 25 s request
+    timeout, so the FIRST visitor after any quiet spell waited the whole timeout
+    and then received a degraded, ungrounded answer.
+
+    Asserted against `settings.llm_keep_alive` rather than a literal, so retuning
+    the value is a one-line config change and not a test edit — the invariant
+    under test is "the wire carries what the setting says", not any one duration.
+    """
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return _ok_response()
+
+    await _client(handler).chat([{"role": "user", "content": "hi"}])
+
+    assert "keep_alive" in captured["body"], (
+        "the /api/chat body carries no keep_alive, so Ollama applies its 5-minute "
+        "default and the published demo goes cold between visitors"
+    )
+    assert captured["body"]["keep_alive"] == settings.llm_keep_alive
 
 
 async def test_chat_includes_think_only_when_set() -> None:

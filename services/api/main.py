@@ -1,6 +1,7 @@
 """FastAPI entry point for vero-lite."""
 
 import logging
+import mimetypes
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -38,6 +39,31 @@ from services.notify.telegram import describe_arm_state
 # app-module INFO log is dropped from the server console. Boot diagnostics go
 # through this logger so they appear alongside the uvicorn startup lines.
 _boot_logger = logging.getLogger("uvicorn.error")
+
+# Starlette types a static file with `mimetypes.guess_type(...)[0] or "text/plain"`.
+# `mimetypes` seeds itself from the OS's mime files, and the runtime image
+# (python:3.12-slim) ships NONE — `mimetypes.knownfiles` resolves to [] inside the
+# container — while Python's built-in table has no `.woff2` entry. The bundled IBM
+# Plex fonts were therefore served as `text/plain; charset=utf-8` in production.
+#
+# It is invisible in development, which is why it survived to a live run: the dev
+# box has /etc/mime.types, so the same code serves the same files correctly there.
+# PLAN-0100 Step 11 measured it at the edge (D-3).
+#
+# Registering explicitly makes the answer a property of this application rather
+# than of whatever mime files the base image happens to carry.
+#
+# This table is what the guard reads: the test walks the real static tree, works
+# out which extensions a built-in-only mimetypes cannot resolve (which is exactly
+# the deployed image's condition), and requires each of them to appear here. Ship
+# a new font format without adding it and the guard reddens.
+_STATIC_MIME_TYPES: tuple[tuple[str, str], ...] = (
+    ("font/woff2", ".woff2"),
+    ("font/woff", ".woff"),
+)
+
+for _mime_type, _extension in _STATIC_MIME_TYPES:
+    mimetypes.add_type(_mime_type, _extension)
 
 _STATIC_DIR = Path(__file__).parent / "static"
 

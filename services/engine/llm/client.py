@@ -175,6 +175,14 @@ class OllamaClient:
             "messages": messages,
             "stream": False,
             "options": {"temperature": temperature},
+            # Nothing set this before, so every chat call inherited Ollama's own
+            # 5-minute default and the model was evicted between visitors. On the
+            # published demo that is not a latency detail: PLAN-0100 Step 11
+            # measured a ~22 s cold load against a 25 s request timeout, so the
+            # first visitor after any quiet spell waited the whole timeout and
+            # then got a DEGRADED, ungrounded answer — on the one surface whose
+            # headline is natural-language query.
+            "keep_alive": settings.llm_keep_alive,
         }
         if think is not None:
             body["think"] = think
