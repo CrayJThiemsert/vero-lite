@@ -1727,3 +1727,108 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > in the PLAN's §Open items; **(c) conflicts with D6**) and the **per-IP rate cap
 > 2 → 10 req/10s** nod. Step 8 also still owes an **unpinned `OCT_VERTICAL`**;
 > Step 9 follows Step 8.
+
+> **Session 209 cont., 2026-08-06 (head_commit `0c067de` → `8bd331d`) — two PRs
+> merged (#1063, #1065), 0 open. This block: #1063, PLAN-0100 Step 8 — the
+> published surface got its deploy target and its vertical pin, and the pin turned
+> on an empty iterator, not on the DB posture everyone assumed.**
+>
+> **#1063 — PLAN-0100 Step 8 SHIPPED `deploy/published/`.** Greenfield: neither
+> `deploy/` nor `tests/deploy/` existed, and the repo held zero cloudflared YAML.
+> Ships `{docker-compose.yml, published.env, README.md, cloudflared/config.yml}` +
+> `tests/deploy/test_published_compose.py` (**69 tests**); `app.js` drops **Tab G**
+> on the published profile (`?v=c48`; `test_ui_profile.py` follows); `.env.example`
+> gains three `LLM_*` names. `/demo/hero/*` is excluded for a reason unlike every
+> other exclusion — its backend is offline, DB-free and would serve fine, but the
+> governed hero is bespoke per design partner (ADR-0032 D1.2) and energy owns no
+> hero builder, so `_builders()` would serve a **Fastenal hero under an energy
+> banner**. **AC-4 · AC-5 · AC-6(a)+(b) CLOSED — PLAN-0100 moves 8 → 10 of 13**;
+> AC-6 itself stays **unticked deliberately** ((c) is Step 9's live compose smoke).
+>
+> **`OCT_VERTICAL` is pinned `energy` (Cray typed) — and the DB posture was NOT the
+> discriminator.** Pinning `procurement` would *not* have cost the DB-less boot
+> guarantee: measured, its adapter and executor registrar open no session at all.
+> What decided it — `FastenalCsvAdapter.stream_events` is an **empty async iterator
+> by design** (`fastenal_csv.py:243-251`, "ships no OperationalEvent stream (v1)")
+> and `_populate_store` streams `"reading"` **before** any arm choice
+> (`actions.py:186`), so under procurement `GET /recommendations` returns `[]` on
+> **both** profiles, tunable by no setting, leaving **Tab A — the default landing
+> view — blank**. Energy streams real events and exactly one breaches (`96.5` ≥ the
+> pinned `90.0`), which is that dataset's stated design.
+>
+> **A non-vacuity probe caught a vacuous test inside the very change it probed.**
+> Stripping the anchors off `^/query$` reddened **one** test where three were
+> expected — the anchoring and deny assertions were parametrized over the test
+> module's own constant (anchored by construction, unable to fail) and never read
+> the committed file. Post-fix the same mutation reddens **four**, including the
+> `/insights/query` leak SD-1 excludes; a positive control now ships in-suite.
+
+> **Session 209 cont., 2026-08-06 (same window, head_commit `8bd331d`) — this
+> block: #1065 (ADR-0036 `Proposed`), the two PARALLEL-session PRs that are
+> NOT s209's work, and Cray's three outstanding reads.**
+>
+> **#1065 — ADR-0036 `Proposed`: a deployed vertical instance IS a "system".**
+> ADR-0035 defines "system" operationally, by what one owns (`0035:478-493`), and a
+> vertical instance satisfies every clause with **zero engine change** — so the
+> multi-vertical demo is N systems (`oct-energy.`, `oct-procurement.`, …) picked
+> from the `portal.` landing surface, and D4's reopening trigger does **not** fire.
+> In-process multi-vertical serving is a recorded **non-goal** (`auth.py:82`'s
+> vertical-scoped principal roster is the ADR-level blocker). ⚠️ **A live obligation
+> rides in the renamed guard test's docstring**
+> (`test_the_non_accepted_adrs_are_exactly_the_expected_set`): ratifying 0036
+> `Proposed → Accepted` must REMOVE its entry from that set **in the same edit**.
+>
+> **Two PARALLEL-session PRs — #1062 and #1064 — also landed in this window and are
+> NOT s209's work**: they are **session 210's** (a parallel session, now closed
+> without reconciling) — the new `.claude/skills/stream-status/` skill and a
+> 4-stream lens for `next-work-analyst/SKILL.md`. s210 also produced a **gitignored**
+> strategy doc (`docs/strategy/private/2026-08-06-marketing-fde-plan-synthesis.md` —
+> marketing / FDE + pricing, four frame decisions Cray typed). The governance
+> question its closing notice raised is recorded under In-Flight Discussions.
+>
+> **Cray owes three reads, all genuinely open:** **ADR-0036 ratification** + its
+> three OQs (OQ-1 retire vs alias the bare `oct.` label — the ADR recommends
+> **retire**; OQ-2 the aggregate in-flight LLM posture across N systems; OQ-3 the
+> trigger for `fleet_maintenance` as system #3) · the **per-IP cap 2 → 10 req/10s**
+> nod (unchanged since s207; §Pinned values still reads "needs Cray's nod") ·
+> **AC-12**, still failed by #1057.
+
+> **Session 209, 2026-08-06 (head_commit `c0f08b8` → `0c067de`) — one PR merged
+> (#1060), 0 open. Theme: an LLM call the visitor never asked for was being made on
+> the default landing view, and the ruling that stopped it was written as a
+> principle rather than as a one-route patch.**
+>
+> **OI-1 RULED — Cray typed option (b), and #1060 built it.** On the `published` UI
+> profile, an LLM call the visitor did not initiate is **no longer made**. The rule
+> lives in a new `services/engine/llm/arm_policy.py` — the principle in its
+> docstring, one predicate that decides it — and `recommender.recommend(...)` now
+> takes `visitor_initiated=False` **keyword-only and fail-closed by default**, so a
+> future caller that forgets the flag gets the deterministic arm rather than a
+> silent fan-out. Cray's second typed call: **keep the ฿ facet under the pin** —
+> `build_economic_steps` is deterministic and never raises, so pinning the *LLM arm*
+> need not cost the Box-4 facet anything.
+>
+> **A third disclosure state, on purpose.** `_disclose_rule_by_design` is new rather
+> than a reuse of `_disclose_llm_degrade`: the degrade wording would have made the
+> demo announce it is **degraded** while it is in fact working exactly **as
+> designed**. The new trace step `arm-pin-disclosure` deliberately reuses the
+> CI-pinned `rule_check` kind, so **no UI label and no `?v=` asset cache-bust are
+> owed**.
+>
+> **Verification.** Non-vacuity **DEMONSTRATED** — neutralising the predicate to
+> `return False` drove **3 of the 5** new tests RED while both dev controls stayed
+> correctly green. Gate at CI scope: `ruff check .` clean on the tracked tree,
+> ruff-format clean (609 files), `mypy services/` clean (**133** files, up from
+> 132), full `tests/` **3869 passed / 8 skipped / 0 failed** (baseline 3864 / 8 —
+> the **+5** is exactly `tests/api/test_published_arm_pin.py`, skip count unchanged).
+>
+> **No AC was ticked — PLAN-0100 stays 8 of 13.** The ruling *unblocks*; it does not
+> close AC-4/5/6. Same PR reconciled the PLAN (OI-1 RULED, the allow-table posture,
+> Step 8's now-stale BLOCK released, an AC-12 note, Step 9 Case 4). **Step 8 is now
+> fully unblocked** — both blockers discharged (D4/L5 ratified in #1057 on
+> 2026-08-05; OI-1 ruled today). **Cray owes one call, not two:** the **per-IP rate
+> cap 2 → 10 req/10s** nod (the PLAN's §Pinned values row still reads "needs Cray's
+> nod"), plus a read on **AC-12**, whose "this PLAN's diff touches no file under
+> `docs/adr/`" clause is still failed by #1057 (#1060 touches no `docs/adr/` file,
+> so it does not worsen it). Cray's third typed call was **"merge only, then
+> stop"** — Step 8 is deliberately deferred to s210.
