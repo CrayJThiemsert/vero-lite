@@ -1291,7 +1291,7 @@ re-run alongside: `/health`, `/`, `/whoami` with no cookie → **302, 302, 302**
 | Case | Verdict | Evidence |
 |---|---|---|
 | 0 preflight | **PASS** | exactly two services, `app` running + `healthy`, **no `postgres`** |
-| 1 allowed routes served | **17/21** | see the four misses below |
+| 1 allowed routes served | **19/21 on this case's own read** (17/21 counting two extra probes the runner added — see below) | the two misses are D-3 |
 | 2 excluded routes denied | **PASS** | 22/22 → **exactly 404**; and the edge-denial proof WITH its positive control — **0** excluded requests reached the app while **18** allowed requests appear in the same `docker logs` transcript |
 | 3 DB-less posture | **PASS** | `postgres` absent; **2** fail-soft boot lines, both on the benign unreachable-DB branch; **0** on the `PROGRAMMING error` branch; DB-backed excluded routes 404 rather than 500 |
 | 4 arm posture | **PASS** | `arm-pin-disclosure` present, `recommendation_mode == "rule-by-design"` (**not** `rule-fail-safe`), `confidence == 0.8` |
@@ -1299,8 +1299,20 @@ re-run alongside: `/health`, `/`, `/whoami` with no cookie → **302, 302, 302**
 | 6 rate cap | **PASS** | **27 × HTTP 429** carrying `error code: 1015` — a Cloudflare body, not a vero-lite one — against **33** served by the origin, then recovery after the window |
 | 8 no `ports:` exposure | **PASS** | `PublishedPort: 0` on `app`, none on `cloudflared` (meaningful only because case 0 showed both running) |
 
-**Case 1's four misses**, all real, none of them status failures:
-D-2 and D-3 below (two font files, two ontology `verified_queries`).
+**What case 1 actually failed on, stated carefully because AC-6(c) hangs on it.**
+Against **this case's own read**, the only misses are the **two font files**
+(D-3): 200 with the wrong content-type, where the read asks for "200 with the
+right content-type". Every other row this case names passed, including the wedge
+(`POST /query` → 200, grounded, `phrased_by=gpt-oss:20b`), keyless `/whoami` →
+**exactly 401**, its keyed positive control → 200 with a non-null `person_id`,
+and both halves of the approve row.
+
+The two further failures the run reported are **probes the runner added**, not
+rows this case asks for: the energy ontology's own `verified_queries` (D-4).
+They are a real finding and are recorded as one, but folding them into case 1's
+score would be scoring the system against a bar that was never fixed in advance —
+the same move this read forbids everywhere else. **Case 1 = 19/21 on its own
+terms; 17/21 counting the additions.**
 
 **P5 — eviction-coexistence: PASS.** The scenario was staged rather than
 observed opportunistically: the neighbour (`gemma4:12b`) was made resident, then
