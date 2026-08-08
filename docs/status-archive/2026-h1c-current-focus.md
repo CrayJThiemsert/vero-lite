@@ -1879,3 +1879,50 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > pre-committed before the run. _[Numbering: 209 → 212 is not a slip — parallel
 > sessions consumed 210 and the 211 handoff directory, and the merged Step 9 run
 > record says "session 212", so STATUS agrees with it.]_
+
+> **Session 213, 2026-08-07 (head_commit `a22ff8e` → `07e9603`) — four PRs merged
+> (#1069, #1070, #1071, #1072), 0 open. Theme: the session that stood the published
+> demo up for real — and NOT ONE of the four defects came from a failing test.**
+>
+> **The demo is LIVE** at the `oct-energy` subdomain behind Cloudflare Access
+> (one-time-PIN email allowlist), verified end-to-end in a browser by Cray. Every
+> defect was found by touching a layer of reality nobody had touched before —
+> docs → config → image → deploy host → edge.
+>
+> 🔴 **#1071 — `python-multipart` is a RUNTIME dependency, and the shipped image
+> could not boot; it had not been able to since 2026-07-28.** It reached the dev
+> venv only via `mcp` (a **dev** extra); the image installs `--no-dev`. FastAPI
+> resolves multipart routes at *import* time, so `import services.api.main` raised.
+> **3943 tests were green over a container that could not start.** The fix ships
+> **a CI step that reproduces the image's dependency set and imports the entry
+> module** — it guards the *class*, not the instance.
+>
+> **#1069 — `API_KEYS` had no way into the container.** `env_file` loads
+> `published.env` and nothing else, and compose does not forward the host
+> environment, so the secret the README told operators to provision was silently
+> dropped: the demo was unloginable no matter what the host exported. Bare
+> pass-through added, deliberately optional. **#1070** adds the bring-up runbook +
+> `verify_tunnel_credentials.py` and fixes **7** `docker compose -p vero-oct`
+> invocations in the operations runbook — the project is `vero-published`, so **all
+> three PDPA deletion paths were unexecutable**. **#1072** folds in 7 corrections
+> from executing the runbook for real, plus **13 tests for the verifier** (it
+> shipped with none).
+>
+> **Step 11 is BLOCKED on a governance ruling nobody knew was needed — SURFACED,
+> NOT RULED.** PLAN-0100 Step 11's case list asserts exact statuses (`/health` →
+> 200, keyless `/whoami` → *exactly* 401 — which the PLAN calls the only thing that
+> catches `API_AUTH_ENABLED=false` in the running container); through the ratified
+> Access gate **every path returns 302** (measured on seven paths; the redirect
+> metadata carries `"service_token_status": false`). The remedy is a service token,
+> which Cloudflare requires be a **second Access policy** — and ADR-0035's
+> acceptance shape names "a second Access policy" as a drift trigger. **ADR-0035 D3
+> and the case list are each correct and were written at different times — a
+> composition problem, not a defect in either.** **PLAN-0100 stays 10 of 13; AC-6
+> unticked** ((c)'s "allowed → served" clause is still unproven).
+>
+> Verification: the full offline gate at CI scope **four times**, once per PR; final
+> `ruff format --check` clean (612 files) · `mypy services/` clean (133) ·
+> **3956 passed / 8 skipped / 0 failed**, the count pre-committed before every run.
+> Non-vacuity demonstrated for all **9** guards added (mutations restored from
+> `/tmp` copies, never `git checkout`). The shipped image proven identical across
+> machines via `docker image inspect` after `save`/`scp`/`load`.
