@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-08T13:58:23+07:00
-session: 215
-current_batch: "s215 — four PRs (#1084–#1087), 0 open: PLAN-0100 Step 11 RAN live against the published demo. Four defects found, three fixed, redeployed and re-verified live the same session."
+last_updated: 2026-08-08T17:57:48+07:00
+session: 216
+current_batch: "s216 — four PRs (#1090–#1093), 0 open. PLAN-0100 COMPLETE 13/13 and ARCHIVED: AC-6(c) by arithmetic, AC-11 by measuring T_edge = 125 s, AC-12 by verifying work already done."
 current_actor: code
-blocked_on: "Nothing is blocked. PLAN-0100 stays Draft — AC-6(c) has not been re-scored against the D-3 fix, and P4(i)'s T_edge is UNMEASURED (bound: >= 54 s)."
-next_action: "Judge whether PLAN-0100 Step 11 is closeable — re-score AC-6(c), decide T_edge. Non-gating: D-4's direction, a cache-purge step in the redeploy runbook, AC-12, ADR-0036."
-head_commit: 94fac66
-recent_commits: [94fac66, 825eec0, 00ddca0, 6660165, 1ddcde3, 77e94bf, b279056, b0f26e6, a8033f9, bef5d66]
+blocked_on: "Nothing is blocked. PLAN-0100 is closed and archived; its five residual items are non-gating."
+next_action: "Non-gating (PLAN-0100 residuals): rule D-4's direction; add an edge cache-purge / versioned-fonts step to the redeploy runbook; ratify ADR-0036 (+3 OQs); pin OLLAMA_KEEP_ALIVE in published.env."
+head_commit: f987888
+recent_commits: [f987888, 6b095d2, 7b3b774, 3191309, 9dc39a1, 091a82b, c3c7b8c, 0d0d6fb, 1fbf6e4, d73606e]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,65 @@ recent_commits: [94fac66, 825eec0, 00ddca0, 6660165, 1ddcde3, 77e94bf, b279056, 
 ---
 
 ## Current Focus
+
+> **Session 216, 2026-08-08 (head_commit `94fac66` → `f987888`) — four PRs merged
+> (#1090–#1093), 0 open. Theme: PLAN-0100 is COMPLETE 13/13 and ARCHIVED — the
+> exposure PLAN closed after its last three ACs fell in one session, each to a
+> DIFFERENT kind of move.**
+>
+> **Three ACs, three kinds of move — the distinction is the transferable part, and
+> flattening it to "three ACs closed" loses the whole lesson.** **AC-6(c) closed by
+> arithmetic over evidence already in hand** (#1090): case 1 was re-scored against the
+> D-3 fix — **no new run** — its only two misses having been the `.woff2`
+> content-types, fixed and live-verified in s215 on a `cf-cache-status: MISS`. The same
+> PR corrected AC-6's stale "case 4" citation for the rate cap (under v2 numbering the
+> rate cap is **case 6**; case 4 is arm posture) and recorded the carve-out as
+> discharged through the Step-11 deferral branch. **AC-11 closed by a fresh live
+> measurement** (#1091). **AC-12 closed by VERIFYING rather than drafting** (#1093),
+> after which PLAN-0100 went `Draft` → `Complete` and was `git mv`-ed to
+> `docs/plans/done/`.
+>
+> **`T_edge` = 125 s, and why s215 could not get it.** s215 failed five times. Four
+> were ordinary instrument faults, already logged. The fifth was subtler: the
+> instrument *worked*, but it stalled the upstream with `qwen3.6:35b` — a model big
+> enough to cold-load — and it cold-loaded **and answered** in 54 s. **A slow upstream
+> is not a stalled one**; vero-lite replied before the edge could cut in. s216 replaced
+> *slow* with *never answers*: a socket that `bind`s and `listen`s but **never calls
+> `accept()`**, verified from **inside the app container** (connect in 0.013 s, then
+> `TimeoutError`, zero bytes). Two runs positive-control each other — a 120 s window
+> yielded only `T_edge > 120 s`, recorded **INSUFFICIENT-EVIDENCE, not a pass**, and it
+> missed by **five seconds**; a 600 s window returned **HTTP 524 at 125.19 s**.
+> ⚠️ **Cloudflare documents 100 s; the measured value is 125 s** — the path is a
+> `cloudflared` Tunnel, not a proxied origin, so a run that had trusted the published
+> number would have concluded the cut-off was unreachable.
+>
+> **Cray's ruling is what produced that number.** Offered the `≥ 54 s` bound as
+> discharging P4(i), Cray typed that **a bound is not the number the clause asks
+> for**. Had Code accepted the bound on its own judgement it would have been rewriting
+> an AC to fit the evidence available, and neither the 125 s nor the Tunnel-vs-docs
+> finding would exist.
+>
+> **AC-12 is the reusable one.** The next move *looked* like a `plan-drafter` dispatch
+> — Code cannot author ADRs. Verifying the fact-pack first showed all three
+> "unrouted" ADR-0035 amendments had **already landed on 2026-08-06 in `06e2b84`**;
+> only the tick was missing. Same shape as #1089's unmet "Record which was used".
+> **A doc saying "not done" is a claim to grep, not evidence.**
+>
+> 🟡 **D-5 — a TRANSIENT Safe Browsing phishing flag** on the Access login callback,
+> found while fetching a fresh cookie and lifted within ~30 min. **No security posture
+> was involved:** the unauthenticated control stayed **302** on five paths across two
+> runs, including under a browser UA. Four candidate causes were ruled out **by
+> measurement** — a host-wide block (`/health` clean in the same Chrome), a path-prefix
+> block (bare callback clean, the omnibox `Dangerous` chip gone, no bypass clicked), a
+> flag inherited from a previous domain owner (RDAP: `registration` == `last changed`
+> == 2025-12-15), and a neighbour on the zone (only `oct-energy` resolves). **The cause
+> is UNDETERMINED and is recorded as such** — Google Search Console is the only source
+> that would report why, and only if it recurs.
+>
+> **Also:** the `ms-s1-admin` skill gained the **stripped-`"` trap** (#1092) —
+> PowerShell strips double quotes when handing argv to a native exe — plus a comparison
+> table of all three traps in that family. **Five residual items outlive PLAN-0100**;
+> they are carried as a pointer in Active TODOs and none of them gates anything.
 
 > **Session 215, 2026-08-08 (head_commit `a5ae3cd` → `94fac66`) — four PRs merged
 > (#1084–#1087), 0 open. Theme: PLAN-0100 Step 11 — the Cray-gated live run against
@@ -167,53 +226,6 @@ recent_commits: [94fac66, 825eec0, 00ddca0, 6660165, 1ddcde3, 77e94bf, b279056, 
 > `/tmp` copies, never `git checkout`). The shipped image proven identical across
 > machines via `docker image inspect` after `save`/`scp`/`load`.
 
-> **Session 212, 2026-08-06 (head_commit `8bd331d` → `a22ff8e`) — one PR merged
-> (#1067), 0 open. Theme: the run that could not run still told the truth — and all
-> three defects it found were in the instructions for running it.**
->
-> **PLAN-0100 Step 9 ran as its OWN sanctioned offline fallback, not as the smoke.**
-> Probed first: the box has `docker` and `curl` but **no `cloudflared` binary**, no
-> `CLOUDFLARED_CREDENTIALS_FILE`, no `~/.cloudflared`; the compose declares that
-> variable required-with-no-default, so `up` cannot start the project and **case 0 —
-> which gates every other case — is unreachable**. A real tunnel needs a Cloudflare
-> account action plus a domain ADR-0035 D1(3) places in the portal repo, which does
-> not exist. Against the pass/fail read fixed **before** the run: **case 2 PASS**
-> (24/24 excluded routes → `http_status:404`; 11/11 allowed → `http://app:8000`) and
-> **case 7 PASS** (`cloudflared 2025.8.1`, committed config validates `OK`) — both
-> install-free through the image the compose project already pins. **Cases 0, 1, 3,
-> 4, 5, 6, 8 are NOT COVERED**, recorded and inherited by **Step 11**.
->
-> **Non-vacuity DEMONSTRATED, not asserted.** Re-run against a **copy** of
-> `config.yml` in `/tmp` with the `^…$` anchors stripped, the excluded
-> `/insights/query` **flipped** from `http_status:404` to `http://app:8000` — so the
-> 35 PASS rows prove the probe discriminates, not merely that it ran; the committed
-> file was never mutated and both states are in the transcript.
->
-> **AC-6 stays unticked; PLAN-0100 stays 10 of 13.** (c) has two clauses and only one
-> is met — "excluded → 404 at the edge" is proven against the real `cloudflared`
-> matcher, "allowed → served" is not, because **nothing was ever served**. Case 2
-> likewise closes in its **rule-resolution form only**: its positive control (an
-> allowed request must appear in `docker compose logs app`) has no app log to read,
-> so that half rides to Step 11 with case 1.
->
-> **Three COMMITTED defects found and fixed in the same PR; each would have scored a
-> false verdict.** (1) The case list still called three `/demo/hero/*` GETs **served
-> (200)** — Step 8 excluded that surface the day after v2 was written, so an operator
-> reading it literally would have logged **three FAILs against an edge behaving
-> exactly as intended**. (2) The sanctioned fallback was written `tunnel ingress
-> validate --config F` in the PLAN and twice in `deploy/published/README.md`; the
-> flag belongs on `tunnel`, and the wrong form prints `Incorrect Usage`, validates
-> **nothing**, and **still exits 0** — a silent false pass for anyone scoring on
-> `$?`. (3) It assumed a host `cloudflared`; the README now documents the
-> install-free image invocation, installing one being a host-state change under
-> `CLAUDE.md` §8.
->
-> Gate at CI scope: ruff-format clean (610 files), `mypy services/` clean (133
-> files), `tests/` **3938 passed / 8 skipped / 0 failed**, matching the count
-> pre-committed before the run. _[Numbering: 209 → 212 is not a slip — parallel
-> sessions consumed 210 and the 211 handoff directory, and the merged Step 9 run
-> record says "session 212", so STATUS agrees with it.]_
-
 ## Prior focus (archived)
 
 PLAN-003, PLAN-0005, PLAN-0006, PLAN-0007 and PLAN-0008 are all merged
@@ -231,6 +243,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-08 | **s216 — PLAN-0100 COMPLETE 13/13 and ARCHIVED (#1090–#1093).** Its last three ACs fell to three DIFFERENT moves: **AC-6(c)** by re-scoring case 1 against the D-3 fix (arithmetic, no new run); **AC-11** by MEASURING **`T_edge` = 125 s (HTTP 524)** against a socket that `listen`s but never `accept`s — s215's `qwen3.6:35b` stall *answered* in 54 s, and **a slow upstream is not a stalled one**; ⚠️ **Cloudflare documents 100 s** (Tunnel ≠ proxied origin). **AC-12** by VERIFYING: the three "unrouted" ADR-0035 amendments had already landed in `06e2b84`. Cray typed that **a bound is not the number the clause asks for** — that ruling is what produced the 125 s. Also **D-5**, a *transient* Safe Browsing flag, cause **UNDETERMINED**, no security posture involved | `f987888` (head_commit) / [#1091](https://github.com/CrayJThiemsert/vero-lite/pull/1091) / [#1093](https://github.com/CrayJThiemsert/vero-lite/pull/1093) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-08 | **s215 — PLAN-0100 Step 11 RAN live against the published demo (#1084–#1087): cases 0, 2, 3, 4, 6, 8 CLOSE; case 5 FAILED → fixed → re-verified PASS; case 1 19/21.** Four defects, none catchable offline — **90+ published `POST /query` wrote ZERO prompt-log rows** (mount point root-owned vs runtime uid 999; `record` swallows `OSError` **by design**, so ADR-0035 D6's whole regime described a file that did not exist), a prompt log naming a model that never ran, `.woff2` served as `text/plain`, and a `group_by` verified_query (**D-4, left open**). `T_edge` **UNMEASURED** (bound `≥ 54 s`). **The edge cache masked the redeploy** — `deploy.py` proves the container, not the visitor. **`Draft`, still 10 of 13** | `94fac66` (head_commit) / [#1086](https://github.com/CrayJThiemsert/vero-lite/pull/1086) / [#1087](https://github.com/CrayJThiemsert/vero-lite/pull/1087) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-08 | **s214 — the published demo has a REPEATABLE deploy procedure, and it RAN under Cray's typed §8 go (#1073–#1078).** Script + runbook + **18 guard/scenario tests**; it asserts an **effect** (the container's `.Image` == the id just loaded), not a step count. Three defects, none catchable offline — **3977 green over a script whose first remote command failed on the host**: its ssh shell is **PowerShell**, so every `--format={{…}}` died at `unknown shorthand flag: 'e' in -encodedCommand`, **and the guard written one PR earlier went GREEN over it**. Demo now on `d0a2808`'s image; `:prev` holds the old, rollback live. **PLAN-0100 unchanged at 10 of 13** | `1384278` (head_commit) / [#1076](https://github.com/CrayJThiemsert/vero-lite/pull/1076) / `deploy/published/deploy.py` / `docs/runbooks/published-demo-redeploy.md` |
 | 2026-08-07 | **s213 — the published OCT demo is LIVE behind Cloudflare Access (#1069–#1072); PLAN-0100 Step 11 is now BLOCKED on an unruled composition question.** `python-multipart` was a RUNTIME dep absent from the shipped image, which could not boot since 2026-07-28 while **3943 tests stayed green**; the fix adds a CI step that rebuilds the image's dependency set and imports the entry module. Step 11's exact-status cases cannot hold when Access returns **302 on every path**; the service-token remedy needs a **second Access policy** — ADR-0035's acceptance shape names that a drift trigger. **SURFACED, unruled; still 10 of 13** | `fe1d018` ([#1072](https://github.com/CrayJThiemsert/vero-lite/pull/1072)) / `6e6563a` ([#1071](https://github.com/CrayJThiemsert/vero-lite/pull/1071)) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
@@ -240,7 +253,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-06 | **#1062 + #1064 (session 210, a PARALLEL session — NOT s209's work).** #1062 adds the `.claude/skills/stream-status/` skill (a 4-work-stream progress readout); #1064 gives `next-work-analyst/SKILL.md` a 4-stream lens (stream tag, stream column, per-stream view, balance note). s210 closed without reconciling STATUS, so this row is its only record here. ⚠️ Its closing notice asserted the skill's registry table is **canonical** and must be updated in the same PR as a carrier change — **recorded as an OPEN QUESTION for Cray** (In-Flight Discussions), not as a decision | `05d672f` ([#1062](https://github.com/CrayJThiemsert/vero-lite/pull/1062)) / `efaaeb3` ([#1064](https://github.com/CrayJThiemsert/vero-lite/pull/1064)) / `.claude/skills/stream-status/SKILL.md` |
 | 2026-08-06 | **s209 — PLAN-0100 OI-1 RULED (Cray, typed): option (b), as a PRINCIPLE not a one-route patch (#1060).** On the `published` profile an LLM call the visitor did not initiate is **no longer made** — `arm_policy.py` (the principle + one predicate); `recommend(..., visitor_initiated=False)` is **keyword-only, fail-closed**. **฿ facet kept** (`build_economic_steps` is deterministic, never raises). New `_disclose_rule_by_design` — a **third** state, because the degrade wording would claim degraded while working as designed; trace step `arm-pin-disclosure` reuses the CI-pinned `rule_check` kind ⇒ **no UI label, no `?v=` bump**. Non-vacuity 3 of 5 RED. **No AC ticked — still 8 of 13**; Step 8 now fully unblocked | `0c067de` (head_commit) / [#1060](https://github.com/CrayJThiemsert/vero-lite/pull/1060) / `services/engine/llm/arm_policy.py` |
 | 2026-08-06 | **s208 — PLAN-0100 AC-7/8/9/10 CLOSED (#1058): 4 of 13 → 8 of 13.** The work shipped in s206; the table was never ticked (the s207 handoff said "10 of 13", the checkboxes read **4**). Independent refuting review returned **two of four NOT-CLOSEABLE**: AC-7 had two **unassertable** clauses (**amended on Cray's typed ruling**) plus a third genuinely unmet and now built — a prompt-log assertion under the cap, non-vacuity proven by a hardcoded `arm="llm"` mutation; **AC-9's ADR-0032 D5 wording review had never been run** (done, PASS). AC-10 fixed a purge glob (`prompts-*` vs `prompt-`) matching **0** files at **exit 0** | `c0f08b8` (head_commit) / [#1058](https://github.com/CrayJThiemsert/vero-lite/pull/1058) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
-| 2026-08-06 | **s208 — ADR-0035 D4/L5 AMENDED (#1057): PLAN-0100 Step 8's ADR blocker is CLEARED.** **Cray typed reading (a)** — vero-lite's `cloudflared` **is** this system's connector in its own compose project; the portal owns the ingress map *across* systems; each system owns its *own* route allowlist. (b) rejected: voids AC-6(a), re-opens SD-3. Two drafter SDs also typed: **SD-1** restate D4's acceptance to count each system's own connector; **SD-2** keep "no other system's connector may join this system's network". Same PR renumbered **81 line numbers / 45 citations** — no guard test covers ADR line cites | `a8e04c3` ([#1057](https://github.com/CrayJThiemsert/vero-lite/pull/1057)) / `docs/adr/0035-hosting-and-exposure-model.md` |
 
 ## In-Flight Discussions
 
