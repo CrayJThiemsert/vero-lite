@@ -660,7 +660,8 @@ degrade, or writer under test.
   `prompts-*.jsonl`. See the correction recorded there. The shipped runbook was
   always correct; the PLAN's copy was not, which is why the AC pointed at the
   wrong artifact being complete.
-- [ ] **AC-11 (live evidence — Cray-gated, single step).** The P4 edge-timeout
+- [x] **AC-11 (live evidence — Cray-gated, single step) — CLOSED 2026-08-08
+  (session 216).** The P4 edge-timeout
   measurement and the P5 eviction-coexistence check are executed **once**, after
   explicit Cray go, against pass/fail reads fixed in Step 10 **before** the run,
   and their artifacts are committed. The PROVISIONAL allowlist is then either
@@ -668,15 +669,14 @@ degrade, or writer under test.
   "no revision" in the closeout. A live run is evidence, not a CI gate — every
   offline AC above must already be green before this step is requested.
 
-  **Status after the s215 live run, adjudicated s216. THREE of four obligations
-  are discharged; the checkbox stays unticked on the fourth.**
+  **Status: ALL FOUR obligations discharged (2026-08-08, sessions 215 + 216).**
 
   | Obligation | State |
   |---|---|
   | P5 eviction-coexistence executed once, artifact committed | ✅ **PASS** — the residency timeline is in the Step 11 run record. The neighbour was never evicted, so the decision rule does **not** fire: no `assisted` allowlist row drops to `deterministic` |
   | P4(ii) published-profile run (25/1), artifact committed | ✅ **PASS**, observed twice independently — vero-lite's own HTTP 200 disclosed degrade at **25 s**, inside the < 35 s bar, no vendor 5xx page in any run |
   | PROVISIONAL allowlist revised-or-confirmed | ✅ **CONFIRMED "no revision" (Cray, typed, 2026-08-08, session 216)** — see below |
-  | P4(i) `T_edge` recorded | 🔴 **STILL OWED (Cray, typed, 2026-08-08)** — see below |
+  | P4(i) `T_edge` recorded | ✅ **MEASURED — `T_edge` = 125 s (HTTP 524)**, session 216. `≥ 40 s` → **PASS** — see below |
 
   **Allowlist: confirmed "no revision".** Nothing the live run measured moved a
   row. P5's decision rule — *"if a single capped call evicts a resident neighbor
@@ -689,19 +689,51 @@ degrade, or writer under test.
   under OI-1**, before the live run, and the run confirmed rather than revised it.
   The list is therefore confirmed as it stands.
 
-  🔴 **`T_edge` is still owed, and this is what keeps Step 11 open.** P4(i) asks the
-  run to *record the vendor cut-off*; four attempts were defeated by the instrument
-  and the value was never reached. What exists is a **measured lower bound**: an
-  in-flight request survived **54 s** at the edge and was then answered by
-  vero-lite, the vendor never cutting in. That bound **excludes the clause's own
-  FAIL condition** (`T_edge < 40 s`), so the 25 s profile's headroom is proven and
-  no allowlist/profile revision is triggered — the clause's *consequence* is
-  settled. **Cray ruled (typed, 2026-08-08) that the bound does NOT discharge the
-  clause and the exact value is still owed**: the clause instructs the run to record
-  a number, and a bound is not that number. Recorded as **INSUFFICIENT-EVIDENCE, not
-  a pass**, per this PLAN's standing rule. Closing it needs a fresh CLAUDE.md §8 go,
-  a fresh `CF_Authorization` cookie from a PIN login, and an upstream stalled past
-  54 s — so it is a scheduled run, not a re-read.
+  ✅ **`T_edge` = 125 s — MEASURED 2026-08-08 (session 216), under a fresh Cray §8
+  go and a fresh PIN-login cookie.** Two runs; the second returned the value.
+
+  ```
+  HTTP 524 after 125.189586 s   ·   server: cloudflare   ·   body: "error code: 524"
+  ```
+
+  `125 s ≥ 40 s`, so the clause's FAIL condition does not fire and **the pinned 25 s
+  profile has 5× measured headroom.** No allowlist or profile revision is triggered.
+
+  **Why the earlier attempts missed it, and why the fix was not "try harder".** s215
+  spent four attempts on instrument faults (§Instrument failures 7–10) and a fifth,
+  subtler one that is the real lesson: the instrument finally *worked*, but it stalled
+  the upstream by pointing the container at **`qwen3.6:35b`, a model so large it must
+  cold-load** — and it cold-loaded **and answered** in 54 s. A slow upstream is not a
+  stalled one. vero-lite replied first, so the vendor cut-off stayed unobserved and the
+  run could only report `T_edge ≥ 54 s`.
+
+  s216 replaced *slow* with *never answers*: a socket that `bind`s and `listen`s but
+  **never calls `accept()`**. The kernel completes the TCP handshake into the accept
+  queue, so the connect succeeds and the request sends, and then nothing ever comes
+  back — no OS give-up (unlike the blackhole IPs, which quit in 14–20 s) and no early
+  reply (unlike the sshd banner, which failed in 37 ms). It was verified **from inside
+  the app container** before either measurement counted: connect in 0.013 s, then
+  `TimeoutError` with zero bytes.
+
+  **The two runs are each other's positive control.**
+
+  | Run | Window (`LLM_REQUEST_TIMEOUT_S`) | Responder | Result |
+  |---|---|---|---|
+  | 1 | 120 s | vero-lite at **120.36 s** | `T_edge > 120 s` — INSUFFICIENT-EVIDENCE, recorded as such |
+  | 2 | 600 s | **Cloudflare edge, HTTP 524** at **125.19 s** | **`T_edge` = 125 s** |
+
+  Run 1 missed the value by **five seconds**. It is recorded rather than discarded
+  because the two results are only mutually consistent if the instrument is sound: a
+  bound of `>120` and a value of `125` cannot both be produced by an instrument that
+  is measuring something else. Run 1 also priced the search — without it, run 2's
+  600 s window would have been a guess.
+
+  ⚠️ **Cloudflare's documented origin timeout is 100 s; the measured value is 125 s.**
+  Recorded because it is the whole reason this clause says *measure* rather than
+  *look it up* — a run that had trusted the documentation would have set a 100 s
+  window, watched vero-lite answer first, and concluded the cut-off was unreachable.
+  The difference is the path: this is a **`cloudflared` Tunnel**, not a proxied
+  origin, and the documented figure does not govern it.
 - [ ] **AC-12 (ADR amendment recorded, not performed).** §"ADR amendment owed"
   below names the exact ADR-0035 lines and proposed replacement text, and the
   closeout confirms Code routed it as a separate artifact. This PLAN's diff
@@ -1390,10 +1422,12 @@ Pass/fail reads, fixed before the run:
 > fixed and under a configuration still missing the rate cap and `API_KEYS`; it is
 > recorded as orientation, and the case still runs for real under Step 11.
 
-**Step 11 RUN RECORD — 2026-08-08, session 215. Outcome: cases 0, 2, 3, 4, 6, 8
-CLOSE; case 1 closes 17/21; case 5 FAILED, was FIXED (#1084) and re-verified
-PASS on the redeployed image. P5 PASS. P4(ii) PASS; P4(i)'s exact `T_edge` is
-UNMEASURED, but a measured lower bound excludes its FAIL condition.**
+**Step 11 RUN RECORD — 2026-08-08, sessions 215 + 216. Outcome: cases 0, 2, 3, 4,
+6, 8 CLOSE; case 1 closes 19/21 on its own read (and 21/21 after the D-3 fix —
+see AC-6); case 5 FAILED, was FIXED (#1084) and re-verified PASS on the
+redeployed image. P5 PASS. P4(ii) PASS. **P4(i) `T_edge` = 125 s — MEASURED in
+s216 after being UNMEASURED in s215.** Five defects found; four fixed or
+resolved, D-4 open by decision.**
 
 Run under Cray's typed §8 go. Driven with a `CF_Authorization` cookie from a real
 one-time-PIN login (the s214 route), so every probe below passed through the
@@ -1460,6 +1494,16 @@ the exact cut-off was never reached. The 25 s pinned profile therefore has
 demonstrated headroom. Incidental: `qwen3.6:35b` (23.9 GB) cold-loaded **and
 answered correctly** in 54 s, against the `ms-s1-ollama` skill's conservative
 "qwen3.x can exceed 150 s".
+
+> ✅ **SUPERSEDED 2026-08-08 (session 216) — `T_edge` = 125 s, MEASURED.** *Superseded
+> by new info, not an error:* the s215 paragraph above was an accurate report of what
+> s215 could see, and its `≥ 54 s` bound is consistent with the value. What it lacked
+> was a stall long enough to reach the cut-off — `qwen3.6:35b` was *slow*, not
+> *stalled*, and answered at 54 s. s216 pointed the container at a socket that
+> accepts and never replies, and the edge returned **HTTP 524 at 125.19 s**. Two
+> runs, the first bounding at `>120 s` and the second landing on `125 s`. Full record,
+> including why the documented Cloudflare 100 s figure does not govern a Tunnel:
+> **AC-11**.
 
 ### Defects the live run found
 
@@ -1616,6 +1660,45 @@ of fixing each pass/fail read *before* the run and refusing to reinterpret it
 afterwards: every one of these surfaced as an implausible verdict against
 criteria that had already been written down.
 
+**D-5 🟡 Google Safe Browsing flagged the Access login callback as phishing — for
+about thirty minutes.** Found 2026-08-08 (session 216) while fetching a fresh
+`CF_Authorization` cookie, not by any case in the read: after a correct one-time-PIN
+login, Chrome replaced
+`oct-energy.cray-n8n.com/cdn-cgi/access/authorized?nonce=…` with a full-page
+**"Dangerous site"** interstitial. Its Details pane read *"Google Safe Browsing …
+recently found phishing on the site you tried visiting"* — the SOCIAL_ENGINEERING
+classification, not malware. The block also prevented the `Set-Cookie` from
+committing, so the login produced no usable session and P4(i) was stood down.
+
+**Measured, in this order, before anything was concluded:**
+
+| Probe | Result | What it rules out |
+|---|---|---|
+| Unauthenticated control, 5 paths, twice, incl. a browser UA | **302** every time → the Access login | Any suggestion of a **security failure**. The gate never wavered |
+| `/health` in the same Chrome profile | **200**, real app body, **no interstitial** | A **host-wide** block. (200 here is correct — that browser was authenticated; the PLAN's "200 = security failure" read is about the *unauthenticated* control, which stayed 302) |
+| `/cdn-cgi/access/authorized` with no nonce, in Chrome | Cloudflare's own *"Invalid login session."* page, **no interstitial**; the red `Dangerous` omnibox chip **gone**, and with no user bypass ever clicked | The flag **still being in force**, and a **path-prefix** block |
+| RDAP (Verisign): `registration` = `last changed` = **2025-12-15** | Single registration, never transferred | A **re-registered domain carrying a previous owner's flag** |
+| DNS across the zone | Only `oct-energy` resolves — apex, `www`, `n8n.` have no A record | The **neighbour-on-the-zone** theory, which needs a domain-scoped flag; a domain-scoped flag would have red-paged `/health` |
+
+**Status: lifted, cause undetermined, and deliberately recorded as undetermined.**
+A theory that the domain's own name (`cray-n8n.com` contains the third-party brand
+`n8n`) triggered a brand-impersonation classifier fits the *phishing* wording, but it
+**fails the scope evidence** — such a flag lands on the host or the domain, and
+`/health` was clean throughout. Recorded so it is not re-derived, not because it is
+believed.
+
+**If it recurs, the one authoritative source is Google Search Console** — add
+`cray-n8n.com` as a Domain property, read Security Issues for the exact
+classification and the sample URLs Google is holding as evidence, then Request
+Review. Nothing else reports *why*.
+
+**Why this is 🟡 and not 🔴.** It blocks no route, degrades no data, and touched no
+security posture. But the affected URL is the **last step of the first-time login**,
+which is exactly the path a design partner walks on their first visit — so while it
+was in force, the demo's onboarding was broken for anyone who had never
+authenticated, on the surface ADR-0032 D1 makes the wedge. **Not fixed here and
+nothing to fix while it is not in force** — carried as a watch item.
+
 ### D-2, D-3 and the cold-start gap: fixed, redeployed, re-verified live
 
 Fixed on `main` `00ddca0`, shipped as image `22d660be6be4` (deploy: 7 checks, 0
@@ -1651,40 +1734,41 @@ completes; re-measured with a two-second settle, the expiry moves. **A race in
 the reader, not a defect in the fix** — and the twelfth instance of the same
 habit, since "read it right after" is a proxy for "read it once it can be true".
 
-### Step 11 closure verdict — session 216, 2026-08-08. **STEP 11 DOES NOT CLOSE.**
+### Step 11 closure verdict — session 216, 2026-08-08. **STEP 11 IS COMPLETE.**
 
-Adjudicated by re-reading the run record against the ACs — **no new run, and none
-was needed** for the part that moved. Two questions were open at the s215 close;
-both are now answered, and they answer in opposite directions.
+Two questions were open at the s215 close. Both are now answered.
 
-**1. AC-6(c) — CLOSES.** The re-score is arithmetic over evidence already on
-record. Case 1's own read had exactly two misses, both D-3; D-3 is fixed,
-redeployed and re-verified live on a `cf-cache-status: MISS` — i.e. proven to
-reach a *visitor*, not merely the container — with in-transcript controls and the
-Access gate still measured in front. **AC-6 is ticked.** Full reasoning at that AC.
+**1. AC-6(c) — CLOSED, by re-score. No new run, and none was needed.** Case 1's own
+read had exactly two misses, both D-3; D-3 is fixed, redeployed and re-verified live
+on a `cf-cache-status: MISS` — i.e. proven to reach a *visitor*, not merely the
+container — with in-transcript controls and the Access gate still measured in front.
+**AC-6 is ticked.** Full reasoning at that AC.
 
-**2. AC-11 — DOES NOT CLOSE, on `T_edge`.** Three of its four obligations are
-discharged, including the PROVISIONAL allowlist, which Cray confirmed **"no
-revision"** (typed, 2026-08-08). The fourth is P4(i): the exact vendor cut-off was
-never measured, and **Cray ruled (typed, same date) that the measured `≥ 54 s`
-lower bound does not discharge the clause.**
+**2. AC-11 — CLOSED, by measurement.** `T_edge` = **125 s** (HTTP 524), measured
+s216 under a fresh Cray §8 go. `≥ 40 s` → PASS. With P5, P4(ii) and the allowlist
+confirmation already discharged, all four obligations are met. Full record at that AC.
 
-**The distinction that ruling turns on, recorded because it will recur.** P4(i)
-carries two separable things: an *instruction* ("record the vendor cut-off
-`T_edge`") and a *decision rule* ("FAIL if `T_edge < 40 s` — allowlist/profile
-revision required"). The bound settles the **decision rule** completely: the thing
-the clause was written to protect — the 25 s profile's headroom — is proven safe,
-and no revision is triggered. It does **not** satisfy the **instruction**. So the
-*consequence* is closed while the *datum* is missing, and the ruling is that a
-PLAN does not get to close on the half it happens to have. Had Code decided this
-on its own, it would have been rewriting an AC to fit the evidence available —
-the move AC-7's own amendment note calls indistinguishable from lowering the bar.
+**The distinction this turned on, recorded because it will recur.** When only the
+`≥ 54 s` bound existed, P4(i) was read as two separable things: an *instruction*
+("record the vendor cut-off `T_edge`") and a *decision rule* ("FAIL if
+`T_edge < 40 s`"). The bound settled the **decision rule** completely — the 25 s
+profile's headroom was already safe and no revision was triggered — but it did not
+satisfy the **instruction**. Cray ruled (typed, 2026-08-08) that a bound is not the
+number the clause asks for, and that a PLAN does not close on the half it happens
+to have. **That ruling is what produced the value.** Had Code accepted the bound on
+its own judgement, it would have been rewriting an AC to fit the evidence available
+— the move AC-7's own amendment note calls indistinguishable from lowering the bar —
+and the 125 s figure, along with the finding that Cloudflare's documented 100 s does
+not govern a Tunnel, would never have been measured.
 
-**Therefore:** this PLAN stays **`Draft`**. It is not `git mv`-ed to `done/`.
-Remaining to close Step 11: **P4(i) `T_edge`** (needs a CLAUDE.md §8 go, a fresh
-`CF_Authorization` cookie from a PIN login, and an upstream stalled past 54 s) and
-**AC-12** (three unrouted ADR-0035 amendments). **Do not re-drive the case list** —
-cases 0–8 are on record and nothing above re-opens them.
+**Therefore:** Step 11's pass/fail reads are all discharged and the step is complete.
+**The PLAN nevertheless stays `Draft` and is NOT `git mv`-ed to `done/`** — its
+closeout (§Verification) also requires the ADR amendment routed, and **AC-12** is
+still unticked: three ADR-0035 amendments remain record-and-route-later. Code does
+not author ADRs (CLAUDE.md §6 / ADR-009 D1), so that routes to a drafter.
+
+**Do not re-drive the case list** — cases 0–8 are on record and nothing above
+re-opens them.
 
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
