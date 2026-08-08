@@ -1504,6 +1504,41 @@ of fixing each pass/fail read *before* the run and refusing to reinterpret it
 afterwards: every one of these surfaced as an implausible verdict against
 criteria that had already been written down.
 
+### D-2, D-3 and the cold-start gap: fixed, redeployed, re-verified live
+
+Fixed on `main` `00ddca0`, shipped as image `22d660be6be4` (deploy: 7 checks, 0
+FAIL; host checkout `a8033f94 → 00ddca09`), then measured again through the edge:
+
+| | Live verdict |
+|---|---|
+| **D-2** | **PASS** — the row records `"model": "gpt-oss:20b"`, equal to the `phrased_by` of the same response |
+| **D-3** | **PASS** — `/assets/fonts/*.woff2` return `content-type: font/woff2` |
+| **cold start** | **PASS** — `expires_at` sits ~30 min out and a further `/query` moves it (`13:56:30 → 13:58:56`) |
+
+**🔴 The edge cache is a hole in the deploy procedure, and it is what makes this
+worth writing down.** The first re-verification reported D-3 still broken. The
+image was correct and the container proved it — inside the container,
+`starlette.responses.guess_type("x.woff2")` returns `font/woff2`. What visitors
+got was `cf-cache-status: HIT, age: 170`: Cloudflare was serving the `text/plain`
+copy cached while the defect was live, under `cache-control: max-age=14400`. The
+same file with a novel query string came back `MISS` and `font/woff2`.
+
+So **`deploy.py`'s seven green checks prove the container is running the new
+image; they do not prove a visitor receives it.** Nothing in the pipeline purges
+the edge, and the repo's `?v=cNN` convention does not help here — fonts are
+referenced from inside CSS with no version parameter, so the assets with no
+busting mechanism are exactly the ones the cache holds longest. Closed for this
+change by a manual **Purge Everything** (Cray, 2026-08-08); the plain URLs then
+returned `font/woff2` on a `MISS`. A purge step, or versioned font URLs, belongs
+in the redeploy runbook — **not done here**.
+
+One more instrument fault, listed with the eleven above: the first cold-start
+check read Ollama's `/api/ps` immediately after the response and saw an unchanged
+expiry, reporting FAIL. Ollama updates residency a moment after the request
+completes; re-measured with a two-second settle, the expiry moves. **A race in
+the reader, not a defect in the fix** — and the twelfth instance of the same
+habit, since "read it right after" is a proxy for "read it once it can be true".
+
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
 Must contain, verbatim obligations from D6:
