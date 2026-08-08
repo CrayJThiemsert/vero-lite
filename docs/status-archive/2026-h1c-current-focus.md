@@ -1832,3 +1832,50 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > `docs/adr/`" clause is still failed by #1057 (#1060 touches no `docs/adr/` file,
 > so it does not worsen it). Cray's third typed call was **"merge only, then
 > stop"** — Step 8 is deliberately deferred to s210.
+
+> **Session 212, 2026-08-06 (head_commit `8bd331d` → `a22ff8e`) — one PR merged
+> (#1067), 0 open. Theme: the run that could not run still told the truth — and all
+> three defects it found were in the instructions for running it.**
+>
+> **PLAN-0100 Step 9 ran as its OWN sanctioned offline fallback, not as the smoke.**
+> Probed first: the box has `docker` and `curl` but **no `cloudflared` binary**, no
+> `CLOUDFLARED_CREDENTIALS_FILE`, no `~/.cloudflared`; the compose declares that
+> variable required-with-no-default, so `up` cannot start the project and **case 0 —
+> which gates every other case — is unreachable**. A real tunnel needs a Cloudflare
+> account action plus a domain ADR-0035 D1(3) places in the portal repo, which does
+> not exist. Against the pass/fail read fixed **before** the run: **case 2 PASS**
+> (24/24 excluded routes → `http_status:404`; 11/11 allowed → `http://app:8000`) and
+> **case 7 PASS** (`cloudflared 2025.8.1`, committed config validates `OK`) — both
+> install-free through the image the compose project already pins. **Cases 0, 1, 3,
+> 4, 5, 6, 8 are NOT COVERED**, recorded and inherited by **Step 11**.
+>
+> **Non-vacuity DEMONSTRATED, not asserted.** Re-run against a **copy** of
+> `config.yml` in `/tmp` with the `^…$` anchors stripped, the excluded
+> `/insights/query` **flipped** from `http_status:404` to `http://app:8000` — so the
+> 35 PASS rows prove the probe discriminates, not merely that it ran; the committed
+> file was never mutated and both states are in the transcript.
+>
+> **AC-6 stays unticked; PLAN-0100 stays 10 of 13.** (c) has two clauses and only one
+> is met — "excluded → 404 at the edge" is proven against the real `cloudflared`
+> matcher, "allowed → served" is not, because **nothing was ever served**. Case 2
+> likewise closes in its **rule-resolution form only**: its positive control (an
+> allowed request must appear in `docker compose logs app`) has no app log to read,
+> so that half rides to Step 11 with case 1.
+>
+> **Three COMMITTED defects found and fixed in the same PR; each would have scored a
+> false verdict.** (1) The case list still called three `/demo/hero/*` GETs **served
+> (200)** — Step 8 excluded that surface the day after v2 was written, so an operator
+> reading it literally would have logged **three FAILs against an edge behaving
+> exactly as intended**. (2) The sanctioned fallback was written `tunnel ingress
+> validate --config F` in the PLAN and twice in `deploy/published/README.md`; the
+> flag belongs on `tunnel`, and the wrong form prints `Incorrect Usage`, validates
+> **nothing**, and **still exits 0** — a silent false pass for anyone scoring on
+> `$?`. (3) It assumed a host `cloudflared`; the README now documents the
+> install-free image invocation, installing one being a host-state change under
+> `CLAUDE.md` §8.
+>
+> Gate at CI scope: ruff-format clean (610 files), `mypy services/` clean (133
+> files), `tests/` **3938 passed / 8 skipped / 0 failed**, matching the count
+> pre-committed before the run. _[Numbering: 209 → 212 is not a slip — parallel
+> sessions consumed 210 and the 211 handoff directory, and the merged Step 9 run
+> record says "session 212", so STATUS agrees with it.]_
