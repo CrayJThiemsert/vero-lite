@@ -412,17 +412,49 @@ degrade, or writer under test.
   posture legible rather than incidental: the service set is **exactly**
   `{app, cloudflared}` (no `postgres` per SD-1, no `nginx` per SD-3) and `app`
   joins **only** `vero_oct`.
-- [ ] **AC-6 (allowlist enforced + census-complete).** The published surface is
-  default-deny. ✅ **(a) and (b) CLOSED 2026-08-06 (session 209); (c) remains open
-  and belongs to Step 9** — the checkbox therefore stays unticked, deliberately.
-  ⚠️ **(c) is HALF met as of the session-212 run, and half is not met — see the
-  Step 9 RUN RECORD.** (c) has two clauses: *"excluded routes → 404 at the edge,
-  allowed → served"*. The first is now proven against the **real `cloudflared`
-  matcher** (24/24 excluded resolve to the catch-all, with the anchor mutation
-  flipping `/insights/query` to prove the probe discriminates). The second is
-  **not** — the dev box has no `cloudflared` and no tunnel credentials, so the
-  project never started and nothing was ever served. A half-met (c) does not tick
-  AC-6; the served half rides to Step 11.
+- [x] **AC-6 (allowlist enforced + census-complete) — CLOSED 2026-08-08
+  (session 216).** The published surface is default-deny. **(a) and (b) CLOSED
+  2026-08-06 (session 209); (c) CLOSED 2026-08-08 by a re-score against the D-3
+  fix** — the arithmetic below, not a new run.
+  (c) has two clauses: *"excluded routes → 404 at the edge, allowed → served"*.
+
+  **Clause 1 — excluded → 404 at the edge: MET.** Proven twice, at two vantage
+  points. Offline (s212) against the **real `cloudflared` matcher**: 24/24 excluded
+  resolve to the catch-all, with the anchor mutation flipping `/insights/query` to
+  prove the probe discriminates. Live (s215, Step 11 case 2): **22/22 → exactly
+  404**, with the edge-denial proof *and its positive control* — **0** excluded
+  requests reached the app while **18** allowed requests appear in the same
+  `docker logs` transcript.
+
+  **Clause 2 — allowed → served: MET as of the D-3 fix.** *Superseded by new info,
+  not an error:* this read `HALF met` from s212 until 2026-08-08, because the dev
+  box had no `cloudflared` and no tunnel credentials, so the project never started
+  and nothing was ever served. The served half was routed to Step 11 by this AC's
+  own instruction, ran there, and now closes. **Re-score, session 216:** Step 11
+  case 1 carries 21 probe rows of which 4 FAILed — **two are D-3** (the woff2
+  content-type, this case's own rows) and **two are D-4** (the ontology
+  `verified_queries`, probes the runner added and which this PLAN already ruled out
+  of case 1's score, since folding them in would score the system against a bar
+  never fixed in advance). Against case 1's own read the **only** misses were the
+  two fonts. D-3 was fixed (#1086), redeployed and re-measured through the edge
+  (#1087): `IBMPlexSans-Regular.woff2`, `IBMPlexSans-Bold.woff2` and
+  `IBMPlexMono-Regular.woff2` all return **200 `content-type: font/woff2`** — a
+  **superset** of the two failing rows, since case 1 never probed the Bold face.
+  Three properties make that evidence load-bearing rather than merely green:
+  every row reads **`cf-cache-status: MISS`**, so it came from the origin and not
+  the stale `text/plain` copy the first re-verification hit (§Step 11, "the edge
+  cache is a hole in the deploy procedure"); the same transcript carries
+  **controls** that still resolve correctly (`/` → `text/html`, `theme.css` →
+  `text/css`, `app.js` → `text/javascript`), so the fonts did not pass by a change
+  that moved everything; and the **unauthenticated control** in the same transcript
+  still reads `/health`, `/`, `/whoami` → **302, 302, 302**, so the surface was
+  still gated at the moment of measurement. **Case 1's own read therefore carries
+  zero remaining misses, and (c) closes.**
+
+  ⚠️ **What this tick does NOT carry.** D-4 is unfixed and stays open on its own
+  terms (§"Defects the live run found"); it is outside AC-6 because it is a
+  translation gap, not an allowlist or census property. Step 11 remains open on
+  AC-11 — see there.
   Two notes worth carrying, both from a non-vacuity probe run at closeout rather
   than from review:
   **(1) The tests evaluate cloudflared's semantics, not Python's convenience.**
@@ -453,6 +485,17 @@ degrade, or writer under test.
   is portal-side and has no file in this repo — **no offline test can close it.**
   It closes on AC-6(c) case 4 plus a screenshot of the configured rule, and if
   case 4 cannot run locally it is deferred to Step 11 and recorded as not covered.
+  ✅ **DISCHARGED via the deferral branch, recorded s216.** ⚠️ **"case 4" is a
+  STALE v1 case number** — in the v2 read the rate cap is **case 6** (case 4 is arm
+  posture). Corrected here rather than in the pass/fail read itself, which must not
+  be edited after the run that used it. The branch actually taken is the second one
+  this sentence names: the local smoke never sat behind the Cloudflare edge (s212
+  took the offline fallback), so the cap deferred to **Step 11, where case 6
+  PASSED** — 27 × HTTP 429 carrying `error code: 1015`, a Cloudflare body rather
+  than a vero-lite one, against 33 served by the origin, then recovery after the
+  mitigation window. The deferral branch names no screenshot; the rule as deployed
+  is nonetheless recorded in full **as text** in Step 8 (#1089), which is the
+  durable form a screenshot was standing in for.
 - [x] **AC-7 (caps — scenario-tested) — CLOSED 2026-08-06 (session 208).** The
   global in-flight LLM cap of 1 fast-fails to the deterministic arm with the
   PLAN-0093 disclosure. Closed by
@@ -624,6 +667,41 @@ degrade, or writer under test.
   revised (follow-up PR citing the artifact) or explicitly confirmed
   "no revision" in the closeout. A live run is evidence, not a CI gate — every
   offline AC above must already be green before this step is requested.
+
+  **Status after the s215 live run, adjudicated s216. THREE of four obligations
+  are discharged; the checkbox stays unticked on the fourth.**
+
+  | Obligation | State |
+  |---|---|
+  | P5 eviction-coexistence executed once, artifact committed | ✅ **PASS** — the residency timeline is in the Step 11 run record. The neighbour was never evicted, so the decision rule does **not** fire: no `assisted` allowlist row drops to `deterministic` |
+  | P4(ii) published-profile run (25/1), artifact committed | ✅ **PASS**, observed twice independently — vero-lite's own HTTP 200 disclosed degrade at **25 s**, inside the < 35 s bar, no vendor 5xx page in any run |
+  | PROVISIONAL allowlist revised-or-confirmed | ✅ **CONFIRMED "no revision" (Cray, typed, 2026-08-08, session 216)** — see below |
+  | P4(i) `T_edge` recorded | 🔴 **STILL OWED (Cray, typed, 2026-08-08)** — see below |
+
+  **Allowlist: confirmed "no revision".** Nothing the live run measured moved a
+  row. P5's decision rule — *"if a single capped call evicts a resident neighbor
+  model, every `assisted` row drops to `deterministic`"* — did not fire, because no
+  eviction occurred. Case 4 (arm posture) measured the pinned rows behaving exactly
+  as the table declares: `arm-pin-disclosure` present,
+  `recommendation_mode == "rule-by-design"` (**not** the `rule-fail-safe` this case
+  calls a failure), `confidence == 0.8`. The one row that *did* change during this
+  PLAN — `/recommendations` → **deterministic — PINNED** — was re-ruled at **s209
+  under OI-1**, before the live run, and the run confirmed rather than revised it.
+  The list is therefore confirmed as it stands.
+
+  🔴 **`T_edge` is still owed, and this is what keeps Step 11 open.** P4(i) asks the
+  run to *record the vendor cut-off*; four attempts were defeated by the instrument
+  and the value was never reached. What exists is a **measured lower bound**: an
+  in-flight request survived **54 s** at the edge and was then answered by
+  vero-lite, the vendor never cutting in. That bound **excludes the clause's own
+  FAIL condition** (`T_edge < 40 s`), so the 25 s profile's headroom is proven and
+  no allowlist/profile revision is triggered — the clause's *consequence* is
+  settled. **Cray ruled (typed, 2026-08-08) that the bound does NOT discharge the
+  clause and the exact value is still owed**: the clause instructs the run to record
+  a number, and a bound is not that number. Recorded as **INSUFFICIENT-EVIDENCE, not
+  a pass**, per this PLAN's standing rule. Closing it needs a fresh CLAUDE.md §8 go,
+  a fresh `CF_Authorization` cookie from a PIN login, and an upstream stalled past
+  54 s — so it is a scheduled run, not a re-read.
 - [ ] **AC-12 (ADR amendment recorded, not performed).** §"ADR amendment owed"
   below names the exact ADR-0035 lines and proposed replacement text, and the
   closeout confirms Code routed it as a separate artifact. This PLAN's diff
@@ -1572,6 +1650,41 @@ expiry, reporting FAIL. Ollama updates residency a moment after the request
 completes; re-measured with a two-second settle, the expiry moves. **A race in
 the reader, not a defect in the fix** — and the twelfth instance of the same
 habit, since "read it right after" is a proxy for "read it once it can be true".
+
+### Step 11 closure verdict — session 216, 2026-08-08. **STEP 11 DOES NOT CLOSE.**
+
+Adjudicated by re-reading the run record against the ACs — **no new run, and none
+was needed** for the part that moved. Two questions were open at the s215 close;
+both are now answered, and they answer in opposite directions.
+
+**1. AC-6(c) — CLOSES.** The re-score is arithmetic over evidence already on
+record. Case 1's own read had exactly two misses, both D-3; D-3 is fixed,
+redeployed and re-verified live on a `cf-cache-status: MISS` — i.e. proven to
+reach a *visitor*, not merely the container — with in-transcript controls and the
+Access gate still measured in front. **AC-6 is ticked.** Full reasoning at that AC.
+
+**2. AC-11 — DOES NOT CLOSE, on `T_edge`.** Three of its four obligations are
+discharged, including the PROVISIONAL allowlist, which Cray confirmed **"no
+revision"** (typed, 2026-08-08). The fourth is P4(i): the exact vendor cut-off was
+never measured, and **Cray ruled (typed, same date) that the measured `≥ 54 s`
+lower bound does not discharge the clause.**
+
+**The distinction that ruling turns on, recorded because it will recur.** P4(i)
+carries two separable things: an *instruction* ("record the vendor cut-off
+`T_edge`") and a *decision rule* ("FAIL if `T_edge < 40 s` — allowlist/profile
+revision required"). The bound settles the **decision rule** completely: the thing
+the clause was written to protect — the 25 s profile's headroom — is proven safe,
+and no revision is triggered. It does **not** satisfy the **instruction**. So the
+*consequence* is closed while the *datum* is missing, and the ruling is that a
+PLAN does not get to close on the half it happens to have. Had Code decided this
+on its own, it would have been rewriting an AC to fit the evidence available —
+the move AC-7's own amendment note calls indistinguishable from lowering the bar.
+
+**Therefore:** this PLAN stays **`Draft`**. It is not `git mv`-ed to `done/`.
+Remaining to close Step 11: **P4(i) `T_edge`** (needs a CLAUDE.md §8 go, a fresh
+`CF_Authorization` cookie from a PIN login, and an upstream stalled past 54 s) and
+**AC-12** (three unrouted ADR-0035 amendments). **Do not re-drive the case list** —
+cases 0–8 are on record and nothing above re-opens them.
 
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
