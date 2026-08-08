@@ -946,6 +946,40 @@ route tables): energy owns no hero builder, so Tab G is not registered.
   Cloudflare rate rule needs `hostname` scoping or path-only suffices; the working
   fallback is path-only (the zone's other app is n8n, which serves `/rest/` and
   `/webhook/` — no collision with `/query`). Record which was used.
+
+  ✅ **RECORDED — the rule was created 2026-08-08 (session 215) by Cray in the
+  dashboard, and `hostname` scoping was NOT used.** Discharges this clause's
+  obligation, which had gone unmet through Step 11's live run.
+
+  | Field | Value as deployed |
+  |---|---|
+  | Zone / path | `cray-n8n.com` (Free) → Security → Security rules → Rate limiting rules |
+  | Name | `oct-energy published /query per-IP cap` |
+  | Expression | **`http.request.uri.path eq "/query"`** — path-only, entered via the dashboard's `Edit expression` box |
+  | Characteristics | `IP` (Free counts per IP and offers nothing else) |
+  | Rate | **10 requests / 10 seconds** |
+  | Action / duration | **Block** / **10 seconds** |
+  | Status | `Active`; the zone now reads **Rate limiting rules 1/1** |
+
+  **Why path-only, typed by Cray:** it is the working fallback this clause already
+  named, and it covers **every** system on the zone — a hostname-scoped rule would
+  cap system #1 and leave a future system #2 uncapped, and the Free plan grants
+  only ONE rule, so there is no second rule to add later. The cost is that one
+  visitor IP shares a budget across systems, which no measurement contradicted.
+
+  ⚠️ **The single free rule is now CONSUMED.** Re-scoping it means delete-and-
+  rewrite, or a paid plan — decide before changing it, exactly as before creating it.
+
+  **Scope note:** `/query` is deliberately the only path named. OI-1 pinned
+  `/recommendations` deterministic, so it is no longer a published LLM route and
+  the D6 cap does not attach to it.
+
+  **Measured, both traffic shapes** (session 215, case 6): 60 concurrent
+  **unauthenticated** `POST /query` → **49 × HTTP 429** carrying `error code: 1015`
+  plus 11 × 302; 60 concurrent **authenticated** → **27 × 429** against 33 served
+  by the origin, then recovery after the mitigation window. A 25-request
+  authenticated burst did **not** trip it — arrival rate, not the rule, was the
+  limit — which is why the case's evidence uses 60.
 - **The per-IP cap is NOT in this compose** — it is the zone's single Cloudflare
   rate-limiting rule (§Pinned values). Step 8's PR body records the rule's
   configured values; the rule itself is portal-side (see SD-3's ⚠️).
