@@ -1188,7 +1188,8 @@ Pass/fail reads, fixed before the run:
 - Closeout: allowlist revised-or-confirmed (AC-11), measurement tables into
   this PLAN, then Draft → Complete → `git mv` to `done/`.
 
-> 🔴 **BLOCKER FOUND 2026-08-07 (session 213) — the case list cannot run through
+> ✅ **BLOCKER FOUND 2026-08-07 (session 213), RESOLVED 2026-08-08 (session 214) —
+> the case list could not run through
 > the Access gate as written.**
 >
 > The system was stood up for the first time this session (tunnel created,
@@ -1217,6 +1218,46 @@ Pass/fail reads, fixed before the run:
 > second policy plus an ADR amendment; or a temporary second policy for this run,
 > whose evidence then describes a configuration that no longer exists and must say
 > so.
+>
+> ✅ **RESOLVED 2026-08-08 (session 214) — MEASURED, and none of the three options
+> is needed.** A fourth route exists that the s213 analysis had not considered:
+> **replay the Access session cookie from a real one-time-PIN login.**
+>
+> Measured, both halves the same afternoon:
+>
+> | Request | Result |
+> |---|---|
+> | `/health` carrying `CF_Authorization` from a PIN login (Cray, browser → curl) | **200** |
+> | `/health`, `/` and `/whoami` with **no** cookie | **302, 302, 302** |
+>
+> The control is what makes the first line mean anything: the ratified gate is
+> still in front and still denying, so a scripted probe measures **the gate as
+> ratified**, not a substitute for it.
+>
+> Why this costs nothing the three options cost:
+> * **No second Access policy** — so the ADR-0035 acceptance-shape reading is *not
+>   required*. That question stays open for a case that genuinely needs it, which
+>   is strictly better than settling it under pressure from this one.
+> * **No secret vero-lite mints.** D3 ground 2 (`0035:371-375`) — *"no shared
+>   password to distribute, store, rotate, or leak"* — stands untouched. That
+>   ground, not the acceptance shape, was the load-bearing conflict a permanent
+>   service token would have created; it is worth recording that the s213 framing
+>   pointed at the wrong clause.
+> * **The evidence describes the shipped configuration**, with no "this no longer
+>   exists" caveat.
+> * The cookie is the visitor's own session and expires on its own. Step 11 is
+>   **one sitting** by design (D1(5) do-no-harm), which a session lifetime covers.
+>
+> ⚠️ **Scope of what this proves, stated so Step 11 cannot overstate it.** It proves
+> the *mechanism*: an authenticated scripted request reaches the origin and an
+> unauthenticated one does not. It does **not** close any case. In particular
+> keyless `/whoami` → *exactly* **401** — the case list's only catch for
+> `API_AUTH_ENABLED=false` in the running container — has **not** been run with a
+> cookie and no API key; it should now be reachable, and it is Step 11's to
+> measure. Cases 0, 1, 3–6, 8 all still run for real.
+>
+> **Options (a), (b) and (c) above are superseded, not rejected on their merits.**
+> They remain the fallback if a session cookie ever stops being replayable.
 >
 > **Settled in passing, so Step 11 need not re-derive them:**
 > `tunnel: <name>` resolves from the credentials file alone — the connector logs a
