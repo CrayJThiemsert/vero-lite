@@ -1,6 +1,6 @@
 ---
 name: ms-s1-admin
-description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), and pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error). Also records that the session carries a FULL elevated admin token. Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
+description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token. Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
 ---
 
 # MS-S1 MAX — operating the box over SSH
@@ -40,6 +40,49 @@ ssh -G ms-s1 | grep -E '^(user|hostname|identityfile) '
 
 Add `-o BatchMode=yes` when a result must *prove* key auth — it forbids any
 interactive fallback, so a success cannot be a silent password prompt.
+
+## 🔴 The `{…}` trap — braces reach PowerShell as a SCRIPT BLOCK
+
+**Different mechanism from the `$` trap below, and it bites the most ordinary
+command there is.** `$` is eaten on *our* side by two bash layers. Braces survive
+the trip intact and are then parsed by the **remote** shell — which is PowerShell,
+not cmd, even for a plain `ssh ms-s1 <program> <args>` with no PowerShell invoked
+anywhere in the command.
+
+**Measured 2026-08-08 (session 214):**
+
+```bash
+ssh ms-s1 docker version --format={{.Server.Version}}
+#  →  unknown shorthand flag: 'e' in -encodedCommand      (exit 1)
+```
+
+Five of eight probes failed identically. `--format={{…}}` is the form **every**
+docker doc, every runbook and every Stack Overflow answer uses, so it arrives in a
+command by reflex. Confirmation the shell is PowerShell rather than cmd:
+
+```bash
+ssh ms-s1 'echo %COMSPEC%'      # → the literal string %COMSPEC%, unexpanded
+```
+
+**The fix: ask for JSON and parse it on this side, where no shell is involved.**
+
+```bash
+ssh ms-s1 docker image inspect vero-published-app:latest    # full JSON, exit 0
+ssh ms-s1 docker inspect vero-published-app                 # ditto
+```
+
+Then read `.Id` / `.Image` / `.State.Health.Status` locally. `deploy/published/deploy.py`
+does exactly this and `tests/deploy/test_deploy.py` guards it — but that guard walks
+only **that script's** argv, so it cannot protect a command you type here.
+
+**The general rule for a bare `ssh ms-s1 …`:** literals only — **no braces, no
+quotes, no `$`, no `;` `|` `&` `<` `>`**. Anything richer goes in a `.ps1` piped over
+stdin (next section). And `git -C <path>`, never `cd <path> && git`: the `&&` is
+handed to that same remote shell.
+
+Full write-up of how this was missed for a whole PR — including a guard written for
+this exact failure mode that went green over it —
+[`docs/lessons/0039-a-self-authored-guard-inherits-the-authors-blind-spot.md`](../../../docs/lessons/0039-a-self-authored-guard-inherits-the-authors-blind-spot.md).
 
 ## ⚠️ The `$` trap — and the pattern that avoids it
 
