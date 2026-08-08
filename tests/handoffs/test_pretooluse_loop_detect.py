@@ -2,14 +2,17 @@
 
 Covers:
 
-- Tool/target mapping: Write/Edit -> L1, Bash -> L4, Read/Glob/etc -> no-op
-- Allow path: count below threshold (0, 1, 5), no counter for target,
-  fresh state file, missing state file
-- Deny path (path-class thresholds + the PLAN-0094 P2 grace budget):
-  a CODE target denies at the base 6; a DOC / markdown target denies only
-  at L1_DOC_THRESHOLD (15) — doc authoring legitimately makes many small
-  sequential edits to one file (regression guard for the false-positive
-  that blocked PLAN/ADR/STATUS authoring)
+**PLAN-0102 retired L1**, so Bash -> L4 is the only mapping left and this
+module lost its whole path-class dimension. The Write/Edit tests that remain
+assert the OPPOSITE of what they used to: that no amount of recorded L1 state
+can produce a deny.
+
+- Tool/target mapping: Bash -> L4; Write/Edit/Read/Glob/etc -> no-op
+- Allow path: count below threshold, no counter for target, fresh state
+  file, missing state file
+- Deny path: L4 at the flat threshold of 6 (its unit is failure-based, so it
+  never had the false-fire series that bought L1 a warn stage and a grace
+  budget)
 - Telegram stub captures the Cray-E.4 payload `{loop_type, target,
   last_6_actions}` when deny fires
 - Malformed input (bad JSON, missing tool_name, missing tool_input,
@@ -25,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, TypeGuard
 
@@ -36,8 +40,6 @@ HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
-    L1_DOC_THRESHOLD,
-    L1_GRACE_BUDGET,
     LOOP_TRIGGER_THRESHOLD,
     MAX_RECENT_ACTIONS,
     ActionRecord,
@@ -45,26 +47,28 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     increment,
     new_counter,
     save_counter,
-    tokenize_bash_command,
 )
 
 Payload = dict[str, Any]
 Parsed = dict[str, Any] | None
 
-# A canonical CODE-class target (base threshold 6) and DOC-class target
-# (L1_DOC_THRESHOLD) used across the deny/allow tests so the path-class split
-# is explicit. ``docs/STATUS.md`` is the real-world doc that surfaced the
-# false-positive; ``services/api/main.py`` is a representative code path.
-CODE_TARGET = "services/api/main.py"
-DOC_TARGET = "docs/STATUS.md"
+# PLAN-0102 retired L1, so the path-class split (CODE_TARGET / DOC_TARGET and
+# their grace-adjusted deny bars) went with it — there is no per-path threshold
+# left to express. L4 is the one gated surface and its bar is flat.
+L4_COMMAND = "pytest tests/foo.py"
+L4_TARGET = "pytest <arg>"  # the tokenized form L4 keys on
 
-# PLAN-0094 P2 — the path-class threshold is now the WARN bar (observer-side,
-# which ALLOWS the edit); this gate denies only at threshold + L1_GRACE_BUDGET.
-# Deny-path tests below seed the DENY bar. The allow-path tests deliberately keep
-# seeding the old flat values: they now assert the GRACE ZONE rather than
-# sub-threshold, which is a wider and still-correct reason for the same assertion.
-_L1_CODE_DENY = LOOP_TRIGGER_THRESHOLD + L1_GRACE_BUDGET
-_L1_DOC_DENY = L1_DOC_THRESHOLD + L1_GRACE_BUDGET
+# Above every bar L1 ever used (6/15 warn, 9/18 deny). Seeded on an ``L1:`` key,
+# it is what makes "Write/Edit is not gated" a claim about the MAPPING rather
+# than about a small number.
+_ABOVE_EVERY_HISTORICAL_L1_BAR = 20
+
+# Hand-written state fixtures must carry a FRESH stamp. ``prune_stale_entries``
+# drops anything older than COUNTER_MAX_AGE_HOURS (6.0) on load, so a hardcoded
+# past date would make every "not gated" assertion below pass because the entry
+# had been pruned — the classic vacuous green, and one the assertion could not
+# distinguish from the retirement actually working.
+_RECENT_STAMP = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
 # Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
@@ -145,21 +149,129 @@ def _state_path_from(env: dict[str, str]) -> Path:
 
 
 def test_allow_when_no_state_file(stub_env: dict[str, str]) -> None:
-    rc, out = _run(_write(DOC_TARGET), stub_env)
+    rc, out = _run(_bash(L4_COMMAND), stub_env)
     assert rc == 0
     assert not _is_deny(out)
 
 
 def test_allow_when_no_counter_for_target(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "other.py", 10)
-    rc, out = _run(_write(DOC_TARGET), stub_env)
+    _seed_counter(_state_path_from(stub_env), LoopType.BASH_PATTERN, "git <arg>", 10)
+    rc, out = _run(_bash(L4_COMMAND), stub_env)
     assert rc == 0
     assert not _is_deny(out)
 
 
-def test_allow_when_code_count_below_threshold(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, 5)
-    rc, out = _run(_write(CODE_TARGET), stub_env)
+def test_allow_when_count_below_threshold(stub_env: dict[str, str]) -> None:
+    _seed_counter(
+        _state_path_from(stub_env), LoopType.BASH_PATTERN, L4_TARGET, LOOP_TRIGGER_THRESHOLD - 1
+    )
+    rc, out = _run(_bash(L4_COMMAND), stub_env)
+    assert rc == 0
+    assert not _is_deny(out)
+
+
+# --- PLAN-0102: Write/Edit no longer map to any loop type -------------------
+
+
+def _seed_l1_directly(env: dict[str, str], target: str) -> None:
+    """Write an ``L1:`` counter entry straight to disk, past the module API.
+
+    Deliberately not built through ``_seed_counter``: ``LoopType.FILE_EDIT`` no
+    longer exists, so the only way to stage the state a retired guard would have
+    read is to write the persisted shape by hand. That is also the more honest
+    fixture — it stages what a REAL pre-retirement state file looks like rather
+    than what today's API can express.
+    """
+    path = _state_path_from(env)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "session_id": "seeded",
+                "started_at": _RECENT_STAMP,
+                "counters": {
+                    f"L1:{target}": {
+                        "count": _ABOVE_EVERY_HISTORICAL_L1_BAR,
+                        "last_6_actions": [],
+                        # Recent, or age-out would drop the entry and the test
+                        # would pass for the wrong reason.
+                        "last_updated": _RECENT_STAMP,
+                        "warned_at": "",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_write_is_never_gated_however_much_l1_state_exists(
+    stub_env: dict[str, str],
+) -> None:
+    """A Write against a target carrying 20 recorded hits is ALLOWED.
+
+    20 is above every bar L1 ever used — 6/15 warn, 9/18 deny — so this is a
+    claim about the MAPPING being gone, not about the number being small.
+
+    RED when: a ``Write``/``Edit`` -> loop-type branch is reintroduced in
+    ``_resolve_target``. Read it beside ``test_deny_l4_at_threshold``, which is
+    the live positive control: without that pair, this test passes identically
+    over a hook that has stopped denying anything at all.
+    """
+    _seed_l1_directly(stub_env, "services/api/main.py")
+    rc, out = _run(_write("services/api/main.py"), stub_env)
+    assert rc == 0
+    assert not _is_deny(out)
+
+
+def test_edit_is_never_gated_however_much_l1_state_exists(
+    stub_env: dict[str, str],
+) -> None:
+    """Same for ``Edit`` — the retired branch mapped both tools to one counter.
+
+    ``docs/STATUS.md`` on purpose: under the retired path-class split this was
+    the DOC class, and it is the real file whose authoring the guard walled.
+    """
+    _seed_l1_directly(stub_env, "docs/STATUS.md")
+    rc, out = _run(_edit("docs/STATUS.md"), stub_env)
+    assert rc == 0
+    assert not _is_deny(out)
+
+
+def test_a_legacy_l1_state_file_does_not_crash_the_gate(stub_env: dict[str, str]) -> None:
+    """AC-5: pre-retirement state must load, not raise.
+
+    Gitignored state files predating the excision exist in every worktree and
+    on both machines. An ``L1:``-prefixed key, ``turn_touched``,
+    ``subagent_touched`` and ``awaiting_ack`` must all read back harmlessly —
+    RED when any load path reconstructs ``LoopType("L1")``, which raises
+    ``ValueError`` before the hook does anything.
+    """
+    path = _state_path_from(stub_env)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(
+            {
+                "session_id": "legacy",
+                "started_at": _RECENT_STAMP,
+                "counters": {
+                    "L1:services/api/main.py": {
+                        "count": 30,
+                        "last_6_actions": [],
+                        "last_updated": _RECENT_STAMP,
+                        "warned_at": _RECENT_STAMP,
+                        "attempted_edits": {"deadbeef": 4},
+                        "content_hashes": {"cafebabe": 2},
+                    }
+                },
+                "turn_touched": ["services/api/main.py"],
+                "subagent_touched": {"agent-A": ["services/api/main.py"]},
+                "awaiting_ack": ["services/api/main.py"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    rc, out = _run(_write("services/api/main.py"), stub_env)
     assert rc == 0
     assert not _is_deny(out)
 
@@ -176,114 +288,10 @@ def test_allow_for_non_matching_tool_glob(stub_env: dict[str, str]) -> None:
     assert not _is_deny(out)
 
 
-def test_allow_when_file_path_missing(stub_env: dict[str, str]) -> None:
-    rc, out = _run({"tool_name": "Write", "tool_input": {}}, stub_env)
-    assert rc == 0
-    assert not _is_deny(out)
-
-
 def test_allow_when_command_missing(stub_env: dict[str, str]) -> None:
     rc, out = _run({"tool_name": "Bash", "tool_input": {}}, stub_env)
     assert rc == 0
     assert not _is_deny(out)
-
-
-def test_allow_when_file_path_not_string(stub_env: dict[str, str]) -> None:
-    rc, out = _run({"tool_name": "Edit", "tool_input": {"file_path": 12345}}, stub_env)
-    assert rc == 0
-    assert not _is_deny(out)
-
-
-# --- Deny path: L1 code-class target (base threshold 6) ---
-
-
-def test_deny_l1_code_path_at_threshold(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
-    rc, out = _run(_write(CODE_TARGET), stub_env)
-    assert rc == 0
-    assert _is_deny(out)
-    reason = out["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "L1" in reason
-    assert CODE_TARGET in reason
-
-
-def test_deny_l1_code_above_threshold(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, 12)
-    rc, out = _run(_edit(CODE_TARGET), stub_env)
-    assert rc == 0
-    assert _is_deny(out)
-    reason = out["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "12" in reason
-
-
-def test_deny_edit_tool_treated_same_as_write(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
-    rc_w, out_w = _run(_write(CODE_TARGET), stub_env)
-    rc_e, out_e = _run(_edit(CODE_TARGET), stub_env)
-    assert _is_deny(out_w) and _is_deny(out_e)
-
-
-# --- Deny / allow path: L1 doc-class target (path-class threshold = L1_DOC_THRESHOLD) ---
-
-
-def test_allow_l1_doc_path_at_code_threshold(stub_env: dict[str, str]) -> None:
-    """Regression guard (Cray E.4 refinement 2026-06-08): a DOC target at the
-    old flat-6 must NOT deny — multi-section governance authoring is the work,
-    not a loop. This is the exact false-positive that blocked PLAN authoring.
-    """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, 6)
-    rc, out = _run(_write(DOC_TARGET), stub_env)
-    assert rc == 0
-    assert not _is_deny(out)
-
-
-def test_allow_l1_doc_path_just_below_doc_threshold(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, L1_DOC_THRESHOLD - 1)
-    rc, out = _run(_write(DOC_TARGET), stub_env)
-    assert rc == 0
-    assert not _is_deny(out)
-
-
-def test_deny_l1_doc_path_at_doc_threshold(stub_env: dict[str, str]) -> None:
-    """A doc target STILL trips — at the higher (finite) doc threshold — so a
-    genuinely stuck doc-edit loop is not masked.
-    """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
-    rc, out = _run(_write(DOC_TARGET), stub_env)
-    assert rc == 0
-    assert _is_deny(out)
-    reason = out["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "L1" in reason
-    assert DOC_TARGET in reason
-    assert str(_L1_DOC_DENY) in reason  # message reports the DENY threshold
-
-
-def test_markdown_anywhere_uses_doc_threshold(stub_env: dict[str, str]) -> None:
-    """A markdown file outside docs/ (e.g. a root README) is still doc-class."""
-    target = "README.md"
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, target, 6)
-    rc, out = _run(_write(target), stub_env)
-    assert rc == 0
-    assert not _is_deny(out)  # 6 < doc threshold
-
-
-def test_deny_l1_with_windows_unc_path(stub_env: dict[str, str]) -> None:
-    """Path normalization parity: UNC input lookups the same normalized key.
-
-    Seeded at the doc threshold so the doc-class target denies.
-    """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
-    unc = "\\\\wsl.localhost\\Ubuntu-24.04\\home\\crayj\\work\\vero-lite\\docs\\STATUS.md"
-    rc, out = _run(_write(unc), stub_env)
-    assert rc == 0
-    assert _is_deny(out)
-
-
-def test_deny_l1_with_backslash_path(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
-    rc, out = _run(_write("docs\\STATUS.md"), stub_env)
-    assert rc == 0
-    assert _is_deny(out)
 
 
 # --- Deny path: L4 (Bash) ---
@@ -332,16 +340,16 @@ def test_l4_uses_base_threshold_for_doc_like_command(stub_env: dict[str, str]) -
 def test_deny_fires_telegram_with_payload(stub_env: dict[str, str], tmp_path: Path) -> None:
     state_path = _state_path_from(stub_env)
     c = new_counter("test-session")
-    for i in range(_L1_CODE_DENY):
+    for i in range(LOOP_TRIGGER_THRESHOLD):
         increment(
             c,
-            LoopType.FILE_EDIT,
-            CODE_TARGET,
-            ActionRecord(ts=f"t{i}", tool="Edit", target=CODE_TARGET, result=f"attempt-{i}"),
+            LoopType.BASH_PATTERN,
+            L4_TARGET,
+            ActionRecord(ts=f"t{i}", tool="Bash", target=L4_TARGET, result=f"attempt-{i}"),
         )
     save_counter(c, state_path)
 
-    rc, out = _run(_write(CODE_TARGET), stub_env)
+    rc, out = _run(_bash(L4_COMMAND), stub_env)
     assert rc == 0
     assert _is_deny(out)
 
@@ -349,21 +357,21 @@ def test_deny_fires_telegram_with_payload(stub_env: dict[str, str], tmp_path: Pa
     assert capture.exists(), "stub telegram script was not invoked"
     body = capture.read_text(encoding="utf-8")
     # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
-    assert "L1" in body
-    assert CODE_TARGET in body
-    assert f"attempt-{_L1_CODE_DENY - 1}" in body  # newest action present
-    assert f"attempt-{_L1_CODE_DENY - MAX_RECENT_ACTIONS}" in body  # oldest still in window
-    # Every timestamp still inside the ring buffer round-tripped through the
-    # formatter (the window is the last MAX_RECENT_ACTIONS, not the first six).
-    for i in range(_L1_CODE_DENY - MAX_RECENT_ACTIONS, _L1_CODE_DENY):
+    assert "L4" in body
+    assert L4_TARGET in body
+    assert f"attempt-{LOOP_TRIGGER_THRESHOLD - 1}" in body  # newest action present
+    # The ring window is the LAST MAX_RECENT_ACTIONS, not the first six.
+    for i in range(LOOP_TRIGGER_THRESHOLD - MAX_RECENT_ACTIONS, LOOP_TRIGGER_THRESHOLD):
         assert f"t{i}" in body
 
 
 def test_deny_still_fires_when_telegram_script_missing(stub_env: dict[str, str]) -> None:
     """Telegram outage must NOT block the gate — deny still emitted."""
     stub_env["CLAUDE_TELEGRAM_SCRIPT"] = "/nonexistent/path/telegram.sh"
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", _L1_CODE_DENY)
-    rc, out = _run(_write("x.py"), stub_env)
+    _seed_counter(
+        _state_path_from(stub_env), LoopType.BASH_PATTERN, L4_TARGET, LOOP_TRIGGER_THRESHOLD
+    )
+    rc, out = _run(_bash(L4_COMMAND), stub_env)
     assert rc == 0
     assert _is_deny(out)
 
@@ -434,14 +442,42 @@ def test_l3_counter_does_not_gate_bash(stub_env: dict[str, str]) -> None:
 def test_deny_reason_includes_target_and_count_and_registry_pointer(
     stub_env: dict[str, str],
 ) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", 10)
-    _, out = _run(_write("x.py"), stub_env)
+    _seed_counter(_state_path_from(stub_env), LoopType.BASH_PATTERN, L4_TARGET, 10)
+    _, out = _run(_bash(L4_COMMAND), stub_env)
     assert _is_deny(out)
     reason = out["hookSpecificOutput"]["permissionDecisionReason"]
-    assert "x.py" in reason
+    assert L4_TARGET in reason
     assert "10" in reason
     assert ".claude/autonomy-triggers.md" in reason
     assert "Cray E.4" in reason or "threshold" in reason
+
+
+def test_deny_reason_names_only_reset_paths_that_exist(stub_env: dict[str, str]) -> None:
+    """The message must not advertise a reset the agent cannot reach.
+
+    PLAN-0094 P2 set this rule after a message described the reset in terms of
+    the ``Agent`` tool returning — dead code for seven weeks while three
+    documents called it live. PLAN-0102 pointed the same rule the other way:
+    the message used to list three reset paths (an untouched turn boundary, a
+    ``git commit`` containing the target, a subagent's own ``SubagentStop``),
+    and ALL THREE were L1 paths deleted with L1. Only L4 reaches this message
+    now, and L4's real reset is a successful run of the same command pattern.
+
+    RED when: the pre-retirement wording is restored, or a fourth path is
+    invented — either way the agent is told to do something that cannot clear
+    its counter.
+    """
+    _seed_counter(_state_path_from(stub_env), LoopType.BASH_PATTERN, L4_TARGET, 10)
+    _, out = _run(_bash(L4_COMMAND), stub_env)
+    assert _is_deny(out)
+    reason = out["hookSpecificOutput"]["permissionDecisionReason"]
+    for dead_path in ("turn boundary", "SubagentStop", "git commit"):
+        assert dead_path not in reason, (
+            f"the L4 deny message still names {dead_path!r} as a reset path. "
+            "That was an L1 path and it no longer exists, so this tells the "
+            "agent to do something that cannot clear the counter."
+        )
+    assert "SUCCEEDS" in reason, "the message must name L4's actual reset"
 
 
 # --- ADR-013 D2 bypass-immunity regression guard (Step 6 Phase 1.5) ---
@@ -451,94 +487,20 @@ def test_bypass_permissions_still_denies_at_threshold(stub_env: dict[str, str]) 
     """ADR-013 D2 binding: ``PreToolUse deny`` is deterministic and bypass-immune.
 
     Adding ``permission_mode: bypassPermissions`` to the payload must not
-    short-circuit the L1 loop-detect deny once the counter is at threshold.
+    short-circuit the L4 loop-detect deny once the counter is at threshold.
     Cheap insurance against a future hook implementation that accidentally
     short-circuits on bypass. Uncovered until session-14 Step 6 Phase 1.5
-    closeout.
+    closeout. (Was asserted on L1 until PLAN-0102; L4 is now the only gated
+    surface, so it inherits the guarantee.)
     """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
+    _seed_counter(
+        _state_path_from(stub_env), LoopType.BASH_PATTERN, L4_TARGET, LOOP_TRIGGER_THRESHOLD
+    )
     payload = {
-        "tool_name": "Write",
-        "tool_input": {"file_path": CODE_TARGET, "content": "x"},
+        "tool_name": "Bash",
+        "tool_input": {"command": L4_COMMAND},
         "permission_mode": "bypassPermissions",
     }
     rc, out = _run(payload, stub_env)
     assert rc == 0
     assert _is_deny(out)
-
-
-# --- PLAN-0094 Step 5 (P3) — the `awaiting_ack` marker, write side (AC-9) ---
-#
-# The gate becomes a NARROW state writer here: it appends the denied target to
-# a top-level `awaiting_ack` list so the Stop hook can grant a deterministic,
-# human-in-the-loop exit the agent cannot fake. Read the marker off DISK rather
-# than through the module API -- the persisted shape is the contract the Stop
-# hook consumes, and asserting the JSON keeps this test honest if the
-# dataclass is refactored.
-
-
-def _awaiting_ack(env: dict[str, str]) -> list[str]:
-    """The persisted marker list, or [] when the key is absent."""
-    path = _state_path_from(env)
-    if not path.exists():
-        return []
-    data = json.loads(path.read_text(encoding="utf-8"))
-    raw = data.get("awaiting_ack") or []
-    return [str(t) for t in raw] if isinstance(raw, list) else []
-
-
-def test_deny_records_the_awaiting_ack_marker(stub_env: dict[str, str]) -> None:
-    """A deny must leave a marker the Stop hook can act on."""
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
-    rc, out = _run(
-        {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}},
-        stub_env,
-    )
-    assert rc == 0
-    assert _is_deny(out)
-    assert _awaiting_ack(stub_env) == [CODE_TARGET]
-
-
-def test_repeated_denies_do_not_duplicate_the_marker(stub_env: dict[str, str]) -> None:
-    """The deny re-fires on every retry; the marker must stay a set, not a log."""
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
-    payload = {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}}
-    for _ in range(3):
-        rc, out = _run(payload, stub_env)
-        assert rc == 0
-        assert _is_deny(out)
-    assert _awaiting_ack(stub_env) == [CODE_TARGET]
-
-
-def test_grace_zone_allow_records_no_marker(stub_env: dict[str, str]) -> None:
-    """A warn-stage edit is ALLOWED, so it must not arm the ack exit."""
-    _seed_counter(
-        _state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, LOOP_TRIGGER_THRESHOLD
-    )
-    rc, out = _run(
-        {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}},
-        stub_env,
-    )
-    assert rc == 0
-    assert out is None
-    assert _awaiting_ack(stub_env) == []
-
-
-def test_l4_deny_does_not_arm_the_l1_ack_exit(stub_env: dict[str, str]) -> None:
-    """Scope guard: the marker drives an L1 reset, so only L1 may write it.
-
-    L4 keeps the flat threshold and has no false-fire series; granting it the
-    ack exit would hand a failing-command loop a reset path this PLAN never
-    priced.
-    """
-    command = "pytest tests/handoffs -q"
-    _seed_counter(
-        _state_path_from(stub_env),
-        LoopType.BASH_PATTERN,
-        tokenize_bash_command(command),
-        LOOP_TRIGGER_THRESHOLD,
-    )
-    rc, out = _run({"tool_name": "Bash", "tool_input": {"command": command}}, stub_env)
-    assert rc == 0
-    assert _is_deny(out)
-    assert _awaiting_ack(stub_env) == []

@@ -2,9 +2,15 @@
 
 Covers:
 
+**PLAN-0102 removed two whole sections from this module** — the turn-boundary
+L1 reset and the ``awaiting_ack`` clear side (PLAN-0094 D5). Both were L1 at
+both ends, so there is no surviving behaviour to re-point them at. What is left
+is what the hook still does, and PLAN-0102 AC-11 (a) is the guard that those
+three arms kept working across the excision: the import the retirement could
+have orphaned would have raised ``ImportError`` at module load, killing all of
+them at once with no other symptom.
+
 - Re-entry guard: ``stop_hook_active=True`` short-circuits
-- Turn-boundary L1 reset: counters NOT in ``turn_touched`` are reset;
-  counters IN ``turn_touched`` survive; ``turn_touched`` is cleared
 - Chain-cap fail-safe (OQ-E option b): cap-hit emits no block + pings
   Telegram with ``cap_reached`` payload + resets chain
 - Classifier stub: defaults to ``pause`` → no block, chain reset
@@ -14,6 +20,7 @@ Covers:
 
 from __future__ import annotations
 
+import ast
 import json
 import os
 import subprocess
@@ -31,12 +38,10 @@ sys.path.insert(0, str(HOOKS_DIR))
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     ActionRecord,
     LoopType,
-    _now_iso,
     counter_key,
     increment,
     load_counter,
     new_counter,
-    record_turn_touched,
     save_counter,
 )
 
@@ -121,11 +126,19 @@ def _seed_chain(env: dict[str, str], depth: int) -> None:
 
 def test_reentry_guard_short_circuits(stub_env: dict[str, str]) -> None:
     """When the harness reports stop_hook_active=True, the hook MUST NOT
-    run reset / classifier / Telegram — just exit clean.
+    run the chain-cap / classifier / Telegram arms — just exit clean.
+
+    The L1 turn-boundary reset used to be the first thing this guard had to
+    suppress, and the seeded counter below was an ``L1:`` entry NOT in
+    ``turn_touched``. PLAN-0102 retired that arm, so the counter is now seeded
+    on a surviving loop type and asserted for the same reason: the hook must
+    leave state alone. That assertion is no longer about a reset it might run —
+    the hook touches the loop counter at all only through arms that are gone —
+    so it now guards against a REGRESSION that re-introduces one.
     """
-    # Pre-seed an L1 counter NOT in turn_touched — would normally be reset.
     seed = new_counter("s")
-    increment(seed, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
+    action = ActionRecord("t", "Bash", "pytest <arg>")
+    increment(seed, LoopType.BASH_PATTERN, "pytest <arg>", action)
     save_counter(seed, _state(stub_env))
     _seed_chain(stub_env, depth=100)  # would normally hit cap
 
@@ -135,95 +148,10 @@ def test_reentry_guard_short_circuits(stub_env: dict[str, str]) -> None:
 
     # Counter unchanged, chain unchanged, no Telegram
     c = load_counter(_state(stub_env))
-    assert counter_key(LoopType.FILE_EDIT, "x.py") in c.counters
+    assert counter_key(LoopType.BASH_PATTERN, "pytest <arg>") in c.counters
     chain = json.loads(_chain(stub_env).read_text(encoding="utf-8"))
     assert chain["depth"] == 100
     assert not _capture(stub_env).exists()
-
-
-# --- Turn-boundary L1 reset ---
-
-
-def test_l1_counter_not_in_turn_touched_is_reset(stub_env: dict[str, str]) -> None:
-    """An L1 counter for a file NOT touched this turn → reset on Stop."""
-    seed = new_counter("s")
-    increment(seed, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
-    increment(seed, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
-    # NOTE: turn_touched intentionally empty — x.py was edited but not
-    # recorded as touched (simulates a fresh turn with no edits).
-    save_counter(seed, _state(stub_env))
-
-    _run({"hook_event_name": "Stop"}, stub_env)
-
-    c = load_counter(_state(stub_env))
-    assert counter_key(LoopType.FILE_EDIT, "x.py") not in c.counters
-
-
-def test_l1_counter_in_turn_touched_survives(stub_env: dict[str, str]) -> None:
-    """An L1 counter for a file touched this turn must NOT be reset."""
-    seed = new_counter("s")
-    increment(seed, LoopType.FILE_EDIT, "docs/STATUS.md", ActionRecord("t", "Edit", "x"))
-    record_turn_touched(seed, "docs/STATUS.md")
-    save_counter(seed, _state(stub_env))
-
-    _run({"hook_event_name": "Stop"}, stub_env)
-
-    c = load_counter(_state(stub_env))
-    assert counter_key(LoopType.FILE_EDIT, "docs/STATUS.md") in c.counters
-
-
-def test_turn_touched_cleared_after_stop(stub_env: dict[str, str]) -> None:
-    """After Stop, turn_touched is empty so the next turn starts fresh."""
-    seed = new_counter("s")
-    record_turn_touched(seed, "x.py")
-    record_turn_touched(seed, "y.py")
-    save_counter(seed, _state(stub_env))
-
-    _run({"hook_event_name": "Stop"}, stub_env)
-
-    c = load_counter(_state(stub_env))
-    assert c.turn_touched == []
-
-
-def test_mixed_touched_and_untouched_l1_reset_correctly(stub_env: dict[str, str]) -> None:
-    """Selective reset — touched survives, untouched is reset."""
-    seed = new_counter("s")
-    increment(seed, LoopType.FILE_EDIT, "a.py", ActionRecord("t", "Edit", "a"))
-    increment(seed, LoopType.FILE_EDIT, "b.py", ActionRecord("t", "Edit", "b"))
-    increment(seed, LoopType.FILE_EDIT, "c.py", ActionRecord("t", "Edit", "c"))
-    record_turn_touched(seed, "a.py")
-    record_turn_touched(seed, "c.py")
-    save_counter(seed, _state(stub_env))
-
-    _run({"hook_event_name": "Stop"}, stub_env)
-
-    c = load_counter(_state(stub_env))
-    keys = set(c.counters.keys())
-    assert counter_key(LoopType.FILE_EDIT, "a.py") in keys
-    assert counter_key(LoopType.FILE_EDIT, "b.py") not in keys
-    assert counter_key(LoopType.FILE_EDIT, "c.py") in keys
-
-
-def test_non_l1_counters_untouched_by_reset(stub_env: dict[str, str]) -> None:
-    """L2/L3/L4 counters must NOT be reset by Stop hook (Step 4 scope = L1 only)."""
-    seed = new_counter("s")
-    increment(seed, LoopType.TEST_FAIL, "tests/foo.py::test_bar", ActionRecord("t", "Bash", "x"))
-    increment(seed, LoopType.BASH_PATTERN, "pytest <arg>", ActionRecord("t", "Bash", "x"))
-    increment(seed, LoopType.ERROR_SIGNATURE, "RuntimeError: foo", ActionRecord("t", "Bash", "x"))
-    save_counter(seed, _state(stub_env))
-
-    _run({"hook_event_name": "Stop"}, stub_env)
-
-    c = load_counter(_state(stub_env))
-    assert counter_key(LoopType.TEST_FAIL, "tests/foo.py::test_bar") in c.counters
-    assert counter_key(LoopType.BASH_PATTERN, "pytest <arg>") in c.counters
-    assert counter_key(LoopType.ERROR_SIGNATURE, "RuntimeError: foo") in c.counters
-
-
-def test_reset_runs_even_with_empty_state(stub_env: dict[str, str]) -> None:
-    """No state file = no-op reset; hook still completes cleanly."""
-    rc, _ = _run({"hook_event_name": "Stop"}, stub_env)
-    assert rc == 0
 
 
 # --- Chain-cap fail-safe (OQ-E option b) ---
@@ -1071,201 +999,91 @@ def test_passed_goal_stands_down_classifier_flow_unchanged(stub_env: dict[str, s
     assert "goal_gate_passed" in capture.read_text(encoding="utf-8")
 
 
-# ---------------------------------------------------------------------------
-# PLAN-0094 Step 5 (P3) — `awaiting_ack`, clear side (AC-9).
-#
-# The deny gate arms the marker; only a stop that ACTUALLY FIRES may clear it.
-# "Fires" means the turn ends and Cray regains the prompt -- an event the agent
-# cannot mint. The paths that return the agent to its own loop without Cray
-# (classifier `proceed`, a goal-gate directive, the re-entry early return) must
-# NOT clear, or the machinery would unlock itself.
-#
-# The clear also OVERRIDES the sticky turn-boundary rule: `reset_untouched_l1`
-# deliberately spares a target touched this turn, which is exactly the shape
-# that made recovery cost two turns in the s169/s170 incidents. For a target
-# Cray has been pinged about, one turn is the point.
-#
-# State is seeded and asserted as JSON on purpose: the persisted document is
-# the contract between the two hooks, and no new module symbol is imported, so
-# this block stays collectable before the implementation lands (RED, not a
-# collection error that would redden the other rows in this file).
-# ---------------------------------------------------------------------------
-
-ACK_TARGET = "services/api/main.py"
-ACK_KEY = f"L1:{ACK_TARGET}"
+# --- PLAN-0102 AC-11 (a): the surviving arms still RUN ----------------------
 
 
-def _seed_ack(state_path: Path, *, touched_this_turn: bool = True) -> None:
-    """Seed a denied target: an L1 entry, the ack marker, and (by default) the
-    target recorded as touched this turn -- the sticky case.
+def test_ac11a_module_loads_and_the_surviving_arms_still_fire(
+    stub_env: dict[str, str],
+) -> None:
+    """The excision must not have orphaned an import at module load.
 
-    ``last_updated`` MUST be stamped live, never hardcoded. ``load_counter``
-    runs :func:`prune_stale_entries`, which deletes any entry whose
-    ``last_updated`` is older than ``COUNTER_MAX_AGE_HOURS`` (6 h). A literal
-    date therefore passes only within a six-hour window of the day it was
-    written and fails forever after -- which is exactly what happened here:
-    seeded ``2026-07-27T00:00:00+0000``, green in CI at ~05:16Z, red from
-    06:00Z onward. The failure lands on the two rows that assert the entry
-    SURVIVES, so it reads as "the clear logic is broken" when nothing about
-    the clear logic changed. See ``test_seed_ack_is_stamped_live`` below.
+    **The failure mode this guards is the one nothing else in this file could
+    have reported cleanly.** Step 5 deletes ``reset_l1_for_targets``; Step 4
+    removes the two L1 blocks that called it. Remove only the first block and
+    the module keeps its ``from _loop_counter import reset_l1_for_targets`` —
+    an ``ImportError`` raised BEFORE any arm runs, caught by no ``try``/
+    ``except`` anywhere in the file, taking the chain-cap fail-safe, the
+    classifier and the auto-handoff down together. The hook would exit
+    non-zero with a traceback on every single Stop.
+
+    So this asserts three things in one run: the process exits 0 (it imported),
+    stderr carries no import failure, and the chain-cap arm still produces its
+    Telegram payload. The last one is the positive control — without it the
+    first two would pass over a hook that loaded fine and then did nothing.
     """
-    stamp = _now_iso()
-    state_path.parent.mkdir(parents=True, exist_ok=True)
-    state_path.write_text(
-        json.dumps(
-            {
-                "session_id": "ack-test",
-                "started_at": stamp,
-                "counters": {
-                    ACK_KEY: {
-                        "loop_type": "L1",
-                        "target": ACK_TARGET,
-                        "count": 9,
-                        "last_6_actions": [],
-                        "last_updated": stamp,
-                        "warned_at": stamp,
-                    }
-                },
-                "turn_touched": [ACK_TARGET] if touched_this_turn else [],
-                "awaiting_ack": [ACK_TARGET],
-            }
-        ),
-        encoding="utf-8",
+    _seed_chain(stub_env, depth=8)  # default cap
+    result = subprocess.run(
+        [sys.executable, str(HOOK)],
+        input=json.dumps({"hook_event_name": "Stop"}),
+        capture_output=True,
+        text=True,
+        env=stub_env,
+        check=False,
+        timeout=15,
     )
+    assert (
+        result.returncode == 0
+    ), f"the Stop hook failed to run: rc={result.returncode}\n{result.stderr}"
+    assert (
+        "ImportError" not in result.stderr
+    ), f"the Stop hook has an orphaned import — every arm is dead:\n{result.stderr}"
+    assert "Traceback" not in result.stderr, f"unexpected traceback:\n{result.stderr}"
+
+    capture = _capture(stub_env)
+    assert capture.exists(), (
+        "the chain-cap arm produced nothing — module load is not enough, the "
+        "arms have to still work"
+    )
+    assert "stop_continuation_cap_reached" in capture.read_text(encoding="utf-8")
 
 
-def _ack_state(state_path: Path) -> tuple[list[str], bool]:
-    """Return (awaiting_ack, l1_entry_still_present)."""
-    data = json.loads(state_path.read_text(encoding="utf-8"))
-    raw = data.get("awaiting_ack") or []
-    marker = [str(t) for t in raw] if isinstance(raw, list) else []
-    return marker, ACK_KEY in (data.get("counters") or {})
+def test_ac11a_the_hook_imports_exactly_one_name_from_the_counter_module() -> None:
+    """After the retirement this hook borrows only ``STATE_DIR``.
 
+    A structural companion to the behavioural test above: it inspects the
+    module's own AST, so it fails on a re-introduced import even when that
+    import happens to still resolve. The two together cover both directions —
+    an import that breaks (above) and one that quietly comes back (here).
 
-def test_seed_ack_is_stamped_live(tmp_path: Path) -> None:
-    """The seeded entry must survive a real ``load_counter`` -- the guard that
-    keeps this block from silently expiring again.
-
-    This asserts the FIXTURE, not the hook, on purpose. A hardcoded
-    ``last_updated`` is invisible while it is fresh and then reddens two
-    unrelated-looking rows hours later; the failure points at the clear logic
-    rather than at the stamp. Pinning it here means a future hardcode fails
-    HERE, with a message that names the cause.
+    ⚠️ **Parsed, not grepped, and the first draft proved why.** A plain
+    substring check over the source went RED against a correct file: the
+    module docstring *explains* the retirement and therefore names
+    ``reset_l1_for_targets`` in prose. A guard that cannot tell a call from a
+    comment punishes the file for documenting itself, and the better the
+    documentation the redder it gets. The AST sees only real bindings.
     """
-    state = tmp_path / "loop-counter.json"
-    _seed_ack(state)
-    counter = load_counter(state, session_id="ack-test")
-    assert ACK_KEY in counter.counters, (
-        "the seeded L1 entry was pruned on load -- `_seed_ack` must stamp "
-        "`last_updated` live (see COUNTER_MAX_AGE_HOURS in _loop_counter.py)"
+    tree = ast.parse(HOOK.read_text(encoding="utf-8"))
+
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom) and node.module == "_loop_counter":
+            imported.update(alias.name for alias in node.names)
+    assert imported == {"STATE_DIR"}, (
+        f"stop_continuation.py imports {sorted(imported)} from _loop_counter; "
+        "PLAN-0102 left it needing only STATE_DIR, for its own stop-chain file. "
+        "If a new name is genuinely required, update this guard with the reason."
     )
 
-
-def test_fired_pause_clears_the_marker_and_overrides_the_sticky_rule(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """The load-bearing row: a stop that fires grants the exit in ONE turn,
-    even though the target was touched this very turn."""
-    _seed_ack(inproc_env["state"], touched_this_turn=True)
-    _patch_classify(monkeypatch, {"decision": "pause", "reason": "cray should look"})
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert (rc, out) == (0, "")
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == []
-    assert not entry_present
-
-
-def test_proceed_does_not_clear_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """A substantive `proceed` returns the agent to its loop without Cray --
-    clearing here would let the machinery unlock itself."""
-    _seed_ack(inproc_env["state"])
-    _patch_classify(
-        monkeypatch,
-        {"decision": "proceed", "reason": "run pytest tests/handoffs and fix the failure"},
+    used = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)}
+    retired = {
+        "reset_l1_for_targets",
+        "reset_untouched_l1",
+        "take_awaiting_ack",
+        "clear_turn_touched",
+        "clear_turn_scoped",
+    }
+    assert not (used & retired), (
+        f"{sorted(used & retired)} referenced again in stop_continuation.py — "
+        "these were deleted from _loop_counter.py by PLAN-0102, so this is an "
+        "ImportError at module load waiting to happen"
     )
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert rc == 0
-    assert out  # a continuation block WAS emitted
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == [ACK_TARGET]
-    assert entry_present
-
-
-def test_goal_gate_directive_does_not_clear_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """A goal-gate directive also returns the agent to its loop without Cray."""
-    _seed_ack(inproc_env["state"])
-    monkeypatch.setattr(
-        _stop, "_run_goal_gate", lambda payload: {"decision": "block", "reason": "goal directive"}
-    )
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert rc == 0
-    assert out
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == [ACK_TARGET]
-    assert entry_present
-
-
-def test_reentry_guard_does_not_clear_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """Conservative: inside an existing stop chain the hook touches nothing."""
-    _seed_ack(inproc_env["state"])
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop", "stop_hook_active": True})
-    assert (rc, out) == (0, "")
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == [ACK_TARGET]
-    assert entry_present
-
-
-def test_contentless_proceed_demotion_clears_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """A demoted proceed IS a fired stop -- the turn ends and Cray sees it."""
-    _seed_ack(inproc_env["state"])
-    _patch_classify(monkeypatch, {"decision": "proceed", "reason": "continue"})
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert (rc, out) == (0, "")
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == []
-    assert not entry_present
-
-
-def test_dispatch_suggestion_clears_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """PLAN-0092 demoted dispatch to a suggestion, so the stop fires."""
-    _seed_ack(inproc_env["state"])
-    _patch_classify(
-        monkeypatch,
-        {
-            "decision": "dispatch",
-            "reason": "route to the drafter",
-            "dispatch": {"subagent": "plan-drafter", "artifact_kind": "plan", "task_summary": "x"},
-            "matched_rows": ["G2"],
-        },
-    )
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert (rc, out) == (0, "")
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == []
-    assert not entry_present
-
-
-def test_cap_hit_clears_the_marker(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """The chain-cap fail-safe ends the turn and pings Cray -- it fires."""
-    _seed_ack(inproc_env["state"])
-    monkeypatch.setenv("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", "1")
-    inproc_env["chain"].write_text(
-        json.dumps({"depth": 5, "last_proceed_ts": "2026-07-27T00:00:00+0000"}), encoding="utf-8"
-    )
-    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    assert (rc, out) == (0, "")
-    marker, entry_present = _ack_state(inproc_env["state"])
-    assert marker == []
-    assert not entry_present

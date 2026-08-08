@@ -27,20 +27,16 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     COUNTER_MAX_AGE_HOURS,
-    L1_DOC_THRESHOLD,
     LOOP_TRIGGER_THRESHOLD,
     MAX_RECENT_ACTIONS,
     ActionRecord,
     CounterEntry,
     LoopCounter,
     LoopType,
-    clear_turn_touched,
     counter_key,
     get_count,
     has_triggered,
     increment,
-    is_doc_target,
-    l1_threshold_for,
     load_counter,
     main_session_id,
     new_counter,
@@ -48,10 +44,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_file_path,
     normalize_pytest_nodeid,
     prune_stale_entries,
-    record_turn_touched,
     reset,
-    reset_l1_for_targets,
-    reset_untouched_l1,
     resolve_session_id,
     save_counter,
     tokenize_bash_command,
@@ -76,36 +69,53 @@ def test_counter_entry_round_trip() -> None:
 
 def test_loop_counter_round_trip() -> None:
     c = new_counter(session_id="test-session")
-    increment(c, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
+    increment(c, LoopType.BASH_PATTERN, "pytest <arg>", ActionRecord("t", "Bash", "pytest <arg>"))
     increment(c, LoopType.TEST_FAIL, "tests/foo.py::test_bar")
     restored = LoopCounter.from_json(c.to_json())
     assert restored.session_id == c.session_id
     assert restored.started_at == c.started_at
     assert set(restored.counters) == set(c.counters)
-    assert restored.counters[counter_key(LoopType.FILE_EDIT, "x.py")].count == 1
+    assert restored.counters[counter_key(LoopType.BASH_PATTERN, "pytest <arg>")].count == 1
 
 
 def test_loop_counter_unknown_fields_ignored() -> None:
+    """Unknown top-level fields are ignored — and so is a retired ``L1:`` key.
+
+    This test predates PLAN-0102 and its ``L1:foo`` fixture was incidental; it
+    is now load-bearing (AC-5). ``LoopType.BASH_PATTERN`` no longer exists, so the
+    property being asserted is that keys are carried as PLAIN STRINGS: nothing
+    on the load path calls ``LoopType("L1")``, which would raise ``ValueError``
+    at hook start against any state file written before the retirement.
+    """
     raw = {
         "session_id": "s",
         "started_at": "t",
         "counters": {"L1:foo": {"count": 2}},
+        "turn_touched": ["a.py"],
+        "subagent_touched": {"agent-A": ["a.py"]},
+        "awaiting_ack": ["a.py"],
         "unexpected_field": "junk",
     }
     c = LoopCounter.from_json(raw)
     assert c.session_id == "s"
     assert c.counters["L1:foo"].count == 2
+    # The three retired top-level fields are simply not read back...
+    assert not hasattr(c, "turn_touched")
+    assert not hasattr(c, "subagent_touched")
+    assert not hasattr(c, "awaiting_ack")
+    # ...and they drop out of the next save rather than round-tripping.
+    assert set(c.to_json()) == {"session_id", "started_at", "counters"}
 
 
 # --- counter_key ---
 
 
 def test_counter_key_format() -> None:
-    assert counter_key(LoopType.FILE_EDIT, "docs/STATUS.md") == "L1:docs/STATUS.md"
+    assert counter_key(LoopType.TEST_FAIL, "tests/foo.py::test_bar") == "L2:tests/foo.py::test_bar"
     assert counter_key(LoopType.BASH_PATTERN, "pytest <arg>") == "L4:pytest <arg>"
 
 
-# --- File-path normalization (L1) ---
+# --- File-path normalization (retained: pretooluse_classifier_dispatch) ---
 
 
 def test_normalize_file_path_relative_posix() -> None:
@@ -267,22 +277,28 @@ def test_resolve_session_id_uuid_fallback(monkeypatch: pytest.MonkeyPatch) -> No
 
 
 # --- Counter ops ---
+#
+# These exercise the GENERIC counter primitives; the loop type is incidental.
+# They used LoopType.FILE_EDIT as their example until PLAN-0102 retired it, and
+# now use BASH_PATTERN for the same reason — it is simply a surviving member.
+# The target strings are left as-is: the counter is target-string-agnostic, and
+# rewriting them would churn the diff without changing what is asserted.
 
 
 def test_increment_creates_then_grows() -> None:
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
-    assert get_count(c, LoopType.FILE_EDIT, "x.py") == 1
-    increment(c, LoopType.FILE_EDIT, "x.py", ActionRecord("t", "Edit", "x.py"))
-    assert get_count(c, LoopType.FILE_EDIT, "x.py") == 2
-    assert get_count(c, LoopType.FILE_EDIT, "other.py") == 0
+    increment(c, LoopType.BASH_PATTERN, "x.py", ActionRecord("t", "Edit", "x.py"))
+    assert get_count(c, LoopType.BASH_PATTERN, "x.py") == 1
+    increment(c, LoopType.BASH_PATTERN, "x.py", ActionRecord("t", "Edit", "x.py"))
+    assert get_count(c, LoopType.BASH_PATTERN, "x.py") == 2
+    assert get_count(c, LoopType.BASH_PATTERN, "other.py") == 0
 
 
 def test_increment_independent_per_loop_type() -> None:
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "x.py")
+    increment(c, LoopType.BASH_PATTERN, "x.py")
     increment(c, LoopType.TEST_FAIL, "x.py")
-    assert get_count(c, LoopType.FILE_EDIT, "x.py") == 1
+    assert get_count(c, LoopType.BASH_PATTERN, "x.py") == 1
     assert get_count(c, LoopType.TEST_FAIL, "x.py") == 1
 
 
@@ -291,11 +307,11 @@ def test_last_6_actions_ring_buffer_caps() -> None:
     for i in range(10):
         increment(
             c,
-            LoopType.FILE_EDIT,
+            LoopType.BASH_PATTERN,
             "x.py",
             ActionRecord(ts=f"t{i}", tool="Edit", target="x.py", result=str(i)),
         )
-    entry = c.counters[counter_key(LoopType.FILE_EDIT, "x.py")]
+    entry = c.counters[counter_key(LoopType.BASH_PATTERN, "x.py")]
     assert entry.count == 10
     assert len(entry.last_6_actions) == MAX_RECENT_ACTIONS
     # Tail of ring buffer retained: t4..t9
@@ -304,31 +320,31 @@ def test_last_6_actions_ring_buffer_caps() -> None:
 
 def test_reset_removes_entry() -> None:
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "x.py")
-    reset(c, LoopType.FILE_EDIT, "x.py")
-    assert get_count(c, LoopType.FILE_EDIT, "x.py") == 0
-    assert counter_key(LoopType.FILE_EDIT, "x.py") not in c.counters
+    increment(c, LoopType.BASH_PATTERN, "x.py")
+    reset(c, LoopType.BASH_PATTERN, "x.py")
+    assert get_count(c, LoopType.BASH_PATTERN, "x.py") == 0
+    assert counter_key(LoopType.BASH_PATTERN, "x.py") not in c.counters
 
 
 def test_reset_idempotent_on_missing() -> None:
     c = new_counter("s")
-    reset(c, LoopType.FILE_EDIT, "never-was-there.py")  # must not raise
+    reset(c, LoopType.BASH_PATTERN, "never-was-there.py")  # must not raise
 
 
 def test_has_triggered_at_threshold() -> None:
     c = new_counter("s")
     for _ in range(LOOP_TRIGGER_THRESHOLD - 1):
-        increment(c, LoopType.FILE_EDIT, "x.py")
-    assert not has_triggered(c, LoopType.FILE_EDIT, "x.py")
-    increment(c, LoopType.FILE_EDIT, "x.py")
-    assert has_triggered(c, LoopType.FILE_EDIT, "x.py")
+        increment(c, LoopType.BASH_PATTERN, "x.py")
+    assert not has_triggered(c, LoopType.BASH_PATTERN, "x.py")
+    increment(c, LoopType.BASH_PATTERN, "x.py")
+    assert has_triggered(c, LoopType.BASH_PATTERN, "x.py")
 
 
 def test_has_triggered_custom_threshold() -> None:
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "x.py")
-    assert has_triggered(c, LoopType.FILE_EDIT, "x.py", threshold=1)
-    assert not has_triggered(c, LoopType.FILE_EDIT, "x.py", threshold=2)
+    increment(c, LoopType.BASH_PATTERN, "x.py")
+    assert has_triggered(c, LoopType.BASH_PATTERN, "x.py", threshold=1)
+    assert not has_triggered(c, LoopType.BASH_PATTERN, "x.py", threshold=2)
 
 
 # --- Atomic load/save ---
@@ -337,11 +353,13 @@ def test_has_triggered_custom_threshold() -> None:
 def test_save_and_load_round_trip(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("test-session")
-    increment(c, LoopType.FILE_EDIT, "docs/STATUS.md", ActionRecord("t", "Edit", "docs/STATUS.md"))
+    increment(
+        c, LoopType.BASH_PATTERN, "docs/STATUS.md", ActionRecord("t", "Edit", "docs/STATUS.md")
+    )
     save_counter(c, state_path)
     loaded = load_counter(state_path)
     assert loaded.session_id == "test-session"
-    assert get_count(loaded, LoopType.FILE_EDIT, "docs/STATUS.md") == 1
+    assert get_count(loaded, LoopType.BASH_PATTERN, "docs/STATUS.md") == 1
 
 
 def test_load_missing_file_returns_fresh(tmp_path: Path) -> None:
@@ -390,14 +408,14 @@ def test_save_leaves_no_tmpfile(tmp_path: Path) -> None:
 def test_save_overwrites_previous(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c1 = new_counter("s")
-    increment(c1, LoopType.FILE_EDIT, "a.py")
+    increment(c1, LoopType.BASH_PATTERN, "a.py")
     save_counter(c1, state_path)
     c2 = new_counter("s")
-    increment(c2, LoopType.FILE_EDIT, "b.py")
+    increment(c2, LoopType.BASH_PATTERN, "b.py")
     save_counter(c2, state_path)
     loaded = load_counter(state_path)
-    assert get_count(loaded, LoopType.FILE_EDIT, "a.py") == 0
-    assert get_count(loaded, LoopType.FILE_EDIT, "b.py") == 1
+    assert get_count(loaded, LoopType.BASH_PATTERN, "a.py") == 0
+    assert get_count(loaded, LoopType.BASH_PATTERN, "b.py") == 1
 
 
 def test_save_atomic_no_partial_read(tmp_path: Path) -> None:
@@ -416,7 +434,7 @@ def test_save_atomic_no_partial_read(tmp_path: Path) -> None:
     def writer() -> None:
         for i in range(write_count):
             c = new_counter("s")
-            increment(c, LoopType.FILE_EDIT, f"file-{i}.py")
+            increment(c, LoopType.BASH_PATTERN, f"file-{i}.py")
             save_counter(c, state_path)
 
     def reader() -> None:
@@ -438,173 +456,15 @@ def test_save_atomic_no_partial_read(tmp_path: Path) -> None:
     assert final.session_id == "s"  # something landed; canonical file readable
 
 
-# --- turn_touched primitives (Step 4) ---
-
-
-def test_record_turn_touched_dedup() -> None:
-    c = new_counter("s")
-    record_turn_touched(c, "x.py")
-    record_turn_touched(c, "x.py")
-    record_turn_touched(c, "y.py")
-    assert c.turn_touched == ["x.py", "y.py"]
-
-
-def test_record_turn_touched_ignores_empty() -> None:
-    c = new_counter("s")
-    record_turn_touched(c, "")
-    assert c.turn_touched == []
-
-
-def test_clear_turn_touched() -> None:
-    c = new_counter("s")
-    record_turn_touched(c, "x.py")
-    record_turn_touched(c, "y.py")
-    clear_turn_touched(c)
-    assert c.turn_touched == []
-
-
-def test_reset_untouched_l1_clears_untouched_only() -> None:
-    c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "a.py")
-    increment(c, LoopType.FILE_EDIT, "b.py")
-    increment(c, LoopType.FILE_EDIT, "c.py")
-    record_turn_touched(c, "a.py")
-    record_turn_touched(c, "c.py")
-    reset_targets = reset_untouched_l1(c)
-    assert reset_targets == ["b.py"]
-    assert counter_key(LoopType.FILE_EDIT, "a.py") in c.counters
-    assert counter_key(LoopType.FILE_EDIT, "b.py") not in c.counters
-    assert counter_key(LoopType.FILE_EDIT, "c.py") in c.counters
-
-
-def test_reset_untouched_l1_leaves_other_loop_types() -> None:
-    c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "untouched.py")
-    increment(c, LoopType.TEST_FAIL, "tests/foo.py::test_bar")
-    increment(c, LoopType.BASH_PATTERN, "pytest <arg>")
-    increment(c, LoopType.ERROR_SIGNATURE, "RuntimeError: foo")
-    # No turn_touched → L1 should reset, others survive
-    reset_untouched_l1(c)
-    assert counter_key(LoopType.FILE_EDIT, "untouched.py") not in c.counters
-    assert counter_key(LoopType.TEST_FAIL, "tests/foo.py::test_bar") in c.counters
-    assert counter_key(LoopType.BASH_PATTERN, "pytest <arg>") in c.counters
-    assert counter_key(LoopType.ERROR_SIGNATURE, "RuntimeError: foo") in c.counters
-
-
-def test_turn_touched_round_trips_json(tmp_path: Path) -> None:
-    state_path = tmp_path / "loop-counter.json"
-    c = new_counter("s")
-    record_turn_touched(c, "docs/STATUS.md")
-    record_turn_touched(c, "x.py")
-    save_counter(c, state_path)
-    loaded = load_counter(state_path)
-    assert loaded.turn_touched == ["docs/STATUS.md", "x.py"]
-
-
-def test_turn_touched_back_compat_old_state_without_field(tmp_path: Path) -> None:
-    """An old state file written before Step 4 has no turn_touched field;
-    LoopCounter.from_json must default it to empty list, not raise.
-    """
-    state_path = tmp_path / "loop-counter.json"
-    raw = {
-        "session_id": "s",
-        "started_at": "t",
-        "counters": {"L1:x.py": {"count": 1, "last_6_actions": [], "last_updated": "t"}},
-        # NOTE: no turn_touched field
-    }
-    state_path.write_text(json.dumps(raw), encoding="utf-8")
-    loaded = load_counter(state_path)
-    assert loaded.turn_touched == []
-    assert get_count(loaded, LoopType.FILE_EDIT, "x.py") == 1
-
-
 def test_save_serializes_sorted_keys(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "z.py")
-    increment(c, LoopType.FILE_EDIT, "a.py")
+    increment(c, LoopType.BASH_PATTERN, "z.py")
+    increment(c, LoopType.BASH_PATTERN, "a.py")
     save_counter(c, state_path)
     raw = json.loads(state_path.read_text(encoding="utf-8"))
     keys = list(raw["counters"].keys())
     assert keys == sorted(keys), "keys must be deterministically ordered for diff-friendliness"
-
-
-# --- L1 path-class threshold (Cray E.4 refinement 2026-06-08) ---
-
-
-@pytest.mark.parametrize(
-    "target",
-    [
-        "docs/STATUS.md",
-        "docs/plans/0019-core-procedure-baseline.md",
-        "docs/adr/0016-governed-procedure-engine.md",
-        "README.md",  # markdown anywhere is doc-class
-        ".claude/handoffs/session-45/x.md",
-        "DOCS/Foo.MD",  # case-insensitive
-    ],
-)
-def test_is_doc_target_true(target: str) -> None:
-    assert is_doc_target(target) is True
-
-
-@pytest.mark.parametrize(
-    "target",
-    [
-        "services/api/main.py",
-        ".claude/hooks/_loop_counter.py",
-        "tests/handoffs/test_x.py",
-        "verticals/aquaculture/procedures.yaml",
-        "docsomething/notreally.py",  # 'docs' as a prefix of a dir name, not 'docs/'
-    ],
-)
-def test_is_doc_target_false(target: str) -> None:
-    assert is_doc_target(target) is False
-
-
-def test_l1_threshold_doc_vs_code() -> None:
-    assert l1_threshold_for("docs/STATUS.md") == L1_DOC_THRESHOLD
-    assert l1_threshold_for("README.md") == L1_DOC_THRESHOLD
-    assert l1_threshold_for("services/api/main.py") == LOOP_TRIGGER_THRESHOLD
-    assert l1_threshold_for(".claude/hooks/_loop_counter.py") == LOOP_TRIGGER_THRESHOLD
-
-
-def test_l1_doc_threshold_is_higher_and_finite() -> None:
-    """Doc bar is raised (fewer false positives) but FINITE (a stuck doc loop
-    still trips eventually).
-    """
-    assert L1_DOC_THRESHOLD > LOOP_TRIGGER_THRESHOLD
-    assert L1_DOC_THRESHOLD < 1000
-
-
-# --- reset_l1_for_targets (subagent-completion boundary) ---
-
-
-def test_reset_l1_for_targets_clears_listed_only() -> None:
-    c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "docs/plans/x.md")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
-    increment(c, LoopType.FILE_EDIT, "services/keep.py")
-    cleared = reset_l1_for_targets(c, ["docs/plans/x.md", "services/x.py"])
-    assert sorted(cleared) == ["docs/plans/x.md", "services/x.py"]
-    assert counter_key(LoopType.FILE_EDIT, "docs/plans/x.md") not in c.counters
-    assert counter_key(LoopType.FILE_EDIT, "services/x.py") not in c.counters
-    assert counter_key(LoopType.FILE_EDIT, "services/keep.py") in c.counters
-
-
-def test_reset_l1_for_targets_only_touches_l1() -> None:
-    c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "shared.py")
-    increment(c, LoopType.TEST_FAIL, "shared.py")
-    cleared = reset_l1_for_targets(c, ["shared.py"])
-    assert cleared == ["shared.py"]
-    assert counter_key(LoopType.FILE_EDIT, "shared.py") not in c.counters
-    assert counter_key(LoopType.TEST_FAIL, "shared.py") in c.counters  # L2 untouched
-
-
-def test_reset_l1_for_targets_missing_is_noop() -> None:
-    c = new_counter("s")
-    cleared = reset_l1_for_targets(c, ["never-there.py"])
-    assert cleared == []
 
 
 # --- State lifetime: age-out + session boundary (2026-07-25) ---
@@ -651,17 +511,17 @@ def test_prune_keeps_entry_with_unreadable_stamp(stamp: str) -> None:
     An entry built directly (not via `increment`) carries `last_updated == ""`.
     """
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
-    c.counters[counter_key(LoopType.FILE_EDIT, "services/x.py")].last_updated = stamp
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
+    c.counters[counter_key(LoopType.BASH_PATTERN, "services/x.py")].last_updated = stamp
     assert prune_stale_entries(c) == []
-    assert get_count(c, LoopType.FILE_EDIT, "services/x.py") == 1
+    assert get_count(c, LoopType.BASH_PATTERN, "services/x.py") == 1
 
 
 def test_prune_reads_naive_stamp_as_utc() -> None:
     """A tz-naive stamp must compare, not raise."""
     c = new_counter("s")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
-    key = counter_key(LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
+    key = counter_key(LoopType.BASH_PATTERN, "services/x.py")
     naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=COUNTER_MAX_AGE_HOURS + 1)
     c.counters[key].last_updated = naive.strftime("%Y-%m-%dT%H:%M:%S")
     assert prune_stale_entries(c) == [key]
@@ -674,13 +534,13 @@ def test_an_active_loop_never_ages_out() -> None:
     no matter how small the window — age-out only forgets DORMANT loops.
     """
     c = new_counter("s")
-    key = counter_key(LoopType.FILE_EDIT, "services/x.py")
+    key = counter_key(LoopType.BASH_PATTERN, "services/x.py")
     for _ in range(LOOP_TRIGGER_THRESHOLD):
         if key in c.counters:
             _aged(c, key, 99)  # pretend a long gap since the previous touch...
-        increment(c, LoopType.FILE_EDIT, "services/x.py")  # ...which refreshes it
+        increment(c, LoopType.BASH_PATTERN, "services/x.py")  # ...which refreshes it
     assert prune_stale_entries(c, max_age_hours=0.001) == []
-    assert has_triggered(c, LoopType.FILE_EDIT, "services/x.py")
+    assert has_triggered(c, LoopType.BASH_PATTERN, "services/x.py")
 
 
 def test_prune_window_is_load_bearing() -> None:
@@ -707,13 +567,13 @@ def test_load_ages_out_the_observed_incident_shape(tmp_path: Path) -> None:
     for _ in range(8):
         increment(c, LoopType.TEST_FAIL, nodeid)
     _aged(c, counter_key(LoopType.TEST_FAIL, nodeid), 19 * 24)  # 19 days
-    increment(c, LoopType.FILE_EDIT, "services/live.py")  # today's work survives
+    increment(c, LoopType.BASH_PATTERN, "services/live.py")  # today's work survives
     save_counter(c, state_path)
 
     loaded = load_counter(state_path)
     assert not has_triggered(loaded, LoopType.TEST_FAIL, nodeid)
     assert get_count(loaded, LoopType.TEST_FAIL, nodeid) == 0
-    assert get_count(loaded, LoopType.FILE_EDIT, "services/live.py") == 1
+    assert get_count(loaded, LoopType.BASH_PATTERN, "services/live.py") == 1
 
 
 def test_max_age_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -737,32 +597,30 @@ def test_max_age_env_override_invalid_falls_back(monkeypatch: pytest.MonkeyPatch
 def test_load_different_session_id_remints(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("session-A")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
-    record_turn_touched(c, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
     save_counter(c, state_path)
 
     loaded = load_counter(state_path, session_id="session-B")
     assert loaded.session_id == "session-B"
     assert loaded.counters == {}
-    assert loaded.turn_touched == []
 
 
 def test_load_same_session_id_keeps_counters(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("session-A")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
     save_counter(c, state_path)
     loaded = load_counter(state_path, session_id="session-A")
-    assert get_count(loaded, LoopType.FILE_EDIT, "services/x.py") == 1
+    assert get_count(loaded, LoopType.BASH_PATTERN, "services/x.py") == 1
 
 
 def test_load_without_session_id_keeps_counters(tmp_path: Path) -> None:
     """Back-compat: the session check is opt-in; age-out still applies."""
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("session-A")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
     save_counter(c, state_path)
-    assert get_count(load_counter(state_path), LoopType.FILE_EDIT, "services/x.py") == 1
+    assert get_count(load_counter(state_path), LoopType.BASH_PATTERN, "services/x.py") == 1
 
 
 def test_load_empty_recorded_session_id_keeps_counters(tmp_path: Path) -> None:
@@ -770,26 +628,26 @@ def test_load_empty_recorded_session_id_keeps_counters(tmp_path: Path) -> None:
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("")
     c.session_id = ""
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
     save_counter(c, state_path)
     loaded = load_counter(state_path, session_id="session-B")
-    assert get_count(loaded, LoopType.FILE_EDIT, "services/x.py") == 1
+    assert get_count(loaded, LoopType.BASH_PATTERN, "services/x.py") == 1
 
 
 def test_remint_wipes_once_then_settles(tmp_path: Path) -> None:
     """The stale `pid-<PID>` file is re-minted once, not on every load."""
     state_path = tmp_path / "loop-counter.json"
     c = new_counter("pid-59884")
-    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.BASH_PATTERN, "services/x.py")
     save_counter(c, state_path)
 
     first = load_counter(state_path, session_id="real-session")
     assert first.counters == {}
-    increment(first, LoopType.FILE_EDIT, "services/new.py")
+    increment(first, LoopType.BASH_PATTERN, "services/new.py")
     save_counter(first, state_path)
 
     second = load_counter(state_path, session_id="real-session")
-    assert get_count(second, LoopType.FILE_EDIT, "services/new.py") == 1  # survived
+    assert get_count(second, LoopType.BASH_PATTERN, "services/new.py") == 1  # survived
 
 
 # --- main_session_id (payload -> session id, subagent-suppressed) ---

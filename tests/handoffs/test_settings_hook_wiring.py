@@ -31,6 +31,17 @@ kill. Withdrawing the criterion outright — rather than greening it by feeding 
 synthetic payload straight into ``main()`` — is that same discipline applied one
 level up: a test that passes while the live path stays dead is the defect above,
 not a fix for it.
+
+**PLAN-0102 AC-4 inverted part of this module, and pinned BOTH directions.**
+Retiring L1 eliminated three registrations that existed only to serve it: the
+PreToolUse ``Write|Edit`` loop-detect gate, the PostToolUse ``Write|Edit``
+observer, and the SubagentStop ``*`` observer. The assertions that used to
+require them are now assertions that they stay gone — but each is paired with a
+RETENTION assertion for the surface that survives on the same event. That
+pairing is load-bearing: an absence-only test suite passes just as happily over
+an emptied ``hooks`` block, which would silently disarm the L4 gate, the
+L2/L3/L4 observer, the handoff validator and the plan-drafter notifier all at
+once. Absence alone is not evidence; absence beside a live retention is.
 """
 
 from __future__ import annotations
@@ -38,8 +49,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Any
-
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SETTINGS = REPO_ROOT / ".claude" / "settings.json"
@@ -82,69 +91,113 @@ def test_settings_json_is_parseable() -> None:
     assert _load_hooks(), "settings.json parsed but declared no hooks"
 
 
-# --- AC-1 (i): the SubagentStop route that Step 1 restores -------------------
+# --- PLAN-0102 AC-4 (a): the three L1-only surfaces stay ELIMINATED ----------
+#
+# Read these three beside the retentions below, never alone. Each says "this
+# route is gone"; the paired retention says "and the event still routes
+# somewhere", which is what stops the pair passing over an emptied hooks block.
 
 
-def test_subagentstop_invokes_the_progress_observer() -> None:
-    """The L1 subagent reset must have a route from the harness to the handler.
+def test_subagentstop_no_longer_invokes_the_progress_observer() -> None:
+    """The SubagentStop ``*`` -> observer registration was eliminated (PLAN-0102).
 
-    Without this registration the handler is unreachable code — the exact
-    2026-06-08 defect. Asserting the *registration* (not the handler) is what
-    makes this test fail on removal alone.
+    PLAN-0094 AC-1 (i) pinned this route because the subagent L1 reset had
+    shipped unreachable. The route is now gone on purpose: ``_handle_subagent_stop``
+    was pure L1 and retired with it, so re-registering would spawn a Python
+    process on every subagent completion to compute a guaranteed no-op.
     """
-    assert _entries_invoking("SubagentStop", OBSERVER), (
-        "no SubagentStop entry invokes the progress observer — the subagent L1 "
-        "reset would be dead code again (PLAN-0094 D1)"
+    entries = _entries_invoking("SubagentStop", OBSERVER)
+    assert not entries, (
+        "the progress observer is registered for SubagentStop again. Its handler "
+        "was pure L1 and no longer exists, so this route can only cost a process "
+        "per subagent. If this is intentional, retire this test with the "
+        "reasoning, do not just delete the assertion."
     )
 
 
-def test_subagentstop_observer_entry_matches_every_subagent() -> None:
-    """The reset must not be scoped to one agent type.
+def test_posttooluse_write_edit_no_longer_invokes_the_progress_observer() -> None:
+    """The PostToolUse ``Write|Edit`` -> observer registration was eliminated."""
+    matchers = {str(entry.get("matcher")) for entry in _entries_invoking("PostToolUse", OBSERVER)}
+    assert "Write|Edit" not in matchers, (
+        "the progress observer is registered for PostToolUse Write|Edit again. "
+        "``_handle_write_or_edit`` was pure L1 and no longer exists; the surviving "
+        f"observer duty is the Bash path only. Got matchers {sorted(matchers)}"
+    )
 
-    The pre-existing SubagentStop entry is matcher ``plan-drafter`` (the Telegram
-    notifier). Reusing that matcher would restore the reset for exactly one agent
-    type and silently leave every other subagent's edits spending the main
-    agent's budget.
+
+def test_pretooluse_write_edit_no_longer_invokes_the_loop_detect_gate() -> None:
+    """The PreToolUse ``Write|Edit`` -> loop-detect registration was eliminated.
+
+    This is the expensive one: ``_resolve_target`` mapped nothing but
+    Write/Edit to ``FILE_EDIT``, so with L1 gone this registration would spawn a
+    Python process on **every single Write and Edit in every session** to reach
+    a guaranteed ``None``.
     """
-    matchers = {entry.get("matcher") for entry in _entries_invoking("SubagentStop", OBSERVER)}
-    assert (
-        "*" in matchers
-    ), f"SubagentStop observer entry must use matcher '*', got {sorted(map(str, matchers))}"
+    matchers = {
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("PreToolUse", "pretooluse_loop_detect.py")
+    }
+    assert "Write|Edit" not in matchers, (
+        "pretooluse_loop_detect is registered for PreToolUse Write|Edit again. "
+        "With L1 retired it can only ever allow, at the cost of a process per "
+        f"edit. Got matchers {sorted(matchers)}"
+    )
+
+
+# --- PLAN-0102 AC-4 (b) + PLAN-0094 AC-1 (iii): retentions -------------------
+
+
+def test_pretooluse_loop_detect_gate_is_retained_for_bash() -> None:
+    """L4 is the surviving gated surface — the deny wall must stay wired.
+
+    Paired with ``test_pretooluse_write_edit_no_longer_invokes_the_loop_detect_gate``:
+    together they say "exactly Bash", which neither says alone.
+    """
+    matchers = {
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("PreToolUse", "pretooluse_loop_detect.py")
+    }
+    assert "Bash" in matchers, (
+        f"pretooluse_loop_detect lost its PreToolUse Bash registration — the L4 "
+        f"deny wall is now unreachable; got {sorted(matchers)}"
+    )
+
+
+def test_posttooluse_observer_is_retained_for_bash() -> None:
+    """The Bash route feeds L2/L3/L4 and the shell-hygiene advisory."""
+    matchers = {str(entry.get("matcher")) for entry in _entries_invoking("PostToolUse", OBSERVER)}
+    assert "Bash" in matchers, (
+        f"PostToolUse Bash no longer routes to the observer — L2, L3, L4 and the "
+        f"shell-hygiene advisory all go dark at once; got {sorted(matchers)}"
+    )
+
+
+def test_posttooluse_write_edit_still_validates_handoffs() -> None:
+    """Removing the observer from ``Write|Edit`` must not strip the whole matcher.
+
+    The handoff validator shares that entry. This is the assertion that would
+    have caught an over-broad excision — deleting the matcher object rather than
+    the one hook inside it.
+    """
+    matchers = {
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("PostToolUse", "posttooluse_validate_handoff.py")
+    }
+    assert "Write|Edit" in matchers, (
+        f"the handoff validator lost its PostToolUse Write|Edit registration; got "
+        f"{sorted(matchers)}"
+    )
 
 
 def test_preexisting_subagentstop_notifier_is_retained() -> None:
-    """Step 1 adds an entry; it must not displace the shipped notifier."""
-    assert _entries_invoking(
-        "SubagentStop", "subagentstop_notify.py"
-    ), "the plan-drafter SubagentStop notifier was removed"
-
-
-# --- AC-1 (iii): the registrations that already exist must survive -----------
-
-
-@pytest.mark.parametrize("matcher", ["Write|Edit", "Bash"])
-def test_posttooluse_observer_registrations_are_retained(matcher: str) -> None:
-    """The two live PostToolUse routes into the observer are load-bearing.
-
-    ``Write|Edit`` feeds L1; ``Bash`` feeds L2/L3/L4 and the commit reset.
-    Losing either silently disables a whole loop class.
-    """
-    matchers = {entry.get("matcher") for entry in _entries_invoking("PostToolUse", OBSERVER)}
-    assert matcher in matchers, (
-        f"PostToolUse '{matcher}' no longer routes to the observer; got "
-        f"{sorted(map(str, matchers))}"
-    )
-
-
-def test_pretooluse_loop_detect_gate_is_retained() -> None:
-    """The deny gate must stay wired for both surfaces it walls."""
+    """Removing the observer's SubagentStop entry must not displace the notifier."""
     matchers = {
-        entry.get("matcher")
-        for entry in _entries_invoking("PreToolUse", "pretooluse_loop_detect.py")
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("SubagentStop", "subagentstop_notify.py")
     }
-    assert {"Bash", "Write|Edit"} <= {str(m) for m in matchers}, (
-        f"pretooluse_loop_detect lost a PreToolUse registration; got "
-        f"{sorted(map(str, matchers))}"
+    assert "plan-drafter" in matchers, (
+        f"the plan-drafter SubagentStop notifier was removed or re-matched; got "
+        f"{sorted(matchers)}"
     )
 
 

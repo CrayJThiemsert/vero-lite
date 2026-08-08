@@ -58,16 +58,9 @@ HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
-    L1_GRACE_BUDGET,
-    LOOP_TRIGGER_THRESHOLD,
-    ActionRecord,
     LoopType,
-    counter_key,
     get_count,
-    increment,
     load_counter,
-    new_counter,
-    save_counter,
 )
 
 PRE_LOOP_HOOK = HOOKS_DIR / "pretooluse_loop_detect.py"
@@ -367,65 +360,10 @@ def test_stop_chain_cap_fires_telegram_and_no_block(
 
 
 # --- C. Observer ↔ state file ↔ PreToolUse loop-detect ---
-
-
-def test_l1_observer_increments_then_pretooluse_denies_at_threshold(
-    stub_env: dict[str, str],
-    tmp_path: Path,
-) -> None:
-    """E2E across BOTH hooks: L1 warns at the path-class bar, then denies at +G.
-
-    Rewritten for PLAN-0094 P2. It used to assert that reaching the bar denied on
-    the next PreToolUse; the whole point of P2 is that it no longer does. Rather
-    than bump the seed and keep asserting one stage, this now walks the full
-    two-stage ladder in one test, because the stages live in *different hook
-    processes* communicating only through the state file — the seam where a
-    warn-bar / deny-bar drift would actually hide.
-    """
-    target = tmp_path / "integration-target.py"
-    # The file must EXIST with stable content: since PLAN-0094 Step 4, L1 scores
-    # non-progress, and re-writing a file to content it already holds is the (c)
-    # oscillation signal. A payload naming a non-existent path yields no digest
-    # and would score nothing at all, so the ladder would never leave zero.
-    target.write_text("stable\n", encoding="utf-8")
-    file_path = str(target)
-    warn_bar = LOOP_TRIGGER_THRESHOLD  # a .py target is code-class
-
-    # --- Stage 1: reach the warn bar. The crossing edit warns, and ALLOWS. ---
-    # warn_bar + 1 calls, not warn_bar: the FIRST write is forward progress
-    # (a content state not yet seen this turn) and deliberately does not score.
-    for _ in range(warn_bar + 1):
-        rc, out = _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
-        assert rc == 0
-    counter = load_counter(_state(stub_env))
-    assert get_count(counter, LoopType.FILE_EDIT, file_path) == warn_bar
-
-    # The crossing invocation emitted the agent-visible advisory.
-    advisory = json.loads(out)
-    assert advisory["decision"] == "block"
-    warn_body = _capture(stub_env).read_text(encoding="utf-8")
-    assert "stage: warn" in warn_body
-
-    # ...and the gate ALLOWS at the bar. This is the s172 regression, inverted:
-    # the edit that used to be walled here now proceeds.
-    rc, out = _run(PRE_LOOP_HOOK, _write_payload(file_path), stub_env)
-    assert rc == 0
-    assert out.strip() == "", f"gate denied inside the grace zone: {out!r}"
-
-    # --- Stage 2: burn the grace budget. Now it walls. ---
-    for _ in range(L1_GRACE_BUDGET):
-        assert _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)[0] == 0
-    counter = load_counter(_state(stub_env))
-    assert get_count(counter, LoopType.FILE_EDIT, file_path) == warn_bar + L1_GRACE_BUDGET
-
-    rc, out = _run(PRE_LOOP_HOOK, _write_payload(file_path), stub_env)
-    assert rc == 0
-    parsed = json.loads(out)
-    decision = parsed.get("hookSpecificOutput", {}).get("permissionDecision")
-    assert decision == "deny", "L1 at the grace bar must deny on the next PreToolUse"
-    body = _capture(stub_env).read_text(encoding="utf-8")
-    assert "L1" in body
-    assert "integration-target.py" in body
+#
+# PLAN-0102 removed the L1 leg of this section (observer increments on repeated
+# Write, gate denies at the bar). L4 is the surviving end-to-end path: one hook
+# writes the counter, the other reads it and walls.
 
 
 def test_l4_observer_increments_on_failure_then_pretooluse_denies(
@@ -577,127 +515,12 @@ def test_l3_inline_telegram_fires_on_traceback_signature_threshold(
     assert "target:" in body
 
 
-# --- E. Stop turn-boundary reset ↔ observer turn_touched ---
-
-
-def test_l1_counter_survives_when_target_in_turn_touched(
-    stub_env: dict[str, str],
-    tmp_path: Path,
-) -> None:
-    """E2E: observer records turn_touched on Write/Edit; Stop hook then
-    sees the L1 counter's target IS in turn_touched and does NOT reset.
-    """
-    target = tmp_path / "touched-this-turn.py"
-    target.write_text("stable\n", encoding="utf-8")
-    file_path = str(target)
-    # Four observer calls, three of which score (the first is forward progress),
-    # so the surviving count is non-zero — otherwise "0 after the Stop" would be
-    # indistinguishable from a reset having happened, and the test would pass
-    # vacuously against the very bug it exists to catch.
-    for _ in range(4):
-        _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
-    # Fail-closed classifier (no API key) so Stop just runs turn-reset + exits.
-    rc, _ = _run(STOP_HOOK, {"hook_event_name": "Stop"}, stub_env)
-    assert rc == 0
-    counter = load_counter(_state(stub_env))
-    assert (
-        get_count(counter, LoopType.FILE_EDIT, file_path) == 3
-    ), "in-turn target must NOT be reset"
-    # And turn_touched is cleared so the NEXT turn-boundary will reset.
-    assert counter.turn_touched == []
-
-
-def test_turn_boundary_clears_the_turn_scoped_tallies(
-    stub_env: dict[str, str],
-    tmp_path: Path,
-) -> None:
-    """E2E: ``attempted_edits`` / ``content_hashes`` are TURN-scoped (PLAN-0094 D4).
-
-    ``count`` keeps its lifetime across a turn boundary; the tallies must not,
-    or yesterday's ``old_string`` would score as today's repeat. The clearing
-    lives in the Stop hook while the writing lives in the observer, so nothing
-    but a cross-hook test can catch the wiring being absent — which is the
-    'green tests over dead wiring' failure this PLAN exists to avoid.
-    """
-    target = tmp_path / "tallies.py"
-    target.write_text("stable\n", encoding="utf-8")
-    file_path = str(target)
-    for _ in range(2):
-        _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
-
-    key = counter_key(LoopType.FILE_EDIT, file_path)
-    before = load_counter(_state(stub_env))
-    assert before.counters[key].content_hashes, "fixture registered no tally to clear"
-    assert get_count(before, LoopType.FILE_EDIT, file_path) == 1
-
-    rc, _ = _run(STOP_HOOK, {"hook_event_name": "Stop"}, stub_env)
-    assert rc == 0
-
-    after = load_counter(_state(stub_env))
-    assert after.counters[key].content_hashes == {}
-    assert after.counters[key].attempted_edits == {}
-    # ...while the count itself, which is NOT turn-scoped, survives.
-    assert get_count(after, LoopType.FILE_EDIT, file_path) == 1
-
-
-def test_l1_counter_resets_when_target_not_in_turn_touched(
-    stub_env: dict[str, str], tmp_path: Path
-) -> None:
-    """E2E: pre-seed an L1 counter for a file that was NOT touched in
-    the current turn (empty turn_touched). Stop hook resets it to 0.
-    """
-    file_path = str(tmp_path / "stale-file.py")
-    seed = new_counter("s")
-    increment(
-        seed,
-        LoopType.FILE_EDIT,
-        file_path,
-        ActionRecord("2026-05-24", "Edit", file_path),
-    )
-    increment(
-        seed,
-        LoopType.FILE_EDIT,
-        file_path,
-        ActionRecord("2026-05-24", "Edit", file_path),
-    )
-    # turn_touched left empty — last turn ended, this is a fresh turn.
-    save_counter(seed, _state(stub_env))
-
-    rc, _ = _run(STOP_HOOK, {"hook_event_name": "Stop"}, stub_env)
-    assert rc == 0
-    counter = load_counter(_state(stub_env))
-    assert (
-        get_count(counter, LoopType.FILE_EDIT, file_path) == 0
-    ), "untouched-last-turn L1 must reset"
-
-
-def test_stop_hook_active_does_not_reset_l1_counters(
-    stub_env: dict[str, str],
-    tmp_path: Path,
-) -> None:
-    """E2E: re-entry guard short-circuit must not touch state — even
-    counters that would normally be reset (target not in turn_touched)
-    survive when stop_hook_active=True.
-    """
-    file_path = str(tmp_path / "preserved-on-reentry.py")
-    seed = new_counter("s")
-    increment(
-        seed,
-        LoopType.FILE_EDIT,
-        file_path,
-        ActionRecord("2026-05-24", "Edit", file_path),
-    )
-    save_counter(seed, _state(stub_env))
-    rc, _ = _run(
-        STOP_HOOK,
-        {"hook_event_name": "Stop", "stop_hook_active": True},
-        stub_env,
-    )
-    assert rc == 0
-    counter = load_counter(_state(stub_env))
-    assert (
-        get_count(counter, LoopType.FILE_EDIT, file_path) == 1
-    ), "re-entry guard must short-circuit before turn-reset"
+# --- E. RETIRED (PLAN-0102) ---
+#
+# Held four cases wiring the observer's ``turn_touched`` bookkeeping to the Stop
+# hook's turn-boundary L1 reset. Both ends were L1 and both are gone; there is
+# no surviving behaviour here to re-point the tests at, so the section is
+# removed rather than rewritten. Section F below is unchanged.
 
 
 # --- F. Stop ↔ chain depth full cycle ---
