@@ -1,26 +1,30 @@
 #!/usr/bin/env python3
-"""Stop hook — turn-boundary L1 reset + chain-cap fail-safe + auto-handoff
-dispatch (PLAN-0008 Step 4 + PLAN-0009 Step 5c-1).
+"""Stop hook — chain-cap fail-safe + auto-handoff dispatch
+(PLAN-0008 Step 4 + PLAN-0009 Step 5c-1).
 
-Fires on every ``Stop`` event. Three responsibilities:
+Fires on every ``Stop`` event. Two responsibilities:
 
-1. **Turn-boundary reset (priority).** Reads ``turn_touched`` from the
-   loop-counter state file (recorded by Step 3's
-   ``posttooluse_progress_observer.py`` on each Write/Edit) and resets
-   L1 counters whose targets were NOT touched this turn. Implements
-   the "target untouched on the next turn-boundary marker" rule from
-   PLAN §Step 1 / §Step 3. **Closes the 🔴 L1 reset gap** surfaced in
-   the L1/L4 asymmetry ELI-CTO (Cray's iterative STATUS-editing
-   workflow would otherwise false-positive at 6 edits per session).
-2. **Chain-cap fail-safe (PLAN §Step 4).** Tracks consecutive
+**PLAN-0102 removed a third.** This hook used to own both of L1's Stop-side
+reset paths — the turn-boundary reset (``turn_touched`` → clear L1 counters for
+targets untouched this turn) and the acknowledged-pause exit (PLAN-0094 D5).
+Both retired with L1 itself, and they had to go **together**: the excision that
+deleted ``reset_l1_for_targets`` while leaving the acknowledged-pause exit
+importing it would have raised ``ImportError`` at module load — before any arm
+below runs, and caught by no ``try``/``except`` — taking the chain-cap
+fail-safe, the classifier and the auto-handoff down with it. That is why the
+retirement is asserted behaviourally (PLAN-0102 AC-11 a) rather than by
+inspection, and why this hook now imports exactly one name from
+``_loop_counter``.
+
+1. **Chain-cap fail-safe (PLAN §Step 4).** Tracks consecutive
    ``proceed`` decisions in ``.claude/state/stop-chain.json``
    against ``$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`` (default 8). On cap-hit:
    emits no block (lets the stop fire), pings Telegram with
    ``"cap reached"`` per OQ-E option (b), and resets the chain.
    Re-entry guarded by the harness ``stop_hook_active`` flag.
-   (``dispatch`` no longer counts toward the cap — see 3; the goal-gate
+   (``dispatch`` no longer counts toward the cap — see 2; the goal-gate
    V1 directive still does.)
-3. **Dispatch suggestion (PLAN-0009 Step 5c-1, DEMOTED by PLAN-0092).**
+2. **Dispatch suggestion (PLAN-0009 Step 5c-1, DEMOTED by PLAN-0092).**
    When the classifier returns ``decision == "dispatch"`` (governance-
    drafting need matching a D-row in the registry), the hook emits
    **nothing**: the stop fires with pause semantics (chain **reset**) and
@@ -43,8 +47,11 @@ demotes a bad dispatch to ``pause`` before returning).
 
 State file paths and Telegram script honor the env-var overrides
 shared with Step 2/3 for testability
-(``CLAUDE_LOOP_COUNTER_PATH``, ``CLAUDE_TELEGRAM_SCRIPT``,
-``CLAUDE_STOP_CHAIN_PATH``, ``CLAUDE_CODE_STOP_HOOK_BLOCK_CAP``).
+(``CLAUDE_TELEGRAM_SCRIPT``, ``CLAUDE_STOP_CHAIN_PATH``,
+``CLAUDE_CODE_STOP_HOOK_BLOCK_CAP``). ``CLAUDE_LOOP_COUNTER_PATH`` is
+deliberately NOT in that list any more: this hook stopped touching the loop
+counter with PLAN-0102, so honoring the override would be a claim it cannot
+back.
 """
 
 from __future__ import annotations
@@ -63,18 +70,10 @@ HOOKS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = HOOKS_DIR.parent.parent
 sys.path.insert(0, str(HOOKS_DIR))
 
-from _loop_counter import (  # noqa: E402  — sys.path manipulation above
-    DEFAULT_COUNTER_PATH,
-    STATE_DIR,
-    clear_turn_scoped,
-    clear_turn_touched,
-    load_counter,
-    main_session_id,
-    reset_l1_for_targets,
-    reset_untouched_l1,
-    save_counter,
-    take_awaiting_ack,
-)
+# ``STATE_DIR`` only — this hook no longer reads or writes the loop counter at
+# all (PLAN-0102 retired both of its L1 subsystems). It borrows the constant
+# solely to locate its OWN state file, ``stop-chain.json``, in the same dir.
+from _loop_counter import STATE_DIR  # noqa: E402  — sys.path manipulation above
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
@@ -83,11 +82,6 @@ DEFAULT_CAP = 8
 TELEGRAM_TIMEOUT_SEC = 5
 
 _FORWARDED_ENV = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
-
-
-def _state_path() -> Path:
-    override = os.environ.get("CLAUDE_LOOP_COUNTER_PATH")
-    return Path(override) if override else DEFAULT_COUNTER_PATH
 
 
 def _chain_path() -> Path:
@@ -220,66 +214,6 @@ def _ping_telegram(message: dict[str, Any]) -> None:
         )
     except (subprocess.TimeoutExpired, OSError):
         pass
-
-
-def _apply_turn_boundary_reset(payload: dict[str, Any] | None = None) -> list[str]:
-    """Read state, reset untouched L1 counters, clear turn_touched.
-
-    Returns the list of L1 targets that were reset (informational —
-    Step 4 does not fire Telegram for reset events; they are by
-    definition healthy progress signals).
-
-    ``payload`` supplies the hook's ``session_id`` so a state file left by a
-    previous session is re-minted rather than inherited; omitting it keeps
-    the load session-blind (age-out still applies).
-    """
-    counter = load_counter(_state_path(), session_id=main_session_id(payload or {}))
-    reset_targets = reset_untouched_l1(counter)
-    clear_turn_touched(counter)
-    # PLAN-0094 D4 — ``attempted_edits`` / ``content_hashes`` are TURN-scoped,
-    # unlike ``count`` which keeps its lifetime. Without this the tallies would
-    # accumulate across turns and yesterday's ``old_string`` would score as
-    # today's repeat: non-progress is only meaningful within one push at a
-    # problem. Sits beside ``clear_turn_touched`` because they share one
-    # definition of "the turn ended".
-    clear_turn_scoped(counter)
-    save_counter(counter, _state_path())
-    return reset_targets
-
-
-def _apply_ack_clear(payload: dict[str, Any] | None = None) -> list[str]:
-    """Grant the acknowledged-pause exit for every armed target (PLAN-0094 D5).
-
-    Called ONLY from paths where the stop actually fires — the turn ends and
-    Cray regains the prompt. The paths that hand the agent back to its own loop
-    (a substantive classifier ``proceed``, a goal-gate directive, the re-entry
-    early return) deliberately do NOT call this: clearing there would let the
-    machinery unlock itself, which is the whole property P3 exists to provide.
-
-    This deliberately **overrides the sticky turn-boundary rule**. The
-    always-on reset above spares any target touched this turn, so a denied file
-    the agent kept editing survived its own pause and recovery cost two turns —
-    the exact shape recorded in the s169 / s170 incidents. For a target Cray has
-    already been pinged about, one turn is the point.
-
-    Errors are swallowed for the same reason the reset above swallows them: a
-    Stop hook must not become a new way for the turn to fail.
-    """
-    counter = load_counter(_state_path(), session_id=main_session_id(payload or {}))
-    targets = take_awaiting_ack(counter)
-    if not targets:
-        return []
-    cleared = reset_l1_for_targets(counter, targets)
-    save_counter(counter, _state_path())
-    return cleared
-
-
-def _ack_clear_guarded(payload: dict[str, Any] | None = None) -> None:
-    """:func:`_apply_ack_clear` with the observer's never-block posture."""
-    try:
-        _apply_ack_clear(payload)
-    except Exception as exc:  # a Stop hook must not fail the turn
-        print(f"stop_continuation: awaiting_ack clear failed: {exc}", file=sys.stderr)
 
 
 def _classify(payload: dict[str, Any]) -> dict[str, Any]:
@@ -578,20 +512,16 @@ def main() -> int:
     if payload.get("stop_hook_active") is True:
         return 0
 
-    # Always run the turn-boundary reset first — it is independent of the
-    # chain-cap / classifier flow and is the load-bearing Step 4 benefit.
-    try:
-        _apply_turn_boundary_reset(payload)
-    except Exception as exc:  # observer must not block on internal errors
-        print(f"stop_continuation: turn-boundary reset failed: {exc}", file=sys.stderr)
-
+    # An L1 turn-boundary reset used to run here, ahead of everything else.
+    # PLAN-0102 retired it with L1; the chain-cap is now the first arm, and it
+    # touches no loop-counter state at all.
+    #
     # Chain-cap fail-safe (OQ-E option b).
     cap = _cap()
     chain = _load_chain()
     if chain["depth"] >= cap:
         _ping_telegram(_cap_reached_payload(chain["depth"], cap))
         _reset_chain()
-        _ack_clear_guarded(payload)  # PLAN-0094 D5 — this stop fires
         return 0  # do not block; let Cray see the stop event
 
     # Goal gate (PLAN-0021 / ADR-0018 D4) — after chain-cap, before the
@@ -623,10 +553,7 @@ def main() -> int:
                 file=sys.stderr,
             )
             _reset_chain()
-            _ack_clear_guarded(payload)  # PLAN-0094 D5 — a demotion IS a fired stop
             return 0
-        # NO ack clear here: a substantive proceed hands the agent back to its
-        # own loop without Cray ever seeing the turn end.
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
@@ -651,7 +578,6 @@ def main() -> int:
         dispatch_meta = decision.get("dispatch")
         if not isinstance(dispatch_meta, dict):
             _reset_chain()
-            _ack_clear_guarded(payload)  # PLAN-0094 D5 — silent demotion still fires
             return 0
         matched_rows_raw = decision.get("matched_rows") or []
         matched_rows = [str(r) for r in matched_rows_raw if isinstance(matched_rows_raw, list)]
@@ -663,13 +589,11 @@ def main() -> int:
             )
         )
         _reset_chain()
-        _ack_clear_guarded(payload)  # PLAN-0094 D5 — a suggestion lets the stop fire
         return 0
 
     # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
     # chain so the next session starts fresh.
     _reset_chain()
-    _ack_clear_guarded(payload)  # PLAN-0094 D5 — the canonical fired stop
     return 0
 
 

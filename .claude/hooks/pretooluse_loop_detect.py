@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
-"""PreToolUse hook — gate on L1/L4 loop-detect counters (PLAN-0008 Step 2).
+"""PreToolUse hook — gate on the L4 loop-detect counter (PLAN-0008 Step 2).
 
-Reads ``.claude/state/loop-counter.json`` via the Step 1 module; for
-``Write``/``Edit`` checks the **L1** counter (same file edited repeatedly);
-for ``Bash`` checks the **L4** counter (same tokenized command pattern failed
->= 6 times — counter is incremented in Step 3 on non-zero exit). When the bar
-trips, fires ``tools/notify/telegram.sh`` with the payload contract
+Reads ``.claude/state/loop-counter.json`` via the Step 1 module and checks the
+**L4** counter for ``Bash`` (same tokenized command pattern failed >= 6 times —
+the counter is incremented in Step 3 on non-zero exit). When the bar trips,
+fires ``tools/notify/telegram.sh`` with the payload contract
 ``{loop_type, target, last_6_actions}`` and emits a ``deny`` decision asking
 Cray to intervene.
 
-**L1 is warn-first since PLAN-0094 P2.** Its path-class threshold
-(``l1_threshold_for`` — 6 code / 15 doc) is now the WARN bar, owned by the
-observer, which pings and hands the agent an advisory but ALLOWS the edit.
-This hook's deny bar is ``l1_deny_threshold_for`` = that threshold plus
-``L1_GRACE_BUDGET`` (3, Cray-ratified OQ-1) — so 9 / 18. **L4 is unchanged**
-and still denies at the flat 6: its unit is already failure-based, so unlike
-L1 it has no false-fire series to grant grace for.
+**L1 (same file edited repeatedly) was RETIRED by PLAN-0102.** Across its entire
+live history it recorded zero true positives while hard-walling legitimate
+construction sequences, so ``Write``/``Edit`` no longer map to any loop type
+here and the harness no longer registers this hook for those tools at all.
+Retiring it also narrows the implementation back to what ADR-013 E.4 actually
+ratified — "the same **problem**", which is what L2/L3/L4 key on; L1 keyed on
+the same **file**. **L4 is unchanged** and still denies at the flat 6: its unit
+is already failure-based, so it never had a false-fire series to grant grace for.
 
 **L2** (test_fail) and **L3** (error_signature) are inherently
 PostToolUse-fed and fire from Step 3 directly — they are NOT enforced
 here because a PreToolUse hook cannot predict pytest nodeids or error
 signatures from the pending tool call.
 
-Step 2 was **read-only** against the state file until PLAN-0094 Step 5 (P3),
-which makes it a **narrow writer**: on the L1 deny branch only, it arms
-``awaiting_ack`` for the denied target so a ``Stop`` that actually fires can
-grant a deterministic, human-in-the-loop exit. Nothing else here writes, and a
-lost write self-heals — the deny re-fires on the next attempt and re-arms.
-``posttooluse_progress_observer.py`` remains the general writer.
+This hook is **read-only** against the state file;
+``posttooluse_progress_observer.py`` is the writer. (It was briefly a narrow
+writer, for L1's acknowledged-pause arm — PLAN-0094 P3 — which retired with L1.)
 
 Bypass-immunity: the hook reads its own process env for
 ``CLAUDE_LOOP_COUNTER_PATH`` / ``CLAUDE_TELEGRAM_SCRIPT`` overrides,
@@ -56,13 +53,8 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     LoopType,
     counter_key,
     has_triggered,
-    l1_deny_threshold_for,
-    l1_threshold_for,
     load_counter,
     main_session_id,
-    normalize_file_path,
-    record_awaiting_ack,
-    save_counter,
     tokenize_bash_command,
 )
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
@@ -173,39 +165,34 @@ def _deny_decision(
     target: str,
     count: int,
     threshold: int = LOOP_TRIGGER_THRESHOLD,
-    warn_threshold: int | None = None,
 ) -> dict[str, Any]:
     """Build the PreToolUse deny payload.
 
-    PLAN-0094 P2 rewrote this message wholesale. Two things it must not do, both
-    learned the hard way: it must not describe the reset paths in terms of the
-    ``Agent`` tool returning (that path was dead code for seven weeks while three
-    documents advertised it live — the F3c finding), and it must not name an exit
-    that has not shipped (the P3 stop-ack is Step 5's; naming it here would
-    recreate the very defect AC-3 closes).
+    **The standing rule this message is written under (PLAN-0094 P2, kept):
+    it may name only reset paths that actually exist.** The rule was written
+    after a message described the reset in terms of the ``Agent`` tool
+    returning — a path that had been dead code for seven weeks while three
+    documents advertised it live (the F3c finding). That phrase must not
+    reappear anywhere in this file, **including in a comment**, which is why it
+    is described here rather than quoted.
 
-    The AC-3 grep oracle keys on the old message's anchor phrase — the clause
-    that attributed the reset to a subagent's edits landing when the Agent tool
-    returned. That phrase must not reappear anywhere in this file, **including
-    in a comment**, which is why it is described here rather than quoted. The
-    oracle found exactly that mistake in an earlier draft of this docstring.
+    **PLAN-0102 applied that same rule to this message rather than preserving
+    it verbatim.** Only L4 reaches here now, and the reset paths the message
+    used to list — an untouched turn boundary, a ``git commit`` containing the
+    target, a subagent's own ``SubagentStop`` — were all **L1** paths, every one
+    of them deleted with L1. Shipping them on an L4 deny would have told the
+    agent to do three things that cannot clear its counter: precisely the defect
+    the rule above exists to prevent, pointed the other way. L4's real reset is
+    the one named below — :func:`_apply_l4` increments on a failing exit and
+    resets on a successful one.
     """
-    if warn_threshold is not None and warn_threshold < threshold:
-        stage = (
-            f"You were already warned at {warn_threshold} and had "
-            f"{threshold - warn_threshold} more edits of grace; this is the wall. "
-        )
-    else:
-        stage = ""
     reason = (
         f"Loop-detect ({loop_type.value}) DENIED: same target `{target}` "
-        f"hit {count} times (deny threshold = {threshold}, Cray E.4). {stage}"
+        f"hit {count} times (deny threshold = {threshold}, Cray E.4). "
         f"Last 6 actions captured in the Telegram payload. "
-        f"The counter clears when any of these actually happen: a turn boundary "
-        f"that does NOT touch this target (touching it again keeps the count "
-        f"alive), a git commit containing it, or — for edits a SUBAGENT made — "
-        f"that subagent's own SubagentStop, which clears only the targets it "
-        f"edited itself. Spawning a subagent does NOT clear edits YOU made. "
+        f"The counter clears when this command pattern actually SUCCEEDS — a "
+        f"non-zero exit is what increments it and a clean run resets it, so "
+        f"retrying the same failing command cannot clear it. "
         f"Pause and reassess the approach with Cray before retrying — see "
         f".claude/autonomy-triggers.md row {loop_type.value}."
     )
@@ -224,15 +211,13 @@ def _resolve_target(tool_name: str, tool_input: dict[str, Any]) -> tuple[LoopTyp
     Returns ``None`` for tools / payloads that do not map to a
     PreToolUse-enforceable loop type (L2 / L3 are PostToolUse-fed,
     Read / Glob / Grep / Task / etc. are not gated here).
+
+    ``Bash`` is now the ONLY mapping. PLAN-0102 removed the ``Write``/``Edit``
+    -> ``FILE_EDIT`` branch with the rest of L1; the harness also stopped
+    registering this hook for those tools, so a Write/Edit payload should never
+    reach here at all — this function returning ``None`` for them is the second
+    of the two independent guarantees, not the only one.
     """
-    if tool_name in ("Write", "Edit"):
-        file_path = tool_input.get("file_path")
-        if not isinstance(file_path, str):
-            return None
-        target = normalize_file_path(file_path)
-        if not target:
-            return None
-        return (LoopType.FILE_EDIT, target)
     if tool_name == "Bash":
         command = tool_input.get("command")
         if not isinstance(command, str):
@@ -261,16 +246,12 @@ def main() -> int:
 
     loop_type, target = match
     counter = load_counter(_state_path(), session_id=main_session_id(payload))
-    # PLAN-0094 P2: for L1 the DENY bar is the warn bar plus the grace budget --
-    # the observer owns the warn at ``l1_threshold_for``, this hook owns the wall
-    # at ``l1_deny_threshold_for``. L4 keeps the flat base threshold: its unit is
-    # already failure-based, so it has no false-fire series to grant grace for.
-    if loop_type is LoopType.FILE_EDIT:
-        warn_threshold: int | None = l1_threshold_for(target)
-        threshold = l1_deny_threshold_for(target)
-    else:
-        warn_threshold = None
-        threshold = LOOP_TRIGGER_THRESHOLD
+    # L4 keeps the flat base threshold: its unit is already failure-based, so it
+    # has no false-fire series to grant grace for. The path-class + grace-budget
+    # branch that used to stand here was L1's alone (PLAN-0094 P2), and retired
+    # with it in PLAN-0102 — as did the acknowledged-pause arm that made this
+    # hook a narrow writer, which is why nothing below saves state any more.
+    threshold = LOOP_TRIGGER_THRESHOLD
     if not has_triggered(counter, loop_type, target, threshold):
         return 0
 
@@ -279,23 +260,11 @@ def main() -> int:
     if entry is None:  # defensive — has_triggered True implies entry exists
         return 0
 
-    # PLAN-0094 D5: arm the acknowledged-pause exit, L1 ONLY. L4 keeps the flat
-    # threshold and has no false-fire series, so granting it this reset path
-    # would hand a failing-command loop an exit the PLAN never priced. Wrapped
-    # because the deny is the load-bearing behavior: a state-write failure must
-    # never swallow the wall.
-    if loop_type is LoopType.FILE_EDIT:
-        try:
-            record_awaiting_ack(counter, target)
-            save_counter(counter, _state_path())
-        except OSError as exc:
-            print(f"pretooluse_loop_detect: could not arm awaiting_ack: {exc}", file=sys.stderr)
-
     last_6 = [a.to_json() for a in entry.last_6_actions]
-    # ``threshold`` here is already the bar this branch applied — the L1 deny bar
-    # (T + G) or L4's flat base — so AC-11's line names the wall that just fell.
+    # ``threshold`` is the bar this branch applied, so AC-11's count line names
+    # the wall that just fell.
     _ping_telegram(loop_type, target, last_6, entry.count, threshold)
-    print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold, warn_threshold)))
+    print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold)))
     return 0
 
 

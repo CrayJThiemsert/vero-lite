@@ -15,7 +15,8 @@
 > **What is *deterministic* vs *classifier-mediated*.** The rows below are
 > enforced deterministically by hooks; they are listed here for the
 > classifier's belt-and-suspenders awareness but the hook is the hard
-> guarantee. The Phase-2 loop-detect (L1–L4) and the classifier-mediated
+> guarantee. The Phase-2 loop-detect (L2–L4; **L1 RETIRED 2026-08-08 by
+> PLAN-0102** — see the box in that section) and the classifier-mediated
 > governance rows became live in PLAN-0008 Wave 1 + Step 5 + Wave 2:
 >
 > - `git commit / push / merge` from non-Code session — enforced by
@@ -110,26 +111,14 @@ the matching event type fires) or surface via handoff, and wait.
 
 Stateful loop-detection is live via the `.claude/state/loop-counter.json`
 file (gitignored), the PreToolUse gate
-(`pretooluse_loop_detect.py`), the PostToolUse writer
-(`posttooluse_progress_observer.py`), and the `Stop`-hook L1
-turn-boundary reset (`stop_continuation.py`). Base threshold ≥ 6 attempts
-per `(loop_type, target)`; on trigger the Telegram payload contract is
-`{loop_type, target, last_6_actions}` per ADR-013 / Cray E.4.
-
-**L1 path-class threshold (Cray E.4 refinement, 2026-06-08).** L1 (file
-edits) uses a path-class threshold via `_loop_counter.l1_threshold_for`:
-**6 for code paths** (the `edit → test → fail → edit` thrash the guard
-targets) and **15 for prose / doc paths** (`*.md` anywhere or under
-`docs/`). Multi-section governance authoring (PLAN / ADR / STATUS / lessons
-/ handoffs) legitimately makes many small sequential edits to ONE file in a
-turn — that is the work, not a loop — and has no test/build feedback loop to
-drive a directionless one; L2/L3/L4 cover the code feedback loop more
-directly. The doc bar is raised but **finite**, so a genuinely stuck doc
-loop still trips. Cray-approved self-modification (per-diff) on 2026-06-08.
+(`pretooluse_loop_detect.py`) and the PostToolUse writer
+(`posttooluse_progress_observer.py`), both registered for **`Bash` only**.
+Threshold ≥ 6 attempts per `(loop_type, target)`; on trigger the Telegram
+payload contract is `{loop_type, target, last_6_actions}` per ADR-013 /
+Cray E.4.
 
 | # | Trigger (same `(tool, target)` ≥ 6 attempts in one session) | Phase 1 | Phase 2 |
 |---|--------------------------------------------------------------|---------|---------|
-| L1 | Same file edited ≥ threshold times in one turn — **path-class threshold** (6 code / 15 prose-doc; see note above) | Manual observation only | **Live** — `pretooluse_loop_detect.py` (gate, `l1_threshold_for`) + `posttooluse_progress_observer.py` (writer + **subagent-completion reset**, live on `SubagentStop` since PLAN-0094; **dead from wiring 2026-06-08 → 2026-07-25**) + `stop_continuation.py` (turn-boundary reset) |
 | L2 | Same test fails ≥ 6 times consecutively | Manual | **Live** — `posttooluse_progress_observer.py` (inline Telegram fire on trigger) |
 | L3 | Same error signature ≥ 6 times | Manual | **Live** — `posttooluse_progress_observer.py` (inline fire; auto-reset deferred — see PLAN-0008 §Step 8) |
 | L4 | Same Bash command pattern fails ≥ 6 times | Manual | **Live** — `pretooluse_loop_detect.py` (gate) + `posttooluse_progress_observer.py` (writer) |
@@ -137,32 +126,46 @@ loop still trips. Cray-approved self-modification (per-diff) on 2026-06-08.
 **Payload contract (Phase 2):** when a loop trigger fires, the Telegram
 ping carries `{loop_type, target, last_6_actions}`. State storage:
 `.claude/state/loop-counter.json` (gitignored — see `.gitignore`).
-**L1 reset on observable progress** happens at any of: (a) a `Stop`
-turn boundary where the target was NOT touched that turn
-(`stop_continuation.reset_untouched_l1`); (b) a successful `git commit`
-of the file (`posttooluse_progress_observer._apply_commit_reset`); or
-(c) a **`SubagentStop`** event — the completing subagent's **own** recorded
-edits reset, so a drafter subagent's edits do not pre-spend the main agent's
-budget (`_handle_subagent_stop`). L2 resets on a passing nodeid; L4 on a
-successful command. Loop-type taxonomy above is Cowork-scoped; Code refines
-in Phase 2.
+**Reset on observable progress:** L2 resets on a passing nodeid; L4 on a
+successful run of the same command pattern; L3's auto-reset is deferred.
 
-> **⚠️ Correction (PLAN-0094, 2026-07-25) — path (c) was DEAD FROM WIRING for
-> seven weeks.** As shipped 2026-06-08 it read "a subagent (`Agent`/`Task`) tool
-> completing — its edits reset the **turn's** touched-file L1 counters
-> (`_handle_agent_completion`)". Neither half survived verification. **(1) It
-> could never fire:** the handler was gated on `tool_name in ("Task","Agent")`
-> while `settings.json` registered `PostToolUse` for `Write|Edit` and `Bash`
-> only, so no payload could reach it — its tests passed on synthetic payloads
-> with nothing pinning the registration. Session 172 followed this row's "Live"
-> claim into a dead end. **(2) Turn scope was the wrong scope anyway:** clearing
-> `turn_touched` would have let the main agent launder its own exhausted budget
-> through any zero-edit spawn. The reset is now keyed **per `agent_id`**, so it
-> clears only that subagent's targets and two parallel subagents cannot clear
-> each other's (Cray-ratified divergence from Lesson #0021 §3, 2026-07-25).
-> The registration itself is now pinned as data by
-> `tests/handoffs/test_settings_hook_wiring.py` — a handler with no route to it
-> can no longer pass.
+> **⚠️ L1 was RETIRED on 2026-08-08 (PLAN-0102, Cray-ruled 2026-08-04).**
+> Its row read "same file edited ≥ threshold times in one turn", with a
+> path-class bar of 6 code / 15 prose-doc plus a grace budget of 3, a
+> turn-boundary reset, a commit reset and a `SubagentStop` reset. **All of it
+> is gone**, along with the three harness registrations that existed only to
+> serve it (PreToolUse `Write|Edit`, PostToolUse `Write|Edit`, SubagentStop
+> `*`). Both directions are now pinned as data by
+> `tests/handoffs/test_settings_hook_wiring.py`.
+>
+> **Why, in one line:** L1 keyed on the same **file**; ADR-013 E.4 ratified
+> "the same **problem**", which is what L2/L3/L4 key on — so retiring it moves
+> the implementation *toward* the Accepted ADR, not away from it.
+>
+> **The evidence.** Across L1's entire live history: **zero true positives.**
+> The pre-AC-7 window measured **≥ 56 denies** over 4,201 Write/Edit operations
+> — about **1.33 % of every edit hard-walled** — each against a target under
+> sustained legitimate construction that shipped. The post-AC-7 window recorded
+> 0 denies and 0 organic warns over 1,369 operations. Method, including the
+> positive control that re-found a known baseline 3/3, is in
+> [`docs/lessons/0035-negative-measurement-needs-a-positive-control.md`](../docs/lessons/0035-negative-measurement-needs-a-positive-control.md).
+>
+> **No ADR amendment, and that is deliberate:** E.4 never named L1, files or
+> edit-counting, and `0013:333-336` delegated stateful loop-detection to PLANs.
+> L1 had **zero ADR backing**, so an amendment would have *created* the
+> ratification it never had. PLAN-0102 is the governance record — the same
+> shape as PLAN-0092's demotion (recorded in this file's footer).
+>
+> **The transferable lesson from its history, which outlives the guard:** the
+> `SubagentStop` reset shipped 2026-06-08 with a handler, green tests, and **no
+> event registration that could ever invoke it** — gated on
+> `tool_name in ("Task","Agent")` while `settings.json` registered `PostToolUse`
+> for `Write|Edit` and `Bash` only. It stayed dead for seven weeks while three
+> documents called it live, and session 172 followed that claim into a dead end.
+> Its tests passed the whole time, on synthetic payloads, with nothing pinning
+> the route. **A handler with no route to it must not be able to pass** — which
+> is why the registrations are pinned as data, and why that pin survived the
+> retirement pointing the other way.
 
 ## Auto-handoff triggers (Phase 3 — DEMOTED TO SUGGESTION per PLAN-0092, 2026-07-23)
 
@@ -333,4 +336,4 @@ Telegram + the verdict trail are the channel of record.
 
 ---
 
-*Last updated: 2026-07-23 (Session 167 — PLAN-0092 (option A′, Cray-ratified): the Stop-side `dispatch` verdict DEMOTED from an order to a suggestion. Annotated the **Auto-handoff triggers** section header + intro (the hook now emits no directive; the routing goes to Cray as a `stop_dispatch_suggestion` Telegram ping; the stop fires with the chain RESET), the **Override clause** (retained but largely moot — nothing to override when nothing is ordered), the **Chain-cap interaction** paragraph (a dispatch now resets the chain like a pause, no longer counts toward the cap; the V1 goal-gate directive still does), and the **Stop-side dispatch decisions** bullet (only the hook's interpretation changed — the classifier is byte-unchanged and still returns `dispatch`). **D1/D2 rows retained** — they still document when a suggestion fires. Evidence: 14 recorded misfires / 0 recorded valid fires across ~2 months live, in four shapes spanning two failure families (knowledge: the classifier sees neither disk nor in-flight state — no model upgrade fixes it; judgment: mention-as-intent, a prompt-rule race lost since PLAN-0034). No ADR amendment — the arm's order-emitting behavior had zero ADR backing; PLAN-0092 is the governance record. Drafted by `plan-drafter` (ADR-009 D1), Code R2 + commits (D2). Previous: 2026-06-21 (Session 72 — PLAN-0034 Step 5 / SD-3 = (a) PLAN-only: annotated the **Auto-handoff triggers** §(NOTE) + the **PreToolUse classifier dispatch** bullet to record the prong-2 scope refinement — `pretooluse_classifier_dispatch.py` short-circuits on the G5 `agent_id`/`agent_type` signal so a `plan-drafter` subagent's uncommitted draft-write of a fresh `docs/(adr|plans)/NNNN-*.md` is exempt from the project-level classifier arm (governed by H2 `pretooluse_plan_subagent_write_deny.py` + G5 + PR review), while the main-agent write stays G2-gated. Annotation only — no new row, no row-count change; G5 / ADR-009 D2 / ADR-013 D2 untouched. Impl shipped #397 / `c69b6e2`; cross-link PLAN-0034. Cowork-drafted (ADR-009 D1), Code commits (D2). Previous: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-08-08 (Session 217 — PLAN-0102 (Cray-ruled 2026-08-04, typed): **L1 RETIRED**. Removed the L1 row from the loop-detect table, rewrote the section intro and the reset-paths paragraph to L2/L3/L4-only, dropped the path-class note (6 code / 15 prose-doc) and the PLAN-0094 subagent-reset correction box, and replaced them with one dated retirement box that keeps the evidence and the transferable lesson. Evidence: **zero true positives across L1's entire live history**, against **≥ 56 denies over 4,201 Write/Edit ops pre-AC-7 (~1.33 % of every edit hard-walled)** and 0 denies / 0 organic warns over 1,369 ops post-AC-7; method + positive control in `docs/lessons/0035-negative-measurement-needs-a-positive-control.md`. Rationale: L1 keyed on the same **file** while ADR-013 E.4 ratified the same **problem**, which is what L2/L3/L4 key on — so the retirement moves the implementation toward the Accepted ADR. **No ADR amendment**: E.4 never named L1 and `0013:333-336` delegated stateful loop-detection to PLANs, so L1 had zero ADR backing and an amendment would have created the ratification it never had; PLAN-0102 is the governance record, exactly the PLAN-0092 shape below. Also eliminated the three harness registrations that existed only for L1 (PreToolUse `Write|Edit`, PostToolUse `Write|Edit`, SubagentStop `*`), both directions pinned as data by `tests/handoffs/test_settings_hook_wiring.py`. Drafted by `plan-drafter` (ADR-009 D1), Code executes + commits (D2). Previous: 2026-07-23 (Session 167 — PLAN-0092 (option A′, Cray-ratified): the Stop-side `dispatch` verdict DEMOTED from an order to a suggestion. Annotated the **Auto-handoff triggers** section header + intro (the hook now emits no directive; the routing goes to Cray as a `stop_dispatch_suggestion` Telegram ping; the stop fires with the chain RESET), the **Override clause** (retained but largely moot — nothing to override when nothing is ordered), the **Chain-cap interaction** paragraph (a dispatch now resets the chain like a pause, no longer counts toward the cap; the V1 goal-gate directive still does), and the **Stop-side dispatch decisions** bullet (only the hook's interpretation changed — the classifier is byte-unchanged and still returns `dispatch`). **D1/D2 rows retained** — they still document when a suggestion fires. Evidence: 14 recorded misfires / 0 recorded valid fires across ~2 months live, in four shapes spanning two failure families (knowledge: the classifier sees neither disk nor in-flight state — no model upgrade fixes it; judgment: mention-as-intent, a prompt-rule race lost since PLAN-0034). No ADR amendment — the arm's order-emitting behavior had zero ADR backing; PLAN-0092 is the governance record. Drafted by `plan-drafter` (ADR-009 D1), Code R2 + commits (D2). Previous: 2026-06-21 (Session 72 — PLAN-0034 Step 5 / SD-3 = (a) PLAN-only: annotated the **Auto-handoff triggers** §(NOTE) + the **PreToolUse classifier dispatch** bullet to record the prong-2 scope refinement — `pretooluse_classifier_dispatch.py` short-circuits on the G5 `agent_id`/`agent_type` signal so a `plan-drafter` subagent's uncommitted draft-write of a fresh `docs/(adr|plans)/NNNN-*.md` is exempt from the project-level classifier arm (governed by H2 `pretooluse_plan_subagent_write_deny.py` + G5 + PR review), while the main-agent write stays G2-gated. Annotation only — no new row, no row-count change; G5 / ADR-009 D2 / ADR-013 D2 untouched. Impl shipped #397 / `c69b6e2`; cross-link PLAN-0034. Cowork-drafted (ADR-009 D1), Code commits (D2). Previous: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*

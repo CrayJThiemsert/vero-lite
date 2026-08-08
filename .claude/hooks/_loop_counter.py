@@ -26,10 +26,11 @@ Schema::
 Loop types map 1:1 to the L1-L4 rows in ``.claude/autonomy-triggers.md``
 (Cray E.4 / ADR-013):
 
-- L1 — same file edited repeatedly. **Warn-first since PLAN-0094 P2:** the
-  path-class bar (:func:`l1_threshold_for` — 6 code / 15 doc) now WARNS and
-  allows; the deny moves out to :func:`l1_deny_threshold_for`
-  (+ :data:`L1_GRACE_BUDGET`). ``warned_at`` dedupes the warn to once per entry.
+- L1 — same file edited repeatedly. **RETIRED by PLAN-0102**, and no
+  :class:`LoopType` member remains for it. It keyed on the same *file*; the
+  three below key on the same *problem*, which is what ADR-013 E.4 actually
+  ratified. Across its entire live history it recorded zero true positives
+  while hard-walling legitimate construction sequences.
 - L2 — same test fails >= 6 times consecutively
 - L3 — same error signature seen >= 6 times
 - L4 — same bash command pattern fails >= 6 times
@@ -88,36 +89,14 @@ DEFAULT_COUNTER_PATH = STATE_DIR / "loop-counter.json"
 LOOP_TRIGGER_THRESHOLD = 6  # Cray E.4 — >= 6 attempts triggers pause + Telegram (code-path base)
 MAX_RECENT_ACTIONS = 6  # last_6_actions ring-buffer size
 
-# Cap on distinct content digests remembered per target per turn (PLAN-0094
-# D4 c). Bounds the state file: without it, a long forward-only editing turn
-# would append one digest per edit forever. 32 is well above any plausible
-# single-turn edit count for one file (the doc WARN bar is 15), so the cap
-# cannot silently truncate a live oscillation signal -- it only bounds the
-# pathological case. Eviction is oldest-first (dict insertion order).
-MAX_CONTENT_HASHES = 32
-
-# L1 path-class threshold (Cray E.4 refinement, 2026-06-08). Prose / docs
-# authoring (markdown, ``docs/``) legitimately needs many small sequential edits
-# to ONE file within a single turn — multi-section PLAN / ADR / STATUS / lessons
-# authoring is the WORK, not a directionless loop. So doc targets get a higher
-# bar than the code-path base, kept FINITE so a genuinely stuck doc-edit loop
-# still trips. Code paths keep the base 6: the edit -> test -> fail -> edit
-# thrash the guard targets does not exist for prose, and L2/L3/L4 (test-fail /
-# error-signature / bash-pattern) cover the code feedback loop more directly.
-# See docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md + ADR-013 / Cray E.4.
-L1_DOC_THRESHOLD = 15
-
-# L1 grace budget (PLAN-0094 P2 / OQ-1 — Cray-ratified `G = 3`, 2026-07-25).
-# The path-class threshold T is now the WARN bar, not the deny bar: crossing it
-# pings Telegram and hands the agent an advisory reason, but allows the edit.
-# The deny wall moves to T + G. Rationale for warn-first: ADR-013 row E.4's
-# stated consequence was "pause + Telegram alert" all along, so the hard
-# first-trip deny exceeded its own mandate — this moves L1 back TOWARD the
-# Accepted ADR rather than away from it. `G` prices how much rope a
-# false-positive costs before it walls, which is why it was Cray's call.
-# NOTE: this widens only L1. L4's deny bar is untouched (its unit is already
-# failure-based and it has no recorded false-fire series).
-L1_GRACE_BUDGET = 3
+# PLAN-0102 removed three L1 tuning constants that stood here —
+# ``MAX_CONTENT_HASHES`` (the per-turn oscillation-digest cap),
+# ``L1_DOC_THRESHOLD`` (the 15-edit prose bar) and ``L1_GRACE_BUDGET`` (the
+# Cray-ratified G = 3 rope between warn and wall). All three tuned a guard that
+# no longer exists. They are named here rather than merely deleted because each
+# was a Cray-ratified number, and a future reader finding the L1 history in
+# ``docs/lessons/0021-*`` should be able to tell that the values were retired
+# WITH the guard rather than lost.
 
 # Age-out window for counter entries (2026-07-25, Cray-approved per-diff).
 # An entry whose ``last_updated`` is older than this is dropped on load.
@@ -136,13 +115,20 @@ COUNTER_MAX_AGE_HOURS = 6.0
 
 
 class LoopType(str, Enum):
-    """L1-L4 loop-detection rows from ``.claude/autonomy-triggers.md``.
+    """L2-L4 loop-detection rows from ``.claude/autonomy-triggers.md``.
 
     Values match the registry row IDs so Step 2/3 hooks + Step 5
     classifier share one vocabulary.
+
+    ``FILE_EDIT = "L1"`` was removed by PLAN-0102. **Nothing reconstructs a
+    :class:`LoopType` from a stored key** — :meth:`LoopCounter.from_json` keeps
+    counter keys as plain strings and :func:`prune_stale_entries` iterates them
+    as strings — so a state file still carrying ``L1:`` entries loads without
+    raising; the keys are simply never matched again, and age-out drops them.
+    That property is what PLAN-0102 AC-5 asserts behaviourally, because a
+    ``LoopType("L1")`` on any load path would raise ``ValueError`` at hook start.
     """
 
-    FILE_EDIT = "L1"
     TEST_FAIL = "L2"
     ERROR_SIGNATURE = "L3"
     BASH_PATTERN = "L4"
@@ -195,31 +181,29 @@ class CounterEntry:
     last_6_actions: list[ActionRecord] = field(default_factory=list)
     last_updated: str = ""
     warned_at: str = ""
-    """ISO stamp of the L1 warn ping for this entry, or ``""`` if not yet warned.
+    """ISO stamp of the L1 warn ping. **INERT since PLAN-0102 — nothing writes it.**
 
-    ADDITIVE (PLAN-0094 P2): an older reader ignores the key, and an older state
-    file simply reads back ``""`` — which means "not yet warned", so the first
-    increment after an upgrade warns once and then dedupes. Its only job is that
-    dedupe: the warn fires on CROSSING the bar, and without a stamp every
-    subsequent grace-zone edit would re-ping Cray.
+    Retained deliberately under this file's "excise behaviour, tolerate schema"
+    rule: the field is additive by contract, so leaving it costs nothing, while
+    removing it would enlarge the diff in the layer L2/L3/L4 still depend on for
+    exactly zero behaviour change. It reads back ``""`` on every entry.
     """
 
     attempted_edits: dict[str, int] = field(default_factory=dict)
-    """``sha1(old_string) -> times applied``, per target, per TURN (PLAN-0094 D4 b).
+    """``sha1(old_string) -> times applied``. **INERT since PLAN-0102.**
 
-    A dict rather than a set (OQ-3 R2): the tally is what the recorded
-    ``ActionRecord.result`` reports as ``repeat xN``, and a set cannot carry N.
-    ADDITIVE and turn-scoped — :func:`clear_turn_scoped` empties it at every
-    Stop, so it measures churn WITHIN a turn, never across a session.
+    Was L1's non-progress tally (PLAN-0094 D4 b) — a dict rather than a set so
+    it could carry the N in ``repeat xN``. Retained on the same
+    tolerate-schema grounds as :attr:`warned_at`; nothing writes it and nothing
+    clears it, because the turn-scoped clear was itself an L1 reset path.
     """
 
     content_hashes: dict[str, int] = field(default_factory=dict)
-    """``sha1(file content after the write) -> times seen``, per target, per TURN.
+    """``sha1(file content after the write) -> times seen``. **INERT since PLAN-0102.**
 
-    A digest already present means the file returned to a state it held earlier
-    this turn — oscillation (PLAN-0094 D4 c). Capped at
-    :data:`MAX_CONTENT_HASHES` keys; the oldest insertion is evicted first, so a
-    long forward-only turn cannot grow the state file without bound.
+    Was L1's oscillation signal (PLAN-0094 D4 c): a digest seen twice meant the
+    file had returned to a state it already held that turn. Its eviction cap
+    retired with it — there is no writer left to bound.
     """
 
     def to_json(self) -> dict[str, Any]:
@@ -257,30 +241,29 @@ class CounterEntry:
 class LoopCounter:
     """Top-level state document (``.claude/state/loop-counter.json``).
 
-    ``turn_touched`` tracks normalized file paths Written/Edited in the
-    **current turn** (between two ``Stop`` events). Step 4's
-    ``stop_continuation.py`` consumes this on every ``Stop`` event to
-    reset L1 counters whose targets were NOT touched this turn — i.e.,
-    the "target untouched on next turn-boundary marker" rule from PLAN
-    §Step 1 / §Step 3. List rather than set so JSON round-trip is
-    trivial; deduplication happens on append.
+    **PLAN-0102 removed three top-level fields with L1** — ``turn_touched``
+    (paths Written/Edited this turn, read by the Stop hook's turn-boundary
+    reset), ``subagent_touched`` (per-``agent_id`` attribution for the
+    SubagentStop reset, PLAN-0094 D1) and ``awaiting_ack`` (the
+    acknowledged-pause marker, PLAN-0094 D5). Every one of them existed to feed
+    an L1 reset path, and a hooks-wide reference sweep found no consumer
+    outside those paths — so they are eliminated rather than kept "in case".
+
+    A state file written before the retirement still carries all three keys.
+    :meth:`from_json` reads through ``data.get`` and simply never looks at
+    them, so an old file loads clean and the keys drop out on the next save
+    (PLAN-0102 AC-5).
     """
 
     session_id: str
     started_at: str
     counters: dict[str, CounterEntry] = field(default_factory=dict)
-    turn_touched: list[str] = field(default_factory=list)
-    subagent_touched: dict[str, list[str]] = field(default_factory=dict)
-    awaiting_ack: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
             "started_at": self.started_at,
             "counters": {k: v.to_json() for k, v in self.counters.items()},
-            "turn_touched": list(self.turn_touched),
-            "subagent_touched": {k: list(v) for k, v in self.subagent_touched.items()},
-            "awaiting_ack": list(self.awaiting_ack),
         }
 
     @classmethod
@@ -291,34 +274,15 @@ class LoopCounter:
             for k, v in counters_raw.items():
                 if isinstance(v, dict):
                     counters[str(k)] = CounterEntry.from_json(v)
-        touched_raw = data.get("turn_touched") or []
-        touched: list[str] = []
-        if isinstance(touched_raw, list):
-            touched = [str(t) for t in touched_raw if isinstance(t, str)]
-        # Additive (PLAN-0094 D1): absent in state written before Step 1, so a
-        # missing key must read as "no subagent edits recorded", never raise —
-        # old and new readers interoperate over the same file.
-        sub_raw = data.get("subagent_touched") or {}
-        subagent: dict[str, list[str]] = {}
-        if isinstance(sub_raw, dict):
-            for agent_id, targets in sub_raw.items():
-                if isinstance(targets, list):
-                    subagent[str(agent_id)] = [t for t in targets if isinstance(t, str)]
-        # Additive (PLAN-0094 D5), same tolerance contract as the field above.
-        # This one must ALSO survive the round-trip: every Stop rewrites the
-        # whole document via ``to_json``, so a field the writer forgets is a
-        # field the marker silently loses on the next turn boundary.
-        ack_raw = data.get("awaiting_ack") or []
-        awaiting: list[str] = []
-        if isinstance(ack_raw, list):
-            awaiting = [str(t) for t in ack_raw if isinstance(t, str)]
+        # ``turn_touched`` / ``subagent_touched`` / ``awaiting_ack`` were read
+        # here until PLAN-0102. They are now simply not looked at: a
+        # pre-retirement state file still carrying them loads clean and sheds
+        # them on the next save. Reading through ``data.get`` throughout is what
+        # makes that true without a migration (AC-5).
         return cls(
             session_id=str(data.get("session_id", "")),
             started_at=str(data.get("started_at", "")),
             counters=counters,
-            turn_touched=touched,
-            subagent_touched=subagent,
-            awaiting_ack=awaiting,
         )
 
 
@@ -662,56 +626,6 @@ def _record(
     return entry
 
 
-def note_attempted_edit(
-    counter: LoopCounter,
-    loop_type: LoopType,
-    target_normalized: str,
-    digest: str,
-) -> int:
-    """Tally one ``old_string`` digest for this target/turn; return the new total.
-
-    A return of 1 means "first time this turn" (forward); >= 2 means the same
-    operation is being re-applied, which is churn, not progress (PLAN-0094
-    D4 b). Creates the entry if absent so the caller can decide
-    increment-vs-observe from the return value alone.
-    """
-    key = counter_key(loop_type, target_normalized)
-    entry = counter.counters.get(key) or CounterEntry()
-    counter.counters[key] = entry
-    if not digest:
-        return 0
-    entry.attempted_edits[digest] = entry.attempted_edits.get(digest, 0) + 1
-    return entry.attempted_edits[digest]
-
-
-def note_content_hash(
-    counter: LoopCounter,
-    loop_type: LoopType,
-    target_normalized: str,
-    digest: str,
-) -> int:
-    """Tally one post-write content digest for this target/turn; return the total.
-
-    A return >= 2 means the file returned to a state it already held this turn
-    -- oscillation (PLAN-0094 D4 c). Bounded at :data:`MAX_CONTENT_HASHES` keys,
-    evicting oldest-first; eviction can only ever LOSE an oscillation signal,
-    never invent one.
-    """
-    key = counter_key(loop_type, target_normalized)
-    entry = counter.counters.get(key) or CounterEntry()
-    counter.counters[key] = entry
-    if not digest:
-        return 0
-    entry.content_hashes[digest] = entry.content_hashes.get(digest, 0) + 1
-    total = entry.content_hashes[digest]
-    while len(entry.content_hashes) > MAX_CONTENT_HASHES:
-        oldest = next(iter(entry.content_hashes))
-        if oldest == digest:  # never evict the digest we just recorded
-            break
-        del entry.content_hashes[oldest]
-    return total
-
-
 def reset(
     counter: LoopCounter,
     loop_type: LoopType,
@@ -744,192 +658,3 @@ def has_triggered(
 ) -> bool:
     """True iff the counter has reached the Cray-E.4 trigger threshold."""
     return get_count(counter, loop_type, target_normalized) >= threshold
-
-
-def is_doc_target(target_normalized: str) -> bool:
-    """True for prose / documentation L1 targets (markdown or under ``docs/``).
-
-    These get the higher :data:`L1_DOC_THRESHOLD` because multi-section
-    governance authoring (PLAN / ADR / STATUS / lessons / handoffs) legitimately
-    makes many small sequential edits to one file within a single turn — that is
-    the work, not a directionless loop.
-    """
-    t = target_normalized.lower()
-    return t.endswith(".md") or t.startswith("docs/")
-
-
-def l1_threshold_for(target_normalized: str) -> int:
-    """L1 trigger threshold by path class.
-
-    :func:`is_doc_target` -> :data:`L1_DOC_THRESHOLD`; all other (code) targets
-    -> :data:`LOOP_TRIGGER_THRESHOLD` (the code-thrash base, unchanged).
-    """
-    return L1_DOC_THRESHOLD if is_doc_target(target_normalized) else LOOP_TRIGGER_THRESHOLD
-
-
-def l1_deny_threshold_for(target_normalized: str) -> int:
-    """The L1 bar at which the gate actually DENIES: warn bar + grace budget.
-
-    Kept as its own function rather than an inline ``+ L1_GRACE_BUDGET`` at the
-    gate, so the warn bar (:func:`l1_threshold_for`, observer-side) and the deny
-    bar (here, gate-side) cannot silently drift apart across two hook processes.
-    """
-    return l1_threshold_for(target_normalized) + L1_GRACE_BUDGET
-
-
-def mark_warned(counter: LoopCounter, loop_type: LoopType, target_normalized: str) -> bool:
-    """Stamp ``warned_at`` for this entry if unstamped; return whether we stamped.
-
-    The return value IS the dedupe: the caller warns only when this returns True,
-    so the ping fires on the crossing edit and never again for the same entry.
-    A reset (turn boundary / commit / ``SubagentStop``) drops the entry entirely,
-    which clears the stamp with it — so a genuinely new loop warns again.
-    """
-    entry = counter.counters.get(counter_key(loop_type, target_normalized))
-    if entry is None or entry.warned_at:
-        return False
-    entry.warned_at = _now_iso()
-    return True
-
-
-def reset_l1_for_targets(counter: LoopCounter, targets: list[str]) -> list[str]:
-    """Reset the L1 counter for each given normalized target; return those cleared.
-
-    Used at the ``SubagentStop`` completion boundary so a subagent's edits do not
-    consume the main agent's L1 budget for the same file — symmetric with the
-    commit-boundary (:func:`reset` on commit) and Stop turn-boundary
-    (:func:`reset_untouched_l1`) resets. The caller supplies the *completing
-    agent's own* recorded targets (:func:`take_subagent_touched`), never
-    ``turn_touched`` — see PLAN-0094 D1 for why turn scope was a self-unlock path.
-    """
-    cleared: list[str] = []
-    for target in targets:
-        key = counter_key(LoopType.FILE_EDIT, target)
-        if key in counter.counters:
-            del counter.counters[key]
-            cleared.append(target)
-    return cleared
-
-
-def record_turn_touched(counter: LoopCounter, target_normalized: str) -> None:
-    """Mark a file as touched in the current turn (PostToolUse Write/Edit).
-
-    Deduplicated — the same file touched multiple times within a turn is
-    recorded once. The ``Stop`` hook (Step 4) reads this list to decide
-    which L1 counters survive vs reset at the turn boundary.
-    """
-    if not target_normalized:
-        return
-    if target_normalized not in counter.turn_touched:
-        counter.turn_touched.append(target_normalized)
-
-
-def record_subagent_touched(counter: LoopCounter, agent_id: str, target_normalized: str) -> None:
-    """Attribute a Write/Edit to the subagent that performed it (PLAN-0094 D1).
-
-    Keyed per ``agent_id`` so two subagents running in parallel cannot clear each
-    other's entries at completion. Deduplicated per key, like
-    :func:`record_turn_touched`.
-    """
-    if not agent_id or not target_normalized:
-        return
-    targets = counter.subagent_touched.setdefault(agent_id, [])
-    if target_normalized not in targets:
-        targets.append(target_normalized)
-
-
-def take_subagent_touched(counter: LoopCounter, agent_id: str | None) -> list[str]:
-    """Pop and return the targets recorded for a completing subagent.
-
-    ``agent_id`` empty/``None`` is the fail-safe case: the harness did not
-    populate the field, so every recorded subagent entry is drained. That
-    over-clears, but only ever across targets a subagent actually touched —
-    strictly bounded, and preferable to leaving a finished drafter's budget
-    wedged (PLAN-0094 D1). The main agent's own targets are never in this dict,
-    so they cannot be laundered through a spawn.
-    """
-    if agent_id:
-        return counter.subagent_touched.pop(agent_id, [])
-    drained: list[str] = []
-    for targets in counter.subagent_touched.values():
-        for target in targets:
-            if target not in drained:
-                drained.append(target)
-    counter.subagent_touched.clear()
-    return drained
-
-
-def reset_untouched_l1(counter: LoopCounter) -> list[str]:
-    """Reset L1 counters whose targets are NOT in ``turn_touched``.
-
-    Called on every ``Stop`` event by Step 4. Returns the list of
-    targets that were reset (for logging / Telegram debug). Implements
-    the "target file untouched on the next turn-boundary marker" reset
-    semantic from PLAN §Step 1.
-    """
-    reset_targets: list[str] = []
-    touched = set(counter.turn_touched)
-    l1_prefix = f"{LoopType.FILE_EDIT.value}:"
-    # Snapshot keys before mutation
-    for key in list(counter.counters):
-        if not key.startswith(l1_prefix):
-            continue
-        target = key[len(l1_prefix) :]
-        if target not in touched:
-            del counter.counters[key]
-            reset_targets.append(target)
-    return reset_targets
-
-
-def record_awaiting_ack(counter: LoopCounter, target_normalized: str) -> None:
-    """Arm the acknowledged-pause exit for a target the L1 gate just denied.
-
-    Written ONLY by the deny branch of ``pretooluse_loop_detect`` and cleared
-    ONLY by a ``Stop`` that actually fires — no agent-side action touches it, so
-    this is not a sanctioned version of the forbidden ``loop-counter.json``
-    hand-edit (Lesson #0021 §4); that prohibition stands verbatim. Deduplicated,
-    because the deny re-fires on every retry and the marker is a set, not a log.
-    """
-    if not target_normalized:
-        return
-    if target_normalized not in counter.awaiting_ack:
-        counter.awaiting_ack.append(target_normalized)
-
-
-def take_awaiting_ack(counter: LoopCounter) -> list[str]:
-    """Pop and return every armed target. Called at a fired ``Stop``.
-
-    The guarantee this buys is "the turn ended and Cray regained the prompt",
-    not "Cray typed an ack token" — a fired stop by construction returns the
-    prompt to Cray, and the agent cannot mint one. The stronger form (parsing an
-    ack out of the user's message) was declined for v1: it reads conversation
-    content, which is injectable, and the weaker form already beats every
-    recorded incident, where Cray was present and typing but no working state
-    transition existed at all.
-    """
-    taken = list(counter.awaiting_ack)
-    counter.awaiting_ack = []
-    return taken
-
-
-def clear_turn_touched(counter: LoopCounter) -> None:
-    """Empty the turn-touched list. Called by Step 4 after L1 reset
-    so the next turn starts with a clean slate.
-    """
-    counter.turn_touched = []
-
-
-def clear_turn_scoped(counter: LoopCounter) -> None:
-    """Empty the per-turn non-progress tallies on EVERY surviving entry.
-
-    Sibling to :func:`clear_turn_touched`, called from the same turn-boundary
-    reset (PLAN-0094 D4). ``count`` keeps its lifetime -- the reset paths are
-    unchanged -- but ``attempted_edits`` / ``content_hashes`` must not: they
-    measure churn *within* a turn, so carrying them across a boundary would
-    score a legitimate next-turn re-application of the same ``old_string`` as a
-    repeat. Runs over entries that SURVIVE the reset; the ones that were reset
-    are gone entirely.
-    """
-    for entry in counter.counters.values():
-        entry.attempted_edits = {}
-        entry.content_hashes = {}

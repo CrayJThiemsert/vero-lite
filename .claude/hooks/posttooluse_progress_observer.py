@@ -1,31 +1,29 @@
 #!/usr/bin/env python3
 """PostToolUse hook — feed the loop-counter from tool outcomes (PLAN-0008 Step 3).
 
-Observes ``Bash``/``Write``/``Edit`` outcomes and writes the state file
-that Step 2 (``pretooluse_loop_detect.py``) reads. **Never denies a pending
-tool call; may attach advisory feedback** — the deny gate lives in Step 2.
+Observes ``Bash`` outcomes and writes the state file that Step 2
+(``pretooluse_loop_detect.py``) reads. **Never denies a pending tool call; may
+attach advisory feedback** — the deny gate lives in Step 2.
 
-The wording above is deliberate (PLAN-0094 P2). This hook used to say "never
-blocks", which stopped being true in letter when L1 gained warn-first: on
-crossing the L1 warn bar it now emits the PostToolUse ``{"decision": "block",
-"reason": …}`` shape. That shape does NOT undo the write it observes — the
-write has already happened — it feeds the reason into the agent's context.
-So the hook still never *denies* anything, and the docstring says that
-instead of the thing that would read as false.
+The wording above is deliberate. This hook used to say "never blocks", which
+stopped being true in letter once it began emitting the PostToolUse
+``{"decision": "block", "reason": …}`` shape — today that shape carries the
+shell-hygiene advisory described below. It does NOT undo the tool call it
+observes: the call has already happened, and ``block`` is the documented
+channel for feeding a reason back into the agent's context. So the hook still
+never *denies* anything, and the docstring says that instead of the thing that
+would read as false.
+
+**L1 (same file edited repeatedly) was RETIRED by PLAN-0102**, and with it this
+hook's ``Write``/``Edit`` and ``SubagentStop`` registrations — both surfaces
+existed only to serve L1, so once L1 went they would have spawned a Python
+process per Write to compute a guaranteed no-op. The commit-boundary reset went
+with them: it was an L1 reset living on the Bash path, not a Bash behaviour.
+What survives is the Bash path proper — L2, L3, L4, and the shell-hygiene
+advisory.
 
 Counter ops by loop type:
 
-- **L1 (Write/Edit)** — increment on every Write/Edit of the same
-  normalized ``file_path``. Reset on "target untouched next turn" is
-  **deferred to Step 4** (the Stop hook is the natural turn-boundary
-  observer; PostToolUse cannot see turn boundaries). **Commit-boundary
-  reset (follow-up, 2026-05-29):** a successful ``git commit`` observed in
-  the Bash path resets the L1 counters for the files in the new HEAD commit
-  — a commit is unambiguous observable progress and a reliable reset point
-  independent of the Stop-hook turn boundary (which, across a long-lived
-  multi-PR session, was empirically not catching legitimate repeated edits
-  to the same file across separate PRs). Resets ONLY the committed files,
-  so an unrelated in-flight edit loop is not masked.
 - **L2 (pytest)** — parses Bash output for ``FAILED``/``PASSED`` lines
   (pytest "short test summary" + verbose mode). Increments L2 per
   failing nodeid; resets L2 per passing nodeid. **Fires Telegram inline
@@ -58,11 +56,9 @@ env-var overrides as Step 2 for parity in test harnesses
 
 from __future__ import annotations
 
-import hashlib
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -74,46 +70,22 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_COUNTER_PATH,
-    L1_GRACE_BUDGET,
     ActionRecord,
     LoopType,
-    counter_key,
-    get_count,
     has_triggered,
     increment,
-    l1_deny_threshold_for,
-    l1_threshold_for,
     load_counter,
     main_session_id,
-    mark_warned,
     normalize_error_signature,
-    normalize_file_path,
     normalize_pytest_nodeid,
-    note_attempted_edit,
-    note_content_hash,
-    observe,
-    record_subagent_touched,
-    record_turn_touched,
     reset,
-    reset_l1_for_targets,
     save_counter,
-    take_subagent_touched,
     tokenize_bash_command,
 )
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 TELEGRAM_TIMEOUT_SEC = 5
-
-#: Resolved ``git`` executable (absolute path; avoids a partial-path argv).
-#: Falls back to the bare name — a missing git surfaces as an OSError in
-#: :func:`_committed_files`, which fails closed (no reset).
-_GIT = shutil.which("git") or "git"
-
-#: Matches a ``git commit`` invocation anywhere in a (possibly chained /
-#: wsl-wrapped) Bash command, excluding ``git commit-tree`` / ``commit-graph``
-#: via the negative-lookahead on word-char / hyphen.
-_GIT_COMMIT_RE = re.compile(r"\bgit\s+commit(?![\w-])")
 
 _FORWARDED_ENV = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
 
@@ -165,30 +137,23 @@ def _format_message(
     loop_type: LoopType,
     target: str,
     last_6_actions: list[dict[str, Any]],
-    stage: str | None = None,
     count: int | None = None,
     threshold: int | None = None,
 ) -> str:
     """Build the human-readable Telegram body from the Cray-E.4 payload contract.
 
     Mirrors Step 2's formatter so both inline (L2/L3 here) and gated
-    (L1/L4 in Step 2) alerts present a consistent shape to Cray. **That mirror
+    (L4 in Step 2) alerts present a consistent shape to Cray. **That mirror
     is asserted by a test** (PLAN-0094 AC-11 iii), not merely by this docstring:
-    called with identical arguments and no ``stage``, this and Step 2's
-    formatter must return byte-identical strings.
+    called with identical arguments, this and Step 2's formatter must return
+    byte-identical strings. PLAN-0102 dropped the ``stage`` parameter — it
+    existed only for L1's warn body — which leaves the two signatures identical
+    rather than merely compatible, so the mirror is now harder to break.
 
-    ``stage`` is optional and additive (PLAN-0094 P2): passing ``"warn"`` adds a
-    ``stage:`` line and softens the trailing instruction, so Cray can tell a
-    first-trip advisory apart from the wall at a glance. Omitting it reproduces
-    the pre-P2 body byte-for-byte, which is why the existing L2/L3 callers are
-    untouched.
-
-    ``count`` / ``threshold`` are likewise optional and additive (AC-11), and
-    **T is the DENY bar, not the warn bar** (Cray-ratified s180) — so the warn
-    body reads ``count: 6/9``, "six of the nine that wall", rather than the
-    uninformative ``6/6``. The L2/L3 callers deliberately do not pass them:
-    those fire exactly AT their threshold, so the line could only ever render
-    ``6/6`` and would carry no information.
+    ``count`` / ``threshold`` stay optional and additive (AC-11) because Step 2
+    still passes them on the L4 deny. The L2/L3 callers here deliberately do
+    not: those fire exactly AT their threshold, so the line could only ever
+    render ``6/6`` and would carry no information.
     """
     actions_block = (
         "\n".join(
@@ -201,17 +166,6 @@ def _format_message(
     count_line = (
         f"count: {count}/{threshold}\n" if count is not None and threshold is not None else ""
     )
-    if stage == "warn":
-        return (
-            f"[vero-lite/loop-detect] {loop_type.value} warn\n"
-            f"stage: warn\n"
-            f"target: {target}\n"
-            f"{count_line}"
-            f"last 6 actions:\n{actions_block}\n"
-            f"Cray: advisory only — the edit was ALLOWED and the agent was told. "
-            f"It denies after {L1_GRACE_BUDGET} more. "
-            f"See .claude/autonomy-triggers.md row {loop_type.value}"
-        )
     return (
         f"[vero-lite/loop-detect] {loop_type.value} triggered\n"
         f"target: {target}\n"
@@ -225,7 +179,6 @@ def _ping_telegram(
     loop_type: LoopType,
     target: str,
     last_6_actions: list[dict[str, Any]],
-    stage: str | None = None,
     count: int | None = None,
     threshold: int | None = None,
 ) -> None:
@@ -239,7 +192,7 @@ def _ping_telegram(
     script = _telegram_script()
     if not script.exists():
         return
-    message = _format_message(loop_type, target, last_6_actions, stage, count, threshold)
+    message = _format_message(loop_type, target, last_6_actions, count, threshold)
     cmd = bash_argv(script, message)
     env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
@@ -338,215 +291,6 @@ def _extract_traceback_signature(text: str) -> str | None:
     return m.group(1).strip()
 
 
-def _maybe_warn_l1(counter: Any, target: str) -> list[dict[str, Any]] | None:
-    """Decide whether this L1 increment is the one that crosses the warn bar.
-
-    Returns the ``last_6_actions`` payload to ping with, or ``None`` to stay
-    silent. Mutates ``counter`` (stamping ``warned_at``) ONLY when it returns a
-    payload, so the caller can save once and ping once.
-
-    Silent in three distinct cases, all intended: below the bar; already warned
-    for this entry (the ``mark_warned`` stamp — this is what keeps the whole
-    grace zone quiet instead of pinging Cray on every edit); and a missing
-    entry, which cannot happen after ``increment`` but is not worth crashing a
-    non-blocking observer over.
-    """
-    threshold = l1_threshold_for(target)
-    if get_count(counter, LoopType.FILE_EDIT, target) < threshold:
-        return None
-    if not mark_warned(counter, LoopType.FILE_EDIT, target):
-        return None
-    entry = counter.counters.get(counter_key(LoopType.FILE_EDIT, target))
-    if entry is None:  # defensive — increment() guarantees it exists
-        return None
-    return [a.to_json() for a in entry.last_6_actions]
-
-
-def _warn_advisory(target: str, counter: Any) -> dict[str, Any]:
-    """The agent-visible warn, in the PostToolUse ``decision: block`` shape.
-
-    ``block`` here does not undo the write — PostToolUse fires after the tool
-    has already run. It is the documented channel for feeding a reason back into
-    the agent's context, which is exactly what a warn needs to do: the edit
-    stands, and the agent finds out now rather than being walled on its next one.
-
-    Deliberately NOT the PreToolUse ``permissionDecision: "ask"`` shape: an AFK
-    Cray turns "ask" into a block, which is the pause being demoted here.
-    """
-    count = get_count(counter, LoopType.FILE_EDIT, target)
-    return {
-        "decision": "block",
-        "reason": (
-            f"L1 warn on `{target}`: {count} edits of this one target "
-            f"(warn bar = {l1_threshold_for(target)}). The edit was ALLOWED and "
-            f"this is advisory — but {L1_GRACE_BUDGET} more and the gate denies. "
-            f"Reassess the approach now: if the last few edits have been retries "
-            f"of the same failing change rather than distinct forward progress, "
-            f"stop and reconsider, or raise it with Cray. A git commit of this "
-            f"file clears the count."
-        ),
-    }
-
-
-def _sha1(data: bytes) -> str:
-    """Content-addressing digest, not a security primitive.
-
-    ``usedforsecurity=False`` is what says so to the reader and to bandit
-    (ruff ``S324``); collision resistance is irrelevant here — the worst a
-    collision can do is merge two counter buckets.
-    """
-    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
-
-
-def _content_digest(file_path: str) -> str:
-    """``sha1`` of the target's on-disk bytes after the write, or ``""``.
-
-    **Fail-open by construction (PLAN-0094 D4 c).** This runs in the mandatory
-    PostToolUse path of *every* Write and Edit, so a raise here would not cost
-    an oscillation signal — it would break the agent's ability to edit at all,
-    a failure orders of magnitude worse than the one it is detecting. Returning
-    ``""`` degrades to "no (c) signal for this call" and nothing else.
-
-    On-disk rather than payload-derived, and that is now measured rather than
-    assumed: a successful ``Edit``'s ``tool_response`` carries no ``content``
-    key at all, and its ``originalFile`` was null in 78 of 84 recorded results
-    (s180) — so no hermetic post-state is reconstructable for the Edit path.
-    """
-    try:
-        return _sha1(Path(file_path).read_bytes())
-    except (OSError, ValueError):
-        return ""
-
-
-def _handle_write_or_edit(payload: dict[str, Any]) -> None:
-    """L1: score NON-PROGRESS per Write/Edit + record the target as touched.
-
-    **The unit changed in PLAN-0094 Step 4 (AC-7).** This used to increment on
-    every Write/Edit — it counted *touches*, which made six distinct forward
-    edits of one file indistinguishable from six retries of one broken change.
-    It now increments only on an observed non-progress signal:
-
-    - **(b)** the same ``old_string`` re-applied this turn → ``repeat xN``
-    - **(c)** the file returning to content it already held this turn → ``osc xN``
-
-    A distinct forward edit is still *recorded* — evidence ring, timestamp,
-    ``turn_touched`` — via :func:`observe`; it simply does not score, and it
-    records ``result == ""`` (OQ-3 R3: both Telegram formatters bracket
-    ``result`` only when non-empty, so emptiness is what keeps a bracketed row
-    meaning "this is the row that interrupted you").
-
-    The turn-touched marker is consumed by Step 4's ``stop_continuation.py``
-    on every Stop event to reset L1 counters whose targets were NOT
-    touched this turn — the "target untouched on the next turn-boundary
-    marker" rule from PLAN §Step 1. Without this, L1 counters grow
-    unbounded across legitimate iterative editing (Cray's STATUS workflow
-    risk surfaced in the L1/L4 asymmetry ELI-CTO).
-
-    **Known, accepted hole:** a *failed* Edit is not counted. The harness emits
-    no hook event for one — measured twice, s173 and s179 — so the
-    retry-one-broken-anchor shape is invisible from here (PLAN-0094 §D4 box).
-    """
-    tool_input = payload.get("tool_input") or {}
-    if not isinstance(tool_input, dict):
-        return
-    file_path = tool_input.get("file_path")
-    if not isinstance(file_path, str):
-        return
-    target = normalize_file_path(file_path)
-    if not target:
-        return
-
-    counter = load_counter(_state_path(), session_id=main_session_id(payload))
-
-    old_string = tool_input.get("old_string")
-    repeats = note_attempted_edit(
-        counter,
-        LoopType.FILE_EDIT,
-        target,
-        _sha1(old_string.encode("utf-8")) if isinstance(old_string, str) and old_string else "",
-    )
-    seen = note_content_hash(counter, LoopType.FILE_EDIT, target, _content_digest(file_path))
-    # (b) is checked before (c) because it is the more specific diagnosis: a
-    # re-applied old_string will OFTEN also restore a prior content state, and
-    # reporting that as oscillation would name the symptom over the cause.
-    # Either way this is ONE increment for the call, never two.
-    if repeats >= 2:
-        result = f"repeat x{repeats}"
-    elif seen >= 2:
-        result = f"osc x{seen}"
-    else:
-        result = ""
-
-    action = _now_action(payload.get("tool_name", "Edit"), target, result)
-    if result:
-        increment(counter, LoopType.FILE_EDIT, target, action)
-    else:
-        observe(counter, LoopType.FILE_EDIT, target, action)
-    record_turn_touched(counter, target)
-    agent_id = payload.get("agent_id")
-    if isinstance(agent_id, str) and agent_id.strip():
-        # PLAN-0094 D1: attribute the edit to the subagent that made it, so its
-        # completion can clear exactly its own targets and nothing else.
-        record_subagent_touched(counter, agent_id.strip(), target)
-    # PLAN-0094 P2 — the WARN stage. Crossing the path-class bar no longer walls
-    # (the gate's deny moved out to T + G); instead this fires once: a Telegram
-    # ping for Cray and an agent-visible advisory. Deliberately inline here
-    # rather than in the gate, because the gate only runs on the NEXT edit --
-    # warning there would cost the agent a whole extra edit before it learns.
-    # Only a SCORING call can cross the bar. After an observe the count is
-    # unchanged, so checking there could at best re-fire a warn already sent —
-    # and at worst warn on a target whose every edit has been forward progress.
-    warned = _maybe_warn_l1(counter, target) if result else None
-    save_counter(counter, _state_path())
-    if warned is not None:
-        # Emitted AFTER the state write so a crash mid-warn cannot leave the
-        # stamp unsaved and re-ping Cray on the next edit.
-        # AC-11: T is the DENY bar, read through the SAME function the gate uses
-        # (``_loop_counter.py`` keeps it a function precisely "so the warn bar and
-        # the deny bar cannot silently drift apart across two hook processes").
-        _ping_telegram(
-            LoopType.FILE_EDIT,
-            target,
-            warned,
-            stage="warn",
-            count=get_count(counter, LoopType.FILE_EDIT, target),
-            threshold=l1_deny_threshold_for(target),
-        )
-        print(json.dumps(_warn_advisory(target, counter)))
-
-
-def _handle_subagent_stop(payload: dict[str, Any]) -> None:
-    """``SubagentStop`` = an L1 reset boundary, scoped to that subagent's edits.
-
-    A subagent's ``Write``/``Edit`` calls increment the SAME loop-counter as the
-    main agent (they run in the parent session, sharing the state file). Without
-    a reset, a subagent that makes several edits to one file pre-exhausts the
-    main agent's L1 budget for it (observed 2026-06-08: a ``plan-drafter``
-    made 6 edits to a PLAN and the main agent could then not add one).
-
-    **This ran as dead code from 2026-06-08 until PLAN-0094.** The handler was
-    gated on ``tool_name in ("Task", "Agent")``, but ``settings.json`` registered
-    ``PostToolUse`` for ``Write|Edit`` and ``Bash`` only — no payload could ever
-    reach it, while three documents advertised the exit as live.
-    ``tests/handoffs/test_settings_hook_wiring.py`` now pins the registration as
-    data so the class cannot recur.
-
-    Scope is the **completing agent's own** recorded targets, not
-    ``turn_touched``: the turn-scoped form Lesson #0021 §3 described would have
-    let the main agent launder an exhausted budget through any zero-edit spawn
-    (Cray-ratified divergence, 2026-07-25). ``turn_touched`` is left intact so
-    the Stop hook still sees main-agent edits made afterwards.
-    """
-    counter = load_counter(_state_path(), session_id=main_session_id(payload))
-    agent_id = payload.get("agent_id")
-    key = agent_id.strip() if isinstance(agent_id, str) else None
-    targets = take_subagent_touched(counter, key)
-    if not targets:
-        return  # zero-edit subagent: nothing recorded, nothing to clear
-    reset_l1_for_targets(counter, targets)
-    save_counter(counter, _state_path())
-
-
 def _apply_l4(counter: Any, command: str, tool_response: dict[str, Any]) -> bool:
     """L4: Bash command pattern. Returns True if counter changed.
 
@@ -592,58 +336,6 @@ def _apply_l2(counter: Any, combined_output: str) -> bool:
             continue
         reset(counter, LoopType.TEST_FAIL, nodeid)
         changed = True
-    return changed
-
-
-def _is_git_commit(command: str) -> bool:
-    """True iff the Bash command invokes ``git commit`` (not ``commit-tree``)."""
-    return bool(_GIT_COMMIT_RE.search(command))
-
-
-def _committed_files(repo_root: Path) -> list[str]:
-    """Repo-relative paths in the current HEAD commit (the just-made commit).
-
-    Read-only ``git diff-tree`` query. Fails closed to ``[]`` on any git error
-    (missing binary, not a repo, timeout) or an empty/merge commit — a missing
-    file list simply means no reset.
-    """
-    try:
-        # S603: fixed argv, no shell; read-only query against HEAD.
-        result = subprocess.run(  # noqa: S603
-            [_GIT, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
-            cwd=repo_root,
-            capture_output=True,
-            text=True,
-            timeout=10,
-            check=False,
-        )
-    except (OSError, subprocess.SubprocessError):
-        return []
-    if result.returncode != 0:
-        return []
-    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
-
-
-def _apply_commit_reset(counter: Any, command: str, tool_response: dict[str, Any]) -> bool:
-    """Commit-boundary L1 reset. Returns True if any counter changed.
-
-    A successful ``git commit`` is unambiguous observable progress: the
-    committed files reached a persisted boundary, so their L1 edit counters
-    reset. Independent of (and more robust than) the Stop-hook turn-boundary
-    reset — it fires in the PostToolUse Bash path, which runs reliably on every
-    Bash call. Resets ONLY the files in the new HEAD commit, so an unrelated
-    in-flight edit loop is not masked. A failed/ambiguous commit does not reset.
-    """
-    if not _is_git_commit(command):
-        return False
-    if _bash_outcome(tool_response) != "success":
-        return False
-    changed = False
-    for path in _committed_files(REPO_ROOT):
-        target = normalize_file_path(path)
-        if target and get_count(counter, LoopType.FILE_EDIT, target) > 0:
-            reset(counter, LoopType.FILE_EDIT, target)
-            changed = True
     return changed
 
 
@@ -766,7 +458,6 @@ def _handle_bash(payload: dict[str, Any]) -> None:
     changed |= _apply_l4(counter, command, tool_response)
     changed |= _apply_l2(counter, combined)
     changed |= _apply_l3(counter, combined)
-    changed |= _apply_commit_reset(counter, command, tool_response)
     if changed:
         save_counter(counter, _state_path())
 
@@ -783,17 +474,15 @@ def main() -> int:
     except json.JSONDecodeError:
         return 0  # fail-open
 
-    # Branch on the EVENT first: this hook is now registered for SubagentStop as
-    # well as PostToolUse, and a SubagentStop payload carries no meaningful
-    # ``tool_name`` to dispatch on (PLAN-0094 D1).
-    event = payload.get("hook_event_name", "")
+    # Bash is the only dispatch left. PLAN-0094 D1 had added a ``SubagentStop``
+    # branch (and an event-first check to reach it, since a SubagentStop payload
+    # carries no meaningful ``tool_name``) alongside a ``Write``/``Edit`` branch;
+    # PLAN-0102 retired both with L1, and deregistered the two harness surfaces
+    # that fed them, so neither payload reaches this process any more. Guarding
+    # on ``tool_name`` here is the second of the two independent barriers.
     tool_name = payload.get("tool_name", "")
     try:
-        if event == "SubagentStop":
-            _handle_subagent_stop(payload)
-        elif tool_name in ("Write", "Edit"):
-            _handle_write_or_edit(payload)
-        elif tool_name == "Bash":
+        if tool_name == "Bash":
             _handle_bash(payload)
     except Exception as exc:  # observer must never block on internal error
         print(f"posttooluse_progress_observer: internal error: {exc}", file=sys.stderr)
