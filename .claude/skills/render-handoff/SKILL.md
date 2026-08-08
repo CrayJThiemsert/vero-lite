@@ -32,8 +32,15 @@ working notes** — never committed.
 
 - **Compact, don't dump.** Ship the resumable core; prune redundant tool output.
   "Maximize recall first, then precision."
-- **Reference, don't copy.** Point to ADR / PLAN / PR / commit / file:line — never
-  duplicate what the repo already holds (repository = single source of truth).
+- **Reference, don't copy —** point to ADR / PLAN / PR / commit / file:line, never
+  duplicate what the repo already holds (repository = single source of truth) —
+  **but only when there is something to point AT.** With no referent this rule
+  silently degrades to *drop*, which is how a session's findings go missing while
+  every structural check passes. See the carve-out in Step 1.
+- **Negative results are findings.** "We checked stream 3 and it is correctly
+  empty" saves the next session a full fan-out; it is worth as much as a list of
+  things to build, and it is the shape most likely to be dropped as "nothing
+  happened".
 - **Generate at end-of-session**, never mid-flight-and-forget (stale handoffs are
   the #1 failure mode). Stamp the real time.
 - **Structured Markdown**, bullets/tables over prose.
@@ -58,6 +65,30 @@ Pull, don't guess. Run git via `wsl bash -lc` + `source .venv/bin/activate`:
 - **Next concrete steps** (the single unambiguous first action, then the rest).
 - **Session number:** `session:` in `docs/STATUS.md` frontmatter.
 - **Predecessor handoff:** newest file in the latest `.claude/handoffs/session-NN/`.
+- 🔴 **Unhomed findings — the carve-out. Ask this explicitly; nothing else in this
+  list reaches it.** *What did this session establish that has no tracked home?*
+  Analysis that changed no file; a ranking worked out but never ratified; a
+  **negative result**; a grounding sweep whose conclusion lives only in the
+  transcript; a fallback ordering for options a doc lists neutrally. Each falls
+  through every category above — not a decision (nothing was decided), not a failed
+  attempt (nothing failed), not verification state (nothing was verified), and no
+  PR carries it — so the compaction rules never see it and "reference, don't copy"
+  drops it.
+
+  This mirrors the **R2 carve-out** for STATUS rotation
+  ([`docs/runbooks/memory-architecture.md`](../../../docs/runbooks/memory-architecture.md),
+  R2/R4: *an item whose facts have no tracked home is rehomed first, never trimmed
+  away*), with one difference: a handoff may **copy** instead of rehoming, because
+  some findings are genuinely session-scoped orientation ("the fan-out already ran,
+  do not re-run it") that no tracked artifact should carry. Judge per item —
+  **rehome it if it deserves a durable home, copy it verbatim if it does not, and
+  never drop it.**
+
+  *Measured, session 214:* the handoff passed the validator and carried all nine
+  sections while omitting two findings — a fallback ranking for three options the
+  PLAN lists neutrally, and a four-stream grounding sweep whose headline was that
+  one stream is correctly empty. Both were caught only because Cray asked whether
+  the handoff was sufficient, and both had **zero** grep hits across tracked files.
 
 ## Step 2 — Compose frontmatter (schema: `docs/conventions/handoff-frontmatter-schema.md`)
 
@@ -112,6 +143,14 @@ Get the timestamp from the shell: `wsl bash -lc "date '+%Y-%m-%dT%H:%M:%S+07:00'
 Keep every section compact and pointer-based. §3/§4 are the two research-backed
 additions over older handoffs — include them.
 
+**Where unhomed findings go** (Step 1's carve-out): no new section — file each
+where a resuming reader would look for it. A fallback ranking for options a PLAN
+lists neutrally belongs in **§5** beside that blocker; a "we already searched here,
+do not search again" result belongs in **§6** beside the work it scopes; a measured
+hazard belongs in **§7**. Mark them so the next session knows they are load-bearing
+and unbacked — *"recorded ONLY here, because …"* — which also tells a later reader
+where to rehome them if they earn a durable home.
+
 ## Step 5 — Dog-food the validator (MANDATORY — Lesson #8 anti-pattern: never skip)
 
 ```bash
@@ -123,6 +162,31 @@ Exit 0 = valid. On error (missing/empty required field, bad enum, naive `created
 filename↔`actor:` mismatch) fix and re-run until clean. Warnings (unknown field,
 suffix-not-in-filename) don't block. Optionally refresh the dashboard:
 `uv run python tools/handoffs/handoff_status.py NN --index`.
+
+⚠️ **The validator checks SHAPE, not sufficiency.** It passes on a handoff that has
+all nine sections and has lost the session's findings — that is exactly what
+happened at s214. Do the carve-out check below before announcing.
+
+## Step 5b — The carve-out check (do this before announcing; the validator cannot)
+
+For every finding you are about to leave out **because "the repo already has it"**,
+grep for it. This costs one command and is the only thing that separates
+"referenced" from "dropped":
+
+```bash
+wsl bash -lc "cd /home/crayj/work/vero-lite && git grep -l '<a distinctive phrase from the finding>' -- docs/ services/ tests/"
+```
+
+- **Hits** → referencing is correct. Cite the path and move on.
+- **Zero hits** → it exists nowhere but this conversation. Either **rehome** it
+  into a tracked artifact (a lesson, a PLAN note, a runbook — then cite that), or
+  **copy it into the handoff verbatim**. Do not omit it because the compaction
+  rules say "compact".
+
+Run it against the *unhomed findings* gathered in Step 1, and against anything in
+§5/§6 you summarised in one line while thinking "the detail is in the repo". The
+failure mode is silent by construction: the handoff looks complete, the validator
+is green, and the loss surfaces a session later as work redone from scratch.
 
 ## Step 6 — Announce
 
