@@ -1172,3 +1172,9 @@ apply and only *verify → trim* of `rehome → re-point → verify → trim` re
 ### Recent-Decisions row — s209 cont. (ADR-0036 drafted `Proposed`) — rotated s218, the session that RATIFIED it
 
 | 2026-08-06 | **s209 cont. — ADR-0036 DRAFTED `Proposed` (#1065): a deployed vertical instance IS a "system" under ADR-0035 L9/D4.** ADR-0035 defines "system" by what one owns (`0035:478-493`), and a vertical instance satisfies every clause with **zero engine change** ⇒ the multi-vertical demo is N systems + a `portal.` picker, and **D4's reopening trigger does not fire**; in-process multi-vertical serving is a recorded **non-goal** (`auth.py:82`). ⚠️ Ratifying `Proposed → Accepted` **must remove `0036` from `test_the_non_accepted_adrs_are_exactly_the_expected_set` in the same edit** | `8bd331d` (head_commit) / [#1065](https://github.com/CrayJThiemsert/vero-lite/pull/1065) / `docs/adr/0036-vertical-as-system-multi-vertical-demo-portal.md` |
+
+## Rotated this reconcile (session-218 cont., 2026-08-10 — all eight PLAN-0103 slots RULED; ADR-0037 spawned Proposed; #1104)
+
+### Recent-Decisions row — s209 cont. (PLAN-0100 Step 8 shipped)
+
+| 2026-08-06 | **s209 cont. — PLAN-0100 Step 8 SHIPPED (#1063): AC-4/5/6(a)(b) CLOSED, 8 → 10 of 13.** Greenfield `deploy/published/` + `tests/deploy/` (**69 tests**); Tab G dropped on the published profile (`?v=c48`). **`OCT_VERTICAL` pinned `energy` (Cray typed)** — the DB posture was **not** the discriminator: `FastenalCsvAdapter.stream_events` is an **empty async iterator by design**, so procurement's `GET /recommendations` returns `[]` on both profiles and Tab A lands blank. AC-6 stays unticked on purpose ((c) = Step 9). A non-vacuity probe caught a **vacuous test inside the change itself** | `1557141` ([#1063](https://github.com/CrayJThiemsert/vero-lite/pull/1063)) / `deploy/published/` / `docs/plans/done/0100-exposure-published-demo-surface.md` |
