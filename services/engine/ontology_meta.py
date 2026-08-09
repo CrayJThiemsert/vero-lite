@@ -160,6 +160,22 @@ class OntologyMeta(BaseModel):
         default="dev",
         description="UI surface this deployment serves: 'dev' or 'published'",
     )
+    # PLAN-0103 Step 2 — the published tab set, same rationale as ui_profile
+    # above: a DEPLOYMENT fact riding the UI's single boot fetch. Carried on
+    # every profile, not only 'published', so the value is assertable over HTTP
+    # without first reconfiguring the process.
+    #
+    # This is the API-VISIBLE carrier and deliberately not the one first paint
+    # depends on — that is the injected <meta name="ui-views"> tag, because
+    # app.js builds the header before /meta could have answered. Two carriers of
+    # one fact is a disagreement risk, so a test asserts they agree (AC-1).
+    ui_published_views: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Ordered view keys the published profile renders; first key is the "
+            "default landing tab. Empty until the route stamps the configured value"
+        ),
+    )
 
 
 def ontology_path(vertical: str) -> Path:

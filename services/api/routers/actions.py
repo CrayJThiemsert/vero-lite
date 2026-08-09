@@ -210,12 +210,18 @@ async def list_objects(object_type: str) -> ObjectListResponse:
 async def get_meta() -> OntologyMeta:
     """Return the active vertical's ontology metadata (drives the ontology-driven UI).
 
-    Also carries ``ui_profile`` (PLAN-0100 Step 2) — a deployment fact stamped
-    here rather than inside ``load_ontology_meta``, which stays a pure projection
-    of the YAML with no settings dependency.
+    Also carries ``ui_profile`` (PLAN-0100 Step 2) and ``ui_published_views``
+    (PLAN-0103 Step 2) — deployment facts stamped here rather than inside
+    ``load_ontology_meta``, which stays a pure projection of the YAML with no
+    settings dependency.
     """
     meta = load_ontology_meta(settings.oct_vertical)
-    return meta.model_copy(update={"ui_profile": settings.ui_profile})
+    return meta.model_copy(
+        update={
+            "ui_profile": settings.ui_profile,
+            "ui_published_views": list(settings.published_view_keys),
+        }
+    )
 
 
 @router.get("/recommendations", response_model=RecommendationListResponse)

@@ -24,6 +24,23 @@ def _derive_test_database_url(database_url: str) -> str:
     return url.set(database=f"{base_name}_test").render_as_string(hide_password=False)
 
 
+#: PLAN-0103 Step 2 — the ten-tab census, server side, as KEYS ONLY.
+#:
+#: ``app.js``'s ``ALL_VIEWS`` stays the rendering census and stays authoritative
+#: for what a tab IS: its label, its icon, and the module that mounts it are JS
+#: closures with no Python representation. What lives here is only the key set,
+#: because ``ui_published_views`` is parsed here and validation must happen where
+#: the value is parsed — a boot refusal is worth nothing if it fires after the
+#: browser has already rendered.
+#:
+#: That makes this a SECOND copy of a list, which is a drift hazard and is
+#: therefore given a tripwire rather than a comment: a guard test parses
+#: ``ALL_VIEWS`` out of ``app.js`` and asserts set-equality with this tuple, so
+#: adding an eleventh tab in the browser without adding it here reddens on the
+#: commit that creates the gap.
+ALL_VIEW_KEYS: tuple[str, ...] = ("A", "B", "C", "D", "E", "F", "G", "H", "I", "J")
+
+
 class Settings(BaseSettings):
     """Configuration loaded from environment variables / .env file."""
 
@@ -220,6 +237,39 @@ class Settings(BaseSettings):
             "Served to the browser two ways: injected into index.html as a "
             "<meta name='ui-profile'> tag so it is readable BEFORE the first "
             "paint, and carried on /meta as the API-visible contract"
+        ),
+    )
+    # PLAN-0103 Step 2 — which tabs the PUBLISHED profile renders, per system.
+    #
+    # This replaces app.js's PUBLISHED_EXCLUDED_VIEWS, which was a client-side
+    # constant naming the FIVE tabs energy drops. That shape encoded N=1: a
+    # second published system with a different tab set had nowhere to say so
+    # except a per-vertical branch in the browser. The set is now DECLARED by
+    # the server it belongs to, per compose project.
+    #
+    # Stated POSITIVELY (which tabs to show) rather than as exclusions, because
+    # the exclusion form only has meaning relative to a full census, and the
+    # census is the one thing that legitimately differs from nobody's system to
+    # nobody's system — it is fixed. A positive list also makes ORDER declarable,
+    # which the exclusion form could not express, and order is load-bearing: the
+    # first key is the system's default landing tab. That matters concretely —
+    # procurement's Tab A is structurally blank (its adapter's stream_events is
+    # an empty iterator by design), so procurement must land on G, not A.
+    #
+    # A comma string rather than a JSON list: this value is hand-edited per
+    # system in a committed published.env, and A,B,C,D,F reads at a glance where
+    # ["A","B","C","D","F"] does not. Parsed by published_view_keys.
+    #
+    # Ignored entirely on the dev profile, which always renders the full census.
+    ui_published_views: str = Field(
+        default="A,B,C,D,F",
+        description=(
+            "Ordered, comma-separated view keys the 'published' UI profile "
+            "renders; the FIRST key is that system's default landing tab. "
+            "Default is system #1 (energy)'s set, so an existing published "
+            "deployment needs no env change. Validated at boot against the "
+            "ten-tab census — an unknown key fails the process. Ignored on the "
+            "dev profile, which renders every tab"
         ),
     )
     # PLAN-0100 Step 6 (ADR-0035 D5(3)) — process-wide concurrent LLM requests.
@@ -460,6 +510,58 @@ class Settings(BaseSettings):
     # App
     log_level: str = Field(default="INFO", description="Python logging level")
     environment: str = Field(default="development", description="Deployment environment name")
+
+    @property
+    def published_view_keys(self) -> tuple[str, ...]:
+        """``ui_published_views`` parsed into ordered view keys.
+
+        A property rather than a stored field so there is exactly ONE parse, in
+        one place: a second field holding the parsed form could be mutated to
+        disagree with the string the validator checked, and the two carriers
+        (the injected meta tag and ``/meta``) both read this.
+        """
+        parts = (part.strip().upper() for part in self.ui_published_views.split(","))
+        return tuple(part for part in parts if part)
+
+    @model_validator(mode="after")
+    def _validate_published_views(self) -> Self:
+        """Refuse to boot on a published view set the browser could not render.
+
+        The same asymmetry ``ui_profile``'s ``Literal`` encodes, one level down:
+        this value is typed by hand into a per-system ``published.env``, and every
+        way of getting it wrong resolves toward a PUBLIC surface that is broken or
+        over-exposed. A loud boot failure is recoverable; a demo that silently
+        renders the wrong tabs in front of a design partner is not.
+
+        Validated on every profile, not just ``published``. A dev process ignores
+        the value when rendering, but a typo that only fails on the box nobody
+        runs locally is exactly the bug class PLAN-0100 kept hitting.
+        """
+        keys = self.published_view_keys
+        unknown = [key for key in keys if key not in ALL_VIEW_KEYS]
+        if unknown:
+            raise ValueError(
+                f"UI_PUBLISHED_VIEWS names view keys that do not exist: {unknown}. "
+                f"The census is {list(ALL_VIEW_KEYS)} (services/api/static/assets/app.js "
+                "ALL_VIEWS). A published deployment must not boot with a tab set it "
+                "cannot render."
+            )
+        if not keys:
+            raise ValueError(
+                "UI_PUBLISHED_VIEWS is empty, so this deployment would publish no "
+                "console at all. app.js refuses to render such a page and says so "
+                "on screen, but that refusal is the BACKSTOP — it fires in a "
+                "visitor's browser, while this one fires in the operator's terminal "
+                "at deploy time, before anyone sees the box."
+            )
+        duplicates = sorted({key for key in keys if keys.count(key) > 1})
+        if duplicates:
+            raise ValueError(
+                f"UI_PUBLISHED_VIEWS repeats view keys: {duplicates}. The browser "
+                "would silently collapse them, so a repeat is always a typo, and a "
+                "typo in this value is a typo about what the public sees."
+            )
+        return self
 
     @model_validator(mode="after")
     def _fill_test_database_url(self) -> Self:
