@@ -19,6 +19,13 @@ PLAN-0095 (the image every system boots), PLAN-0096 (Tabs I/J), PLAN-0075
 > by construction (Steps 1 and 9), assumed in neither direction. Independent
 > review: Code (R2) at PR; ratification: Cray. Author≠reviewer separation:
 > **INTACT**. Uncommitted draft — Code commits per ADR-009 D2.
+>
+> **Amendment round (2026-08-10, post-R2/PR #1101, same drafter):** SD-1 gains
+> its compliance-consequence clause + AC-11 (the RoPA bring-up gate); SD-3/SD-4
+> become one joint ruling for procurement (with an on-disk correction to the
+> original `G,F,H` recommendation); the model-override measurement is folded
+> into Step 4's aggregate-LLM bullet with its tripwire; SD-2(b)'s reasoning is
+> upgraded and the demo-calendar variable named. Separation still **INTACT**.
 
 ---
 
@@ -182,6 +189,21 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   measurement session itself each have their own explicit Cray go (§8 —
   host-state changes, do-no-harm to co-tenant stacks). Evidence: the recorded
   measurement + per-action go records in the execution log.
+- [ ] **AC-11 — the RoPA reflects fleet's posture BEFORE fleet is reachable
+  (appended 2026-08-10, amendment round; precondition of Step 10's fleet
+  bring-up, not a follow-up).** Before the fleet system's go: the
+  published-demo RoPA (`docs/compliance/ropa-published-demo.md` — or a
+  sibling per-dataset instance, Cray's structuring call) covers the LOCKED-1
+  consequence: the new processing activity (visitor-typed case free text),
+  its storage location (fleet's Postgres), its retention number, and its DSR
+  path. 🔴 **Authorship boundary: the RoPA is Cray's artifact, in Cray's
+  controller voice — this PLAN gates on it and supplies the change statement
+  (SD-1's consequence clause); it authors none of the text** (mirroring the
+  portal-repo file boundary). Evidence that closes it: the updated RoPA on
+  `main` (authored by Cray; committed via Code's PR per ADR-009 D2) **and**
+  fleet's Step-10 go record citing it by path. No test double can satisfy
+  this AC: the gate is the committed artifact plus the go record, and a fleet
+  bring-up without both is a Step-10 **stop condition**, not a warning.
 
 ## Out of Scope
 
@@ -309,12 +331,25 @@ SD-1's reading): `deploy/published/<system-label>/` per system —
   `OCT_RECOMMEND_*` where energy's defaults don't apply
   (`published.env:31-35`'s warning), `LLM_MAX_INFLIGHT=1` per system.
 - **Aggregate LLM posture, pinned as a named value (ADR-0036 OQ-2):**
-  1 in-flight per system; aggregate = the number of published systems whose
-  tab set includes an assisted route. ⚠️ **Named premise change:** D5's "today
-  at most one published system carries an `assisted` route" stops being true
-  the moment fleet publishes Tab C (Ask) — two assisted systems share one
-  Ollama. Recorded here so it is a decision (SD-3 carries it to Cray), not a
-  drift; posture stays "revisit at first observed contention" (D5).
+  1 in-flight per system, **unchanged — and measured-safe today, not merely
+  hoped.** The premise change is real: D5's "today at most one published
+  system carries an `assisted` route" stops being true the moment fleet
+  publishes Tab C — two assisted systems share one Ollama (SD-3 carries it
+  to Cray). But the hazard that actually bites — **model-eviction thrash**
+  between systems pinning different models — is **absent, measured**
+  (Code post-R2; re-verified by the drafter 2026-08-10): `recommender_model`
+  / `ollama_default_model` overrides across the repo's `.env`/`.yml`/`.yaml`
+  files = **zero committed matches** (the single hit anywhere is the
+  **untracked** local dev `.env:19`, which pins the *identical* default
+  value), so every system serves the same `gpt-oss:20b`
+  (`config.py:97-105`). What remains is plain concurrency, and the existing
+  design already bounds it: each process caps at `LLM_MAX_INFLIGHT=1`, and
+  over-cap a request **fails fast to the deterministic arm with the
+  PLAN-0093 disclosure rather than queueing** (`published.env:47-52`).
+  **Tripwire, named so nobody re-alarms and re-measures:** the day any
+  per-system env introduces a `recommender_model` / `OLLAMA_DEFAULT_MODEL`
+  override, eviction thrash returns and this posture is re-opened — this
+  bullet is the dated baseline to diff against, not a claim to re-derive.
 - **Test moves:** the three `tests/deploy/` modules' hardcoded paths (AC-3
   list) updated in the same PR as the restructure — never split across PRs.
 
@@ -364,9 +399,10 @@ real authority ladder (`procedures.yaml:102-111`): `req-mechanic-tom` (ต้อ
   audit trail under this name.*
 - **Scope note (verified nuance):** membership enforcement arms only where the
   vertical *ships* principals (`auth.py:9-18`) — the persona layer is
-  meaningful on fleet (and available to procurement, which ships principals
-  per ADR-0026 — SD-4 sub-question); **energy stays keyless**, exactly as
-  PLAN-0100 left it (`published.env:8-12`).
+  meaningful on fleet (procurement ships principals too, ADR-0026, but
+  whether it joins is ruled **jointly in SD-3's procurement row**, not here);
+  **energy stays keyless**, exactly as PLAN-0100 left it
+  (`published.env:8-12`).
 
 Pass/fail: AC-7's scenario test — refused-then-granted across real personas,
 audit rows by name.
@@ -439,7 +475,12 @@ allowlist behaviour) — live runs minimized, evidence-not-gate (§8; the
 offline suite is the gate); (5) do-no-harm check on co-tenant stacks and the
 already-published systems.
 
-Pass/fail: AC-10's second clause; per-system live evidence recorded.
+**Fleet-specific precondition (AC-11):** the fleet go is additionally gated on
+the updated RoPA — Cray-authored, on `main`, cited by path in the go record.
+No RoPA, no bring-up: a stop condition, not a warning.
+
+Pass/fail: AC-10's second clause, plus AC-11 for the fleet system; per-system
+live evidence recorded.
 
 ## Surfaced decisions — Cray's slots (recommendation ≠ ruling; nothing below is assumed by the steps)
 
@@ -457,9 +498,46 @@ Pass/fail: AC-10's second clause; per-system live evidence recorded.
   a Postgres inside fleet's own project costs the portal arrangement nothing
   and fires no reopening trigger. **Recommendation: no separate ADR is owed —
   LOCKED-1 (Cray, typed, s218) + D5's finalization grant suffice, recorded by
-  ratifying this SD**; energy's SD-1(a) posture is untouched. *Why Cray:* this
-  is an interpretation of two governance artifacts' scopes — precedence calls
-  are the constitution's to make, not a drafter's (CLAUDE.md §1).
+  ratifying this SD**; energy's SD-1(a) posture is untouched.
+  **Consequence clause (added 2026-08-10, amendment round — the ruling's
+  compliance cost, made visible before it is taken, not discovered after):**
+  the published demo's RoPA instance (`docs/compliance/ropa-published-demo.md`,
+  ~9.2 KB, authored in Cray's voice **as data controller**) describes a
+  **DB-less** system — `postgres` / `database`: **zero** mentions; its entire
+  personal-data story is the prompt log as a **closed** stored set
+  (`ropa:67-70`), explicitly not storing IP / headers / gate identity
+  (`ropa:64-66`), 90-day rolling retention (`ropa:100`), 30-day DSR. Under
+  LOCKED-1, fleet's system adds what that record does not cover: **Tab I is a
+  visitor-writable surface whose free text persists to fleet's own Postgres**
+  — a new processing activity, in a new storage location, with its own
+  retention question and its own DSR surface (the RoPA's erasure path is
+  content search *over the prompt log*, `ropa:145-147`, and never reaches a
+  case row). Two scope facts, read before asserted: **ADR-0035 D6 is the
+  prompt-log regime**, defined per request *to a published LLM route*
+  (`0035:586,593-595`) — case text falls outside it, and D6's premise ("the
+  only PII surface of the demo is what visitors type", `0035:588-590`, where
+  that typing lands in the prompt log) goes stale-as-stated the day fleet
+  publishes Tab I; whether D6 takes a pointer or an amendment is **ADR-level
+  and only surfaced here** — a PLAN cannot amend an Accepted ADR. The
+  template (`docs/conventions/partner-ropa-lite.md:3-5`) is per-dataset by
+  construction and needs **no** change — the new dataset takes its own
+  populated instance or a new section of the demo instance, Cray's
+  structuring call as controller. One narrowing note so the scope stays
+  exact: LOCKED-5 adds **no** visitor identity to the audit trail — the
+  persona `person_id`s are synthetic shared identities and the gate email
+  stays vendor-side — so the new activity is the case free text, not the
+  persona mechanism. One sharp edge to hand Cray with the update: a case that
+  drives a governed run enters the tamper-evident audit chain — the structure
+  whose erasure the demo RoPA itself says cannot be promised
+  (`ropa:112-115`) — so the case-text DSR answer is structurally different
+  from the prompt log's, and only Cray can set it. 🔴 **The RoPA is Cray's
+  artifact — this PLAN authors none of it** (the same author boundary this
+  PLAN holds against portal-repo files); the PLAN's obligations are AC-11's
+  bring-up gate and this clause's precise statement of what changed, so Cray
+  can update in one pass. *Why Cray:* this is an interpretation of two
+  governance artifacts' scopes — precedence calls are the constitution's to
+  make, not a drafter's (CLAUDE.md §1) — and the consequence clause's duty
+  lands on Cray personally, as controller.
 - **SD-2 — Does s218 fire OQ-3, and what is the deployment order?** Three
   independent axes are in play: **card order** (LOCKED-2: fleet leftmost),
   **system number** (ADR-0036 D4: energy #1, procurement #2, fleet #3 "when
@@ -470,29 +548,61 @@ Pass/fail: AC-10's second clause; per-system live evidence recorded.
   bring-up order: system-number order (procurement then fleet) vs
   card/narrative order (fleet first)? **Recommendation:** (a) yes, confirm it
   fired — the shape is fixed by D2/D5, only the go was open; (b)
-  system-number order, because deployment order is invisible to visitors
-  while card order is not — the two need never agree, and procurement's
-  profile is the smaller step (no DB, no personas beat, hero already built).
-  Alternative: fleet first, if Cray wants the flagship card live earliest.
-  *Why Cray:* OQ-3 reserves the trigger to Cray by name; sequencing spends
-  Cray's §8 host budget.
+  system-number order (procurement then fleet) — upgraded reasoning
+  (amendment round, 2026-08-10): not because procurement is the smaller step
+  (a cost argument, and the weakest support available), but because it
+  **decomposes two independent risks** — the *arrangement* risk (two systems
+  on one shared host for the first time: headroom, per-project network
+  isolation, the first live exercise of AC-4) and fleet's *feature* risk (the
+  new DB posture, persona keys, the declared view sets, the Tab-H seed).
+  Procurement proves the arrangement while touching none of fleet's new
+  machinery — so if fleet later breaks, the broken axis is already isolated.
+  Deployment order is invisible to visitors; card order is not; the two need
+  never agree. **The variable that actually decides it — calendar knowledge
+  only Cray holds, so it is asked, not assumed:** is there a near-term demo
+  commitment? If anyone is being shown the portal within weeks, **fleet-first
+  wins outright** — fleet is the leftmost card and the pitch, and the
+  flagship should not queue behind a system that is not the story. The ruling
+  should state which case holds. *Why Cray:* OQ-3 reserves the trigger to
+  Cray by name; sequencing spends Cray's §8 host budget — and now the demo
+  calendar, which neither drafter nor reviewer can see.
 - **SD-3 — The three published tab sets + each system's default tab.**
   **Recommendation** (Cray types the sets; step 2's mechanism takes any):
   `oct-energy` — unchanged `A,B,C,D,F` (default A); `oct-fleet-maintenance` —
   `A,C,F,H,I,J` (default A): Cray's six favourites minus E (its narrative
   moves portal-side, LOCKED-3) **plus F, a drafter addition flagged as such**
   — the ladder the personas climb is *read* in Procedures, and hiding it
-  weakens the refused-then-granted beat; `oct-procurement` — `G,F,H`
-  (**default G**): its Tab A is structurally blank (empty `stream_events` by
-  design — `published.env:23-26`), so it must not land there; G is its story
-  (ADR-0036 D4), F shows the governed procedure, H the waiting run its seed
-  provides (`main.py:329-357`). ⚠️ Folded-in consequence to rule with it:
-  fleet publishing **C** makes a **second assisted system** sharing one
-  Ollama (Step 4's named premise change; ADR-0036 OQ-2/D5 posture stays
-  "1 per system, revisit at contention" unless Cray says otherwise). *Why
-  Cray:* PLAN-0100's SD-1 precedent — "which tabs the public ever sees" is
-  Cray's call; the six-favourites list was a preference statement, not a
-  typed set.
+  weakens the refused-then-granted beat. `oct-procurement` — **ruled JOINTLY
+  with SD-4's procurement sub-question: one decision, not two** (amendment
+  round, 2026-08-10 — the pair can otherwise be ruled inconsistently, and one
+  combination produces a dead control: a visible waiting approval a visitor
+  cannot act on reads as *broken*, worse on the public surface than absence —
+  exactly ADR-0032 D5 territory). ⚠️ **The original draft's `G,F,H` row was
+  wrong on disk and is corrected here:** Tab H's backend is Postgres-served —
+  PLAN-0100's C-3 struck the runs rows for exactly the DB-less posture
+  (`0100:896-899,921-928`), and the waiting run H would display is written
+  through `async_session` (`main.py:334-357`; pinned off and doubly inert on
+  a DB-less system, `published.env:66-72`) — while LOCKED-1 keeps procurement
+  DB-less. H on procurement was never merely persona-blocked; it is
+  **storage-blocked**. **The joint options, explicit:** **(i)** procurement
+  gets the persona mechanism **and** a Postgres — available only as Cray's
+  own revision of LOCKED-1's typed "procurement stays DB-less", and it makes
+  a second system tell an approval story, diluting D4's one-clean-story
+  principle; **(ii — recommended, agreeing with Code's lean and strengthening
+  it with the storage fact)** H drops from procurement's set: `G,F`,
+  **default G** (its Tab A is structurally blank — empty `stream_events` by
+  design, `published.env:23-26` — so it must not land there), anonymous
+  read + hero, no personas — the governed hero *is* procurement's story
+  (ADR-0036 D4); the approve beat is fleet's. ⚠️ Folded-in consequence to
+  rule with the fleet set: fleet publishing **C** makes a **second assisted
+  system** sharing one Ollama — a real premise change to ADR-0036 D5's
+  wording, but **measured-mild**: every system serves the same model, so the
+  eviction-thrash hazard is absent (Step 4's aggregate bullet carries the
+  measurement, date, and tripwire); posture stays "1 per system, revisit at
+  contention" unless Cray says otherwise. *Why Cray:* PLAN-0100's SD-1
+  precedent — "which tabs the public ever sees" is Cray's call; the
+  six-favourites list was a preference statement, not a typed set; and
+  option (i) touches Cray's own typed LOCKED-1.
 - **SD-4 — Persona-key delivery UX.** How does a visitor's browser get their
   chosen persona's key? **(a)** keys printed in the PIN email / portal page;
   visitor pastes — zero code, but the paste kills the cold visitor's first
@@ -505,11 +615,14 @@ Pass/fail: AC-10's second clause; per-system live evidence recorded.
   published-profile-only routing, and README warnings that real keys must
   never be placed there. The keys' protective value is Access + the audit
   trail, not secrecy from the visitor — the visitor is *supposed* to hold
-  one. **Sub-question:** does `oct-procurement` reuse the mechanism (it ships
-  principals, ADR-0026) or stay anonymous-read? Rec: reuse only if its SD-3
-  set includes an approve beat. *Why Cray:* trust posture + visitor UX on the
-  public surface — ADR-0032 D5 territory, and no oracle catches a wrong
-  first impression.
+  one. **Procurement sub-question — ruled jointly inside SD-3's procurement
+  row, never independently** (amendment round, 2026-08-10): the joint options
+  and the dead-control hazard live there. An SD-4-only "yes" against an SD-3
+  set without H buys personas with nothing to approve; an SD-3 "H" against an
+  SD-4 "no" shows a control nobody can use — and the storage fact recorded in
+  SD-3 makes H itself a LOCKED-1 question. One ruling covers both. *Why
+  Cray:* trust posture + visitor UX on the public surface — ADR-0032 D5
+  territory, and no oracle catches a wrong first impression.
 - **SD-5 — Fleet Tab H first paint: seed vs visitor-drives-it.** **(a —
   recommended)** seed one waiting run at boot (procurement's exact contract,
   `main.py:330-357`) **and** keep the visitor path — H is never empty, and a
@@ -576,3 +689,10 @@ Pass/fail: AC-10's second clause; per-system live evidence recorded.
   `verticals/fleet_maintenance/data_adapter/__init__.py:73-84` ·
   `verticals/energy/procedures.yaml` (zero `principal` occurrences; positive
   control passed) · `tests/deploy/` path targets.
+- Compliance (amendment round, 2026-08-10):
+  `docs/compliance/ropa-published-demo.md` — the demo RoPA instance, DB-less
+  as written (`:64-70` stored set · `:100` retention · `:112-115` the
+  audit-chain erasure boundary · `:145-147` the prompt-log-scoped DSR search)
+  · ADR-0035 D6 (`0035:586-629` — the prompt-log regime, LLM-route-scoped)
+  · `docs/conventions/partner-ropa-lite.md:3-5` — per-dataset template, no
+  change needed.
