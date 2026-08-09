@@ -1926,3 +1926,53 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > Non-vacuity demonstrated for all **9** guards added (mutations restored from
 > `/tmp` copies, never `git checkout`). The shipped image proven identical across
 > machines via `docker image inspect` after `save`/`scp`/`load`.
+
+> **Session 214, 2026-08-07→08 (head_commit `07e9603` → `1384278`) — six PRs merged
+> (#1073–#1078), 0 open. Theme: the published demo got a repeatable deploy
+> procedure, and the procedure found three defects in itself before it was allowed
+> to touch the host.**
+>
+> **#1074 — the redeploy pipeline.** `deploy/published/deploy.py` + a runbook +
+> **18 guard/scenario tests**. Bring-up was a one-time procedure; nothing covered
+> "main moved, make the demo be that". It asserts an **effect** — the running
+> container's `.Image` equals the id just loaded — not a step count, because
+> `compose up` decides for itself whether a container is stale and that decision
+> appears in no command's output. Also: `:prev` tagged before the load overwrites
+> `:latest` (rollback), and force-recreate of the connector **only** when the
+> bind-mounted ingress config changed.
+>
+> 🔴 **#1076 — every remote `--format={{…}}` was unrunnable.** The deploy host's ssh
+> shell is **PowerShell** (`echo %COMSPEC%` comes back unexpanded), which reads
+> `{…}` as a script block: docker gets `unknown shorthand flag: 'e' in
+> -encodedCommand`. Fixed by asking for plain JSON and parsing locally; `scp` and
+> the `C:\vero-staging` path dropped for `docker load` on stdin. **The guard written
+> one PR earlier to catch exactly this went GREEN over it** — its hazard set listed
+> quotes, `$` and separators but not braces, because it came from what was
+> imagined, not measured. **#1075:** a plan reported `PASS` for checks it never ran
+> and closed "2 checks, 0 FAIL" at exit 0, found by running it and reading the
+> output. **#1077:** the build could not interpolate its own compose file (`compose
+> config` exits 1 without `CLOUDFLARED_CREDENTIALS_FILE`) while the code's own
+> comment said so and passed nothing — the **third** instance in one session of
+> *comment states the rule, adjacent code breaks it*. **#1073** reconciled s213's
+> STATUS (never done) and discharged a stale 🔴 "Step 8 must not start" marker in
+> PLAN-0100, cleared by #1057 on 2026-08-05; **#1078** folds in the corrections from
+> the real run.
+>
+> **THE DEPLOY RAN, under Cray's typed §8 go (2026-08-08).** The demo now serves the
+> image built from `d0a2808`; it had been on s213's image for 10 hours. `8 checks,
+> 0 FAIL` — and every pre-committed read was verified **independently of the
+> script's own ledger** by reading the host: container `11b0fb7201be…` →
+> `45f6440a2d48…` (genuinely new — `Up 45 seconds` vs `Up 10 hours`), `.Image`
+> `4c88145c8653…` → `153324a2995c…`, `:prev` now holds `4c88145c8653…` so rollback
+> is live, host checkout `9601f068` → `d0a28080`, `/health` and `/` both **302** at
+> the edge. The connector was correctly **not** recreated (none of the 14 changed
+> files was `cloudflared/config.yml`).
+>
+> **The finding worth carrying:** none of the three pipeline defects was catchable
+> by the offline suite — **3977 tests green over a script whose first command failed
+> on contact with the host**. Same shape as s213's #1071 (3943 green over a
+> container that could not boot), one layer up. What caught them was a read-only
+> recon phase with a pass/fail read fixed **before** the run, and a rule that a
+> failed phase means no deploy. Gate at CI scope on every merge: `ruff format
+> --check` clean (614 files) · `mypy services/` clean (133) · **3977 passed /
+> 8 skipped / 0 failed**.
