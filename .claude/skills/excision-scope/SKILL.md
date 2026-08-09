@@ -77,6 +77,47 @@ That deletion set is what PLAN-0102's Steps actually named. The run must surface
 constants Step 5 omitted. If a future change to the tool stops surfacing them, it
 has regressed on the incident it exists for.
 
+## ❌ vulture is not the answer here — measured 2026-08-08, do not re-litigate
+
+The obvious question is "why not just put a dead-code detector in CI?" It was
+measured against this repo before the answer was written down, so nobody has to
+measure it again.
+
+**vulture answers a DIFFERENT question, and no confidence setting changes that.**
+It asks *"is this symbol referenced anywhere?"* — whole-program. The excision
+question is *"if I delete THIS set, what becomes unreferenced?"* — conditional.
+**Before an excision nothing is dead**: `_state_path` had `_apply_turn_boundary_reset`
+calling it, `is_doc_target` had `l1_threshold_for` calling it. Run against the
+real pre-excision hooks tree (4 files, 2,719 lines), vulture reports **0 findings
+— correctly**, and names **none** of the six symbols that were about to die. It
+is a category difference, not a sensitivity dial.
+
+**And as a general gate it is unusable here** (vulture 2.16, `services/` +
+`.claude/hooks/` + `tools/`):
+
+| `--min-confidence` | findings | assessment |
+|---|---|---|
+| 100 / 90 / 80 / 70 | **6** | **6/6 false positives** — all `Protocol` method parameters with `...` bodies in `services/engine/data_adapter.py`; they are the interface contract |
+| 60 (default) | **440** | dominated by single-file analysis artefacts — `load_counter`, `tokenize_bash_command`, `TEST_FAIL` are all live across modules |
+
+Whitelisting the six leaves a gate that reports nothing; taking the 440 needs a
+whitelist large enough to be its own project. **Verdict: no vulture in CI.**
+
+To re-measure (`uvx` keeps it out of the shared `.venv`, which dev-tool thrash
+makes worth avoiding):
+
+```bash
+uvx vulture services/ .claude/hooks/ tools/ --min-confidence 100
+```
+
+⚠️ Two traps met while taking that measurement, both the vacuous-zero shape:
+the first control pointed at a directory that had never been created and its
+`0 findings` read exactly like a real negative (caught by re-running at
+`--min-confidence 0` and still getting 0 — a working instrument is noisy there);
+and a plausible "the cwd matters" explanation turned out to be false once the
+comparison moved **one variable at a time** — the real variable was whole-set
+versus single-file analysis.
+
 ## Judgment the tool cannot make for you
 
 An orphan is a *candidate*, and sometimes the right answer is to keep it:
