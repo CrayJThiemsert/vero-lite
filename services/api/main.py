@@ -133,6 +133,22 @@ def _ui_profile_meta(profile: str) -> str:
     return f'<meta name="ui-profile" content="{profile}" />'
 
 
+def _ui_views_meta(keys: tuple[str, ...]) -> str:
+    """The PLAN-0103 Step 2 companion tag: which tabs this system publishes.
+
+    Rides the SAME substitution as the profile tag rather than taking an anchor
+    of its own, deliberately. Two anchors would be two ways for the injection to
+    half-apply — a page carrying ``published`` with no view set is the failure
+    that resolves toward serving the wrong tabs, and it would look completely
+    normal. One anchor makes the pair atomic: either both tags arrive or the
+    substitution raised.
+
+    Emitted on the published path only. The dev profile keeps its no-rewrite fast
+    path, and a dev page has no use for the tag — it renders the full census.
+    """
+    return f'<meta name="ui-views" content="{",".join(keys)}" />'
+
+
 class _StaticFilesWithCSP(StaticFiles):
     """StaticFiles that stamps a CSP on every served file and profiles the index.
 
@@ -167,9 +183,12 @@ class _StaticFilesWithCSP(StaticFiles):
                 f"{_UI_PROFILE_META_DEV!r} — the PLAN-0100 boot injection cannot "
                 "be applied. Restore the tag or update _UI_PROFILE_META_DEV."
             )
-        profiled = HTMLResponse(
-            html.replace(_UI_PROFILE_META_DEV, _ui_profile_meta(settings.ui_profile))
+        injected = (
+            _ui_profile_meta(settings.ui_profile)
+            + "\n  "
+            + _ui_views_meta(settings.published_view_keys)
         )
+        profiled = HTMLResponse(html.replace(_UI_PROFILE_META_DEV, injected))
         # The body no longer matches the file on disk, so the file's validators
         # would be wrong; without them the browser stops issuing conditional
         # requests for the index, which is also what keeps a profile change from

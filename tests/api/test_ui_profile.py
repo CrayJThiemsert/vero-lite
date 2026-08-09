@@ -29,13 +29,14 @@ import pytest
 from httpx import AsyncClient
 from pydantic import ValidationError
 
-from services.api.config import Settings, settings
+from services.api.config import ALL_VIEW_KEYS, Settings, settings
 from services.api.main import _UI_PROFILE_META_DEV
 from tests.api.js_source import strip_js_comments
 
-_INDEX = Path("services/api/static/index.html")
-_API_JS = Path("services/api/static/assets/api.js")
-_APP_JS = Path("services/api/static/assets/app.js")
+_STATIC = Path("services/api/static")
+_INDEX = _STATIC / "index.html"
+_API_JS = _STATIC / "assets/api.js"
+_APP_JS = _STATIC / "assets/app.js"
 
 #: AC-9 — the six elements ADR-0035 D6 obliges the persistent notice to carry,
 #: each pinned by its own substring. Seven entries, not six: D6's sixth element
@@ -126,6 +127,41 @@ async def test_index_is_rewritten_for_the_published_profile(
     assert '<meta name="ui-profile" content="published" />' in response.text
     assert _UI_PROFILE_META_DEV not in response.text
     assert response.headers["cache-control"] == "no-store"
+
+
+async def test_the_two_view_set_carriers_agree(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-1: the injected tag and ``/meta`` must never disagree.
+
+    One fact with two carriers is a disagreement waiting to happen, and the two
+    are not interchangeable — the tag is what the first paint reads, ``/meta`` is
+    what an HTTP client can assert. A drift between them would show as a UI that
+    renders one tab set while the API reports another, which is unfalsifiable from
+    either side alone.
+
+    Set to a NON-default value on purpose: with the default in place both
+    carriers would agree by accident even if one were hardwired.
+    """
+    monkeypatch.setattr(settings, "ui_profile", "published")
+    monkeypatch.setattr(settings, "ui_published_views", "G,F")
+
+    index = (await client.get("/")).text
+    tag = re.search(r'<meta name="ui-views" content="([^"]*)" />', index)
+    assert tag, "the published index carries no ui-views tag"
+
+    meta = (await client.get("/meta")).json()
+    assert tag.group(1).split(",") == meta["ui_published_views"] == ["G", "F"]
+
+
+async def test_the_dev_index_carries_no_view_set(client: AsyncClient) -> None:
+    """The dev profile keeps its no-rewrite fast path, so no tag is emitted.
+
+    Load-bearing rather than incidental: the dev page renders the full census, and
+    a view-set tag on it would be a second, silent way to strip a developer's
+    console.
+    """
+    assert 'name="ui-views"' not in (await client.get("/")).text
 
 
 async def test_the_published_index_keeps_its_csp(
@@ -297,9 +333,17 @@ _GUARD_REGISTRY: dict[tuple[str, str], tuple[int, str]] = {
     ("O.API.execute", "view-flow.js"): (1, "view-flow.js"),
 }
 
-#: The ten-tab census, and the four the published profile drops.
+#: The ten-tab census, and the five keys energy does NOT publish.
+#:
+#: PLAN-0103 Step 2 deleted ``app.js``'s ``PUBLISHED_EXCLUDED_VIEWS`` in favour of
+#: a server-declared positive set, so the second name here is no longer a mirror
+#: of a constant in the source — it is the HISTORICAL PIN. AC-1 requires the new
+#: default to render energy's tabs bit-identically to what the deleted constant
+#: produced, and the assertion below states exactly that (default == census minus
+#: these five) rather than restating the new default value, which would make the
+#: test agree with itself.
 _ALL_VIEW_KEYS = set("ABCDEFGHIJ")
-_PUBLISHED_EXCLUDED_VIEWS = {"E", "G", "H", "I", "J"}
+_ENERGY_UNPUBLISHED_VIEWS = {"E", "G", "H", "I", "J"}
 
 
 def _wrappers() -> set[str]:
@@ -387,36 +431,169 @@ def test_the_single_guard_predicate_is_exported_and_reads_the_profile() -> None:
     assert "isPublished," in api_source, "isPublished must be exported on window.OCT"
 
 
-def test_published_profile_drops_exactly_the_five_excluded_tabs() -> None:
-    """Tab gating is done by filtering VIEWS itself, so downstream is automatic."""
+# --------------------------------------------------------------------------- #
+# PLAN-0103 Step 2 — the server-declared per-system view set
+#
+# What replaced PUBLISHED_EXCLUDED_VIEWS. The old test read that constant out of
+# app.js by name; deleting the constant is AC-1's headline, so that test could not
+# survive the change it was verifying. These read the artifacts instead — the
+# census in each of its two homes, the shipped default, and the two carriers.
+# --------------------------------------------------------------------------- #
+
+
+def test_the_n1_exclusion_constant_is_gone_from_every_asset() -> None:
+    """AC-1's headline: the N=1 hardcode does not survive anywhere under assets/.
+
+    Scanned across every asset rather than app.js alone — a constant that moved to
+    a neighbouring file would satisfy a file-scoped check while re-creating
+    exactly the coupling Step 2 removed.
+
+    Comments are stripped first, and that is not a loosening. app.js now EXPLAINS
+    what the constant was and why it went, so a raw substring scan reddens against
+    a correct file for the crime of documenting itself — measured here, on the
+    first run of this test. The property AC-1 wants is that no CODE reads the
+    constant, and prose about a retired identifier is how the next reader learns
+    it was retired.
+    """
+    offenders = [
+        path.name
+        for path in sorted(_ASSETS.glob("*.js"))
+        if "PUBLISHED_EXCLUDED_VIEWS" in strip_js_comments(path.read_text(encoding="utf-8"))
+    ]
+    assert not offenders, (
+        f"PUBLISHED_EXCLUDED_VIEWS is still live code in {offenders} — PLAN-0103 "
+        "Step 2 replaces it with the server-declared ui_published_views set"
+    )
+
+
+def test_the_ten_tab_census_agrees_in_both_of_its_homes() -> None:
+    """``config.ALL_VIEW_KEYS`` and ``app.js``'s ``ALL_VIEWS`` are one list, twice.
+
+    The duplication is deliberate — a tab's label, icon and mounting module are
+    JS closures with no Python form, while the boot validation must run where the
+    setting is parsed — so the drift it invites gets a tripwire rather than a
+    comment. Adding an eleventh tab in the browser without adding its key here
+    reddens on the commit that opens the gap.
+    """
     app_source = _APP_JS.read_text(encoding="utf-8")
-
-    all_keys = set(re.findall(r"^\s{4}([A-J]): \{ key:", app_source, re.M))
-    assert all_keys == _ALL_VIEW_KEYS, f"the ten-tab census drifted: {sorted(all_keys)}"
-
-    excluded_literal = app_source.split("const PUBLISHED_EXCLUDED_VIEWS = ", 1)[1].split("]", 1)[0]
-    excluded = set(re.findall(r"'([A-J])'", excluded_literal))
-    assert excluded == _PUBLISHED_EXCLUDED_VIEWS, (
-        f"published-profile tab exclusions drifted: {sorted(excluded)} != "
-        f"{sorted(_PUBLISHED_EXCLUDED_VIEWS)} — SD-1(a) drops I/J (DB-backed), "
-        "SD-2 context drops E (/intake/*), H's last two allowed routes moved "
-        "to the excluded table under C-3, and Step 8 drops G because the hero is "
-        "bespoke per design partner (ADR-0032 D1.2) while this deployment pins "
-        "OCT_VERTICAL=energy, which owns no hero builder"
+    registered = set(re.findall(r"^\s{4}([A-J]): \{ key:", app_source, re.M))
+    assert registered == _ALL_VIEW_KEYS, f"the ten-tab census drifted: {sorted(registered)}"
+    assert set(ALL_VIEW_KEYS) == registered, (
+        f"services/api/config.py ALL_VIEW_KEYS is {sorted(ALL_VIEW_KEYS)} but "
+        f"app.js registers {sorted(registered)} — the boot validator would accept "
+        "a key the browser cannot render, or reject one it can"
     )
-    assert "const VIEWS = O.isPublished()" in app_source, (
-        "VIEWS must be filtered at definition so containers, buildTabs(), go()'s "
-        "unknown-key fallback and the oct:goto listener are all correct by "
-        "construction rather than each needing its own branch"
+
+
+def test_the_shipped_default_renders_energys_published_tabs_unchanged() -> None:
+    """AC-1's bit-identical clause, as a property rather than a repeated value.
+
+    Asserted against the FIELD DEFAULT, not a constructed ``Settings()``: an
+    instance picks up any ambient ``.env``, so a local override would silently
+    turn this into a test of the developer's machine.
+    """
+    default = str(Settings.model_fields["ui_published_views"].default)
+    keys = {part.strip().upper() for part in default.split(",") if part.strip()}
+    assert keys == _ALL_VIEW_KEYS - _ENERGY_UNPUBLISHED_VIEWS, (
+        f"the default published set is {sorted(keys)}, which does not render "
+        "energy's tabs — SD-1(a) drops I/J (DB-backed), SD-2 context drops E "
+        "(the intake routes), H's last two allowed routes moved to the excluded "
+        "table under C-3, and Step 8 drops G because the hero is bespoke per "
+        "design partner (ADR-0032 D1.2) while system #1 pins OCT_VERTICAL=energy, "
+        "which owns no hero builder"
     )
+
+
+def test_an_unknown_published_view_key_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The ``ui_profile`` Literal's asymmetry, one level down.
+
+    This value is hand-typed into a per-system ``published.env``. A tab set the
+    browser cannot render must stop the process rather than reach a public page.
+    """
+    monkeypatch.setenv("UI_PUBLISHED_VIEWS", "A,B,Z")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_an_empty_published_view_set_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two layers, deliberately, and this is the OUTER one.
+
+    ``app.js`` refuses to render a published page that declared no views and says
+    so on screen (Cray's s219 ruling). That refusal fires in a visitor's browser;
+    this one fires in the operator's terminal at deploy time. Keeping only the
+    inner layer would mean the earliest anyone learns of a blank system is when
+    somebody visits it.
+    """
+    monkeypatch.setenv("UI_PUBLISHED_VIEWS", "")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_a_repeated_published_view_key_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A repeat is always a typo, and the browser would hide it.
+
+    ``Object.fromEntries`` collapses duplicate keys silently, so the tab set would
+    look right while the declaration was wrong — and the NEXT edit to that
+    declaration would be made against a value nobody had reason to doubt.
+    """
+    monkeypatch.setenv("UI_PUBLISHED_VIEWS", "A,B,A")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_the_view_set_is_filtered_at_definition_and_drives_the_default_tab() -> None:
+    """The two structural properties the old exclusion test protected.
+
+    Filtering VIEWS itself keeps containers, ``buildTabs()``, ``go()``'s
+    unknown-key fallback and the ``oct:goto`` listener correct by construction.
+    The default-tab half is new: ``go()`` used to fall back to a hardcoded ``'A'``,
+    which is right for energy and wrong for procurement, whose Tab A is
+    structurally blank — so the landing tab must come from the declared order.
+    """
+    app_source = strip_js_comments(_APP_JS.read_text(encoding="utf-8"))
+    assert "const VIEWS = DECLARED" in app_source
+    assert (
+        "const DEFAULT_VIEW = Object.keys(VIEWS)[0]" in app_source
+    ), "the default landing tab must be the FIRST declared key, not a constant"
+    assert (
+        "k = 'A'" not in app_source
+    ), "go() still hardcodes 'A' as its fallback view — procurement lands on G"
+
+
+def test_a_published_page_with_no_declared_set_refuses_to_render() -> None:
+    """Cray's ruling (s219): refuse visibly, never guess.
+
+    Both meta tags ride one substitution, so reaching this branch means a premise
+    broke. Guessing is wrong in either direction — the full census renders
+    controls whose backends the allowlist 404s, and a hardcoded set is a guess
+    about which system this is. Pinned at source level because the alternative
+    (falling back to ``ALL_VIEWS``) is a one-word edit that would look harmless.
+    """
+    app_source = strip_js_comments(_APP_JS.read_text(encoding="utf-8"))
+    assert (
+        "if (O.isPublished() && !Object.keys(VIEWS).length)" in app_source
+    ), "boot() must refuse to render a published page that declared no views"
+    assert "function renderUnconfigured" in app_source
 
 
 def test_every_edited_asset_got_a_cache_bust() -> None:
-    """A stale ``?v=`` serves the OLD file, so a browser check would verify nothing."""
+    """A stale ``?v=`` serves the OLD file, so a browser check would verify nothing.
+
+    Each floor is the token the asset carried when a PLAN last edited it — a
+    per-file counter, not a build number, so the values differing from each other
+    is normal and not drift. ``api.js`` and ``app.js`` were raised by PLAN-0103
+    Step 2; the rest still hold PLAN-0100 Step 3's floors.
+    """
     index = _INDEX.read_text(encoding="utf-8")
     for name, minimum in (
-        ("api.js", 47),
-        ("app.js", 47),
+        ("api.js", 48),
+        ("app.js", 49),
         ("view-anomaly.js", 26),
         ("view-flow.js", 38),
         ("view-procedures.js", 26),
@@ -426,6 +603,6 @@ def test_every_edited_asset_got_a_cache_bust() -> None:
         match = re.search(rf"assets/{re.escape(name)}\?v=c(\d+)", index)
         assert match, f"{name} is not versioned in index.html"
         assert int(match.group(1)) >= minimum, (
-            f"{name} is served at ?v=c{match.group(1)} but Step 3 edited it at "
-            f"c{minimum} — a stale cache-bust serves the pre-Step-3 file"
+            f"{name} is served at ?v=c{match.group(1)} but was edited at "
+            f"c{minimum} — a stale cache-bust serves the pre-edit file"
         )

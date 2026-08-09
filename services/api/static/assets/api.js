@@ -20,7 +20,19 @@
     // runs before initMeta(), and therefore before /meta could have answered.
     // Absent tag falls back to 'dev', matching the on-disk index and every
     // offline/bundled context; the server is what makes it 'published'.
-    uiProfile: (document.querySelector('meta[name="ui-profile"]') || {}).content || 'dev'
+    uiProfile: (document.querySelector('meta[name="ui-profile"]') || {}).content || 'dev',
+    // PLAN-0103 Step 2 — the ordered view keys THIS system publishes, read from
+    // the <meta name="ui-views"> tag the server injects beside ui-profile (one
+    // substitution emits both, so they cannot half-arrive). Same synchronous
+    // read as uiProfile above and for the same reason: app.js filters VIEWS at
+    // definition, before initMeta() could have answered.
+    //
+    // This layer reports what the tag SAID and nothing more — an absent tag
+    // yields an empty array. What an empty set should mean on a published page
+    // is a policy question with a safety direction, and it is answered once, in
+    // app.js, where VIEWS is built.
+    publishedViews: (((document.querySelector('meta[name="ui-views"]') || {}).content) || '')
+      .split(',').map(s => s.trim().toUpperCase()).filter(Boolean)
   };
 
   // PLAN-0100 Step 3 (ADR-0035 D5(2), the s202 UI ruling) — the ONE predicate

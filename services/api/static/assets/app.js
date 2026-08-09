@@ -29,55 +29,117 @@
     J: { key: 'J', label: 'Month-End KPI', icon: 'receipt', mod: () => O.ViewExport }
   };
 
-  // PLAN-0100 Step 3 — tabs whose ENTIRE backend is off the published allowlist.
-  //   E  the three intake routes         D5(2)
-  //   G  the two hero-demo read routes   Step 8 (Cray, 2026-08-06) — see below
-  //   H  every runs route it calls       default-deny (and SD-1's C-3 disposition
-  //      moved its last two allowed routes, GET runs-by-id + gate-resolve, to the
-  //      excluded table, so nothing of H's backend survives)
-  //   I  the api-cases routes            SD-1(a) — DB-backed
-  //   J  the api-exports routes          SD-1(a) — DB-backed
+  // PLAN-0103 Step 2 — which tabs the published profile renders is DECLARED BY
+  // THE SERVER, per system, and arrives on <meta name="ui-views"> before the
+  // first paint (O.State.publishedViews).
   //
-  // G is excluded for a DIFFERENT reason from the other four, and the difference
-  // matters: its backend is not DB-bound and would serve fine. It is dropped
-  // because the hero is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2) and this
-  // deployment pins OCT_VERTICAL=energy, which owns no hero. The dispatch in
-  // routers/demo.py falls back to procurement's builders at REQUEST time, so
-  // leaving G on would serve a Fastenal procurement hero under an energy banner —
-  // a mismatch a partner reads as a bug. Each published system therefore tells ONE
-  // story: this one is the three OCT features, and the governed hero ships on the
-  // procurement system when that one is stood up.
+  // It used to be PUBLISHED_EXCLUDED_VIEWS, a list here naming the five tabs
+  // energy drops. That constant encoded N=1: a second published system with a
+  // different tab set had nowhere to say so except a per-vertical branch in the
+  // browser. Each system now declares its own set in its own published.env, and
+  // the rationale for a given set lives with that system's profile — which is
+  // also where the per-tab reasoning for energy's five went.
   //
-  // Route names above are written WITHOUT a glob on purpose. A slash immediately
-  // followed by a star opens a block comment as far as any naive stripper is
-  // concerned, and the CSS-class contract test strips comments before scanning
-  // for applied classes. Writing the intake route with a trailing glob here
-  // silently swallowed everything from that line to the next block-comment close
-  // ~150 lines below — including the `strip-msg` class on the status strip — and
-  // reddened test_css_class_contract, a test this change never went near.
-  // (Written out in words rather than shown as an example, because an example
-  // would re-arm the very trap. The first fix removed the globs from the list
-  // above but left one inside the sentence explaining them, and the test stayed
-  // red — the explanation was still the bug.)
+  // Route names are written WITHOUT a glob anywhere in this file on purpose. A
+  // slash immediately followed by a star opens a block comment as far as any
+  // naive stripper is concerned, and the CSS-class contract test strips comments
+  // before scanning for applied classes. Writing a route with a trailing glob
+  // here once silently swallowed everything from that line to the next
+  // block-comment close ~150 lines below — including the `strip-msg` class on
+  // the status strip — and reddened test_css_class_contract, a test that change
+  // never went near. (Written out in words rather than shown as an example,
+  // because an example would re-arm the very trap. The first fix removed the
+  // globs from the list but left one inside the sentence explaining them, and
+  // the test stayed red — the explanation was still the bug.)
+
+  // The published profile's ordered view keys, or null to mean "render the full
+  // census". Called exactly once, below, to build VIEWS.
   //
-  // Filtered out of VIEWS ITSELF rather than hidden at buildTabs(), so every
+  // The server validated every key it sent against the same ten-tab census, so a
+  // NON-EMPTY declared set is already trustworthy. What this function decides is
+  // the one case the server cannot: the tag did not arrive at all, and
+  // O.State.publishedViews is empty — a rewrite that failed, a cached pre-Step-2
+  // index, an offline bundle. See the fallback discussion in the PR.
+  function publishedViewKeys() {
+    const declared = O.State.publishedViews;
+    if (declared.length) return declared;
+    // Nothing declared on a page that knows it is published (Cray, typed, s219).
+    // Both meta tags come from ONE substitution in main.py, so arriving here
+    // means a premise broke that this code cannot name — and every way of
+    // GUESSING is wrong in its own direction: the full census renders controls
+    // whose backends the allowlist 404s, and a hardcoded set is a guess about
+    // WHICH system this is, wrong on procurement (G,F) and fleet.
+    //
+    // So: refuse, visibly. An empty set is turned into an explicit panel by
+    // boot(), not into an empty header — a page that merely looks broken costs
+    // the operator the diagnosis, which is the whole reason this branch exists.
+    return [];
+  }
+
+  // Filtered into VIEWS ITSELF rather than hidden at buildTabs(), so every
   // downstream consumer is correct by construction and no second branch can be
   // forgotten: containers are never built, buildTabs() cannot render the tab,
-  // go() already falls back to 'A' for an unknown key (so a deep-linked #E is
-  // handled), and the oct:goto listener cannot route into a dead view.
-  const PUBLISHED_EXCLUDED_VIEWS = ['E', 'G', 'H', 'I', 'J'];
-
-  const VIEWS = O.isPublished()
-    ? Object.fromEntries(
-        Object.entries(ALL_VIEWS).filter(([k]) => PUBLISHED_EXCLUDED_VIEWS.indexOf(k) === -1)
-      )
+  // go() falls back to the default key for an unknown one (so a deep-linked #E
+  // is handled), and the oct:goto listener cannot route into a dead view.
+  //
+  // Built by MAPPING the declared keys rather than filtering ALL_VIEWS, because
+  // the declared list is ORDERED and that order is the tab order — procurement
+  // lands on G, not A. A filter would silently re-impose census order.
+  const DECLARED = O.isPublished() ? publishedViewKeys() : null;
+  const VIEWS = DECLARED
+    ? Object.fromEntries(DECLARED.filter(k => ALL_VIEWS[k]).map(k => [k, ALL_VIEWS[k]]))
     : ALL_VIEWS;
+
+  // The system's default landing tab: the first declared key. Energy declares A
+  // and is unchanged; procurement must land on G because its Tab A is
+  // structurally blank (its adapter's stream_events is an empty iterator by
+  // design), which the old hardcoded 'A' fallback could not express.
+  const DEFAULT_VIEW = Object.keys(VIEWS)[0] || 'A';
 
   let stripEl, metaChipsEl, tabsEl, containers = {};
   let current = null;
 
+  // The published profile declared nothing renderable. Two audiences, two
+  // channels, deliberately:
+  //
+  //   * the VISITOR gets an honest, calm page and no internals. Naming the meta
+  //     tag or the env var to an anonymous visitor is a stack trace on a public
+  //     surface — it reads as amateurish and tells them nothing they can act on.
+  //   * the OPERATOR gets the actual diagnosis on the console, where it is
+  //     addressed to someone who can fix it.
+  //
+  // No D6 notice on this path (ADR-0035 D6): the notice's obligations are about
+  // what a visitor TYPES, and this page offers no input at all.
+  function renderUnconfigured(app) {
+    console.error(
+      'OCT: ui_profile is "published" but no <meta name="ui-views"> reached this ' +
+      'document, so no tab set could be built. Both tags are emitted by one ' +
+      'substitution (services/api/main.py _profiled_index) — check that the ' +
+      'server rewrote this index and that UI_PUBLISHED_VIEWS is set for this system.'
+    );
+    app.appendChild(h('div', { class: 'state' }, h('div', { class: 'box' }, [
+      h('h3', null, 'This system isn’t configured yet'),
+      h('p', null,
+        'The server didn’t declare which parts of the console this deployment ' +
+        'publishes, so none are being shown.'),
+      h('p', { class: 'muted', style: { marginTop: '12px' } },
+        'vero-lite is an operational control tower — it maps assets from an ' +
+        'operator’s own data, explains why something was flagged, and routes ' +
+        'the fix to a person to approve, keeping a reasoning trace and an audit ' +
+        'record behind every decision.'),
+      h('p', { class: 'muted', style: { marginTop: '10px' } },
+        'Which is why this page is empty rather than improvised: what it may ' +
+        'show is declared by the server, never guessed by the browser.')
+    ])));
+  }
+
   function boot() {
     const app = document.getElementById('app');
+
+    // Refuse before anything else is built. Rendering the header first would
+    // paint a tabless console for a moment, which is the "looks broken, says
+    // nothing" outcome this branch exists to avoid.
+    if (O.isPublished() && !Object.keys(VIEWS).length) { renderUnconfigured(app); return; }
 
     // ---- classification / connection strip ----
     stripEl = h('div', { class: 'strip' }, [
@@ -179,9 +241,9 @@
     } catch (e) {
       stripState('down', 'BACKEND UNREACHABLE');
     }
-    // pick default from hash or fall back to A
+    // pick default from hash or fall back to this system's default landing tab
     const hash = (location.hash || '').replace('#', '').toUpperCase();
-    go(VIEWS[hash] ? hash : 'A');
+    go(VIEWS[hash] ? hash : DEFAULT_VIEW);
   }
 
   function renderMetaChips() {
@@ -193,7 +255,7 @@
   }
 
   async function go(k) {
-    if (!VIEWS[k]) k = 'A';
+    if (!VIEWS[k]) k = DEFAULT_VIEW;
     current = k;
     location.hash = k;
     setActiveTab(k);
