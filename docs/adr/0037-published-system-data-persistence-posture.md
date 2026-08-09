@@ -1,9 +1,19 @@
 # ADR-0037: Data-persistence posture of a published vertical-system — DB-less by default, per-system grant with attached compliance obligations (extends ADR-0036 D5; bounds ADR-0035 D6 by precedence, explicitly)
 
-**Status:** Proposed
+**Status:** Accepted — ratified by Cray 2026-08-10 (session 218)
 **Date:** 2026-08-10 (the routing ruling and the substantive rulings it executes
 were typed by Cray in session 218)
-**Deciders:** Jirachai Thiemsert (Cray) — ruling originator and ratifier
+**Deciders:** Jirachai Thiemsert (Cray) — ruling originator and ratifier.
+**Ratified as drafted:** D1 = **(a) story-required** (the strict grant test;
+DB-less stays a bound, not a preference) · D3 = **bound, don't amend** (ADR-0035's
+file stays untouched; the one premise at `0035:588-590` is superseded in scope for
+granted systems by this ADR's precedence) · D4 = the **direction** only —
+**(a) text-by-reference as the target**, (c) permitted as an explicit interim if
+the D2.7 measurement forces it, **never (b) as an end state**. ⚠️ **D4's final
+ruling is deliberately NOT closed here:** it is Cray's to make *after* D2.7
+measures whether visitor case text reaches the audit chain, because the ruling
+sets what the controller can promise a data subject and cannot be made before the
+measurement exists. OQ-1..OQ-3 remain open and block nothing.
 **Related:** ADR-0036 (vertical-as-system; D5 per-system profiles — **extended**,
 not re-decided), ADR-0035 (hosting/exposure; D6 prompt-log regime — file
 **untouched**; one premise **bounded by precedence**, stated explicitly in D3
