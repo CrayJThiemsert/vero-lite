@@ -132,3 +132,48 @@ Nor does it soften the surrounding disciplines it depends on: the pre-committed
 pass/fail read, the refusal to proceed on a failed phase, and non-vacuity probes
 restored from `/tmp` rather than `git checkout`. Those are what made three rounds
 of self-inflicted defects cost nothing but time.
+
+## 7. The corollary — an instrument's self-report is not evidence about itself (session 217)
+
+Sections 1–6 are about a guard whose **predicate** the author supplied. The same
+blind spot has a second face, met three times while executing PLAN-0102: a
+**report** the instrument makes about its own work.
+
+**(a) A guard that grepped its own documentation.** A structural guard asserted
+that `stop_continuation.py` no longer references any retired identifier, by
+searching the source text. It went RED against a **correct** file — the module
+docstring *explains the retirement* and therefore names those identifiers. The
+predicate ("the name appears anywhere") could not tell a call from a comment, so
+it punished the file for documenting itself, and got redder the better the
+documentation was. Fixed by walking the **AST**, which sees only real bindings.
+Generalisation: *when a guard's subject is code, its input must be the parsed
+program, not the file's characters.*
+
+**(b) A rotation script that reported its own tally.** A script pruned
+`docs/STATUS.md` and then printed how many rows and blocks remained. Its counting
+regexes were double-escaped inside an f-string, so it reported `RD rows now: 24 /
+CF blocks now: 0` — both impossible. The rotation itself was correct; only the
+self-report was wrong. It was caught because the numbers were *absurd*, which is
+luck, not method: a report off by one would have been believed and copied into a
+commit message as evidence.
+
+**The operational form.** *A number that will become evidence — quoted in a
+commit message, an acceptance criterion, a decision — must be re-derived with a
+different instrument than the one that produced the work.* In the case above the
+re-derivation was `awk`/`grep` over the written file rather than the script's own
+tally; the second numbers are the ones that shipped.
+
+**(c) The tool built to close section 1's gap missed its own headline example.**
+`tools/excision_scope.py` was written to enumerate an excision's blast radius. Its
+module docstring led with `_state_path` as the motivating case. Its first version
+keyed symbols by **bare name across all modules**, so the three `_state_path`
+definitions in the hooks tree collapsed into one node; one copy had a live caller,
+so the collapsed node read as alive and the tool reported nothing. Its unit
+fixtures all passed. What caught it was running the tool against the **real
+pre-excision tree** with an oracle taken from history — the symbols the executed
+PLAN is on record as having missed. Fixed by qualifying nodes as `module::name`.
+
+That is section 4's remedy applied to a tool rather than a guard: **the external
+source for the predicate was the system itself, measured.** A fixture the author
+wrote could not have caught it, because the fixture encodes the same model of the
+problem that produced the bug.
