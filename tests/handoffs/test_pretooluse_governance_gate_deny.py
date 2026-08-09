@@ -282,16 +282,19 @@ def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     commit, in both directions: adding a Proposed ADR adds the entry; ratifying
     it `Proposed → Accepted` must REMOVE the entry in the same edit, or the
     exemption silently re-broadens to a file the G1 gate should by then be
-    guarding. **Both directions have now been exercised, one day apart:**
-    ADR-0036 was ratified 2026-08-09 and its entry left with it; ADR-0037
-    landed `Proposed` on 2026-08-10 and its entry arrived with it — this test
-    is what caught the second case, reddening on the commit that added the ADR
-    rather than letting G1 quietly stop guarding a file nobody had listed.
+    guarding. **A full round-trip has now been observed, and it took one
+    session:** ADR-0036 was ratified 2026-08-09 and its entry left with it;
+    ADR-0037 landed `Proposed` on 2026-08-10 and its entry arrived with it —
+    this test reddened on the very commit that added the ADR, rather than
+    letting G1 quietly stop guarding a file nobody had listed — and left again
+    hours later when ADR-0037 was ratified. Both directions, both caught, by a
+    test that enumerates ``docs/adr/`` on disk. A version of this check that
+    counted a hardcoded census would have stayed green through all of it.
 
-    The two permanent members are ``0000-template.md`` (a template, never
-    ratified) and ``0014-WITHDRAWN.md``. Everything else here is transient by
-    construction: when ADR-0037 is ratified, its entry leaves in that same
-    edit.
+    The set below therefore holds only the two PERMANENT members:
+    ``0000-template.md`` (a template, never ratified) and
+    ``0014-WITHDRAWN.md``. Any third entry is an in-flight ADR and is
+    transient by construction.
     """
     not_accepted = {
         p.name
@@ -301,8 +304,6 @@ def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     assert not_accepted == {
         "0000-template.md",
         "0014-WITHDRAWN.md",
-        # In flight, NOT exempt — leaves in the same edit that ratifies it.
-        "0037-published-system-data-persistence-posture.md",
     }
 
 
