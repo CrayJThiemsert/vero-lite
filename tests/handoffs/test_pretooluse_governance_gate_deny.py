@@ -277,11 +277,13 @@ def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     encoded a membership that was only ever true while no ADR was in flight, so
     it went stale the first time one was. The set below is the live expectation.
 
-    ⚠️ **ADR-0036 is here because it is IN FLIGHT, not because it is exempt.**
-    When Cray ratifies it `Proposed → Accepted`, that same edit must REMOVE this
-    entry — leaving it would silently re-broaden the exemption to a file the G1
-    gate should by then be guarding. The entry and the status line move together,
-    in one commit, in both directions.
+    ⚠️ **An in-flight ADR belongs here only while it is IN FLIGHT, never because
+    it is exempt.** Its entry and its `**Status:**` line move together, in one
+    commit, in both directions: adding a Proposed ADR adds the entry; ratifying
+    it `Proposed → Accepted` must REMOVE the entry in the same edit, or the
+    exemption silently re-broadens to a file the G1 gate should by then be
+    guarding. Worked precedent: ADR-0036 was ratified 2026-08-09 and its entry
+    left with it, restoring the set to the two permanent members below.
     """
     not_accepted = {
         p.name
@@ -291,7 +293,6 @@ def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     assert not_accepted == {
         "0000-template.md",
         "0014-WITHDRAWN.md",
-        "0036-vertical-as-system-multi-vertical-demo-portal.md",
     }
 
 

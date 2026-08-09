@@ -1,7 +1,7 @@
 # ADR-0036: Vertical-as-system — the multi-vertical demo portal: one published system per deployed vertical instance (extends ADR-0035 L9/D4; zero engine change)
 
-**Status:** Proposed
-**Date:** 2026-08-06
+**Status:** Accepted
+**Date:** 2026-08-06 (ratified 2026-08-09, session 218)
 **Deciders:** Jirachai Thiemsert (Cray). Five calls were LOCKED (typed by Cray,
 2026-08-06) before drafting — restated below, not re-litigated. This ADR decides
 the design **within** them and surfaces the remaining parameters.
