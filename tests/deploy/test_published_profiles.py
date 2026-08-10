@@ -345,6 +345,42 @@ def test_ac4_no_two_profiles_share_a_container_or_volume_name() -> None:
 
 
 @pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
+def test_the_build_context_resolves_to_a_real_dockerfile(profile: Path) -> None:
+    """A build context is a relative path, and relative paths do not follow a move.
+
+    ⚠️ This guard exists because its absence shipped a compose file that CANNOT
+    BUILD. PLAN-0103 Step 4a moved each compose from `deploy/published/` down into
+    `deploy/published/<system>/` and left `context: ../..` untouched — which now
+    resolves to `deploy/`, a directory with no Dockerfile. Every profile authored
+    by copying that one inherited it.
+
+    It survived two sessions because nothing offline exercised it:
+    `docker compose config --quiet` returns 0 on a context that does not exist, so
+    the "all three composes validate" check reported clean over it. Only an actual
+    `build` failed — with `failed to read dockerfile`, at the moment an operator
+    would be mid-deploy.
+
+    Asserting the resolved directory contains a Dockerfile is the cheap offline
+    form of the check that only a real build otherwise makes.
+    """
+    build = ((_compose(profile).get("services") or {}).get("app") or {}).get("build") or {}
+    context = build.get("context")
+    assert context, f"{profile.name}'s app service declares no build context"
+
+    resolved = (profile / context).resolve()
+    assert resolved.is_dir(), (
+        f"{profile.name}: build context `{context}` resolves to {resolved}, "
+        "which is not a directory"
+    )
+    dockerfile = resolved / build.get("dockerfile", "Dockerfile")
+    assert dockerfile.is_file(), (
+        f"{profile.name}: build context `{context}` resolves to {resolved}, which "
+        f"contains no {build.get('dockerfile', 'Dockerfile')}. `docker compose "
+        "config` will NOT catch this — only a real build will, mid-deploy."
+    )
+
+
+@pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
 def test_ac3_no_service_publishes_a_host_port(profile: Path) -> None:
     """PLAN-0100 AC-5's property, preserved PER SYSTEM (PLAN-0103 AC-3).
 
