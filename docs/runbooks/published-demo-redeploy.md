@@ -19,6 +19,50 @@ without asking for anything.
 
 ---
 
+## 0b. 🔴 ONE-TIME STOP CONDITION — the project was renamed
+
+**Run this before anything else in this runbook, every time, until it comes back
+empty.**
+
+```bash
+ssh <host> docker compose ls --all --format json
+```
+
+**If that output contains a project named `vero-published`, STOP. Do not run any
+`up` command below.**
+
+PLAN-0103 Step 4b renamed this system's compose project from `vero-published` to
+**`oct-energy`** (and both container names, the prompt-log volume, and the built
+image tag, which compose derives from the project). Docker does not follow a
+rename, so the old project keeps running, untouched and invisible to every command
+in this runbook.
+
+Two things go wrong if you continue anyway, and neither announces itself:
+
+1. **`up -d` under the new name starts a SECOND, PARALLEL STACK.** Two apps, and —
+   the part that matters — **two cloudflared connectors**, both live. ADR-0035
+   (`0035:490-493`) names exactly that as a condition under which "the arrangement
+   has drifted and this ADR is reopened", and the offline allowlist tests cannot
+   see it: they read a committed file and cannot tell who else is on the wire.
+2. **The prompt log stays behind.** The rows live in the `vero-published-prompt-log`
+   volume; the new project starts with an **empty** `oct-energy-prompt-log` and
+   orphans the old one. That volume is a compliance artifact under a 90-day
+   retention promise, and after this point
+   [`published-demo-operations.md`](published-demo-operations.md)'s erasure paths —
+   which now name `-p oct-energy` — would report success while touching **nothing**
+   a data subject asked to have removed.
+
+The migration procedure (stop the old project, copy the volume, verify the row
+count on both sides, *then* bring up the new name) is in
+[`deploy/published/oct-energy/README.md`](../../deploy/published/oct-energy/README.md).
+It is itself a host-state change and needs its own go.
+
+⚠️ **Do the migration as part of a redeploy you were going to do anyway**, not as a
+separate event — the checkout on the host has to be pulled forward for the new
+compose path to exist at all.
+
+---
+
 ## 1. The shape of the problem
 
 The published app runs on MS-S1 from an image built on the workstation. Three
