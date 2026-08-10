@@ -55,7 +55,18 @@ from ruamel.yaml import YAML
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = REPO_ROOT / "Dockerfile"
 COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
-PUBLISHED_COMPOSE = REPO_ROOT / "deploy" / "published" / "docker-compose.yml"
+#: PLAN-0103 Step 4 moved this into a per-system profile directory. The path is
+#: still a single literal because the O5 guard only needs ONE compose file that
+#: declares a named-volume mount to be non-vacuous, and oct-energy is the system
+#: that has one (the ADR-0035 D6 prompt log).
+#:
+#: ⚠️ If a second profile grows a named volume, add it here — the `exists()` skip
+#: in the O5 loop means a wrong or missing path contributes nothing rather than
+#: erroring. That is survivable only because the loop's non-vacuity assertion
+#: fires when the total comes to zero: this exact rename left `expected` empty
+#: and the assertion is what caught it, from `tests/docker/`, after every
+#: `tests/deploy/` test had gone green.
+PUBLISHED_COMPOSE = REPO_ROOT / "deploy" / "published" / "oct-energy" / "docker-compose.yml"
 DOCKERIGNORE = REPO_ROOT / ".dockerignore"
 ALEMBIC_INI = REPO_ROOT / "alembic.ini"
 PYPROJECT = REPO_ROOT / "pyproject.toml"

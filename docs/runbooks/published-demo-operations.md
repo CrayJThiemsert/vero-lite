@@ -144,7 +144,10 @@ unrecorded DSR action is indistinguishable from one that never happened.
 **Bring-up order.** Portal-side connector last, so the demo is never reachable before the
 app behind it is healthy:
 
-1. Bring up the published compose project (`deploy/published/`) — *owed, PLAN-0100 Step 8*.
+1. Bring up the published compose project (`deploy/published/oct-energy/`) — *owed,
+   PLAN-0100 Step 8*. ⚠️ PLAN-0103 Step 4 gave each published system its own profile
+   directory; this order describes **oct-energy**, and a second system repeats it from
+   that system's own directory.
 2. Confirm the app answers on the internal network, and that the proxy 404s an excluded
    route (the AC-6(c) smoke).
 3. Confirm the D6 notice renders and `UI_PROFILE=published` is in effect — the served

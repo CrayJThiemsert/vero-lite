@@ -62,11 +62,31 @@ from contextlib import nullcontext
 from pathlib import Path
 from typing import Any
 
+#: ⚠️ THIS SCRIPT SERVES `oct-energy` ONLY, and every literal below says so.
+#:
+#: PLAN-0103 Step 4 split `deploy/published/` into one profile directory per
+#: published system. The config moved; this script deliberately did NOT (Cray,
+#: typed, s219). It stays here, at the parent, because parameterizing it now
+#: would mean designing a `--system` interface against a second deployment that
+#: has never run — fleet carries a Postgres and will likely owe verification
+#: steps energy does not, and guessing their shape is the speculative-generality
+#: failure Rule of Three exists to prevent.
+#:
+#: **The decision is deferred to Step 10**, where procurement's bring-up makes the
+#: real requirements observable. Whoever takes it chooses between parameterizing
+#: this script by system label and copying it per profile; note that copying
+#: triplicates the seven verification checks, which are the only thing standing
+#: between a green offline suite and a container that cannot boot (s213 #1071:
+#: 3,943 tests green over exactly that).
+#:
+#: `tests/deploy/test_deploy.py` pins this to oct-energy's compose file, so a
+#: second system cannot quietly start riding these energy-shaped literals.
+
 #: Paths on the deploy host. Fixed by Cray's session-213 decision (the checkout
 #: location and the staging directory), not discovered — a deploy that guesses
 #: where the checkout lives is a deploy that can update the wrong tree.
 _HOST_CHECKOUT = r"C:\projects\vero-lite"
-_HOST_COMPOSE = r"C:\projects\vero-lite\deploy\published\docker-compose.yml"
+_HOST_COMPOSE = r"C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml"
 
 #: Names that MUST agree with `docker-compose.yml`. They are literals here
 #: because this script is stdlib-only by design (an operator runs it outside the
@@ -89,9 +109,9 @@ _LIVE_TAG = f"{_IMAGE}:latest"
 #: image: the compose file itself, the env file it loads, and the ingress
 #: allowlist that is bind-mounted into the connector.
 _HOST_READ_PATHS = (
-    "deploy/published/docker-compose.yml",
-    "deploy/published/published.env",
-    "deploy/published/cloudflared/config.yml",
+    "deploy/published/oct-energy/docker-compose.yml",
+    "deploy/published/oct-energy/published.env",
+    "deploy/published/oct-energy/cloudflared/config.yml",
 )
 
 #: Placeholder values for every `${VAR:?…}` the compose file declares required.
@@ -106,7 +126,7 @@ _BUILD_PLACEHOLDERS = {"CLOUDFLARED_CREDENTIALS_FILE": "/nonexistent/build-time-
 #: shows the new file on disk immediately, but cloudflared reads its config once
 #: at start — so `up -d` alone leaves the old ingress map live, with nothing to
 #: indicate it.
-_CONNECTOR_CONFIG = "deploy/published/cloudflared/config.yml"
+_CONNECTOR_CONFIG = "deploy/published/oct-energy/cloudflared/config.yml"
 
 _results: list[tuple[str, bool, str]] = []
 

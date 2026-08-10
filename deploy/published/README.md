@@ -1,114 +1,67 @@
-# `deploy/published/` — the published OCT demo project
+# `deploy/published/` — one directory per published system
 
-PLAN-0100 Step 8. Brings up the public demo surface: the PLAN-0095 image behind a
-locally-managed `cloudflared` tunnel, **no published ports**, **no Postgres**.
+Each **published system** is one compose project on one subdomain, serving one
+vertical (ADR-0036 D2). This directory holds one profile per system plus the two
+operator scripts they share.
 
-| File | What it is |
-|---|---|
-| `docker-compose.yml` | the two-service project — `app` + `cloudflared` |
-| `published.env` | every value §Pinned values pins. **Committed. No secrets.** |
-| `cloudflared/config.yml` | the ingress **allowlist** — this file *is* the enforcement |
-
-## What this deployment serves
-
-`OCT_VERTICAL=energy` — one process serves exactly one vertical, so this project is
-the **energy system**. A second vertical is a second compose project, not a setting
-change. Tab G (the governed hero) is **not** registered here: the hero is bespoke
-per design partner (ADR-0032 D1.2) and energy owns no hero builder.
-
-## The two things you must supply
-
-Both are **secrets** and neither may ever be committed (CLAUDE.md §8).
-
-### 1. Tunnel credentials
-
-Create the tunnel once, then point the compose at its credentials JSON:
-
-```bash
-cloudflared tunnel create vero-oct-published
+```
+deploy/published/
+  deploy.py                     the redeploy procedure  (⚠️ oct-energy only — see below)
+  verify_tunnel_credentials.py  credential/ingress check (takes its paths as arguments)
+  oct-energy/                   system #1 — the OCT three-feature story, DB-less
+    docker-compose.yml  published.env  cloudflared/config.yml  README.md
 ```
 
-```bash
-export CLOUDFLARED_CREDENTIALS_FILE=/etc/vero/cloudflared-credentials.json
-```
+A profile directory carries everything that differs per system: the compose
+project, its committed env file, and its ingress allowlist. Read that system's
+own `README.md` before touching it — the reasoning for *its* choices lives there,
+not here.
 
-The compose declares this variable **required**, with no default — a missing value
-fails `up` loudly rather than mounting something unintended.
+## Why the profiles are near-duplicates on purpose
 
-⚠️ **Do not replace this with a `TUNNEL_TOKEN` remotely-managed tunnel.** That moves
-the ingress map into the Cloudflare dashboard, out of this repo, and silently voids
-AC-6(a): the offline test would keep passing against a file the running tunnel no
-longer reads.
+ADR-0036 D5 accepts N ≤ 3 near-duplicate compose files and allowlists rather than
+a generator, and PLAN-0103 puts a shared compose generator explicitly out of
+scope. That is the Rule of Three: the shared shape gets extracted after three
+working instances exist, not before. Two systems that look 90% alike are cheaper
+to read side by side than one templating layer that hides which 10% matters.
 
-### 2. `API_KEYS`
+The duplication is bounded by guards, not by discipline: no two compose files may
+share a project name or a fixed network name, because two projects on one Docker
+network let each system's connector reach the other's `app:8000` and skip that
+system's allowlist entirely — a condition ADR-0035 names as grounds for reopening
+the whole arrangement.
 
-`API_AUTH_ENABLED=true` is pinned, and `API_KEYS` is deliberately **absent** from
-`published.env`. Until you supply it the demo boots and serves every unkeyed route,
-but **nobody can log in** — keyless `/whoami` returns 401, which is the correct
-behaviour, not a fault.
+## ⚠️ `deploy.py` serves `oct-energy` only
 
-Generate a key + digest pair:
+It is not parameterized by system, and the literals inside it — project name,
+container names, image tag, the host compose path — are energy's.
 
-```bash
-python -c "import secrets,hashlib; k=secrets.token_urlsafe(32); print('key:', k); print('sha256:', hashlib.sha256(k.encode()).hexdigest())"
-```
+That is a deliberate deferral (Cray, typed, s219), not an oversight. Writing a
+`--system` interface now would mean designing it against a second deployment that
+has never run: fleet carries a Postgres and will likely owe verification steps
+energy does not, and their shape is not yet observable. **The decision belongs to
+PLAN-0103 Step 10**, where procurement's bring-up makes the requirements real.
 
-Supply the mapping env-local on the host — a shell export, a systemd drop-in, or a
-host-side env file **outside this repo**. The RAW key is what the operator types to
-log in; only the sha256 digest is ever stored.
+Whoever takes it is choosing between parameterizing this script and copying it
+per profile. Worth weighing: the script's value is its seven post-deploy
+verification checks, and those are the only thing standing between a green
+offline suite and a container that cannot boot — session 213 shipped 3,943
+passing tests over exactly that. Three copies means three chances for that net to
+rot, two of them silently.
 
-## Bring it up
-
-```bash
-docker compose -f deploy/published/docker-compose.yml up -d
-```
-
-## Verifying the allowlist without an account
-
-`cloudflared` can evaluate the committed ingress offline — no Cloudflare account,
-fully deterministic. This is Step 9's sanctioned fallback when no tunnel can be
-established:
-
-⚠️ **`--config` goes on `tunnel`, BEFORE the subcommand — and getting it wrong
-exits 0.** Measured 2026-08-06 (Step 9) on `cloudflared 2025.8.1`: the trailing
-form `tunnel ingress validate --config F` prints `Incorrect Usage: flag provided
-but not defined: -config`, validates **nothing**, and still returns **exit 0**. A
-runner that trusts the exit code records a PASS for a command that never ran.
-Assert on the **output text** (`OK`, or the `service:` line), never on `$?`.
-
-```bash
-cloudflared tunnel --config deploy/published/cloudflared/config.yml ingress validate
-```
-
-```bash
-cloudflared tunnel --config deploy/published/cloudflared/config.yml ingress rule https://example.invalid/insights/query
-```
-
-The second should report the **catch-all** rule. A route that resolves to
-`http://app:8000` when it appears in PLAN-0100's *excluded* table is a leak.
-
-### If `cloudflared` is not installed on the host
-
-It was not on the Legion dev box at Step 9, and installing it is a host-state
-change (CLAUDE.md §8). Run the **image this project already pins** instead — no
-install, nothing left behind, and it is by construction the same binary the
-`cloudflared` service runs:
-
-```bash
-docker run --rm -v "$(pwd)/deploy/published/cloudflared":/etc/cloudflared:ro cloudflare/cloudflared:2025.8.1 tunnel --config /etc/cloudflared/config.yml ingress validate
-```
-
-Mount read-only, as above: the evaluation must never be able to edit the file it
-is evaluating.
+`tests/deploy/test_deploy.py` pins the script to oct-energy's compose file, so a
+second system cannot quietly start riding these energy-shaped literals.
 
 ## What is NOT here
 
-- **The per-IP rate cap.** It is a Cloudflare **zone** rule (SD-3) with no file in
-  this repo, so no test here can close it. Its configured values are recorded in
-  Step 8's PR body.
-- **The domain.** ADR-0035 D1(3): the domain appears only in the portal repo's
-  cross-system ingress map and in DNS. Nothing in vero-lite may reference it — which
-  is why `config.yml` carries no `hostname:` key.
-- **Postgres.** SD-1's DB-less ruling. The routes that need a database are on the
-  excluded table; the boot-time projection reads are fail-soft and log what they
-  could not load rather than pretending nothing was there.
+- **No secrets.** `API_KEYS` and the tunnel credentials are provisioned
+  host-env-local and never enter git (CLAUDE.md §8). Each profile's README states
+  how.
+- **No portal-repo files.** The ingress map across systems, the Access policies,
+  the landing surface and the domain are the portal repo's property (ADR-0036 D1,
+  ADR-0035 D4/L5). Nothing here names the apex domain.
+- **No registry of systems.** No committed file outside a profile directory lists
+  more than one system label — a vero-lite file enumerating the published systems
+  would be a shadow ingress map (ADR-0036 D2). The directory listing above names
+  only the systems that exist as directories, which is the filesystem, not a
+  registry.

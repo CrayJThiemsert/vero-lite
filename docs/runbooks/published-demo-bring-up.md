@@ -40,7 +40,7 @@ fails the build if a real one arrives.
 | `<DOMAIN>` | the apex domain on Cloudflare | DNS + the Access policy only |
 | `<SUBDOMAIN>` | `oct-energy.<DOMAIN>` — the label is fixed by ADR-0036 D2 (`oct-<vertical-id>`, `_`→`-`) | DNS + the Access policy only |
 | `<TEAM>` | the Zero Trust team name (`<TEAM>.cloudflareaccess.com`) | Cloudflare only |
-| `<CRED_PATH>` | absolute path to the tunnel credentials JSON **on the deploy host**, outside any git worktree | the host's `deploy/published/.env` |
+| `<CRED_PATH>` | absolute path to the tunnel credentials JSON **on the deploy host**, outside any git worktree | the host's `deploy/published/oct-energy/.env` |
 
 ---
 
@@ -177,7 +177,7 @@ deleted.
 ## 4. Verify the credentials — before they travel, and again after
 
 ```bash
-python3 deploy/published/verify_tunnel_credentials.py <CRED_PATH> deploy/published/cloudflared/config.yml
+python3 deploy/published/verify_tunnel_credentials.py <CRED_PATH> deploy/published/oct-energy/cloudflared/config.yml
 ```
 
 Everything it prints is safe to share: shapes, lengths, PASS/FAIL and a SHA-256
@@ -201,7 +201,7 @@ Offline, free, and worth running **on the deploy host** rather than the workstat
 proves that machine can read the mounted config, which is the half that actually varies:
 
 ```bash
-docker run --rm -v <REPO>/deploy/published/cloudflared:/etc/cloudflared:ro cloudflare/cloudflared:2025.8.1 tunnel --config /etc/cloudflared/config.yml ingress validate
+docker run --rm -v <REPO>/deploy/published/oct-energy/cloudflared:/etc/cloudflared:ro cloudflare/cloudflared:2025.8.1 tunnel --config /etc/cloudflared/config.yml ingress validate
 ```
 
 Expect the literal word **`OK`**. Swap `ingress validate` for
@@ -350,7 +350,7 @@ entirely and gives the stronger guarantee — the artifact that runs is provably
 was tested:
 
 ```bash
-CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/docker-compose.yml build app
+CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/oct-energy/docker-compose.yml build app
 docker save vero-published-app:latest -o /tmp/app.tar     # ~67 MB
 scp /tmp/app.tar <host>:C:/<staging>/app.tar
 ssh <host> 'docker load -i C:\<staging>\app.tar'
@@ -373,7 +373,7 @@ is — no compose change is required to adopt this.
 
 ## 8. Host-side secrets
 
-Neither value may enter the repo. Both live in an uncommitted `deploy/published/.env` next
+Neither value may enter the repo. Both live in an uncommitted `deploy/published/oct-energy/.env` next
 to the compose file on the deploy host:
 
 ```
@@ -411,7 +411,7 @@ Cheapest possible gate before starting anything, and it renders the whole file w
 variables substituted:
 
 ```bash
-docker compose -f deploy/published/docker-compose.yml config --quiet
+docker compose -f deploy/published/oct-energy/docker-compose.yml config --quiet
 ```
 
 ### 🔴 Windows inherits a much wider ACL than the file deserves
@@ -441,7 +441,7 @@ inside a worktree for exactly this reason.
 ## 9. Bring it up, then hand over to Step 11
 
 ```bash
-docker compose -f deploy/published/docker-compose.yml up -d
+docker compose -f deploy/published/oct-energy/docker-compose.yml up -d
 ```
 
 ```bash
@@ -520,5 +520,5 @@ to [`published-demo-operations.md`](published-demo-operations.md).
 
 *Sources: ADR-0035 (D1 exposure model, D3 Access, D6 prompt log), ADR-0036 (D2 subdomain
 convention), PLAN-0100 (Step 8 artifacts, Step 11 protocol, §Pinned values, §Residual
-risks), `deploy/published/README.md`. Preconditions were confirmed against the live
+risks), `deploy/published/oct-energy/README.md`. Preconditions were confirmed against the live
 account in session 213; re-confirm rather than trusting that record.*

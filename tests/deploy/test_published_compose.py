@@ -40,7 +40,23 @@ import yaml
 
 from tests.api.js_source import strip_js_comments
 
-_DEPLOY = Path("deploy/published")
+#: PLAN-0103 Step 4 — TWO scopes, and the split is load-bearing.
+#:
+#: `_DEPLOY` is the ONE system whose compose/env/ingress this module asserts.
+#: Deliberately not yet parametrized over the profile directories: procurement's
+#: and fleet's are authored in the next step, and a parametrized module with two
+#: empty parameters reports green coverage of systems that do not exist.
+#:
+#: `_DEPLOY_ROOT` is what the DOMAIN guard scans, and it must stay the whole tree.
+#: Narrowing it to one profile is not a smaller scope, it is a HOLE: it drops
+#: `deploy.py`, `verify_tunnel_credentials.py` and this directory's README out of
+#: the only test that keeps the apex domain out of the repo (ADR-0035 D1(3)) —
+#: and a bring-up script is exactly where a real hostname wants to be pasted,
+#: because that is the value the operator is holding while writing it. Measured,
+#: not hypothetical: repointing the single old constant at `oct-energy/` did
+#: exactly that, and every test in this module stayed green.
+_DEPLOY_ROOT = Path("deploy/published")
+_DEPLOY = _DEPLOY_ROOT / "oct-energy"
 _COMPOSE = _DEPLOY / "docker-compose.yml"
 _ENV = _DEPLOY / "published.env"
 _INGRESS = _DEPLOY / "cloudflared" / "config.yml"
@@ -448,8 +464,20 @@ def test_ac6a_the_tunnel_is_locally_managed() -> None:
 
 
 def _deploy_docs() -> list[Path]:
-    """Every committed file the published deployment is described by."""
-    return [p for p in sorted(_DEPLOY.rglob("*")) if p.is_file()] + list(_RUNBOOKS)
+    """Every committed file the published deployment is described by.
+
+    Scanned from `_DEPLOY_ROOT`, not `_DEPLOY`: the shared operator scripts and
+    the root README describe the deployment just as much as one profile's files
+    do, and a future profile directory is picked up without editing this.
+
+    `__pycache__` is skipped explicitly rather than left to chance. A fresh CI
+    checkout has none, so an unfiltered scan passes there and raises
+    UnicodeDecodeError on a developer's machine — a divergence that reads as
+    "works in CI, broken locally" and sends the next person hunting the wrong bug.
+    """
+    return [
+        p for p in sorted(_DEPLOY_ROOT.rglob("*")) if p.is_file() and "__pycache__" not in p.parts
+    ] + list(_RUNBOOKS)
 
 
 def _registrable_domains(text: str) -> set[str]:
