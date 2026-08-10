@@ -97,7 +97,6 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
         r"^/assets/.+$",
         r"^/health$",
         r"^/meta$",
-        r"^/llm/status$",
         r"^/procedures$",
         r"^/demo/hero/governance$",
         r"^/demo/hero/impact$",
@@ -117,7 +116,6 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
         r"^/assets/.+$",
         r"^/health$",
         r"^/meta$",
-        r"^/llm/status$",
         # ON here and OFF procurement: this is the system with personas (LOCKED-5),
         # and without login the refused-then-granted beat is unreachable.
         r"^/whoami$",
@@ -197,11 +195,73 @@ def test_every_discovered_profile_has_an_expected_allow_set() -> None:
     )
 
 
+#: AC-3's committed artifact list, per profile. The card copy is the FIFTH and was
+#: added by Step 8a — before it existed this tuple had four entries and the test
+#: said so in its name, which is why AC-3 could not be ticked.
+_REQUIRED_ARTIFACTS = (
+    "docker-compose.yml",
+    "published.env",
+    "cloudflared/config.yml",
+    "README.md",
+    "card-copy.md",
+)
+
+
 @pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
-def test_a_profile_carries_all_four_committed_artifacts(profile: Path) -> None:
-    """AC-3: `{docker-compose.yml, published.env, cloudflared/config.yml, README}`."""
-    for rel in ("docker-compose.yml", "published.env", "cloudflared/config.yml", "README.md"):
+def test_a_profile_carries_every_committed_artifact(profile: Path) -> None:
+    """AC-3: all five committed artifacts exist for every published system."""
+    for rel in _REQUIRED_ARTIFACTS:
         assert (profile / rel).is_file(), f"{profile.name} is missing {rel}"
+
+
+#: AC-9 asserts SECTION PRESENCE, never copy quality — "which has no oracle" is the
+#: AC's own wording. These are the English headings because they are stable; the
+#: Thai side is held to structural PARITY instead, so its wording stays free.
+_CARD_SECTIONS_EN = ("Card name", "What you'll see", "First 90 seconds", "Call to action")
+
+
+@pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
+def test_ac9_the_card_copy_is_bilingual_and_structurally_complete(profile: Path) -> None:
+    """AC-9: both language sections present, and neither is a stub.
+
+    The failure this actually catches is **one language drifting behind the
+    other** — someone edits the English, ships, and the Thai card silently keeps
+    describing an older demo. Rather than pin Thai wording (which would make every
+    copy edit a test edit, and which AC-9 explicitly does not ask for), the Thai
+    section is required to carry at least as many subsections as the English one.
+    """
+    text = (profile / "card-copy.md").read_text(encoding="utf-8")
+
+    assert text.count("\n## TH") == 1, f"{profile.name}: expected exactly one `## TH` section"
+    assert text.count("\n## EN") == 1, f"{profile.name}: expected exactly one `## EN` section"
+
+    th_body, _, en_body = text.partition("\n## EN")
+    _, _, th_body = th_body.partition("\n## TH")
+
+    for heading in _CARD_SECTIONS_EN:
+        assert f"### {heading}" in en_body, f"{profile.name}: EN section lacks `### {heading}`"
+
+    th_sections = th_body.count("\n### ")
+    en_sections = en_body.count("\n### ")
+    assert th_sections >= en_sections, (
+        f"{profile.name}: the Thai card has {th_sections} subsections against the "
+        f"English card's {en_sections} — the two languages have drifted apart"
+    )
+
+    # A heading with nothing under it satisfies every check above, so the copy has
+    # to actually be there. Deliberately a low bar: this is a stub detector, not a
+    # quality judgement.
+    for label, body in (("TH", th_body), ("EN", en_body)):
+        prose = [
+            line
+            for line in body.splitlines()
+            if line.strip() and not line.startswith("#") and not line.startswith("---")
+        ]
+        assert len(prose) >= len(_CARD_SECTIONS_EN), (
+            f"{profile.name}: the {label} card has headings but almost no copy "
+            f"({len(prose)} non-heading lines) — an empty stub would pass a "
+            "presence-only check"
+        )
 
 
 # --------------------------------------------------------------------------- #
