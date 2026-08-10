@@ -1,0 +1,199 @@
+# cloudflared ingress for the PUBLISHED fleet-maintenance system (PLAN-0103 Step 5).
+#
+# THIS FILE IS THE ENFORCEMENT. The `path:` patterns below are this system's whole
+# published surface, and the final entry must be the catch-all `http_status:404`.
+# That catch-all IS the deny-by-default rule. `tests/deploy/test_published_profiles.py`
+# asserts set-equality against this system's own expected table.
+#
+# LOCALLY-MANAGED TUNNEL, ON PURPOSE. Do NOT convert this to a remotely-managed
+# `TUNNEL_TOKEN` tunnel: that moves the ingress map into the Cloudflare dashboard,
+# out of this repo, and silently voids the guard.
+#
+# EVERY `path:` IS ANCHORED AT BOTH ENDS. cloudflared matches Path as an UNANCHORED
+# regex (`r.Path.Regexp.MatchString`), so an unanchored `/procedures` would also
+# admit `/procedures/{id}/run`, and an unanchored `/runs/[^/]+` would admit
+# `/runs/{id}/gate/resolve` without anyone deciding to.
+#
+# THE METHOD COLUMN IS NOT ENFORCEABLE HERE — the ingress Rule struct has no method
+# field, so a path allow admits ALL methods on that path. Nor is the query string.
+#
+# NO `hostname:` KEY, deliberately (ADR-0035 D1(3)).
+#
+# ═════════════════════════════════════════════════════════════════════════════
+# 🔴 THIS IS THE ONLY PROFILE THAT RE-ADMITS ROUTES PLAN-0100 EXCLUDED, AND EVERY
+# ONE OF THEM CARRIES ITS OWN WRITTEN BASIS BELOW. NONE IS INHERITED.
+#
+# PLAN-0103 Step 5 requires exactly that, and the reason is that the ORIGINAL bases
+# were not the same, so a single blanket reversal would be wrong:
+#
+#   * Tabs I and J were excluded on **SD-1(a) DB-less grounds** — the routes are
+#     database-backed and the system had no database. That basis **DISSOLVES** for
+#     this system: LOCKED-1 grants it a Postgres, so the fact the exclusion rested
+#     on is no longer true here.
+#   * Tab H's routes were excluded by **default-deny plus SD-1's C-3 disposition** —
+#     never a storage fact alone. A dissolved DB premise does NOT re-admit them, so
+#     each gets its own explicit call below.
+#
+# A row returning here is a NEW DECISION FOR A NEW SYSTEM, not a reopening of
+# PLAN-0100 — P12 makes the allowlist a labelled provisional per system.
+#
+# ⚠️ This system is also the one with personas and a database, so it is the only
+# published surface where an anonymous visitor can WRITE. Every write row below is
+# either persona-authenticated or is the Tab I intake that AC-11's RoPA must cover.
+# ═════════════════════════════════════════════════════════════════════════════
+
+tunnel: vero-oct-fleet-maintenance
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # --- the SPA itself ------------------------------------------------------- #
+  - path: ^/$
+    service: http://app:8000
+  - path: ^/assets/.+$
+    service: http://app:8000
+
+  # --- boot + chrome --------------------------------------------------------- #
+  - path: ^/health$
+    service: http://app:8000
+
+  # REQUIRED ON EVERY SYSTEM. `app.js` awaits `O.loadMeta()` before it picks a
+  # landing tab; without this row the strip paints "BACKEND UNREACHABLE".
+  - path: ^/meta$
+    service: http://app:8000
+
+  # Global chrome, not a tab: the MS-S1 residency indicator polls this read
+  # (`llm-control.js` — the poll NEVER warms, INV-1). `/warm` and `/sleep` stay
+  # off, so the indicator reads and cannot act.
+  - path: ^/llm/status$
+    service: http://app:8000
+
+  # 🔴 THE PERSONA LOGIN — on this system it is load-bearing, not optional.
+  # `auth.js` makes GET /whoami the ONE auth-validating read, so without this row
+  # no persona can be selected and the refused-then-granted beat — LOCKED-5, and
+  # this system's entire reason to exist — is unreachable. (It is deliberately OFF
+  # the procurement system, which takes no personas.)
+  - path: ^/whoami$
+    service: http://app:8000
+
+  # --- Tab A — the operational map (this system's LANDING view) --------------- #
+  # Unchanged bases from PLAN-0100: these three were already published on the
+  # DB-less system, so nothing is being reopened here.
+  - path: ^/objects/[^/]+$
+    service: http://app:8000
+  - path: ^/recommendations$
+    service: http://app:8000
+  # DB-free: mutates the process-local _action_store only. `/{id}/execute` stays
+  # EXCLUDED (SD-1 — DB-backed and there is no global exception handler, so it
+  # would 500 rather than degrade); the `/approve$` anchor is what keeps it out.
+  - path: ^/recommendations/[^/]+/approve$
+    service: http://app:8000
+
+  # --- Tab C — natural-language query ---------------------------------------- #
+  # The assisted route. The visitor types it, so ADR-0035 D6's prompt-log
+  # obligation attaches naturally and the per-IP zone cap bounds it. `^…$` keeps
+  # the SD-1-excluded `/insights/query` out.
+  #
+  # ⚠️ This makes fleet the SECOND assisted published system. Step 4's aggregate
+  # posture measured the hazard that would matter — model-eviction thrash between
+  # systems pinning different models — and found it absent (every system serves the
+  # same model; no committed override exists). See published.env's tripwire.
+  - path: ^/query$
+    service: http://app:8000
+
+  # --- Tab F — Procedures ----------------------------------------------------- #
+  # The ladder the personas climb, readable. The anchor keeps out both the three
+  # `/procedures/draft/*` authoring routes AND `POST /procedures/{id}/run`, which
+  # would let an anonymous visitor start a governed run.
+  - path: ^/procedures$
+    service: http://app:8000
+
+  # --- Tab H — the Monitor: FIVE ROUTES, FIVE SEPARATE DECISIONS -------------- #
+  # PLAN-0100 excluded all five under default-deny + SD-1's C-3 disposition. That
+  # basis is NOT a storage fact, so the LOCKED-1 database does not re-admit them —
+  # each is called here on its own merits, which is what Step 5 demands.
+  #
+  # (1) The run list. Basis: this system's story IS the approval queue; a Monitor
+  # that cannot list runs has nothing to show. Read-only, and SD-5 ruled the tab
+  # must not open empty (Step 7's seed).
+  - path: ^/runs$
+    service: http://app:8000
+
+  # (2) The run detail. Basis: the visitor must SEE what they are being asked to
+  # approve — the proposals, the reasoning trace, the tier that routed it — before
+  # deciding. Approving something you cannot inspect is the opposite of the
+  # governance claim this demo makes. `[^/]+` cannot swallow a further segment, so
+  # this row does not silently admit the two POSTs below.
+  - path: ^/runs/[^/]+$
+    service: http://app:8000
+
+  # (3) 🔴 The gate resolution — the ONE genuinely privileged write on any
+  # published surface. Basis: it is the demo's core moment (AC-7). It is
+  # persona-AUTHENTICATED (the route resolves a real principal and enforces the DOA
+  # ladder + separation of duties), so an anonymous request is refused by the
+  # application, not merely by taste. Publishing it is what lets a visitor be
+  # REFUSED as ต้อม and GRANTED as วิรัช — and each decision lands in the real
+  # audit trail under the person_id that acted.
+  - path: ^/runs/[^/]+/gate/resolve$
+    service: http://app:8000
+
+  # (4) Cancel. Basis: a queue you can only add to is a trap — a visitor who opens
+  # a case and then wants it gone needs a governed way out, and cancellation is
+  # itself an audited decision. Same authentication as (3).
+  - path: ^/runs/[^/]+/cancel$
+    service: http://app:8000
+
+  # (5) Chain verification. Basis: "tamper-evident" is a claim, and this route is
+  # the only way a visitor can CHECK it rather than be told it. Read-only, no
+  # parameters, and it returns a verification report over the audit chain — the
+  # single most load-bearing read for the trust story. Excluding it would leave the
+  # demo asserting integrity it declines to demonstrate.
+  - path: ^/audit/verify$
+    service: http://app:8000
+
+  # --- Tab I — case intake: the DISSOLVED DB-less basis ----------------------- #
+  # These were excluded by SD-1(a) because the routes are database-backed and the
+  # system had none. LOCKED-1 grants this system a Postgres, so the premise the
+  # exclusion rested on is simply no longer true here.
+  #
+  # 🔴 AND THIS IS THE SURFACE AC-11 EXISTS FOR. Tab I is visitor-writable and its
+  # free text persists to this system's database — a new processing activity, in a
+  # new storage location, with its own retention question and its own DSR path. The
+  # published demo's existing RoPA describes a DB-LESS system whose entire
+  # personal-data story is the prompt log, and its erasure path is a content search
+  # over that log which never reaches a case row. AC-11 makes the updated RoPA a
+  # PRECONDITION of this system's bring-up (ADR-0037 D2.1) — a stop condition, not
+  # a warning. Committing these rows does not discharge it.
+  #
+  # Only what the UI actually drives is admitted. The cases router exposes more
+  # (tasks, justifications, accepted-quote, closeout, GET /{id}); under default-deny
+  # an unexercised route earns no row.
+  - path: ^/api/cases$
+    service: http://app:8000
+  # Photo upload — the roadside evidence beat. A visitor-supplied FILE, so it is
+  # named here explicitly rather than folded into a wildcard.
+  - path: ^/api/cases/[^/]+/photos$
+    service: http://app:8000
+  # The evidence pack: what was collected, by whom, when. Read-only.
+  - path: ^/api/cases/[^/]+/evidence$
+    service: http://app:8000
+  # The quotes on a case — the ฿ figures the ladder routes on.
+  - path: ^/api/cases/[^/]+/quotes$
+    service: http://app:8000
+
+  # --- Tab J — the month-end export: same dissolved basis --------------------- #
+  # Excluded under SD-1(a) as DB-backed; that basis dissolves here.
+  #
+  # ⚠️ THE COVER ONLY. The sibling `.csv` route is deliberately absent: Cray
+  # declined a UI button (and a CLI) for the file at s192 and that decision stands.
+  # The `/cover$` anchor is what keeps the file route off this surface — dropping
+  # the anchor would quietly reverse a typed ruling.
+  - path: ^/api/exports/repair-spend/[^/]+/[^/]+/cover$
+    service: http://app:8000
+
+  # --- deny by default (MUST be last) ----------------------------------------- #
+  # Everything else, including: ALL THREE /demo/hero routes (the governed hero is
+  # the procurement system's story — one system, one story), /recommendations/{id}/execute,
+  # /insights/query, POST /procedures/{id}/run, the three /procedures/draft/* and
+  # three /intake/* authoring routes, /warm, /sleep, the .csv export sibling, and
+  # every cases route the UI does not drive.
+  - service: http_status:404

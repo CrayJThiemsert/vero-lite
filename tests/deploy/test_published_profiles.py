@@ -102,6 +102,48 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
         r"^/demo/hero/governance$",
         r"^/demo/hero/impact$",
     },
+    # `A,C,F,H,I,J`, default A (SD-3, Cray typed s218). The ONLY profile that
+    # re-admits routes PLAN-0100 excluded, and the only one with personas and a
+    # database — which is why H, I and J appear here and nowhere else.
+    #
+    # The two re-admission bases differ and are NOT interchangeable:
+    #   * I/J were excluded on SD-1(a) DB-less grounds — a basis that DISSOLVES
+    #     here, because LOCKED-1 grants this system a Postgres;
+    #   * H's five routes were excluded by default-deny + SD-1's C-3, which is not
+    #     a storage fact, so each is admitted on its own written basis instead.
+    # Both are spelled out per row in that system's config.yml header.
+    "oct-fleet-maintenance": {
+        r"^/$",
+        r"^/assets/.+$",
+        r"^/health$",
+        r"^/meta$",
+        r"^/llm/status$",
+        # ON here and OFF procurement: this is the system with personas (LOCKED-5),
+        # and without login the refused-then-granted beat is unreachable.
+        r"^/whoami$",
+        # Tab A — the landing view
+        r"^/objects/[^/]+$",
+        r"^/recommendations$",
+        r"^/recommendations/[^/]+/approve$",
+        # Tab C — the assisted route
+        r"^/query$",
+        # Tab F
+        r"^/procedures$",
+        # Tab H — five routes, five separate decisions
+        r"^/runs$",
+        r"^/runs/[^/]+$",
+        r"^/runs/[^/]+/gate/resolve$",
+        r"^/runs/[^/]+/cancel$",
+        r"^/audit/verify$",
+        # Tab I — visitor-writable; the surface AC-11's RoPA must cover
+        r"^/api/cases$",
+        r"^/api/cases/[^/]+/photos$",
+        r"^/api/cases/[^/]+/evidence$",
+        r"^/api/cases/[^/]+/quotes$",
+        # Tab J — the COVER only; the `.csv` sibling stays off (Cray declined it
+        # at s192, and the `/cover$` anchor is what keeps that ruling in force)
+        r"^/api/exports/repair-spend/[^/]+/[^/]+/cover$",
+    },
 }
 
 #: Routes that must NOT be admitted by ANY published system, whatever its tab set.
@@ -254,6 +296,94 @@ def test_ac3_no_service_publishes_a_host_port(profile: Path) -> None:
             f"{profile.name}'s `{svc_name}` publishes a host port — the published "
             "topology's only ingress is the tunnel"
         )
+
+
+# --------------------------------------------------------------------------- #
+# LOCKED-1 / ADR-0037 — the per-system database grant is a GRANT, not a default
+# --------------------------------------------------------------------------- #
+
+#: The one profile ADR-0037 grants a database to. A set rather than a string so a
+#: second grant is a visible, deliberate edit here — which is the point: LOCKED-1
+#: ruled the DB posture per system, and the ADR attached compliance obligations
+#: (RoPA, retention, DSR path) to the grant. A profile that acquires a `postgres`
+#: service by copy-paste would take the storage without the obligations.
+_DB_GRANTED = {"oct-fleet-maintenance"}
+
+
+@pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
+def test_only_a_granted_profile_declares_a_database(profile: Path) -> None:
+    """DB-less is the default and the grant is per system (LOCKED-1, ADR-0037).
+
+    Both directions are asserted. A profile that gains a database it was not
+    granted takes on a personal-data store with no RoPA entry behind it; a granted
+    profile that LOSES its database silently breaks the approve beat that is the
+    whole reason the grant exists.
+    """
+    services = _compose(profile).get("services") or {}
+    has_db = "postgres" in services
+    if profile.name in _DB_GRANTED:
+        assert has_db, (
+            f"{profile.name} is the ADR-0037-granted system but declares no "
+            "`postgres` service — Tabs H/I/J have nothing behind them"
+        )
+    else:
+        assert not has_db, (
+            f"{profile.name} declares a `postgres` service without a grant. "
+            "LOCKED-1 keeps every other published system DB-less, and ADR-0037 "
+            "attaches RoPA/retention/DSR obligations to any grant."
+        )
+
+
+def _env_items(service: dict) -> dict[str, str]:
+    """Normalise a compose `environment:` block to a dict.
+
+    Compose accepts BOTH a mapping (`KEY: value`) and a sequence
+    (`- KEY=value`, or a bare `- KEY` host pass-through), and a real profile uses
+    both in different services. A guard that understood only one form would read
+    an empty dict for the other and pass over whatever it contained.
+    """
+    env = service.get("environment") or {}
+    if isinstance(env, dict):
+        return {k: "" if v is None else str(v) for k, v in env.items()}
+    out: dict[str, str] = {}
+    for entry in env:
+        key, sep, value = str(entry).partition("=")
+        out[key] = value if sep else ""
+    return out
+
+
+#: Env values that carry a credential: an explicit password, or a connection
+#: string (CLAUDE.md §8 names both — "passwords" AND "connection strings with
+#: credentials").
+_CREDENTIAL_BEARING = ("PASSWORD", "DATABASE_URL")
+
+
+def test_no_profile_commits_a_database_credential() -> None:
+    """Every credential-bearing env value is a REQUIRED host-env pass-through.
+
+    This repo is public (CLAUDE.md §8) and the granted database stores
+    visitor-typed personal data, so a password may be neither a literal nor a
+    DEFAULTED interpolation — a default lets the system boot on a value that is
+    committed in all but name.
+
+    ⚠️ Scans EVERY service and both env forms, not just `postgres.POSTGRES_PASSWORD`.
+    A non-vacuity probe found the narrower version green while the credential in
+    the app service's `DATABASE_URL` connection string had been switched to a
+    default: the assertion was reading a field the violation never touched.
+    """
+    for profile in _profiles():
+        if profile.name not in _DB_GRANTED:
+            continue
+        for svc_name, svc in (_compose(profile).get("services") or {}).items():
+            for key, value in _env_items(svc).items():
+                if not any(marker in key.upper() for marker in _CREDENTIAL_BEARING):
+                    continue
+                assert "${" in value and ":?" in value, (
+                    f"{profile.name}'s `{svc_name}.{key}` must take its credential "
+                    f"from a REQUIRED host-env pass-through (`${{VAR:?message}}`), "
+                    f"got {value!r}. A literal commits a secret to a public repo; "
+                    "a `:-` default lets the system boot on a known one."
+                )
 
 
 # --------------------------------------------------------------------------- #
