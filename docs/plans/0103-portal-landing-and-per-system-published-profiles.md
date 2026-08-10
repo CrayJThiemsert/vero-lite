@@ -35,6 +35,16 @@ beat).
 > **ADR-0037** (Proposed), which gates **fleet's DB half only**; Step 4's gate
 > map states the parallelism so nobody stalls procurement. Consequences folded
 > through Steps 2/4/5/6/7/8/10 and ACs 3/8/11. Separation still **INTACT**.
+>
+> **Correction round (2026-08-10, session 220, same drafter — Cray-approved
+> dispatch):** four on-disk corrections, each re-verified against the code this
+> session, none touching a step's scope, the AC set, or any ruling: Step 3's
+> audit-target list (`was an error` — carried unfixed since the step ran,
+> s219/PR #1111), the operate-demo seed-gate citation (`superseded by new
+> info` — re-cited by branch, not line), AC-4's compose path + the standing
+> instruction Step 4b has since resolved (`superseded by new info`), and one
+> new **unruled** slot, SD-8 — the Tab-G Act-card coupling Step 5 exposed.
+> Separation still **INTACT**.
 
 ---
 
@@ -128,11 +138,14 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   set) vs **profile-behaviour** (stays on `isPublished()`), with the census
   **re-run by grep at execution** (this PLAN's snapshot is not the oracle; a
   12th consumer added since s218 gets its own row). Every published-profile
-  branch that becomes *reachable for the first time* on a new system (Tab G's
-  published branch on procurement — dead code under energy, which filters G
-  out; the monitor/procedures/flow published branches under fleet's tab set)
-  is exercised by a test on that system's vertical fixture. Evidence: the
-  table + the named tests.
+  branch that becomes *reachable for the first time* on a new system (in
+  practice exactly one: Tab G's published branch on procurement — dead code
+  under energy, which filters G out; under fleet's tab set the H/I/J views —
+  `view-monitor.js` / `view-case.js` / `view-export.js` — carry **no**
+  published branch to go live, and correctly so: fleet has a Postgres and
+  Step 5 admits their routes on fleet's own allowlist — see Step 3's s220
+  correction note) is exercised by a test on that system's vertical fixture.
+  Evidence: the table + the named tests.
 - [ ] **AC-3 — three committed per-system profiles.** `deploy/published/`
   is restructured into per-system profile directories (shape finalized in
   Step 4 under ADR-0036 D5's "PLAN's to finalize" grant): `oct-energy`'s
@@ -152,14 +165,26 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   first. AC re-read at the fold-in: still correct as written otherwise.
 - [ ] **AC-4 — per-system network + project isolation (the ADR-0035 reopening
   tripwire).** No two per-system compose files share a Docker network or a
-  compose project name. Today's fixed `name: vero_oct`
-  (`deploy/published/docker-compose.yml:105-106`) and project
-  `name: vero-published` (`:13`) do not survive as shared literals — the
-  compose file's own warning names this PLAN as the owner of that decision
-  (`:95-107`). Evidence: a test parses every per-system compose file and
-  asserts (a) pairwise-distinct project names, (b) no fixed network `name:`
-  shared by two files (per-project scoping or per-system names); non-vacuity
-  probe: plant a colliding `name:`, see RED.
+  compose project name. _[Corrected s220, `superseded by new info`: as
+  drafted, this AC cited the pre-Step-4a compose at
+  `deploy/published/docker-compose.yml` — its fixed network `name: vero_oct`,
+  its project `name: vero-published`, and the warning block deferring the
+  choice to this PLAN. Step 4a moved energy's compose to
+  `deploy/published/oct-energy/docker-compose.yml`, and Step 4b **resolved**
+  the standing instruction those lines carried rather than leaving it open:
+  the fixed network `name:` is **dropped** (compose scopes each network under
+  its own project), and the project `name:` is the **profile directory's
+  name** (`oct-energy` et al.) — a rule, not a coincidence, per the compose
+  header.]_ Evidence: `tests/deploy/test_published_profiles.py` parses every
+  per-system compose file and asserts (a) project name == profile directory
+  name (`test_ac4_the_project_name_is_the_directory_name`) and
+  pairwise-distinct project names
+  (`test_ac4_no_two_profiles_share_a_project_name`), (b) no profile declares
+  a fixed network `name:` at all
+  (`test_ac4_no_profile_declares_a_fixed_network_name` — per-project scoping
+  makes a shared network structurally impossible), plus globally-unique
+  container and volume names; non-vacuity probe: plant a colliding `name:`,
+  see RED.
 - [ ] **AC-5 — no shadow registry, still domain-ignorant.** A guard test
   asserts: no committed file outside a per-system profile directory mentions
   **two or more** distinct `oct-*` system labels (`0036:142-147` label
@@ -184,8 +209,10 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
 - [ ] **AC-8 — fleet's first paint is not empty.** Under SD-5's **ruling (a)**
   (Cray, typed, s218 — seed one at boot **and** keep the visitor path), a
   fleet scenario test proves Tab H's backing read returns ≥ 1 waiting run at
-  boot (today `main.py:329` gates the seed on `procurement` only, so fleet's
-  H opens empty), **and** the visitor path still closes end-to-end: a case
+  boot (today the seed rides `main.py` lifespan's `vertical == "procurement"`
+  branch only — PLAN-0054 Step 6c; cited by branch, not line, per Step 7's
+  s220 correction note — so fleet's H opens empty), **and** the visitor path
+  still closes end-to-end: a case
   opened via Tab I's backend appears in H's list. Real seed → real routes →
   real DB (fleet has one, LOCKED-1); no mocks.
 - [ ] **AC-9 — the framing layer exists on both sides of the boundary.** Each
@@ -305,12 +332,23 @@ refusal test RED-then-green.
 
 Published-profile branches in view modules were written under PLAN-0100 when
 exactly one system (energy) existed — some are **dead code today** and go live
-for the first time on a new system: Tab G's published branch
-(`view-hero.js:606`) was unreachable because energy filters G out entirely;
-the monitor/procedures/flow published behaviours were unreachable because H was
-filtered. For each branch that a new system's tab set makes reachable, add a
-test on that system's fixture asserting the branch's behaviour against that
-system's posture (AC-2's second clause).
+for the first time on a new system. _[Corrected s220, `was an error` — carried
+unfixed since the step actually ran (s219, PR #1111): the draft's audit list
+here named "the monitor/procedures/flow published behaviours" as newly
+reachable, and that was wrong on disk in every part. `view-flow.js` is
+**Tab D** and `view-procedures.js` is **Tab F** — both tabs energy publishes
+and always has, so their published branches were never unreachable — and
+`view-monitor.js` has **no `isPublished()` call at all**.]_ The audited scope
+as established when the step ran: **Tab G's published branch**
+(`view-hero.js` — the one genuinely dead branch, because energy filters G out
+entirely), and **Tabs H/I/J** (`view-monitor.js` / `view-case.js` /
+`view-export.js`), which carry **no** published branch — an absence that is
+*correct*, not a gap to fill: fleet, the only system publishing H/I/J, has its
+own Postgres (LOCKED-1), and Step 5 puts those tabs' routes on fleet's own
+allowlist, so their modules owe the published profile no special-casing. For
+each branch that a new system's tab set makes reachable, add a test on that
+system's fixture asserting the branch's behaviour against that system's
+posture (AC-2's second clause).
 
 **Optional (flagged per ADR-0036 D4 "optional defense-in-depth," not required):**
 refuse the request-time hero fallback for verticals without their own builders —
@@ -457,16 +495,23 @@ audit rows by name.
 
 ### Step 7: Fleet's first-paint posture (Tab H must not open empty)
 
-Today the waiting-human seed is procurement-only (`main.py:329`); fleet gets
-projection refreshes only (`main.py:364-391`), so its Monitor opens empty until
-a visitor files a case at Tab I. Per SD-5's **ruling (a)** (Cray, typed, s218 —
-seed one **and** keep the visitor path); this step is ADR-0037-gated (Step 4's
-gate map — the seed writes into fleet's granted Postgres):
+Today the waiting-human seed is procurement-only — the `vertical ==
+"procurement"` branch in `main.py`'s lifespan, env-gated on
+`settings.oct_demo_seed_operate` (PLAN-0054 Step 6c — it seeds the one
+`waiting_human` run) — while fleet gets projection refreshes only (the
+`"fleet_maintenance" in known` block below it), so its Monitor opens empty
+until a visitor files a case at Tab I. _[Corrected s220, `superseded by new
+info`: the gate itself is unchanged; the draft's `main.py:329` / `:364-391`
+line numbers drifted as the file grew, so the references above are by
+branch/symbol — they cannot rot the same way again.]_ Per SD-5's **ruling
+(a)** (Cray, typed, s218 — seed one **and** keep the visitor path); this step
+is ADR-0037-gated (Step 4's gate map — the seed writes into fleet's granted
+Postgres):
 
 - Extend the seed gate with a fleet branch under the same contract as
   procurement's — env-gated, idempotent (fixed run_id, skip-if-present),
-  fail-soft (`main.py:330-357`) — writing one waiting_human run into fleet's
-  own Postgres.
+  fail-soft, exactly the procurement seed block's own written contract —
+  writing one waiting_human run into fleet's own Postgres.
 - The visitor path stays load-bearing and tested: Tab I case → appears in H
   (AC-8's second clause) — the seed removes the empty first paint; the visitor
   still gets to watch their *own* case enter the governed loop.
@@ -736,6 +781,44 @@ live evidence recorded.
   renderings adopted. ⚠️ The **CTA's exact wording** was not part of the
   typed ruling and remains Cray's at Step 8 delivery — the one open
   sub-item of this slot.
+- **SD-8 — Tab G's Act card on a personaless system (surfaced s220 by Step
+  5's execution; ⚠️ NOT RULED — no recommendation is offered, and no step
+  assumes an answer).** SD-3's joint ruling dropped Tab H from procurement's
+  set by reasoning about *Tab H, the monitor* — H's backing run is written
+  through `async_session` and procurement is DB-less, so H is
+  storage-blocked, not persona-blocked. That reasoning is sound and is not
+  reopened here. What the ruling did not consider: **Tab G's own "Act — the
+  human DOA gate" card reaches the same H-family routes** — in
+  `view-hero.js`, `renderActions()` renders Approve/Reject buttons whose
+  `decide()` handler calls `GET /runs/{run_id}` and then
+  `POST /runs/{run_id}/gate/resolve`. Procurement publishes G and admits
+  **no** H routes, so a visitor who logged in would meet a control that 404s
+  — the exact dead-control shape SD-3 itself named "worse on the public
+  surface than absence". Step 5 shipped a defensive posture: `^/whoami$` is
+  **denied** on procurement's allowlist, and since `auth.js` makes
+  `GET /whoami` the one auth-validating read, login is impossible at the
+  edge — the buttons are never reached, and an unauthenticated visitor sees
+  a login form, not a broken control. That is consistent with SD-3/SD-4's
+  "anonymous read + hero, no personas", and nothing is broken on first
+  paint; the full reasoning lives today in
+  `deploy/published/oct-procurement/cloudflared/config.yml`'s header and PR
+  #1114's body — neither of which is this PLAN, which is why this slot
+  exists. **The residual question, genuinely open:** Tab G's Act card still
+  renders a login form on a system that will always refuse the login.
+  Whether that card should render at all on a personaless system is a UI
+  call belonging to **Step 6** (the persona layer). The options, stated
+  neutrally: **(i)** keep the shipped state — the login form is a real
+  control honestly refused at the edge, zero code, but a visitor who tries
+  it hits a dead end; **(ii)** suppress the Act card on personaless
+  published systems — no dead-end control, at the cost of a new
+  published-profile UI branch; **(iii)** replace it there with narrative
+  copy (the approve beat is fleet's story) — no dead end and the portal
+  narrative gains a pointer, at the cost of copy with no oracle. The shipped
+  state is safe and reversible, so nothing here is urgent; it is recorded so
+  Step 6 does not execute over an unstated hole. *Why Cray:* what a cold
+  visitor meets on the public surface is trust posture — ADR-0032 D5
+  territory, the same class as SD-4 — and no oracle catches a wrong first
+  impression.
 
 ## Verification
 
