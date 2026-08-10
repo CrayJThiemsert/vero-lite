@@ -29,7 +29,9 @@ services:
   # the single definition of how the app runs (PLAN-0095 SD-1).
   app:
     build:
-      context: ../..
+      # THREE levels: this file is at `deploy/published/<system>/`, so `../..` would
+      # reach `deploy/` — which has no Dockerfile. Guard-asserted.
+      context: ../../..
     container_name: oct-fleet-maintenance-app
     env_file:
       - published.env
