@@ -38,8 +38,13 @@ from types import ModuleType
 
 import pytest
 
+#: The script stays at the PARENT (PLAN-0103 Step 4, Cray typed s219 — the
+#: per-system parameterization is deferred to Step 10); only the config it drives
+#: moved into a profile directory. The asymmetry is the point of this pairing:
+#: it is what pins the script to oct-energy so a second system cannot quietly
+#: start riding energy-shaped literals.
 _SCRIPT = Path("deploy/published/deploy.py")
-_COMPOSE = Path("deploy/published/docker-compose.yml")
+_COMPOSE = Path("deploy/published/oct-energy/docker-compose.yml")
 _RUNBOOK = Path("docs/runbooks/published-demo-redeploy.md")
 
 _LOCAL_ID = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -173,7 +178,7 @@ def test_every_host_read_path_exists_and_the_compose_really_reads_it(
     for rel in deploy._HOST_READ_PATHS:
         assert Path(rel).is_file(), f"{rel} is listed as host-read but does not exist"
 
-    assert "deploy/published/docker-compose.yml" in deploy._HOST_READ_PATHS
+    assert "deploy/published/oct-energy/docker-compose.yml" in deploy._HOST_READ_PATHS
     assert re.search(r"^\s*-\s*published\.env\s*$", compose_text, re.MULTILINE), (
         "published.env is listed as host-read but the compose file no longer "
         "loads it via env_file"

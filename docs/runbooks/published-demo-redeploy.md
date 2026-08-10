@@ -167,7 +167,7 @@ section broke both and every remote command in it failed.**
 Local half:
 
 ```bash
-CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/docker-compose.yml build app
+CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/oct-energy/docker-compose.yml build app
 docker image inspect vero-published-app:latest --format="{{.Id}}"     # local only — note this
 docker save vero-published-app:latest -o /tmp/app.tar
 ```
@@ -284,7 +284,7 @@ exists in this shape.
 
 ---
 
-*Sources: `deploy/published/deploy.py`, `deploy/published/docker-compose.yml`,
+*Sources: `deploy/published/deploy.py`, `deploy/published/oct-energy/docker-compose.yml`,
 [`published-demo-bring-up.md`](published-demo-bring-up.md) §7/§9/§11, ADR-0035
 (D1 exposure model, D3 Access), PLAN-0100 Step 8. The host-side facts in §8 were
 measured in session 213 — re-confirm rather than trusting that record.*

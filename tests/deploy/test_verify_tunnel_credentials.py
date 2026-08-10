@@ -29,7 +29,7 @@ from types import ModuleType
 import pytest
 
 _SCRIPT = Path("deploy/published/verify_tunnel_credentials.py")
-_CONFIG = Path("deploy/published/cloudflared/config.yml")
+_CONFIG = Path("deploy/published/oct-energy/cloudflared/config.yml")
 _RUNBOOK = Path("docs/runbooks/published-demo-bring-up.md")
 
 #: A well-formed credentials file as cloudflared 2025.8.1 actually writes one —
