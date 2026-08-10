@@ -5,6 +5,14 @@ governance-moment audit (CONTROLLER for the hero, MANAGER for the contrast) and
 ``GET /demo/hero/impact`` returns the exact ฿-impact ledger. The demo endpoints instantiate the
 FastenalCsvAdapter directly (no discovery dependency), so a plain ASGI client suffices.
 No mutation, no DB, no LLM; a live preview is evidence (Step 4), not the gate.
+
+⚠️ **This module pins ``OCT_VERTICAL=procurement``, and until PLAN-0103 Step 3 it did not.**
+Every assertion below is about PROCUREMENT's hero — Fastenal's ledger, ``AST-CNC-014``,
+``SUP-RAPIDMRO`` — but the module ran under the boot default (``energy``) and reached those
+numbers through the request-time fallback that served procurement's builders to any
+unregistered vertical. It read as "the hero routes work on a default boot" while actually
+proving "the fallback works". Closing the fallback (Step 3) surfaced it; the fixture now
+says which vertical it is testing, which is what it always meant.
 """
 
 from __future__ import annotations
@@ -15,11 +23,13 @@ from decimal import Decimal
 import pytest
 from httpx import ASGITransport, AsyncClient
 
+from services.api.config import settings
 from services.api.main import app
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
+async def client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[AsyncClient]:
+    monkeypatch.setattr(settings, "oct_vertical", "procurement")
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         yield http
