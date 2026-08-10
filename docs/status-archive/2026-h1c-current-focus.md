@@ -2087,3 +2087,52 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > PowerShell strips double quotes when handing argv to a native exe — plus a comparison
 > table of all three traps in that family. **Five residual items outlive PLAN-0100**;
 > they are carried as a pointer in Active TODOs and none of them gates anything.
+
+## Rotated this reconcile (session-221, 2026-08-10 — energy's live migration COMPLETE + PLAN-0103 Step 9 headroom MEASURED; #1119/#1118 reconciled)
+
+### Current-Focus block — Session 217
+
+> **Session 217, 2026-08-08 (head_commit `f987888` → `36e5735`) — two PRs merged
+> (#1095, #1096), 0 open. Theme: PLAN-0102 is COMPLETE 11/11 and ARCHIVED — the
+> L1 loop-detect guard is RETIRED, and executing the PLAN found three defects in
+> the PLAN itself that share one root cause.**
+>
+> **Why L1 went.** It keyed on the same **file**; ADR-013 E.4 ratified "the same
+> **problem**", which is what L2/L3/L4 key on — so the retirement narrows the
+> implementation *toward* the Accepted ADR. Across L1's entire live history:
+> **zero true positives**, against **≥ 56 denies over 4,201 Write/Edit ops**
+> pre-AC-7 (~1.33 % of every edit hard-walled) and 0 denies / 0 organic warns
+> over 1,369 ops after. **No ADR amendment** — E.4 never named L1 and
+> `0013:333-336` delegated stateful loop-detection to PLANs, so L1 had zero ADR
+> backing and an amendment would have *created* the ratification it never had.
+> Also eliminated: the three harness registrations that existed only for L1 —
+> the PreToolUse `Write|Edit` one spawned a Python process on **every single
+> edit** to compute what is now a guaranteed no-op.
+>
+> **The evidence discipline is the transferable part.** L1 had not fired
+> organically since AC-7, so a test that merely observes silence passes
+> *identically* before and after the excision. Every absence is therefore paired
+> with a live control in the same run: L1 deny **YES→NO** beside L4 deny
+> **YES→YES**; L1 warn **YES→NO** beside the shell-hygiene advisory
+> **YES→YES**. Both AC-11 probes reintroduced their exact defect and went RED.
+>
+> 🔴 **Three PLAN defects, one root cause — worth carrying to the next excision
+> PLAN.** s206's R2 walked the call graph **backwards** from `LoopType.FILE_EDIT`
+> and found the name-less sites; **nobody walked it forwards** from the functions
+> being deleted, so every callee reachable only from an L1 entry point stayed
+> invisible. Step 4 said to KEEP two imports whose only callers it deletes (and
+> never mentioned a third); Step 3 named `_apply_commit_reset` but not the four
+> symbols it exclusively owned; Step 5 omitted three constants. ⚠️ **AC-9 would
+> not have caught the worst of them** — ruff flags a dead *import* but not a dead
+> *private function*, so `_state_path()` would have shipped dead past a green
+> gate. **Also a live-behaviour fix:** the deny message named three reset paths,
+> all of them L1 paths deleted by this PLAN, on a message only L4 now reaches.
+>
+> **Also (#1095): D-4's direction RULED (a) by Cray — on a corrected premise.**
+> Every prior record framed the fork as "teach the translator `group_by`", which
+> is not the problem: `group_by` already works for `max`/`min`/`avg`/`sum`. What
+> is unrepresentable is `count` **with** `group_by` — `_AGGREGATE_OPS` excludes
+> `count` — so option (a) is four seams in one file, not the scope-uncertain
+> prompt work the fork was priced against. ⚠️ **ADR-0036 is newly load-bearing:**
+> it designs a "pick which vertical" portal, which *is* a landing surface, so it
+> is an ordering prerequisite of the landing/framing layer. Nothing recorded that.
