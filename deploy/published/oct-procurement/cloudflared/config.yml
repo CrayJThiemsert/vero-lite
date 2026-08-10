@@ -1,0 +1,145 @@
+# cloudflared ingress for the PUBLISHED procurement system (PLAN-0103 Step 5).
+#
+# THIS FILE IS THE ENFORCEMENT. The `path:` patterns below are this system's whole
+# published surface, and the final entry must be the catch-all `http_status:404`.
+# That catch-all IS the deny-by-default rule — anything not matched above it does
+# not exist on this system's surface. `tests/deploy/test_published_profiles.py`
+# asserts set-equality against this system's own expected table.
+#
+# LOCALLY-MANAGED TUNNEL, ON PURPOSE. Do NOT convert this to a remotely-managed
+# `TUNNEL_TOKEN` tunnel: that moves the ingress map into the Cloudflare dashboard,
+# out of this repo, and silently voids the guard — the test would keep passing
+# against a file the running tunnel no longer reads.
+#
+# EVERY `path:` IS ANCHORED AT BOTH ENDS, and that is load-bearing rather than
+# stylistic. cloudflared matches Path as an UNANCHORED regex
+# (`r.Path.Regexp.MatchString` in cloudflared's ingress/rule.go), so an unanchored
+# `path: /procedures` would ALSO admit `/procedures/draft/build`.
+#
+# THE METHOD COLUMN IS NOT ENFORCEABLE HERE. The ingress Rule struct carries only
+# Hostname, Path, Service, Handlers, Config — there is no method field, so a path
+# allow admits ALL methods on that path. No test may assume method filtering.
+#
+# ⚠️ NEITHER IS THE QUERY STRING, AND ON THIS SYSTEM THAT HAS A CONSEQUENCE — see
+# the `/demo/hero/governance` row.
+#
+# NO `hostname:` KEY, deliberately. ADR-0035 D1(3): the published domain appears
+# only in the portal repo and in DNS, never in vero-lite. A rule without `hostname`
+# matches any host, which is correct here — the tunnel only ever receives traffic
+# for the hostname its own DNS route points at.
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# WHAT THIS SYSTEM IS, AND THEREFORE WHAT IS ABSENT
+#
+# Published set = `G,F`, default G, NO personas (SD-3/SD-4 joint ruling, Cray,
+# typed s218). This system tells ONE story — the GOVERNED HERO. The three OCT
+# features are energy's; the approve beat is fleet's.
+#
+# Relative to system #1's allowlist (the sibling profile directory — not named
+# here, AC-5) this file ADDS the two hero reads and DROPS five rows. Each drop is
+# a decision, not an omission:
+#
+#   ^/objects/[^/]+$              Tabs A/B/D are not published — nothing fetches it
+#   ^/recommendations$            same; and the adapter streams no events anyway
+#   ^/recommendations/../approve$ the approve beat is fleet's, not this system's
+#   ^/query$                      Tab C is not published; no assisted route here
+#   ^/whoami$                     🔴 see below — this is the load-bearing one
+#
+# 🔴 WHY `^/whoami$` IS OFF, WHICH IS A JUDGEMENT AND SHOULD BE READ AS ONE.
+# `auth.js:39` makes `GET /whoami` the ONE auth-validating read, so denying it
+# makes login impossible at the edge. SD-3/SD-4 ruled this system "anonymous read
+# + hero, no personas", and default-deny (D5(2)) means a row must earn its place —
+# with no persona defined for this system, none does.
+#
+# The consequence that actually decided it: Tab G's "Act" card renders Approve /
+# Reject buttons AFTER a successful login (`view-hero.js:356` → `renderActions`),
+# and those buttons call `GET /runs/{id}` and `POST /runs/{id}/gate/resolve`
+# (`view-hero.js:313-323`) — H-FAMILY routes this system does not admit. Admitting
+# `/whoami` would therefore buy a visitor a login that leads to a control which
+# 404s. SD-3 named exactly that shape: "a visible waiting approval a visitor cannot
+# act on reads as *broken*, worse on the public surface than absence".
+#
+# ⚠️ NOTE WHAT SD-3 DID **NOT** RULE ON, so the next reader does not mistake this
+# for settled: SD-3 dropped Tab H reasoning about *Tab H the monitor*. That Tab
+# **G** reaches the same H-family routes from its own approve handler is a coupling
+# this step surfaced, not one the ruling weighed. Unauthenticated visitors see a
+# LOGIN FORM there, not the buttons, so nothing is broken on first paint — but the
+# card does invite a login this system will always refuse. Whether Tab G's Act card
+# should render at all on a personaless system is a UI question, owned by Step 6
+# (the persona layer) and ultimately Cray's — it is NOT closed here, and this file
+# deliberately takes the reversible side: adding a row later is one line; un-showing
+# a broken Approve to someone who already clicked it is not.
+
+tunnel: vero-oct-procurement
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # --- the SPA itself ------------------------------------------------------- #
+  - path: ^/$
+    service: http://app:8000
+  - path: ^/assets/.+$
+    service: http://app:8000
+
+  # --- boot + chrome --------------------------------------------------------- #
+  # Uptime read.
+  - path: ^/health$
+    service: http://app:8000
+
+  # REQUIRED ON EVERY SYSTEM. `app.js:234` awaits `O.loadMeta()` before it picks a
+  # landing tab; without this row the strip paints "BACKEND UNREACHABLE" and the
+  # vertical/namespace chips never render.
+  - path: ^/meta$
+    service: http://app:8000
+
+  # Global chrome, not a tab: `app.js:187` mounts the MS-S1 residency indicator,
+  # which polls this read (`llm-control.js:4` — the poll NEVER warms, INV-1).
+  # `/warm` and `/sleep` stay off, so the indicator reads and cannot act.
+  - path: ^/llm/status$
+    service: http://app:8000
+
+  # --- Tab F — Procedures ----------------------------------------------------- #
+  # `view-procedures.js:628` → `O.API.procedures()`. The anchor is what keeps the
+  # three `/procedures/draft/*` authoring routes out.
+  - path: ^/procedures$
+    service: http://app:8000
+
+  # --- Tab G — the governed hero (THIS SYSTEM'S STORY) ------------------------ #
+  # Denied at energy's edge, admitted here, and the asymmetry is the whole point:
+  # the hero is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2) and procurement is the
+  # vertical that owns the builders (`verticals/procurement/hero_demo/`).
+  #
+  # ⚠️ THIS ROW ALSO ADMITS `?live=true`, AND IT CANNOT NOT. cloudflared matches
+  # `req.URL.Path`, which excludes the query string, so no anchoring keeps the
+  # live-run variant out. What that variant actually costs, verified against the
+  # code rather than inherited from prose:
+  #   * it is NOT an MS-S1 call. `demo.py:97` passes `advisory_stub_factory`, whose
+  #     client is documented "No network, no MS-S1" (`advisory_stub.py:69`;
+  #     `verticals/procurement/hero_demo/run.py:101` — host-state-free by design,
+  #     C-4). ⚠️ `view-hero.js:621` still describes it as "an anonymous, uncapped,
+  #     unlogged MS-S1 call"; that comment is SUPERSEDED, not wrong-when-written —
+  #     it predates the stub becoming the demo default.
+  #   * it IS a real procedure run per request: anonymous, uncapped, and CPU-bound.
+  #     The per-IP Cloudflare zone rule is what bounds it, and that rule lives in
+  #     the dashboard with no file in this repo.
+  #   * it can raise `ProcedureError` when the gate does not suspend, and there is
+  #     no global exception handler in `services/api/`, so that surfaces as a 500.
+  # The published UI never drives it — both hero toggles are hidden on this profile
+  # (`view-hero.js:606-614`) — so this is a hand-crafted-URL surface only.
+  - path: ^/demo/hero/governance$
+    service: http://app:8000
+
+  # The impact ledger — the ฿ half of the same story. Offline, DB-free, no variant.
+  - path: ^/demo/hero/impact$
+    service: http://app:8000
+
+  # --- deny by default (MUST be last) ----------------------------------------- #
+  # Everything else, including: /whoami (above), /query and /insights/query, all
+  # /recommendations routes, /objects/*, ALL H-family routes (/runs, /runs/{id},
+  # /runs/{id}/gate/resolve, /runs/{id}/cancel, /audit/verify), the DB-backed
+  # /api/cases and /api/exports/* (this system is DB-less, LOCKED-1), /warm,
+  # /sleep, the three /intake/* routes, the three /procedures/draft/* routes.
+  #
+  # ⚠️ POST /demo/hero/event is denied even though the other two hero rows are
+  # admitted: it is an UNAUTHENTICATED DB WRITE (D5(2) F4), and this system has no
+  # database at all. The `$` anchors on the two rows above are what exclude it.
+  - service: http_status:404

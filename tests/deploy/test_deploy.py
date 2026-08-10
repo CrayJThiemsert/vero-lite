@@ -69,7 +69,7 @@ def out(text, code=0):
     sys.exit(code)
 
 def as_image(image_id):
-    return json.dumps([{"Id": image_id, "RepoTags": ["vero-published-app:latest"]}])
+    return json.dumps([{"Id": image_id, "RepoTags": ["oct-energy-app:latest"]}])
 
 def as_container(image_id, health):
     return json.dumps([{"Image": image_id, "State": {"Health": {"Status": health}}}])
@@ -111,7 +111,7 @@ if name == "ssh":
     if rest[:2] == ["docker", "inspect"]:
         out(as_container(ctl["running_id"], ctl.get("health", "healthy")))
     if rest[:2] == ["docker", "compose"] and "ps" in rest:
-        out(ctl.get("ps", "vero-published-app  running\\nvero-published-cloudflared  running\\n"))
+        out(ctl.get("ps", "oct-energy-app  running\\noct-energy-cloudflared  running\\n"))
     if rest[:2] == ["docker", "compose"] and "exec" in rest:
         out(ctl.get("health", '{"status": "ok"}'))
     out("")
@@ -143,7 +143,7 @@ def compose_text() -> str:
 
 
 def test_the_project_name_matches_the_compose_file(deploy: ModuleType, compose_text: str) -> None:
-    """`-p vero-published` on every remote compose call has to be the real project."""
+    """`-p oct-energy` on every remote compose call has to be the real project."""
     match = re.search(r"^name:\s*(\S+)\s*$", compose_text, re.MULTILINE)
     assert match is not None, "docker-compose.yml declares no top-level `name:`"
     assert deploy._PROJECT == match.group(1), (

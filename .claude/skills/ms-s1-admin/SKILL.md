@@ -67,8 +67,8 @@ ssh ms-s1 'echo %COMSPEC%'      # → the literal string %COMSPEC%, unexpanded
 **The fix: ask for JSON and parse it on this side, where no shell is involved.**
 
 ```bash
-ssh ms-s1 docker image inspect vero-published-app:latest    # full JSON, exit 0
-ssh ms-s1 docker inspect vero-published-app                 # ditto
+ssh ms-s1 docker image inspect oct-energy-app:latest    # full JSON, exit 0
+ssh ms-s1 docker inspect oct-energy-app                 # ditto
 ```
 
 Then read `.Id` / `.Image` / `.State.Health.Status` locally. `deploy/published/deploy.py`
@@ -138,7 +138,7 @@ double quotes**. The `.ps1` was parsed perfectly; the exe still receives mangled
 
 ```powershell
 $py = 'import socket;srv=socket.socket();srv.bind(("0.0.0.0",11434));srv.listen(128)'
-docker run -d --name p4-stall --entrypoint python vero-published-app:latest -c $py
+docker run -d --name p4-stall --entrypoint python oct-energy-app:latest -c $py
 ```
 
 ```

@@ -8,14 +8,45 @@ operator scripts they share.
 deploy/published/
   deploy.py                     the redeploy procedure  (⚠️ oct-energy only — see below)
   verify_tunnel_credentials.py  credential/ingress check (takes its paths as arguments)
-  oct-energy/                   system #1 — the OCT three-feature story, DB-less
+  oct-<system>/                 one directory per published system
     docker-compose.yml  published.env  cloudflared/config.yml  README.md
 ```
+
+⚠️ **That `oct-<system>` is a placeholder on purpose, and this file may not expand
+it.** Listing the systems here would make this file a roster, and a vero-lite file
+enumerating the published systems is a shadow ingress map (ADR-0036 D2). PLAN-0103
+AC-5 states the rule mechanically — **no committed file outside a profile directory
+may mention two or more distinct `oct-*` labels** — and
+`tests/deploy/test_published_profiles.py` enforces it, so writing the roster back
+in reddens the suite rather than shipping. `ls deploy/published/` is the filesystem
+answering the question, which is not the same thing as a committed list.
+
+(The single mention of `oct-energy` below is within the rule: one label is a
+reference, two or more is a registry.)
 
 A profile directory carries everything that differs per system: the compose
 project, its committed env file, and its ingress allowlist. Read that system's
 own `README.md` before touching it — the reasoning for *its* choices lives there,
 not here.
+
+## The naming convention every profile follows
+
+The compose project is named **exactly the profile directory's name**
+(`oct-energy` → `name: oct-energy`), and no compose file declares a fixed network
+`name:` at all — compose scopes the network under the project, giving
+`oct-energy_vero_oct` and so on.
+
+Both halves are guard-enforced (AC-4), because the failure they prevent is silent:
+two projects sharing a network let each system's connector reach the other's
+`app:8000` and skip that system's allowlist entirely, and the allowlist tests would
+stay green throughout — they read a committed file and cannot see who else is on
+the wire. ADR-0035 (`0035:490-493`) names a shared network as grounds for reopening
+the whole hosting arrangement.
+
+The reason the convention is *derived from the directory* rather than freely
+chosen: a new profile is made by copying an existing one, and a per-system literal
+is precisely what a copy forgets. Here there is nothing to remember — the guard
+compares `name:` to the directory and reddens on a mismatch.
 
 ## Why the profiles are near-duplicates on purpose
 

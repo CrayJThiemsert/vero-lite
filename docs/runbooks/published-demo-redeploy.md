@@ -19,6 +19,50 @@ without asking for anything.
 
 ---
 
+## 0b. 🔴 ONE-TIME STOP CONDITION — the project was renamed
+
+**Run this before anything else in this runbook, every time, until it comes back
+empty.**
+
+```bash
+ssh <host> docker compose ls --all --format json
+```
+
+**If that output contains a project named `vero-published`, STOP. Do not run any
+`up` command below.**
+
+PLAN-0103 Step 4b renamed this system's compose project from `vero-published` to
+**`oct-energy`** (and both container names, the prompt-log volume, and the built
+image tag, which compose derives from the project). Docker does not follow a
+rename, so the old project keeps running, untouched and invisible to every command
+in this runbook.
+
+Two things go wrong if you continue anyway, and neither announces itself:
+
+1. **`up -d` under the new name starts a SECOND, PARALLEL STACK.** Two apps, and —
+   the part that matters — **two cloudflared connectors**, both live. ADR-0035
+   (`0035:490-493`) names exactly that as a condition under which "the arrangement
+   has drifted and this ADR is reopened", and the offline allowlist tests cannot
+   see it: they read a committed file and cannot tell who else is on the wire.
+2. **The prompt log stays behind.** The rows live in the `vero-published-prompt-log`
+   volume; the new project starts with an **empty** `oct-energy-prompt-log` and
+   orphans the old one. That volume is a compliance artifact under a 90-day
+   retention promise, and after this point
+   [`published-demo-operations.md`](published-demo-operations.md)'s erasure paths —
+   which now name `-p oct-energy` — would report success while touching **nothing**
+   a data subject asked to have removed.
+
+The migration procedure (stop the old project, copy the volume, verify the row
+count on both sides, *then* bring up the new name) is in
+[`deploy/published/oct-energy/README.md`](../../deploy/published/oct-energy/README.md).
+It is itself a host-state change and needs its own go.
+
+⚠️ **Do the migration as part of a redeploy you were going to do anyway**, not as a
+separate event — the checkout on the host has to be pulled forward for the new
+compose path to exist at all.
+
+---
+
 ## 1. The shape of the problem
 
 The published app runs on MS-S1 from an image built on the workstation. Three
@@ -168,8 +212,8 @@ Local half:
 
 ```bash
 CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/oct-energy/docker-compose.yml build app
-docker image inspect vero-published-app:latest --format="{{.Id}}"     # local only — note this
-docker save vero-published-app:latest -o /tmp/app.tar
+docker image inspect oct-energy-app:latest --format="{{.Id}}"     # local only — note this
+docker save oct-energy-app:latest -o /tmp/app.tar
 ```
 
 The placeholder is required: compose interpolates the **whole** file before
@@ -180,12 +224,12 @@ Remote half — the tar goes in on **stdin**, so there is no staging path to cre
 and no Windows path in any command:
 
 ```bash
-ssh <host> docker tag vero-published-app:latest vero-published-app:prev
+ssh <host> docker tag oct-energy-app:latest oct-energy-app:prev
 ssh <host> docker load < /tmp/app.tar
-ssh <host> docker image inspect vero-published-app:latest
+ssh <host> docker image inspect oct-energy-app:latest
 ssh <host> git -C C:\projects\vero-lite pull --ff-only
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d
-ssh <host> docker inspect vero-published-app
+ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d
+ssh <host> docker inspect oct-energy-app
 ```
 
 Read `.Id` out of the third command's JSON and `.Image` out of the sixth's. **They
@@ -195,7 +239,7 @@ the second proves the deploy took effect.
 If `cloudflared/config.yml` changed in that pull, add:
 
 ```bash
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d --force-recreate cloudflared
+ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d --force-recreate cloudflared
 ```
 
 ---
@@ -221,7 +265,7 @@ Recorded so the next operator can tell "worked" from "ran". Deploying `d0a2808`
 over the image session 213 had shipped:
 
 ```
-rollback point tagged                : PASS  (vero-published-app:prev)
+rollback point tagged                : PASS  (oct-energy-app:prev)
 image transferred intact             : PASS  (local sha256:153324a2995c… vs host sha256:153324a2995c…)
 host checkout updated                : PASS  (9601f068 -> d0a28080, 14 files)
 running container uses the new image : PASS  (container sha256:153324a2995c… vs loaded sha256:153324a2995c…)

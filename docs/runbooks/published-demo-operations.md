@@ -15,10 +15,19 @@
 > (`deploy/published/`)** as owed. It shipped in **#1063** (Step 8) — the compose project,
 > `published.env` and the ingress allowlist are all committed, which is why the commands
 > below now name the project the compose file actually declares. The same edit fixed
-> **seven** invocations that passed `-p vero-oct`: that project name matches nothing —
-> `docker-compose.yml` declares `name: vero-published`, and `vero_oct` is the **network**.
+> **seven** invocations that passed `-p vero-oct`: that project name matches nothing.
 > Every deletion path below was therefore unexecutable as written, which is the one
 > failure this file exists to prevent.]_
+>
+> _[Updated s220, `superseded by new info` (PLAN-0103 Step 4b): the project was renamed
+> `vero-published` → **`oct-energy`** so that a second published system cannot land in
+> the same compose project or on the same Docker network (AC-4). Every `-p` below carries
+> the new name. The **network** is no longer a fixed `vero_oct` either — the compose file
+> dropped that key, so compose derives `oct-energy_vero_oct` from the project. If a
+> project named `vero-published` is still running on the host, the commands below will
+> silently address **nothing**; see the migration note in
+> [`deploy/published/oct-energy/README.md`](../../deploy/published/oct-energy/README.md)
+> before running any erasure path.]_
 >
 > **Standing it up the first time is a different job** and lives in
 > [`published-demo-bring-up.md`](published-demo-bring-up.md) — tunnel, subdomain, Access
@@ -56,7 +65,7 @@ mtimes and would silently resurrect expired rows).
 never be more than 90 days old:
 
 ```bash
-docker compose -p vero-published exec app ls -1 /var/log/vero/prompt-log
+docker compose -p oct-energy exec app ls -1 /var/log/vero/prompt-log
 ```
 
 ### 1.2 Manual purge (full)
@@ -71,11 +80,11 @@ exact silent failure this dataset's controls exist to prevent, so verify the cou
 and after rather than trusting the exit code:
 
 ```bash
-docker compose -p vero-published exec app sh -c 'ls -1 /var/log/vero/prompt-log/prompt-*.jsonl | wc -l'
+docker compose -p oct-energy exec app sh -c 'ls -1 /var/log/vero/prompt-log/prompt-*.jsonl | wc -l'
 ```
 
 ```bash
-docker compose -p vero-published exec app find /var/log/vero/prompt-log -name 'prompt-*.jsonl' -delete
+docker compose -p oct-energy exec app find /var/log/vero/prompt-log -name 'prompt-*.jsonl' -delete
 ```
 
 Re-run the count: it must be `0`. `find -delete` exits 0 when it matches nothing, so the
@@ -86,13 +95,13 @@ count is the evidence and the exit code is not.
 One day:
 
 ```bash
-docker compose -p vero-published exec app rm -f /var/log/vero/prompt-log/prompt-2026-08-04.jsonl
+docker compose -p oct-energy exec app rm -f /var/log/vero/prompt-log/prompt-2026-08-04.jsonl
 ```
 
 A month:
 
 ```bash
-docker compose -p vero-published exec app find /var/log/vero/prompt-log -name 'prompt-2026-08-*.jsonl' -delete
+docker compose -p oct-energy exec app find /var/log/vero/prompt-log -name 'prompt-2026-08-*.jsonl' -delete
 ```
 
 These purge **files**. To remove individual lines, see the DSR path below.
@@ -112,13 +121,13 @@ the vendor plus a content search over what they typed.
 -insensitive, and check the count before deleting anything:
 
 ```bash
-docker compose -p vero-published exec app grep -ric 'SEARCH-TERM' /var/log/vero/prompt-log/
+docker compose -p oct-energy exec app grep -ric 'SEARCH-TERM' /var/log/vero/prompt-log/
 ```
 
 **Step 2 — delete the matching lines** (keeping every other line in that day's file):
 
 ```bash
-docker compose -p vero-published exec app sh -c "for f in /var/log/vero/prompt-log/prompt-*.jsonl; do grep -iv 'SEARCH-TERM' \"\$f\" > \"\$f.tmp\" && mv \"\$f.tmp\" \"\$f\"; done"
+docker compose -p oct-energy exec app sh -c "for f in /var/log/vero/prompt-log/prompt-*.jsonl; do grep -iv 'SEARCH-TERM' \"\$f\" > \"\$f.tmp\" && mv \"\$f.tmp\" \"\$f\"; done"
 ```
 
 Re-run Step 1: the count must be `0`. If the request is broad enough that per-line

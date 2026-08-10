@@ -94,13 +94,18 @@ _HOST_COMPOSE = r"C:\projects\vero-lite\deploy\published\oct-energy\docker-compo
 #: to read them with. `tests/deploy/test_deploy.py` reads the committed compose
 #: file and asserts each one still matches — the drift this cannot prevent, that
 #: test catches.
-_PROJECT = "vero-published"
-_APP_CONTAINER = "vero-published-app"
-_CLOUDFLARED_CONTAINER = "vero-published-cloudflared"
+#:
+#: Renamed from the `vero-published-*` family in PLAN-0103 Step 4b: the project
+#: name is now the profile DIRECTORY name, so that two published systems cannot
+#: land in one compose project or on one Docker network (AC-4).
+_PROJECT = "oct-energy"
+_APP_CONTAINER = "oct-energy-app"
+_CLOUDFLARED_CONTAINER = "oct-energy-cloudflared"
 
 #: compose names a built image `<project>-<service>` when the service declares
-#: `build:` and no `image:`, which is exactly what the app service does.
-_IMAGE = "vero-published-app"
+#: `build:` and no `image:`, which is exactly what the app service does — so this
+#: value FOLLOWS `_PROJECT` and is not independently choosable.
+_IMAGE = "oct-energy-app"
 _PREV_TAG = f"{_IMAGE}:prev"
 _LIVE_TAG = f"{_IMAGE}:latest"
 

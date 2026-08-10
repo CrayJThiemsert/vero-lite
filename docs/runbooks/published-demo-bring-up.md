@@ -351,7 +351,7 @@ was tested:
 
 ```bash
 CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/oct-energy/docker-compose.yml build app
-docker save vero-published-app:latest -o /tmp/app.tar     # ~67 MB
+docker save oct-energy-app:latest -o /tmp/app.tar     # ~67 MB
 scp /tmp/app.tar <host>:C:/<staging>/app.tar
 ssh <host> 'docker load -i C:\<staging>\app.tar'
 ```
@@ -361,7 +361,7 @@ file** before deciding what to build, and the cloudflared service declares that 
 required. Nothing is created at that path; volumes are materialised at container-create
 time, not at build.
 
-Then compare `docker image inspect vero-published-app --format "{{.Id}}"` on both machines —
+Then compare `docker image inspect oct-energy-app --format "{{.Id}}"` on both machines —
 **equal ids prove the transfer, and that is the actual guarantee.** Do not use "a rebuild
 produced the same id" as a check: buildkit's provenance attestation makes the id identify a
 *build*, not its content, so it changes every time even when every layer is a cache hit.
@@ -445,7 +445,7 @@ docker compose -f deploy/published/oct-energy/docker-compose.yml up -d
 ```
 
 ```bash
-docker compose -p vero-published ps
+docker compose -p oct-energy ps
 ```
 
 Both services `running`/`healthy`, **no `postgres` service**, and **no published host
