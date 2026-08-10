@@ -168,8 +168,8 @@ Local half:
 
 ```bash
 CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/oct-energy/docker-compose.yml build app
-docker image inspect vero-published-app:latest --format="{{.Id}}"     # local only — note this
-docker save vero-published-app:latest -o /tmp/app.tar
+docker image inspect oct-energy-app:latest --format="{{.Id}}"     # local only — note this
+docker save oct-energy-app:latest -o /tmp/app.tar
 ```
 
 The placeholder is required: compose interpolates the **whole** file before
@@ -180,12 +180,12 @@ Remote half — the tar goes in on **stdin**, so there is no staging path to cre
 and no Windows path in any command:
 
 ```bash
-ssh <host> docker tag vero-published-app:latest vero-published-app:prev
+ssh <host> docker tag oct-energy-app:latest oct-energy-app:prev
 ssh <host> docker load < /tmp/app.tar
-ssh <host> docker image inspect vero-published-app:latest
+ssh <host> docker image inspect oct-energy-app:latest
 ssh <host> git -C C:\projects\vero-lite pull --ff-only
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d
-ssh <host> docker inspect vero-published-app
+ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d
+ssh <host> docker inspect oct-energy-app
 ```
 
 Read `.Id` out of the third command's JSON and `.Image` out of the sixth's. **They
@@ -195,7 +195,7 @@ the second proves the deploy took effect.
 If `cloudflared/config.yml` changed in that pull, add:
 
 ```bash
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d --force-recreate cloudflared
+ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d --force-recreate cloudflared
 ```
 
 ---
@@ -221,7 +221,7 @@ Recorded so the next operator can tell "worked" from "ran". Deploying `d0a2808`
 over the image session 213 had shipped:
 
 ```
-rollback point tagged                : PASS  (vero-published-app:prev)
+rollback point tagged                : PASS  (oct-energy-app:prev)
 image transferred intact             : PASS  (local sha256:153324a2995c… vs host sha256:153324a2995c…)
 host checkout updated                : PASS  (9601f068 -> d0a28080, 14 files)
 running container uses the new image : PASS  (container sha256:153324a2995c… vs loaded sha256:153324a2995c…)

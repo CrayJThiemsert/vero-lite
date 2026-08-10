@@ -91,9 +91,25 @@ ingress:
   # and for a different reason from everything else on this line. Their backend is
   # offline + DB-free and would serve fine. They are off because the governed hero
   # is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2) and this system pins
-  # OCT_VERTICAL=energy, which owns no hero builder — routers/demo.py would fall
-  # back to procurement's, serving a Fastenal hero under an energy banner. The
-  # hero ships on the procurement system when that one is stood up. Tab G is
-  # correspondingly not registered on this profile (app.js PUBLISHED_EXCLUDED_VIEWS),
-  # so nothing in the UI fetches what this rule denies.
+  # OCT_VERTICAL=energy, which owns no hero builder. The hero ships on the
+  # procurement system — a different published system, with its own profile
+  # directory, and the only one whose allowlist admits these two rows.
+  # (Deliberately not named by path: a profile directory names only its own system,
+  # PLAN-0103 AC-5. `ls deploy/published/` is how you find the other one.)
+  #
+  # 🔴 THIS ROW IS STILL CORRECT; TWO OF ITS FORMER REASONS ARE NOT. Corrected in
+  # PLAN-0103 Step 4b — both were true when written and were falsified by Steps 2
+  # and 3 of this same PLAN:
+  #   * it used to say routers/demo.py "would fall back to procurement's, serving a
+  #     Fastenal hero under an energy banner". **Step 3 CLOSED that fallback** — a
+  #     heroless vertical now returns a typed 404 rather than another vertical's
+  #     hero. Denying the rows here is therefore now DEFENCE IN DEPTH over a route
+  #     that already refuses, not the only thing standing between a visitor and the
+  #     wrong partner's hero.
+  #   * it used to say Tab G is "not registered on this profile (app.js
+  #     PUBLISHED_EXCLUDED_VIEWS)". **Step 2 DELETED that constant.** Tab G is
+  #     absent because it is not in this system's server-declared set —
+  #     `published.env`'s `UI_PUBLISHED_VIEWS=A,B,C,D,F`.
+  # Do NOT "fix" the drift by re-admitting the routes: one published system tells
+  # one story, and this one's is the three OCT features.
   - service: http_status:404

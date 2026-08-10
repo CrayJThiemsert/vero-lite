@@ -1,0 +1,116 @@
+# The PUBLISHED procurement system (PLAN-0103 Step 4b / ADR-0036 D5).
+#
+# EXACTLY TWO SERVICES: `app` + `cloudflared`. There is deliberately no `nginx`
+# (the rate cap is a Cloudflare zone rule, not an nginx `limit_req`) and no
+# `postgres` — LOCKED-1 keeps procurement DB-less, and SD-3 turned that from a
+# preference into the reason Tab H is off this system's published set.
+#
+# NO `ports:` KEY ON ANY SERVICE — PLAN-0100 AC-5's property, preserved per system
+# (PLAN-0103 AC-3): the only way in is through the tunnel, so a host firewall
+# mistake cannot expose `app` directly.
+#
+# This file is a deliberate near-duplicate of the sibling profiles' composes.
+# ADR-0036 D5 accepts N ≤ 3 near-duplicates rather than a generator (Rule of
+# Three), and PLAN-0103 puts a compose generator explicitly out of scope. Read them
+# side by side (`ls deploy/published/` — a profile does not name its siblings,
+# AC-5): the differences are the project name, the container/volume names, and the
+# absence of anything vertical-specific.
+
+# PROJECT NAME = THIS DIRECTORY'S NAME, and that is a rule, not a coincidence
+# (PLAN-0103 Step 4b). `tests/deploy/test_published_profiles.py` asserts the two
+# are equal for every profile, so this file cannot inherit the donor profile's
+# project name by the copy-paste that produced it.
+name: oct-procurement
+
+services:
+  # Same image as the dev project and the same contract: this service adds
+  # composition concerns only and declares NO `command:`, so the image's CMD
+  # stays the single definition of how the app runs (PLAN-0095 SD-1).
+  app:
+    build:
+      context: ../..
+    container_name: oct-procurement-app
+    env_file:
+      - published.env
+    environment:
+      # API_KEYS maps sha256(raw-key) -> person_id and is a SECRET, so it can never
+      # join published.env — that file is committed and is AC-4's parse target
+      # (CLAUDE.md §8). A BARE pass-through takes the value from the host
+      # environment, so the secret reaches the container without entering the repo.
+      #
+      # ⚠️ WITHOUT THIS KEY THE VARIABLE NEVER REACHES THE CONTAINER. `env_file`
+      # loads published.env and nothing else, and compose does not forward the host
+      # environment on its own.
+      #
+      # ⚠️ ON THIS SYSTEM THE INTENDED VALUE IS "UNSET". SD-3/SD-4 ruled procurement
+      # "anonymous read + hero, no personas", and `^/whoami$` is off this system's
+      # allowlist, so a provisioned key could not be exchanged for a session anyway.
+      # The pass-through is kept for shape-parity with the other profiles and so the
+      # posture is a deliberate omission a reader can see, rather than a missing line.
+      - API_KEYS
+    # OLLAMA_HOST is pinned to host.docker.internal. Docker Desktop resolves that
+    # name on its own; the Linux engine does NOT, and without this line every LLM
+    # call on a Linux host fails DNS and silently degrades to the deterministic arm
+    # — a demo that looks like it is working.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - prompt-log:/var/log/vero/prompt-log
+    networks:
+      - vero_oct
+    restart: unless-stopped
+
+  cloudflared:
+    # This system's OWN connector, in this system's OWN compose project — the
+    # ADR-0035 D4/L5 amendment's reading (a), ratified in #1057.
+    image: cloudflare/cloudflared:2025.8.1
+    container_name: oct-procurement-cloudflared
+    # Locally-managed tunnel: the ingress map lives in the committed config.yml,
+    # NOT in the Cloudflare dashboard. A bare `tunnel --token …` run would move the
+    # allowlist out of this repo — see the header of cloudflared/config.yml.
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      # The tunnel credentials are a SECRET and never enter this repo
+      # (CLAUDE.md §8). Required, not defaulted: a missing value must fail the `up`
+      # loudly rather than mount something unintended.
+      - ${CLOUDFLARED_CREDENTIALS_FILE:?set CLOUDFLARED_CREDENTIALS_FILE to this system's tunnel credentials JSON on the host}:/etc/cloudflared/credentials.json:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - vero_oct
+    restart: unless-stopped
+
+networks:
+  # THE ANTI-BYPASS BOUNDARY. `app` joins this network and nothing else, and the
+  # ONLY other member is THIS system's `cloudflared`.
+  #
+  # 🔴 NO FIXED `name:` KEY, AND THE ABSENCE IS THE MECHANISM (PLAN-0103 AC-4).
+  # Compose scopes the network under the project, so this one is
+  # `oct-procurement_vero_oct` and every sibling's is `<its-project>_vero_oct` —
+  # distinct by construction rather than by remembering to edit a literal in a
+  # copied file.
+  #
+  # Why it matters: two projects sharing one Docker network let each system's
+  # connector reach the OTHER system's `app:8000` and skip that system's allowlist
+  # entirely — and every allowlist test would stay green throughout, because they
+  # read a committed file and cannot see who else is on the wire. ADR-0035
+  # (`0035:490-493`) names a shared network as grounds for reopening the whole
+  # hosting arrangement. `test_published_profiles.py` asserts NO profile declares a
+  # fixed network `name:`, so it cannot be reintroduced by intention either.
+  #
+  # Not `internal: true`: `cloudflared` must reach Cloudflare's edge outbound. The
+  # inbound protection is the absence of `ports:`, not network isolation.
+  vero_oct:
+    driver: bridge
+
+volumes:
+  # ADR-0035 D6: 90-day rolling prompt log, Cray-only reader, no IP / headers /
+  # gate identity stored. A named volume so the rows survive a container replace.
+  #
+  # Per-system name (AC-4): volume names are GLOBAL on the Docker daemon, so a
+  # shared literal would have two systems writing one prompt log — and the log is
+  # a compliance artifact with a per-system retention story.
+  prompt-log:
+    name: oct-procurement-prompt-log

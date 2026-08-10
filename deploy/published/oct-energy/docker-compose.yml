@@ -10,7 +10,13 @@
 # topology: the only way in is through the tunnel, so a host firewall mistake
 # cannot expose `app` directly (D1(1), 0035:266-274).
 
-name: vero-published
+# PROJECT NAME = THIS DIRECTORY'S NAME, and that is a rule, not a coincidence
+# (PLAN-0103 Step 4b). `tests/deploy/test_published_profiles.py` asserts the two
+# are equal for every profile, so a fourth system cannot inherit a name by
+# copy-paste: the guard reddens instead of two projects silently sharing a
+# network. Renamed from `vero-published` in Step 4b — see README.md's migration
+# note if a project under the old name is still running on the host.
+name: oct-energy
 
 services:
   # Same image as the dev project and the same contract: this service adds
@@ -19,7 +25,7 @@ services:
   app:
     build:
       context: ../..
-    container_name: vero-published-app
+    container_name: oct-energy-app
     env_file:
       - published.env
     environment:
@@ -61,7 +67,7 @@ services:
     # This system's OWN connector, in this system's OWN compose project — the
     # D4/L5 amendment's reading (a), ratified in #1057 (Cray's typed ruling).
     image: cloudflare/cloudflared:2025.8.1
-    container_name: vero-published-cloudflared
+    container_name: oct-energy-cloudflared
     # Locally-managed tunnel: the ingress map lives in the committed config.yml,
     # NOT in the Cloudflare dashboard. A bare `tunnel --token …` run would void
     # AC-6(a) — see the header of cloudflared/config.yml.
@@ -92,22 +98,32 @@ networks:
   # Not `internal: true`: `cloudflared` must reach Cloudflare's edge outbound.
   # The inbound protection is the absence of `ports:`, not network isolation.
   #
-  # 🔴 READ BEFORE COPYING THIS FILE FOR A SECOND VERTICAL. The fixed
-  # `name: vero_oct` is PLAN-0100's pinned value and is correct while exactly one
-  # published system exists. It does NOT survive being instantiated twice: two
-  # compose projects both declaring `name: vero_oct` join the SAME Docker network,
-  # so each system's connector could reach the other's `app:8000` and skip that
-  # system's allowlist entirely. ADR-0035 `0035:490-493` names a shared network as
-  # a condition under which "the arrangement has drifted and this ADR is reopened".
-  # The second system must therefore either drop this `name:` key (letting compose
-  # scope the network per project) or carry a per-system name — a decision the
-  # follow-on PLAN owns, NOT something to change here on the way past.
+  # 🔴 THE FIXED `name: vero_oct` IS GONE, AND ITS ABSENCE IS THE MECHANISM.
+  # PLAN-0103 Step 4b resolved the standing instruction this block used to carry
+  # (drop the key vs. carry a per-system name) in favour of DROPPING IT. Compose
+  # then scopes the network under the project, so this system's network is
+  # `oct-energy_vero_oct` and the next system's is `oct-<its-dir>_vero_oct` —
+  # distinct by construction rather than by remembering to edit a literal.
+  #
+  # Why that direction and not a per-system literal: the hazard being closed is a
+  # COPY-PASTE, and a per-system literal is exactly the thing a copy-paste
+  # forgets. Two compose projects both declaring `name: vero_oct` join the SAME
+  # Docker network, so each system's connector reaches the other's `app:8000` and
+  # skips that system's allowlist entirely — and ADR-0035 `0035:490-493` names a
+  # shared network as a condition under which "the arrangement has drifted and
+  # this ADR is reopened". With no literal to forget, a new profile cannot
+  # reintroduce it by inattention; `test_published_profiles.py` asserts that NO
+  # profile declares a fixed network `name:` at all, so it cannot be added back
+  # by intention either without the guard going red.
+  #
+  # ⚠️ The trade this makes, stated so nobody rediscovers it as a surprise: the
+  # network name is now DERIVED, so `docker network ls` shows a name that appears
+  # verbatim nowhere in this repo. Grep for the project name instead.
   vero_oct:
-    name: vero_oct
     driver: bridge
 
 volumes:
   # ADR-0035 D6: 90-day rolling prompt log, Cray-only reader, no IP / headers /
   # gate identity stored. A named volume so the rows survive a container replace.
   prompt-log:
-    name: vero-published-prompt-log
+    name: oct-energy-prompt-log
