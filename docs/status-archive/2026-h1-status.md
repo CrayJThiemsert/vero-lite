@@ -1182,3 +1182,9 @@ apply and only *verify → trim* of `rehome → re-point → verify → trim` re
 ### Recent-Decisions row — s212 (PLAN-0100 Step 9 ran as its own offline fallback; rotated s219)
 
 | 2026-08-06 | **s212 — PLAN-0100 Step 9 RAN as its own sanctioned OFFLINE FALLBACK (#1067): cases 2 + 7 PASS, cases 0/1/3–6/8 NOT COVERED → inherited by Step 11.** No `cloudflared` binary, no credentials, and case 0 gates the rest. **Non-vacuity DEMONSTRATED** — anchors stripped on a `/tmp` copy flipped the excluded `/insights/query` to `http://app:8000`. ⚠️ A `tunnel ingress validate` flag order that exits **0 while validating nothing** was among three committed defects fixed | `4a88f37` ([#1067](https://github.com/CrayJThiemsert/vero-lite/pull/1067)) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
+
+## Rotated this reconcile (session-220, 2026-08-10 — PLAN-0103 Steps 4b/5 procurement half; AC-4 + AC-5 closed; #1114)
+
+### Recent-Decisions row — s213 (the published OCT demo went live behind Cloudflare Access)
+
+| 2026-08-07 | **s213 — the published OCT demo is LIVE behind Cloudflare Access (#1069–#1072); PLAN-0100 Step 11 is now BLOCKED on an unruled composition question.** `python-multipart` was a RUNTIME dep absent from the shipped image, which **could not boot for eleven days while 3943 tests stayed green**; the fix adds a CI step that rebuilds the image's dependency set and imports the entry module. ⚠️ Access returns **302 on every path**, so exact-status cases cannot hold through the gate | `fe1d018` ([#1072](https://github.com/CrayJThiemsert/vero-lite/pull/1072)) / `6e6563a` ([#1071](https://github.com/CrayJThiemsert/vero-lite/pull/1071)) / `docs/plans/done/0100-exposure-published-demo-surface.md` |

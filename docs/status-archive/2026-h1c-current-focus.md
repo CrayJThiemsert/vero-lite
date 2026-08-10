@@ -2028,3 +2028,62 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > frontmatter had stalled at `1384278`; s214 in fact closed at `a5ae3cd`, so the
 > commits between them are s214's later merges, reconciled here rather than
 > restated.]_
+
+> **Session 216, 2026-08-08 (head_commit `94fac66` → `f987888`) — four PRs merged
+> (#1090–#1093), 0 open. Theme: PLAN-0100 is COMPLETE 13/13 and ARCHIVED — the
+> exposure PLAN closed after its last three ACs fell in one session, each to a
+> DIFFERENT kind of move.**
+>
+> **Three ACs, three kinds of move — the distinction is the transferable part, and
+> flattening it to "three ACs closed" loses the whole lesson.** **AC-6(c) closed by
+> arithmetic over evidence already in hand** (#1090): case 1 was re-scored against the
+> D-3 fix — **no new run** — its only two misses having been the `.woff2`
+> content-types, fixed and live-verified in s215 on a `cf-cache-status: MISS`. The same
+> PR corrected AC-6's stale "case 4" citation for the rate cap (under v2 numbering the
+> rate cap is **case 6**; case 4 is arm posture) and recorded the carve-out as
+> discharged through the Step-11 deferral branch. **AC-11 closed by a fresh live
+> measurement** (#1091). **AC-12 closed by VERIFYING rather than drafting** (#1093),
+> after which PLAN-0100 went `Draft` → `Complete` and was `git mv`-ed to
+> `docs/plans/done/`.
+>
+> **`T_edge` = 125 s, and why s215 could not get it.** s215 failed five times. Four
+> were ordinary instrument faults, already logged. The fifth was subtler: the
+> instrument *worked*, but it stalled the upstream with `qwen3.6:35b` — a model big
+> enough to cold-load — and it cold-loaded **and answered** in 54 s. **A slow upstream
+> is not a stalled one**; vero-lite replied before the edge could cut in. s216 replaced
+> *slow* with *never answers*: a socket that `bind`s and `listen`s but **never calls
+> `accept()`**, verified from **inside the app container** (connect in 0.013 s, then
+> `TimeoutError`, zero bytes). Two runs positive-control each other — a 120 s window
+> yielded only `T_edge > 120 s`, recorded **INSUFFICIENT-EVIDENCE, not a pass**, and it
+> missed by **five seconds**; a 600 s window returned **HTTP 524 at 125.19 s**.
+> ⚠️ **Cloudflare documents 100 s; the measured value is 125 s** — the path is a
+> `cloudflared` Tunnel, not a proxied origin, so a run that had trusted the published
+> number would have concluded the cut-off was unreachable.
+>
+> **Cray's ruling is what produced that number.** Offered the `≥ 54 s` bound as
+> discharging P4(i), Cray typed that **a bound is not the number the clause asks
+> for**. Had Code accepted the bound on its own judgement it would have been rewriting
+> an AC to fit the evidence available, and neither the 125 s nor the Tunnel-vs-docs
+> finding would exist.
+>
+> **AC-12 is the reusable one.** The next move *looked* like a `plan-drafter` dispatch
+> — Code cannot author ADRs. Verifying the fact-pack first showed all three
+> "unrouted" ADR-0035 amendments had **already landed on 2026-08-06 in `06e2b84`**;
+> only the tick was missing. Same shape as #1089's unmet "Record which was used".
+> **A doc saying "not done" is a claim to grep, not evidence.**
+>
+> 🟡 **D-5 — a TRANSIENT Safe Browsing phishing flag** on the Access login callback,
+> found while fetching a fresh cookie and lifted within ~30 min. **No security posture
+> was involved:** the unauthenticated control stayed **302** on five paths across two
+> runs, including under a browser UA. Four candidate causes were ruled out **by
+> measurement** — a host-wide block (`/health` clean in the same Chrome), a path-prefix
+> block (bare callback clean, the omnibox `Dangerous` chip gone, no bypass clicked), a
+> flag inherited from a previous domain owner (RDAP: `registration` == `last changed`
+> == 2025-12-15), and a neighbour on the zone (only one system resolves). **The cause
+> is UNDETERMINED and is recorded as such** — Google Search Console is the only source
+> that would report why, and only if it recurs.
+>
+> **Also:** the `ms-s1-admin` skill gained the **stripped-`"` trap** (#1092) —
+> PowerShell strips double quotes when handing argv to a native exe — plus a comparison
+> table of all three traps in that family. **Five residual items outlive PLAN-0100**;
+> they are carried as a pointer in Active TODOs and none of them gates anything.
