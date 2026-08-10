@@ -25,10 +25,18 @@ justification to build a seam; it must also show its trigger fired"). The trigge
 hero-demo binding on these same routes. A third vertical adds one ``hero_demo/`` package
 and one registry entry.
 
-**Unregistered verticals fall back to the procurement hero** — Cray's SD-1 ruling (a),
-2026-07-31. The boot default is ``energy`` (``config.py:180``), so every existing deck,
-runbook and energy-boot demo keeps rendering exactly what it rendered before this seam
-landed. The fallback is a registry default, visible in code rather than implicit.
+**A vertical with no hero of its own gets a typed 404** — PLAN-0103 Step 3, Cray typed
+s219. This reverses the earlier SD-1 ruling (a) of 2026-07-31, which fell back to the
+procurement hero so the ``energy`` boot default kept rendering what it always had. That
+was the right call while exactly one published system existed; multi-system inverts it,
+because the fallback's failure mode is serving one design partner's bespoke hero under
+another's banner (ADR-0032 D1.2). See ``_builders`` for the full reasoning.
+
+⚠️ Consequence worth knowing before booting a heroless vertical: the boot default is
+``energy``, which ships **no** hero package, so ``GET /demo/hero/{governance,impact}``
+now 404 on a default boot. Tests that assert procurement's ledger must pin
+``OCT_VERTICAL=procurement`` explicitly — several did not, and were reaching Fastenal's
+numbers through the fallback while appearing to run on the default.
 
 **SD-3 demo guards:** the ``/demo/hero/`` prefix + the ``provisional`` flag on every
 payload + this clearly-named demo router make these demo-scoped by construction — never
@@ -56,9 +64,19 @@ router = APIRouter(prefix="/demo/hero", tags=["demo"])
 # critical-failure trigger and None otherwise (OQ-C) — the hero's asset-failure scenario.
 _HERO_IMPACT_TRIGGER = {"event_type": "failure"}
 
-#: SD-1 = (a), Cray 2026-07-31. A vertical with no registered hero serves procurement's,
-#: so the energy boot default and every existing demo are unchanged by the seam.
-_FALLBACK_VERTICAL = "procurement"
+#: PLAN-0103 Step 3 (Cray, typed, s219) — the request-time hero fallback is CLOSED.
+#:
+#: This was ``_FALLBACK_VERTICAL = "procurement"``: a vertical with no registered hero
+#: served procurement's (SD-1 = (a), Cray 2026-07-31), which kept the energy boot default
+#: working while exactly one published system existed. Multi-system makes that resolve the
+#: wrong way. The hero is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2), so the fallback's
+#: failure mode is serving a **Fastenal procurement hero under an energy banner** — a
+#: mismatch a partner reads as a bug, and the reason PLAN-0100 had to edge-exclude Tab G
+#: from the published energy system rather than simply not render it.
+#:
+#: Closing it moves the refusal from the EDGE (an allowlist that must remember to exclude
+#: G for every future heroless vertical) to the ROUTE (which knows). A 404 is the honest
+#: answer: this deployment has no hero, which is different from "your request was wrong".
 
 
 class _HeroBuilders(NamedTuple):
@@ -140,13 +158,24 @@ hero is bespoke per design partner (ADR-0032 D1.2), never scaffolded."""
 
 
 def _builders() -> _HeroBuilders:
-    """The active vertical's builders, falling back to procurement's (SD-1 = a).
+    """The active vertical's OWN builders, or a typed 404 — never another vertical's.
 
     Read at REQUEST time, not import time: a settings override in a test must take
     effect, and the router must not bake in whatever vertical happened to be active when
     the module was first imported.
     """
-    return _HERO_BUILDERS.get(settings.oct_vertical, _HERO_BUILDERS[_FALLBACK_VERTICAL])
+    builders = _HERO_BUILDERS.get(settings.oct_vertical)
+    if builders is None:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                f"vertical '{settings.oct_vertical}' ships no governed hero. A hero is "
+                "bespoke per design partner (ADR-0032 D1.2) and is never borrowed from "
+                "another vertical — serving one would put a different partner's story "
+                "under this deployment's banner."
+            ),
+        )
+    return builders
 
 
 @router.get("/governance", response_model=HeroGovernanceAudit)
