@@ -24,7 +24,14 @@ services:
   # stays the single definition of how the app runs (PLAN-0095 SD-1).
   app:
     build:
-      context: ../..
+      # 🔴 THREE levels, not two, and the difference is a build that cannot run.
+      # This file sits at `deploy/published/<system>/`, so `../..` reaches `deploy/`
+      # — which has no Dockerfile. Step 4a moved this compose one directory deeper
+      # without following the relative context, and `docker compose config` does
+      # NOT check that a build context exists, so it validated clean for two
+      # sessions. `test_published_profiles.py` now resolves this path and asserts a
+      # Dockerfile is actually there.
+      context: ../../..
     container_name: oct-energy-app
     env_file:
       - published.env

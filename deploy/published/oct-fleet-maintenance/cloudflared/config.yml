@@ -61,11 +61,17 @@ ingress:
   - path: ^/meta$
     service: http://app:8000
 
-  # Global chrome, not a tab: the MS-S1 residency indicator polls this read
-  # (`llm-control.js` — the poll NEVER warms, INV-1). `/warm` and `/sleep` stay
-  # off, so the indicator reads and cannot act.
-  - path: ^/llm/status$
-    service: http://app:8000
+  # ⚠️ `^/llm/status$` IS DELIBERATELY ABSENT, and it was briefly present by mistake.
+  # The row was authored on the belief that the MS-S1 residency indicator is global
+  # chrome. It is not on this surface: `app.js` mounts it behind
+  # `if (!O.isPublished() && …)`, so PLAN-0100 Step 3 already removed it from the
+  # published profile — an anonymous visitor must not be handed a control that can
+  # unload the model mid-demo. Nothing on this surface fetches the route, and under
+  # default-deny a row has to be earned by a caller.
+  #
+  # ⚠️ This system publishes Tab C, so it DOES call the model — but through
+  # `^/query$` below, not through this read. The status indicator and the assisted
+  # route are different things.
 
   # 🔴 THE PERSONA LOGIN — on this system it is load-bearing, not optional.
   # `auth.js` makes GET /whoami the ONE auth-validating read, so without this row
