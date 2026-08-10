@@ -1976,3 +1976,55 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > failed phase means no deploy. Gate at CI scope on every merge: `ruff format
 > --check` clean (614 files) · `mypy services/` clean (133) · **3977 passed /
 > 8 skipped / 0 failed**.
+
+> **Session 215, 2026-08-08 (head_commit `a5ae3cd` → `94fac66`) — four PRs merged
+> (#1084–#1087), 0 open. Theme: PLAN-0100 Step 11 — the Cray-gated live run against
+> the published demo — was executed end to end; it found four defects, three of which
+> were fixed, redeployed and re-verified live in the same session.**
+>
+> **The run.** Driven through the ratified Cloudflare Access gate with a cookie from a
+> real one-time-PIN login (the s214 route), under Cray's typed §8 go, with the
+> unauthenticated control re-run alongside (302/302/302). **Cases 0, 2, 3, 4, 6, 8
+> CLOSE.** **Case 1 closes 19/21 on its own read** — the two misses were the font
+> content-types, and two further failures were probes the runner added, not rows the
+> case asks for. **Case 5 FAILED, was fixed, and re-verified PASS.** **P5 PASS**;
+> **P4(ii) PASS** twice independently; **P4(i)'s exact `T_edge` is UNMEASURED** —
+> recorded as INSUFFICIENT-EVIDENCE with a measured lower bound (`T_edge ≥ 54 s`)
+> that excludes the clause's own FAIL condition of `< 40 s`.
+>
+> 🔴 **Four defects, none catchable offline.** **D-1 — 90+ published `POST /query`
+> wrote ZERO prompt-log rows.** The image never created the volume mount point, so
+> Docker made it root-owned while the runtime is uid 999; `prompt_log.record` swallows
+> `OSError` **by design**, so it failed silently and ADR-0035 D6's whole regime (RoPA,
+> 90-day retention, the purge command, the DSR path) described a file that did not
+> exist. **D-2** — the prompt log named a model that never ran
+> (`ollama_default_model` / `gemma4:26b` recorded while the engine ran
+> `recommender_model` / `gpt-oss:20b`). **D-3** — bundled `.woff2` fonts served as
+> `text/plain`: the slim image ships no `/etc/mime.types` and Python's built-in table
+> has no `.woff2`. **D-4**, narrowed after a second measurement: **only** the
+> `group_by` verified_query fails — `count` aggregation works, and the second query's
+> empty result is the **correct** answer (the dataset holds no `feeder` asset). Left
+> open, direction undecided. **Also:** the demo pinned no `keep_alive`, so the first
+> visitor after an idle spell waited the full 25 s timeout and got a degraded,
+> ungrounded answer; fixed by sending the existing `ollama_keep_alive` on every chat
+> call.
+>
+> **The finding worth carrying forward:** `deploy.py`'s seven green checks prove the
+> **container** runs the new image; they do **not** prove a **visitor** receives it.
+> D-3 read as still-broken after redeploy because Cloudflare was serving a
+> `text/plain` copy cached while the defect was live (`cf-cache-status: HIT`,
+> `max-age=14400`), closed by a manual **Purge Everything** (Cray). Nothing in the
+> pipeline purges the edge, and the repo's `?v=cNN` convention does not reach fonts
+> (referenced from inside CSS with no version parameter). A purge step or versioned
+> font URLs belongs in the redeploy runbook — **not done**.
+>
+> **Twelve instrument faults** were caught and are listed in the PLAN record. The two
+> most consequential: the probe matrix first scored **0/43 against a completely
+> healthy demo**, because Cloudflare's Browser Integrity Check rejects a
+> `Python-urllib` User-Agent *before* Access is consulted; and a `/query` oracle
+> passed on the string *"I couldn't translate that question into a query over the
+> operational data."* Common root: **checking a proxy for the thing rather than the
+> thing.** **No AC was ticked — PLAN-0100 stays `Draft` at 10 of 13.** _[STATUS's
+> frontmatter had stalled at `1384278`; s214 in fact closed at `a5ae3cd`, so the
+> commits between them are s214's later merges, reconciled here rather than
+> restated.]_
