@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-09T21:30:00+07:00
-session: 218
-current_batch: "s218 — nine PRs (#1099-#1107), 0 open. ADR-0036 RATIFIED; PLAN-0103 drafted, amended and ALL EIGHT slots ruled; ADR-0037 spawned by the SD-1 ruling (which overruled both the drafter and Code) and RATIFIED the same session. Nothing is blocked."
+last_updated: 2026-08-10T07:05:00+07:00
+session: 219
+current_batch: "s219 — one PR (#1109), 0 open. PLAN-0103 Step 2 shipped: PUBLISHED_EXCLUDED_VIEWS retired for a boot-validated, server-declared per-system view set. AC-2's census corrected 11→9; AC-1 accepted as-is."
 current_actor: code
-blocked_on: "NOTHING is blocked and NOTHING is owed by Cray. ADR-0037 was ratified the same session it was drafted, so PLAN-0103's fleet half is unblocked too — the whole PLAN is executable. One obligation is now LIVE rather than pending: ADR-0037 D2.1 / PLAN-0103 AC-11 require the RoPA to cover fleet's posture BEFORE fleet's bring-up, and the RoPA is Cray's artifact as controller — the PLAN gates on it and cannot author it."
-next_action: "PLAN-0103 is fully executable; start with the offline, no-host-state work in order. (1) Step 2 — eliminate PUBLISHED_EXCLUDED_VIEWS for a boot-validated, server-declared per-system view set, walking ALL 11 isPublished() consumers across eight files (AC-2 requires each classified tab-set vs profile-behaviour; use tools/excision_scope.py + the excision-scope skill). (2) Step 3's branch audit. (3) Procurement's profile + allowlist (Steps 4-5) — procurement is first in bring-up order per SD-2(b) and is DB-less. Fleet's half is now legal but carries the AC-11 RoPA precondition before any bring-up, and Step 9's MS-S1 headroom measurement is UNMEASURED and must precede a second system. D4's FINAL ruling is still Cray's and is deliberately deferred until D2.7 measures whether visitor case text reaches the audit chain. Still ungated elsewhere: BUILD D-4 option (a) (four seams in nl_query.py, nothing built); the public one-pager; versioned font URLs + pin OLLAMA_KEEP_ALIVE. Edge cache-purge needs a Cloudflare API token = new secret + host-state."
-head_commit: fde5987
-recent_commits: [fde5987, 3556c1e, 8829d4e, 66e25b4, 368b813, 3d194c4, 9160f4f, 866e09f, 52832bc, a2e2d0e]
+blocked_on: "NOTHING is blocked. One live obligation: ADR-0037 D2.1 / PLAN-0103 AC-11 — the RoPA must cover fleet's posture BEFORE fleet's bring-up, and it is Cray's artifact as controller."
+next_action: "PLAN-0103 Step 3 — the branch audit, which owns AC-2's unclosed second clause; then procurement's profile + allowlist (Steps 4-5; first in bring-up order, DB-less). Detail: Active TODOs."
+head_commit: d162770
+recent_commits: [d162770, 70e5b36, faf48b6, 652798e, fde5987, 3556c1e, 8829d4e, 66e25b4, 368b813, 3d194c4]
 ---
 
 # vero-lite — Project Status
@@ -18,10 +18,63 @@ recent_commits: [fde5987, 3556c1e, 8829d4e, 66e25b4, 368b813, 3d194c4, 9160f4f, 
 
 ## Current Focus
 
-> **Session 218, 2026-08-09→10 (head_commit `36e5735` → `9160f4f`) — six PRs
-> merged (#1099–#1104), 0 open. Theme: ADR-0036 ratified, its follow-on PLAN
+> **Session 219, 2026-08-10 (head_commit `faf48b6` → `d162770`) — one PR merged
+> (#1109), 0 open. Theme: PLAN-0103 Step 2 — `PUBLISHED_EXCLUDED_VIEWS` is dead,
+> replaced by a boot-validated, server-declared **per-system** published view
+> set carried on two channels that cannot disagree.**
+>
+> **The mechanism, four seams.** `config.ALL_VIEW_KEYS` + `ui_published_views`
+> refuse the process **at boot** on an unknown key, an empty set, or a repeat;
+> `main.py` emits `<meta name="ui-views">` from the **same substitution** as the
+> profile tag, so the pair cannot half-arrive; `/meta` carries the same set, with
+> a test asserting the two carriers agree on a **non-default** value; `app.js`
+> maps the declared keys **in order** into `VIEWS`, so the first declared key is
+> each system's landing tab — declared, not hardcoded.
+>
+> **What Cray ruled (typed).** A published page that declares no views **refuses
+> to render and says so** — never guesses. Two audiences, two channels: the
+> visitor gets a calm panel, no internals, plus a short statement of what
+> vero-lite is (Cray's call — the failure page doubles as the one honest place to
+> say it); the operator gets the precise console diagnostic. The **empty-set boot
+> refusal** is Code's extension of that reasoning — deploy-time terminal, never a
+> visitor's browser — flagged as an inference, not a ruling, and accepted.
+>
+> 🔴 **AC-2's census, re-run at execution, disagreed with BOTH prior snapshots.**
+> The s218 handoff's **11** counted `app.js:72`, a
+> `PUBLISHED_EXCLUDED_VIEWS.indexOf` line and not an `isPublished()` site; AC-2
+> itself says "all 11" while enumerating **10**, one of which is the definition.
+> **Actual: 9 call sites, exactly one tab-set** — the other eight gate on the
+> published *profile* for allowlist reasons and were correctly left alone. AC-2's
+> **second clause** (newly-reachable branches per system fixture) is **Step 3's**,
+> not closed here.
+>
+> **AC-1 could not be met as literally written; Cray accepted it as-is (typed)
+> rather than amend the PLAN.** It wants `tests/api/test_ui_profile.py` to pass
+> **unmodified** while its own headline deletes the constant that module's
+> tab-set test reads by name (verified: `IndexError`) — 15 of 16 pass untouched,
+> the 16th replaced by guards reading the artifacts. Its "Grep = 0" also returns
+> **1**: an `app.js` **comment** naming the retired constant. Cray ruled **keep
+> the comment** — prose about a retired identifier is legitimate
+> (`excision-scope`), and a guard punishing it is the bug; the guard strips
+> comments, and a probe confirms it still catches live code. ⚠️
+> `tools/excision_scope.py` could **not** run here — Python AST, JavaScript
+> target; walk-both-ways went by hand and the constant is a leaf, so the
+> forwards half is empty.
+>
+> **Evidence:** ruff + `ruff format` clean · `mypy --strict services/` Success
+> (133 files) · `tests/` **3915 / 8 skipped / 0 failed** (baseline 3906, +10 new,
+> −1 replaced — the arithmetic is the check that nothing vanished) · **five
+> non-vacuity probes all RED**, then green · a **live browser run** (meta
+> `A,B,C,D,F` → five rendered tabs → landing on A; the refusal branch driven for
+> real renders the panel with 0 tabs and logs the operator diagnostic). **#1109's
+> body** carries the full AC-2 disposition table and the AC-1 discussion.
+
+> **Session 218, 2026-08-09→10 (head_commit `36e5735` → `faf48b6`) — ten PRs
+> merged (#1099–#1108), 0 open. Theme: ADR-0036 ratified, its follow-on PLAN
 > drafted, amended and fully ruled, and a second ADR spawned — the whole
-> ratify→plan→rule cycle inside one session.**
+> ratify→plan→rule cycle inside one session.** _[Corrected s219, `was an error`:
+> this header read six PRs (#1099–#1104) closing `9160f4f` — it undercounted its
+> own session as written.]_
 >
 > **What Cray ratified (typed, in-context).** ADR-0036 as drafted: **D1** scope
 > ruling (a) — this enters vero-lite as an ADR extending ADR-0035 L9/D4, portal-repo
@@ -174,58 +227,6 @@ recent_commits: [fde5987, 3556c1e, 8829d4e, 66e25b4, 368b813, 3d194c4, 9160f4f, 
 > table of all three traps in that family. **Five residual items outlive PLAN-0100**;
 > they are carried as a pointer in Active TODOs and none of them gates anything.
 
-> **Session 215, 2026-08-08 (head_commit `a5ae3cd` → `94fac66`) — four PRs merged
-> (#1084–#1087), 0 open. Theme: PLAN-0100 Step 11 — the Cray-gated live run against
-> the published demo — was executed end to end; it found four defects, three of which
-> were fixed, redeployed and re-verified live in the same session.**
->
-> **The run.** Driven through the ratified Cloudflare Access gate with a cookie from a
-> real one-time-PIN login (the s214 route), under Cray's typed §8 go, with the
-> unauthenticated control re-run alongside (302/302/302). **Cases 0, 2, 3, 4, 6, 8
-> CLOSE.** **Case 1 closes 19/21 on its own read** — the two misses were the font
-> content-types, and two further failures were probes the runner added, not rows the
-> case asks for. **Case 5 FAILED, was fixed, and re-verified PASS.** **P5 PASS**;
-> **P4(ii) PASS** twice independently; **P4(i)'s exact `T_edge` is UNMEASURED** —
-> recorded as INSUFFICIENT-EVIDENCE with a measured lower bound (`T_edge ≥ 54 s`)
-> that excludes the clause's own FAIL condition of `< 40 s`.
->
-> 🔴 **Four defects, none catchable offline.** **D-1 — 90+ published `POST /query`
-> wrote ZERO prompt-log rows.** The image never created the volume mount point, so
-> Docker made it root-owned while the runtime is uid 999; `prompt_log.record` swallows
-> `OSError` **by design**, so it failed silently and ADR-0035 D6's whole regime (RoPA,
-> 90-day retention, the purge command, the DSR path) described a file that did not
-> exist. **D-2** — the prompt log named a model that never ran
-> (`ollama_default_model` / `gemma4:26b` recorded while the engine ran
-> `recommender_model` / `gpt-oss:20b`). **D-3** — bundled `.woff2` fonts served as
-> `text/plain`: the slim image ships no `/etc/mime.types` and Python's built-in table
-> has no `.woff2`. **D-4**, narrowed after a second measurement: **only** the
-> `group_by` verified_query fails — `count` aggregation works, and the second query's
-> empty result is the **correct** answer (the dataset holds no `feeder` asset). Left
-> open, direction undecided. **Also:** the demo pinned no `keep_alive`, so the first
-> visitor after an idle spell waited the full 25 s timeout and got a degraded,
-> ungrounded answer; fixed by sending the existing `ollama_keep_alive` on every chat
-> call.
->
-> **The finding worth carrying forward:** `deploy.py`'s seven green checks prove the
-> **container** runs the new image; they do **not** prove a **visitor** receives it.
-> D-3 read as still-broken after redeploy because Cloudflare was serving a
-> `text/plain` copy cached while the defect was live (`cf-cache-status: HIT`,
-> `max-age=14400`), closed by a manual **Purge Everything** (Cray). Nothing in the
-> pipeline purges the edge, and the repo's `?v=cNN` convention does not reach fonts
-> (referenced from inside CSS with no version parameter). A purge step or versioned
-> font URLs belongs in the redeploy runbook — **not done**.
->
-> **Twelve instrument faults** were caught and are listed in the PLAN record. The two
-> most consequential: the probe matrix first scored **0/43 against a completely
-> healthy demo**, because Cloudflare's Browser Integrity Check rejects a
-> `Python-urllib` User-Agent *before* Access is consulted; and a `/query` oracle
-> passed on the string *"I couldn't translate that question into a query over the
-> operational data."* Common root: **checking a proxy for the thing rather than the
-> thing.** **No AC was ticked — PLAN-0100 stays `Draft` at 10 of 13.** _[STATUS's
-> frontmatter had stalled at `1384278`; s214 in fact closed at `a5ae3cd`, so the
-> commits between them are s214's later merges, reconciled here rather than
-> restated.]_
-
 ## Prior focus (archived)
 
 PLAN-003, PLAN-0005, PLAN-0006, PLAN-0007 and PLAN-0008 are all merged
@@ -243,6 +244,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-10 | **s219 — PLAN-0103 Step 2 SHIPPED (#1109): `PUBLISHED_EXCLUDED_VIEWS` retired for a boot-validated, server-declared **per-system** view set on two agreeing channels (`<meta name="ui-views">` + `/meta`); the first declared key is the landing tab.** **Cray ruled (typed):** a page that declares no views **refuses to render and says so** — calm panel for the visitor, precise diagnostic for the operator. 🔴 **AC-2's consumer census was wrong in BOTH prior records** (`was an error`): **9** call sites, not 11, exactly one of them tab-set. **AC-1 accepted as-is rather than amended** — both its clauses are unmeetable as written | `d162770` (head_commit) / [#1109](https://github.com/CrayJThiemsert/vero-lite/pull/1109) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` |
 | 2026-08-10 | **s218 cont. — ALL EIGHT PLAN-0103 slots RULED (Cray, typed), and SD-1 spawned ADR-0037 `Proposed` (#1104).** 🔴 **SD-1 OVERRULED both the drafter and Code's R2 concurrence** — two reviewers agreeing was not independent evidence; both priced the cost of *having* an ADR and neither the cost of *not*. **ADR-0037** is the result and the home for two findings previously recorded nowhere (D6's LLM-route scope; the audit-chain erasure boundary, marked UNVERIFIED and made a pre-bring-up measurement, not asserted). **RATIFIED the same session (#1107)**: D1 = **(a) story-required** (DB-less stays a bound, not a preference) · D3 = **bound, don't amend** · D4 = **direction only**, its final ruling deliberately deferred until D2.7 measures whether visitor text reaches the chain — a controller promise cannot precede the measurement. ⚠️ **Nothing is blocked now**; the live obligation is AC-11 (the RoPA, Cray's to author) before fleet's bring-up | `9160f4f` (head_commit) / [#1104](https://github.com/CrayJThiemsert/vero-lite/pull/1104) / `docs/adr/0037-published-system-data-persistence-posture.md` |
 | 2026-08-09 | **s218 — PLAN-0103 DRAFTED `Draft` (#1101): vero-lite's side of the multi-vertical portal, ADR-0036's D6 follow-on.** 10 Steps, 11 ACs, 7 SD slots; five Cray LOCKED calls. Built around the hard boundary — **zero portal-repo files, no landing page here**; card copy is one-system-per-file with **no roster** (AC-5 guards it). 🔴 Two findings reshaped it and are worth not re-deriving: **`isPublished()` has ELEVEN consumers across eight files**, so the constant is *eliminated* rather than a third profile added; and **fleet publishing Tab C makes a SECOND assisted system** on one Ollama, contradicting the premise ADR-0036 D5 wrote its aggregate posture on | `f2731be` (head_commit) / [#1101](https://github.com/CrayJThiemsert/vero-lite/pull/1101) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` |
 | 2026-08-09 | **s218 — ADR-0036 RATIFIED (Cray, typed): a deployed vertical instance IS a system (#1099).** Accepted as drafted (D1 scope (a), D2 + the `oct-<vertical-id>` label convention, D5 profile ownership, OQ-1 retire the bare `oct.` label); ADR-0035 D1–D4 untouched, D4's reopening trigger does not fire. ⚠️ **The ratifying edit must also remove the ADR from the gate's set-equality assertion in the SAME commit** — an in-flight marker, not an exemption; both directions of that rule were exercised within a day (ADR-0037 re-added it). Verified behaviourally with two controls, not just green | `1a6e29b` (head_commit) / [#1099](https://github.com/CrayJThiemsert/vero-lite/pull/1099) / `docs/adr/0036-vertical-as-system-multi-vertical-demo-portal.md` |
@@ -252,7 +254,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-08 | **s215 — PLAN-0100 Step 11 RAN live against the published demo (#1084–#1087): cases 0, 2, 3, 4, 6, 8 CLOSE; case 5 FAILED → fixed → re-verified PASS; case 1 19/21.** Four defects, **none catchable offline** — the headline one: **90+ published `POST /query` wrote ZERO prompt-log rows** (root-owned mount vs uid 999; `record` swallows `OSError` **by design**, so ADR-0035 D6's whole regime described a file that did not exist). ⚠️ **The edge cache masked the redeploy** — `deploy.py` proves the container, not the visitor | `94fac66` (head_commit) / [#1086](https://github.com/CrayJThiemsert/vero-lite/pull/1086) / [#1087](https://github.com/CrayJThiemsert/vero-lite/pull/1087) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-08 | **s214 — the published demo has a REPEATABLE deploy procedure, and it RAN under Cray's typed §8 go (#1073–#1078).** Script + runbook + 18 guard/scenario tests; it asserts an **effect** (the container's `.Image` == the id just loaded), not a step count. **3977 green over a script whose first remote command failed on the host**: the deploy host's ssh shell is **PowerShell**, so every `--format={{…}}` died — **and the guard written one PR earlier went GREEN over it**, its hazard set having come from what was imagined, not measured | `1384278` (head_commit) / [#1076](https://github.com/CrayJThiemsert/vero-lite/pull/1076) / `deploy/published/deploy.py` / `docs/runbooks/published-demo-redeploy.md` |
 | 2026-08-07 | **s213 — the published OCT demo is LIVE behind Cloudflare Access (#1069–#1072); PLAN-0100 Step 11 is now BLOCKED on an unruled composition question.** `python-multipart` was a RUNTIME dep absent from the shipped image, which **could not boot for eleven days while 3943 tests stayed green**; the fix adds a CI step that rebuilds the image's dependency set and imports the entry module. ⚠️ Access returns **302 on every path**, so exact-status cases cannot hold through the gate | `fe1d018` ([#1072](https://github.com/CrayJThiemsert/vero-lite/pull/1072)) / `6e6563a` ([#1071](https://github.com/CrayJThiemsert/vero-lite/pull/1071)) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
-| 2026-08-06 | **s212 — PLAN-0100 Step 9 RAN as its own sanctioned OFFLINE FALLBACK (#1067): cases 2 + 7 PASS, cases 0/1/3–6/8 NOT COVERED → inherited by Step 11.** No `cloudflared` binary, no credentials, and case 0 gates the rest. **Non-vacuity DEMONSTRATED** — anchors stripped on a `/tmp` copy flipped the excluded `/insights/query` to `http://app:8000`. ⚠️ A `tunnel ingress validate` flag order that exits **0 while validating nothing** was among three committed defects fixed | `4a88f37` ([#1067](https://github.com/CrayJThiemsert/vero-lite/pull/1067)) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 
 ## In-Flight Discussions
 
@@ -268,7 +269,8 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
-- [ ] **PLAN-0103 — vero-lite's side of the multi-vertical portal. DRAFTED s218 (#1101), `Status: Draft`, nothing built.** ADR-0036's D6 follow-on: per-system published profiles + the landing/framing **content spec**. 10 Steps, 10 ACs, **7 SD slots**. ✅ **ALL EIGHT SLOTS RULED s218 (#1104)** — read them in the PLAN's §Surfaced decisions, each stamped `RULED (Cray, typed, s218)`. ✅ **ADR-0037 RATIFIED s218 (#1107), so nothing gates execution any more** — the whole PLAN is startable. 🔴 **One live obligation instead of a gate: AC-11 — the RoPA must cover fleet's posture BEFORE fleet's bring-up, and it is Cray's artifact as controller (the PLAN gates on it, cannot author it).** The Step-4 map that used to separate gated from ungated now reads as bring-up ORDER, not permission. Step 4 carries a **gate map** naming exactly what proceeds regardless — procurement's entire half, Steps 2–3, energy's move, Step 8's content, Step 9's measurement. It is written "read this before stalling anything" because a bare "ADR-gated" label reads as stop-everything: s206 lost a session to that misreading of PLAN-0100's headline when six items carried no gate. ⚠️ One caveat the map itself carries (Code R2): the **persona-picker UI is not gated but fleet is its only consumer**, so it is orphaned work if ADR-0037 ratifies otherwise than proposed — build it in parallel, never first. **Read the PLAN, never a restatement:** `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions). ⚠️ Two things a future reader must not re-derive: the **hard boundary** — ADR-0036 D1 + ADR-0035 D4/L5 make the `portal.` landing surface, ingress map, Access policies and domain **portal-repo property**, so this PLAN builds no landing page here and ships a spec instead; and `isPublished()` has **ELEVEN consumers across eight files**, so any step touching published-ness must walk all of them (`tools/excision_scope.py` + the `excision-scope` skill).
+- [ ] **PLAN-0103 — vero-lite's side of the multi-vertical portal. DRAFTED s218 (#1101), `Status: Draft`, nothing built.** ADR-0036's D6 follow-on: per-system published profiles + the landing/framing **content spec**. 10 Steps, 10 ACs, **7 SD slots**. ✅ **ALL EIGHT SLOTS RULED s218 (#1104)** — read them in the PLAN's §Surfaced decisions, each stamped `RULED (Cray, typed, s218)`. ✅ **ADR-0037 RATIFIED s218 (#1107), so nothing gates execution any more** — the whole PLAN is startable. 🔴 **One live obligation instead of a gate: AC-11 — the RoPA must cover fleet's posture BEFORE fleet's bring-up, and it is Cray's artifact as controller (the PLAN gates on it, cannot author it).** The Step-4 map that used to separate gated from ungated now reads as bring-up ORDER, not permission. Step 4 carries a **gate map** naming exactly what proceeds regardless — procurement's entire half, Steps 2–3, energy's move, Step 8's content, Step 9's measurement. It is written "read this before stalling anything" because a bare "ADR-gated" label reads as stop-everything: s206 lost a session to that misreading of PLAN-0100's headline when six items carried no gate. ⚠️ One caveat the map itself carries (Code R2): the **persona-picker UI is not gated but fleet is its only consumer**, so it is orphaned work if ADR-0037 ratifies otherwise than proposed — build it in parallel, never first. **Read the PLAN, never a restatement:** `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions). ⚠️ Two things a future reader must not re-derive: the **hard boundary** — ADR-0036 D1 + ADR-0035 D4/L5 make the `portal.` landing surface, ingress map, Access policies and domain **portal-repo property**, so this PLAN builds no landing page here and ships a spec instead; and `isPublished()` has **ELEVEN consumers across eight files**, so any step touching published-ness must walk all of them (`tools/excision_scope.py` + the `excision-scope` skill). _[Corrected s219 by executing Step 2, `was an error`: the census is **9 call sites**, not 11 — the 11 counted `app.js:72`, a `PUBLISHED_EXCLUDED_VIEWS.indexOf` line and not an `isPublished()` site, and AC-2's own list enumerates 10 with the definition among them. Exactly **one** was tab-set; the other eight gate on the published *profile* for allowlist reasons. `tools/excision_scope.py` also does **not** apply to a JavaScript target — it is Python AST analysis, so walk-both-ways went by hand.]_ ✅ **Step 2 SHIPPED s219 (#1109)** — the constant is gone, replaced by a boot-validated per-system declared view set; **AC-2's second clause (newly-reachable branches per system fixture) is Step 3's and stays OPEN.**
+- [ ] **Ungated items rehomed s219 out of the `next_action` frontmatter — they survived ONLY there, and R3 caps that field to one short line.** (1) **PLAN-0103 Step 9's MS-S1 headroom measurement is UNMEASURED and must precede a second assisted system** — ADR-0036 OQ-2's aggregate in-flight LLM posture rests on it. (2) **The public one-pager — never drafted.** (3) **ADR-0037 D4's FINAL ruling is still Cray's**, deliberately deferred until D2.7 measures whether visitor case text reaches the audit chain (the Recent Decisions row carries it too, but that table rotates — this is the durable home). (4) **Edge cache-purge needs a Cloudflare API token = a new secret + host-state**, which is why the purge step in the PLAN-0100 row below is not simply "add a step". _(The remainder of that field — D-4 option (a)'s four seams in `nl_query.py`, versioned font URLs, the unpinned `OLLAMA_KEEP_ALIVE` — is already homed in the PLAN-0100 row and is not duplicated here.)_
 - [x] **PLAN-0100 — the ADR-0035 exposure PLAN. COMPLETE 13/13 and ARCHIVED (s216).** The demo is LIVE, REDEPLOYABLE and DRIVEN. Step 11 ran end to end through the ratified Cloudflare Access gate under Cray's typed §8 go, and every pass/fail read is discharged. Closed in s216: **AC-6(c)** by re-scoring case 1 against the D-3 fix (its only two misses were the `.woff2` content-types, fixed and live-verified on a `cf-cache-status: MISS` — proven to reach a *visitor*, not merely the container); **AC-11** by measuring **`T_edge` = 125 s (HTTP 524)** after s215 could only bound it, Cray having ruled that a bound is not the number the clause asks for; **AC-12** by *verifying* rather than dispatching — its three "unrouted" ADR-0035 amendments had already landed on 2026-08-06 in `06e2b84` and only the tick was missing. **Read the archived PLAN, never a restatement:** `docs/plans/done/0100-exposure-published-demo-surface.md` (§"Step 11 closure verdict" for the closeout; §"Defects the live run found" for D-1..D-5; §Instrument failures for the twelve faults). **Five residual items OUTLIVE it, which is why this is a pointer and not a deletion:** **D-4**'s direction — **RULED s217 (Cray, typed): option (a), teach the engine.** _[⚠️ The fork was posed on a wrong premise and the correction is what changed its price — classify `was an error`, not superseded. Every prior record (this row, the s215 Current Focus above, the archived PLAN, the s216 handoff) framed (a) as "teach the translator `group_by`", implying open-ended LLM-prompt work. **`group_by` already works** — for `max`/`min`/`avg`/`sum`. What is structurally unrepresentable is `count` **with** `group_by`: `_AGGREGATE_OPS = {max, min, avg, sum}` (`services/engine/nl_query.py:75`) excludes `count`, and `services/engine/nl_query.py:536` rejects the combination outright, so energy's second verified_query — "How many active assets are hosted at each site?" (`verticals/energy/ontology/energy_v0.yaml:26-27`) — has no `StructuredQuery` that can carry it and burns the retry budget to `QueryTranslationError`. So (a) is **four seams in one file** (`:536` relax · `_compute_aggregate`/`_collect_numeric` `:770-810` · `_AGG_LABEL`/`_phrase_aggregate` `:1050-1067` · `_infer_group_by` `:907`) ≈ one PR + tests — not the scope-uncertain prompt work the fork was priced against. Grounded s217 by an Explore fan-out against the code; **no PLAN drafted, nothing built.**]_ · a **cache-purge step or versioned font URLs** in the redeploy runbook — nothing in the pipeline purges the edge, and the `?v=cNN` convention does not reach fonts · **D-5**, a *transient* Safe Browsing phishing flag on the Access login callback (lifted within ~30 min, no security posture involved, cause UNDETERMINED — Google Search Console is the only source that reports why, if it recurs) · **ADR-0036** — **RATIFIED s218 (#1099), DISCHARGED.** _[Its ordering role, found s217, is now history rather than a warning: ADR-0036 designs an "open the demo and pick which vertical" portal, which **is** a landing surface, so it was an ordering prerequisite of the landing/framing layer and the marketing carrier's §8 — which gates that `plan-drafter` dispatch only on PLAN-0100 closing — never knew about the collision. Both gates are now open. **OQ-1 adopted** (retire the bare `oct.` label); **OQ-2/OQ-3 remain open and are not blockers** — OQ-2 (the aggregate in-flight LLM posture across N systems) is pinned by the follow-on PLAN, OQ-3 (when `fleet_maintenance` becomes system #3) is Cray's trigger, not a schedule.]_ **What is now live instead: the landing/framing-layer PLAN itself (next free number 0103), G2-gated ⇒ `plan-drafter` dispatch**, its scope fixed by ADR-0036 D6. _[Also grounded s217: the published surface today has **no** landing page, intro copy or CTA at all — it boots straight into Tab A, and the published profile drops tabs `['E','G','H','I','J']` (`services/api/static/assets/app.js:68`); `.ask-welcome` is Tab C's empty state, not a landing surface.]_ · **`published.env` pins no `OLLAMA_KEEP_ALIVE`**, so the published surface silently inherits the code default of 30m.
 - [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it survives only in session memory and dies at the next context reset; a tripwire that recomputes it is what makes it evidence rather than a recollection.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet.
