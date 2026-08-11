@@ -2136,3 +2136,61 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > prompt work the fork was priced against. ⚠️ **ADR-0036 is newly load-bearing:**
 > it designs a "pick which vertical" portal, which *is* a landing surface, so it
 > is an ordering prerequisite of the landing/framing layer. Nothing recorded that.
+
+## Rotated this reconcile (session-222, 2026-08-11 — PLAN-0103 AC-8 clause 2 CLOSED in substance + ADR-0037 D2.7 MEASURED; #1121–#1125 reconciled)
+
+### Current-Focus block — Session 218
+
+> **Session 218, 2026-08-09→10 (head_commit `36e5735` → `faf48b6`) — ten PRs
+> merged (#1099–#1108), 0 open. Theme: ADR-0036 ratified, its follow-on PLAN
+> drafted, amended and fully ruled, and a second ADR spawned — the whole
+> ratify→plan→rule cycle inside one session.** _[Corrected s219, `was an error`:
+> this header read six PRs (#1099–#1104) closing `9160f4f` — it undercounted its
+> own session as written.]_
+>
+> **What Cray ratified (typed, in-context).** ADR-0036 as drafted: **D1** scope
+> ruling (a) — this enters vero-lite as an ADR extending ADR-0035 L9/D4, portal-repo
+> files stay out; **D2** *a deployed vertical instance IS a system*, with the
+> `oct-<vertical-id>` subdomain-label convention (`_`→`-`), labels only, no apex
+> domain anywhere in this repo; **D5** vero-lite owns every vertical-system's
+> {allowlist + env} profile, N near-identical allowlists accepted at N ≤ 3 under the
+> Rule of Three with per-instance guards as the mitigation; **OQ-1** adopted —
+> retire the bare `oct.` label rather than keep it as an alias. LOCKED-1/2/3 were
+> already typed 2026-08-06 and were not re-asked. ADR-0035 D1–D4 untouched
+> (LOCKED-4): D2's drift check shows system N+1 still costs the portal exactly the
+> two artifacts the restated acceptance shape allows, so the **D4 reopening trigger
+> does not fire**.
+>
+> **The two edits are one commit by construction.** ADR-0036 sat in
+> `test_the_non_accepted_adrs_are_exactly_the_expected_set` because it was IN
+> FLIGHT, not because it was exempt. Flipping without removing the entry reddens
+> that assertion; removing without flipping reddens it from the other side. Edit
+> **order** also matters and was observed — the test edit landed **first**, because
+> flipping `Status` puts the ADR behind the G1 gate and blocks every later edit to
+> it (sessions 67 / 110 / 126). The docstring is rewritten to state that as a
+> general rule with this ratification as its worked precedent.
+>
+> **Verified behaviourally, not just green:** `gate.evaluate(ADR-0036)` → **DENY**
+> (was allow), beside two live controls — `0014-WITHDRAWN` → allow, `0035` → DENY.
+> Without them the DENY is equally consistent with "the gate denies everything".
+>
+> **Then the whole cycle ran to the end in one session.** PLAN-0103 drafted,
+> amended, and **all eight slots RULED by Cray** (#1101/#1103/#1104). 🔴 **SD-1
+> overruled both the drafter and Code's R2 concurrence** — both read ADR-0036 D5's
+> "PLAN's to finalize" grant as sufficient; Cray ruled a new ADR is required, and
+> was right: a DB on a public system changes what personal data it holds and what
+> erasure can be promised — legal consequence, outliving the PLAN, needing
+> attribution. **Two reviewers agreeing was not independent evidence**; both had
+> priced the cost of *having* an ADR and neither the cost of *not*. **ADR-0037**
+> (`Proposed`) is the result and the home for two previously-unrecorded findings
+> (D6's scope, the audit-chain erasure boundary). All of it — the rulings, the
+> eleven-consumer census, the second-assisted-system premise change, the gate map
+> — is in the artifacts; read those, not a restatement:
+> `docs/adr/0037-*.md` and `docs/plans/0103-*.md` §Surfaced decisions.
+>
+> **The suite caught the new ADR the same day the rule was written.** Adding
+> ADR-0037 `Proposed` reddened `test_the_non_accepted_adrs_are_exactly_the_expected_set`
+> — the same test edited that morning, whose rewritten docstring already
+> prescribed the fix ("the entry and its Status line move together, in both
+> directions"). Morning exercised removal; evening, addition. It caught it only
+> because it enumerates `docs/adr/` on disk rather than a hardcoded census.
