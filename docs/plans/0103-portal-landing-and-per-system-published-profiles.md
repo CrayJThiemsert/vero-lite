@@ -45,6 +45,17 @@ beat).
 > instruction Step 4b has since resolved (`superseded by new info`), and one
 > new **unruled** slot, SD-8 — the Tab-G Act-card coupling Step 5 exposed.
 > Separation still **INTACT**.
+>
+> **Record round (2026-08-11, same drafter — Code dispatch, every claim
+> re-verified on disk this session):** Step 1's answer recorded — Cray ruled
+> (typed, s221): **no portal REPO will be created**; the portal and its landing
+> surface still exist, configured in the Cloudflare dashboard, and only a
+> separate git repository was ruled out (the full form is mandatory — the
+> shorthand "no portal repo" misreads as "no portal"). AC-8 and AC-9 ticked
+> against on-disk evidence (the fleet boot seed + the delta-asserted
+> visitor-path scenario module; the three card-copy files + the AC-9 guard +
+> the `docs/logs/` entry). No ruling, scope, step, or SD slot changed; SD-8
+> remains unruled. Separation still **INTACT**.
 
 ---
 
@@ -206,7 +217,7 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   PLAN-0075 Policy B); each decision lands in the real audit trail under the
   `person_id` that acted. Evidence: the named scenario test, green, with the
   refusal asserted **by name**, not by generic 4xx.
-- [ ] **AC-8 — fleet's first paint is not empty.** Under SD-5's **ruling (a)**
+- [x] **AC-8 — fleet's first paint is not empty.** Under SD-5's **ruling (a)**
   (Cray, typed, s218 — seed one at boot **and** keep the visitor path), a
   fleet scenario test proves Tab H's backing read returns ≥ 1 waiting run at
   boot (today the seed rides `main.py` lifespan's `vertical == "procurement"`
@@ -215,7 +226,22 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   still closes end-to-end: a case
   opened via Tab I's backend appears in H's list. Real seed → real routes →
   real DB (fleet has one, LOCKED-1); no mocks.
-- [ ] **AC-9 — the framing layer exists on both sides of the boundary.** Each
+  _[Closed 2026-08-11 — both clauses on disk. Clause 1: the seed now rides
+  the lifespan for fleet — `_seed_fleet_operate_demo` in
+  `services/api/main.py` (called unconditionally, gated inside on
+  `vertical == "fleet_maintenance"` + `settings.oct_demo_seed_operate`;
+  procurement's exact contract: env-gated, fixed `DEMO_RUN_ID`,
+  skip-if-present, fail-soft), proven by
+  `tests/verticals/fleet_maintenance/test_operate_seed.py` (Step 7,
+  PR #1122) — the "today … opens empty" clause above describes the
+  pre-Step-7 state. Clause 2:
+  `tests/api/test_visitor_case_to_monitor_scenario.py::test_a_visitor_case_lands_in_the_monitor_beside_the_seed_not_instead_of_it`
+  (PR #1124) — asserted as a **delta plus a case-identity tie**
+  (`run_link.case_id_of`) against `GET /runs` **with the seed present**,
+  because the seed alone would satisfy a presence check; the same module's
+  two sibling tests discharge ADR-0037 D2.7 (recorded there, 2026-08-11
+  amendment pass). DB-backed, real seams, no mocks.]_
+- [x] **AC-9 — the framing layer exists on both sides of the boundary.** Each
   per-system profile directory carries its bilingual card-copy file with both
   TH and EN sections present (guard-asserted structurally — section presence,
   not copy quality, which has no oracle); the portal-side assembly request
@@ -223,6 +249,19 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   per LOCKED-3, the arrival narrative, CTA per SD-7) is delivered as a
   handoff whose path is recorded in a committed `docs/logs/` thin summary.
   Evidence: the committed card files + guard + the `docs/logs/` entry.
+  _[Closed 2026-08-11 — all three evidence pieces on disk. Cards:
+  `deploy/published/{oct-energy,oct-procurement,oct-fleet-maintenance}/card-copy.md`.
+  Guard:
+  `tests/deploy/test_published_profiles.py::test_ac9_the_card_copy_is_bilingual_and_structurally_complete`
+  — TH/EN section presence + subsection parity, never copy quality. Log:
+  `docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md`, naming
+  the parked handoff path
+  (`.claude/handoffs/session-221/2026-08-10-2030-code-plan0103-step8b-portal-assembly-request.md`,
+  gitignored). Per Step 8b's own no-repo sub-branch the request is
+  delivered-and-**parked**; with Step 1's s221 answer the addressee is the
+  dashboard-configuration work, not a future repo bootstrap. The CTA's exact
+  wording — SD-7's one open sub-item — was typed by Cray and is committed
+  verbatim in all three card files, per the same log.]_
 - [ ] **AC-10 — measured before multiplied, gated before touched.** MS-S1
   headroom is **measured and recorded** (numbers, method, date — Step 9)
   **before** any second system is brought up; every bring-up and the
@@ -291,6 +330,30 @@ Unverifiable from this repo; assumed in **neither** direction. Ask Cray.
 
 Pass/fail: Cray's answer recorded in this PLAN before Step 8b or Step 10 runs.
 Steps 2–7 proceed immediately either way.
+
+**ANSWERED — Cray, typed, s221; recorded here 2026-08-11.** 🔴 Stated in full
+because the shorthand misleads: **no portal REPO will be created** — the portal
+and its landing surface still exist; DNS routes, Access policies and the
+landing surface are configured in the **Cloudflare dashboard**, each published
+system on its own `oct-<vertical-id>` subdomain label; **only a separate git
+repository was ruled out**. Evidence:
+`docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md` (the s221
+record — 52 repos enumerated, no organisations, and the typed ruling). The
+**"does not exist" branch is taken — permanently**: there is no future
+bootstrap for parked requests to wait on. Consequence, as the Step-8b log
+already carries it: ADR-0036 D2's two-artifact-per-system price is
+**unchanged**, paid as dashboard configuration rather than repo files — so
+Step 10's "portal-side artifacts exist" condition is a check against the
+dashboard, not against a repo (`oct-energy` has run exactly that way since
+s213 without a checkout). The branch text above says "OQ-4 fires (Cray picks
+the domain then)" — that trigger is now dead; ADR-0035's OQ-4 carries a
+2026-08-11 amendment replacing it with the live condition Cray named (the
+domain itself stays out of this repo, ADR-0035 D1(3)). Sequencing, honestly:
+Step 8b ran in s221 — the same session the answer was obtained and logged —
+with its request drafted and **parked** per this branch's own instruction, but
+this PLAN-side record lagged until 2026-08-11, missing the pass/fail's
+before-Step-8b ordering. Step 10 has not run; the record lands before any
+bring-up, which is the bound that matters operationally.
 
 ### Step 2: Kill `PUBLISHED_EXCLUDED_VIEWS`; server-declared per-system view sets
 
