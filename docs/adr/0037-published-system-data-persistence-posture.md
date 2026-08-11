@@ -34,6 +34,20 @@ direction, cited by the RoPA's own lineage hook), CLAUDE.md §1 (precedence),
 > then). Author≠reviewer separation: **INTACT**. Uncommitted draft — Code
 > commits per ADR-009 D2.
 
+> **Amendment pass 2026-08-11 (drafted in-harness by `plan-drafter` from a
+> Code dispatch; `Status:` unchanged — this amendment records a measurement
+> and rules nothing).** The D2.7 measurement this ADR commissioned now
+> **exists**: `tests/api/test_visitor_case_to_monitor_scenario.py` (merged via
+> PRs #1124/#1125), DB-backed against real Postgres, both decision paths,
+> asserted over every `audit_log` row a run produces. Three sites below,
+> inline at each: **(i)** D2.7 carries its discharge note; **(ii)** F4's
+> structural-difference conclusion is corrected in a note under the fact
+> table — labelled `superseded by new info`, with the label argued in place;
+> **(iii)** D4 and OQ-2 are **unblocked and deliberately NOT ruled** — the D4
+> note states what the measurement implies for each option as input for
+> Cray's ruling, which this amendment does not make. Author≠reviewer
+> separation: **INTACT** (drafter authored; Code R2 + Cray review at PR).
+
 ## Context
 
 ### The question, and why it is an ADR
@@ -65,6 +79,34 @@ precedence-bearing obligation.
 | F5 | **The RoPA template needs no change.** `partner-ropa-lite.md` is per-dataset by construction — a new dataset takes a new populated instance or a new section of the demo instance; a structuring call, not a template change | `docs/conventions/partner-ropa-lite.md:3-5` |
 | F6 | **Personas add no visitor identity.** The three demo personas (LOCKED-5) are synthetic shared `person_id`s; the gate email stays vendor-side. This **narrows** the new surface to the case free text — it does not eliminate the question | PLAN-0103 SD-1 clause; `verticals/fleet_maintenance/procedures.yaml:102-111` |
 | F7 | **Fleet's story is the one that requires persistence.** The runs surface is Postgres-served — PLAN-0100's C-3 struck the runs rows for the DB-less posture (`0100:896-899,921-928`), and the waiting-run seed writes through `async_session` (`services/api/main.py:334-357`). Energy's and procurement's published stories require none of it (procurement's ruled set is `G,F` — the SD-3/SD-4 joint ruling) | PLAN-0100 C-3; PLAN-0103 SD-3 |
+
+> **F4 — corrected by measurement, 2026-08-11 (`superseded by new info`; see
+> the amendment-pass note above).** F4's flag was honest — the copying
+> question was declared unverified and routed to D2.7 — but its headline
+> conclusion ran ahead of that flag, and the measurement refutes it. Measured
+> over **every** `audit_log` row a run produces, on both the
+> ordinary-approval and the emergency waiver→ratify paths
+> (`tests/api/test_visitor_case_to_monitor_scenario.py`): visitor-typed case
+> text does **not** reach the tamper-evident chain on either path. Because
+> the chain never held the text, **erasing case text breaks no hash — the
+> case-text DSR answer is the *same shape* as the prompt log's, not
+> structurally different.** What the chain does hold, and cannot un-hold, is
+> narrower and different in kind: the opaque `case_id` (`gate_decision`'s
+> `decisions` map is keyed by action ids of the form
+> `action-event-case-{case_id}`), plus — **by design, not by leak** —
+> internal-principal free text on the emergency path
+> (`WaiverInvocation.justification`, stored in the chain per its own
+> docstring so the obligation and its stated reason cannot drift apart, and
+> the ratification `note`, both beside `recorded_by` — a named internal
+> principal writing about their own act). F4's opening clause survives: a
+> case that drives a governed run does enter the chain — **by name, never by
+> text**. Label, argued: `superseded by new info`, not `was an error` — F4
+> declared its operative premise unverified and itself commissioned the
+> instrument (D2.7) that resolved it; this note is that instrument reporting
+> back, not a defect carried unfixed. The measurement's own blind spot — a
+> middle-slice carrier inside an already-allowed payload key — is named in
+> the test module rather than argued away, and **Cray ruled the residual risk
+> ACCEPTED (typed, s222)** with a written revisit condition recorded there.
 
 ## Decision
 
@@ -134,6 +176,22 @@ artifacts**, not visitors:
    the real code**, and the result recorded in the bring-up go package. F4
    marks this unverified; a grant may not go live on an assumption in either
    direction.
+   _[Discharged 2026-08-11 — measured, not read:
+   `tests/api/test_visitor_case_to_monitor_scenario.py` (PRs #1124/#1125),
+   DB-backed against real Postgres, asserted over EVERY `audit_log` row a run
+   produces on BOTH the ordinary-approval and the emergency waiver→ratify
+   paths. Result: visitor-typed case text does NOT reach the chain on either
+   path; the `case_id` IS in the chain and cannot be erased (the
+   `gate_decision` `decisions` map is keyed by `action-event-case-{case_id}`
+   action ids); internal-principal free text is in the chain BY DESIGN
+   (`WaiverInvocation.justification` + the ratification `note`, beside
+   `recorded_by`). Oracle: bracketing sentinels asserted absent from every
+   payload — positively controlled present in the ingested event — plus a
+   structural allowlist of top-level payload keys per audit action; the named
+   middle-slice blind spot is ACCEPTED (Cray, typed, s222) with a written
+   revisit condition in the module. The test is a permanent guard, so the
+   "recorded in the bring-up go package" clause now points at a standing
+   tripwire, not a one-off number.]_
 
 ### D3 — Relationship to ADR-0035 D6: bounded by precedence, not widened, and said out loud
 
@@ -191,6 +249,22 @@ only if the measurement forces it; never (b) as an end state. *Why Cray:* the
 ruling sets what the controller can promise a data subject — it is Cray's
 promise to make, and it cannot be made before the measurement exists.
 
+> **Measurement in hand (2026-08-11): D4 is UNBLOCKED — and deliberately
+> still not ruled; the header's reservation stands and the ruling is
+> Cray's.** What D2.7's result (its discharge note in D2) implies for each
+> option, stated as input only: **(a)** — the measured world is the one (a)'s
+> own text anticipated ("if the measurement shows text already stays out of
+> the chain, (a) is true today and gets a guard test so it stays true"): text
+> stays out on both paths, and the guard test (a) asks for **already
+> exists** — the sentinel + allowlist assertions are a standing tripwire, not
+> a one-off reading. **(b)** — the limit it would disclose is narrower than
+> F4 feared: not visitor text, but the un-erasable `case_id` plus the
+> internal-principal waiver/ratification free text — the latter is personal
+> data about a **named internal person** (`recorded_by` sits beside it) and
+> needs its own RoPA line under any D4 ruling. **(c)** — its trigger ("the
+> measurement shows text currently enters the chain") did **not** fire; there
+> is nothing for an interim posture to bridge.
+
 ## Consequences
 
 ### Positive
@@ -234,6 +308,9 @@ promise to make, and it cannot be made before the measurement exists.
 - **OQ-2 — the case-data DSR answer (Cray, after D2.7's measurement):** D4's
   slot — recommendation (a) text-by-reference as target; (c) only as measured
   necessity; (b) never as end state.
+  _[Unblocked 2026-08-11: the D2.7 measurement exists (discharge note at
+  D2.7; per-option implications at D4's amendment note). The ruling remains
+  Cray's and is not made here.]_
 - **OQ-3 — RoPA structuring (Cray, as controller):** new section in the demo
   instance vs a sibling per-dataset instance (F5: the template supports either;
   no template change). Recommendation: a new section in the existing instance —
@@ -296,6 +373,9 @@ promise to make, and it cannot be made before the measurement exists.
 - `docs/conventions/partner-ropa-lite.md:3-5` · `services/api/main.py:334-357`
   · `verticals/fleet_maintenance/procedures.yaml:102-111` · ADR-011 · CLAUDE.md
   §1, §8
+- `tests/api/test_visitor_case_to_monitor_scenario.py` — the D2.7 measurement
+  and its standing guard (amendment pass 2026-08-11; PRs #1124/#1125;
+  blind-spot acceptance Cray-typed s222, recorded in the module)
 
 **Ratification ask (Cray):** D1's grant test ((a) story-required vs (b)
 stated-grounds), the D2 obligation ladder, D3's bound-don't-amend posture, and

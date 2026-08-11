@@ -48,6 +48,19 @@ CLAUDE.md §8 (host-state gate; residency; assistive-AI posture). Prior-art hand
 > is an amendment to an Accepted ADR, not a re-ratification. Author≠reviewer
 > separation: **INTACT** (drafter authored; Code R2 + Cray review at PR).
 
+> **Amendment pass 2026-08-11 (drafted in-harness by `plan-drafter` from a
+> Code dispatch).** One site: OQ-4's trigger — "the portal repo is created" —
+> was ruled out by Cray (typed, s221): **no portal repo will be created** —
+> the portal and its landing surface still exist; DNS routes, Access policies
+> and the landing surface are configured in the Cloudflare dashboard, each
+> published system on its own `oct-<vertical-id>` subdomain label; only a
+> separate git repository was ruled out. The inline note at OQ-4 replaces the
+> dead trigger with the live condition Cray himself named and records the
+> operational answer as the provisional thing it is — **OQ-4 stays
+> deliberately open, exactly as ratified**, and the domain itself stays out of
+> this repo (D1(3)). `Status:` is unchanged. Author≠reviewer separation:
+> **INTACT** (drafter authored; Code R2 + Cray review at PR).
+
 ## Context
 
 ### Why now
@@ -796,6 +809,30 @@ the recommendation stated, and each is now binding. **OQ-4 stays open by design.
   or gets its own — when the portal repo is stood up. **This is a recorded gate, not
   an oversight** (Lesson #0034): the trigger is "the portal repo is created", and it
   is restated in the exposure PLAN's first step rather than left only here.
+  _[Amended 2026-08-11 (the amendment-pass note above) — **the trigger is
+  replaced; the openness is not.** (i) The recorded trigger will never fire:
+  Cray ruled (typed, s221) that **no portal repo will be created** — the
+  portal and its landing surface still exist; DNS routes, Access policies and
+  the landing surface are configured in the **Cloudflare dashboard**, each
+  published system on its own `oct-<vertical-id>` subdomain label; **only a
+  separate git repository was ruled out**
+  (`docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md`; the
+  two-artifact-per-system price of ADR-0036 D2 is unchanged, paid as
+  dashboard configuration). (ii) An operational answer to the name exists and
+  is **live**: Cray named the domain in sessions 206/212 — deliberately not
+  written here, per D1(3) — and it has carried DNS since session 213. That
+  answer was **explicitly provisional** ("revisit the name after a full life
+  cycle" — Cray's words, recorded in the same log), and this amendment does
+  not convert it into a settled one: this ADR was not wrong, and the pick is
+  still Cray's. (iii) The live trigger that replaces the dead one: Cray
+  revisits the name **after a full life cycle has run** — the condition Cray
+  himself named. The account half of this question (shared Zero Trust account
+  vs its own) was gated on the same dead trigger and moves to the same live
+  one; the dashboard has carried the Access policies since s213 as an
+  operational reality, and no typed confirmation of the account choice is on
+  the record or manufactured here. Non-blocking by construction (L6) is
+  unchanged; PLAN-0103 Step 1 carries the same s221 ruling on the PLAN
+  side.]_
 - **OQ-5 — D6's consent reading: RATIFIED as drafted → the in-app banner is
   REQUIRED.** It is load-bearing regardless of which gate is deployed: a Basic Auth
   prompt renders no text at all, and the Access login page's text capability is
