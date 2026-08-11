@@ -137,6 +137,15 @@ the **same pinned image the compose file already uses**, so nothing is installed
 (A single static binary from Cloudflare's releases works too — pick the version the compose
 pins so the tool and the runtime agree.)
 
+🔴 **The CLI will tell you your version is outdated. Do not act on that here.** The pin
+is deliberate: the compose file names it, the published systems run it, and this runbook's
+whole point is that the tool and the runtime agree. **Upgrading is a PR and a decision, not
+a step in a bring-up** — it changes a committed file and the image every published system
+starts from, so it wants its own change with its own verification, ideally while nothing is
+being demoed. Expect the warning; ignore it in this procedure. (Measured session 222: the
+pin was far enough behind that the CLI recommends an upgrade on every invocation, which is
+exactly the nudge that gets acted on mid-bring-up by someone in a hurry.)
+
 Three flags carry the whole thing, and each was learned by getting it wrong first:
 
 | flag | why |
@@ -249,7 +258,8 @@ One-time PIN is there by default and no external IdP is needed.)
 
 | field | value |
 |---|---|
-| Application name | e.g. `vero-oct-<vertical>` |
+| Application name | `vero-oct-<vertical>` |
+| **Policy name** | **`<application name>-allowlist`** — a required field the dashboard does not default. ⚠️ **No convention was recorded until session 222, by which point two systems had been named inconsistently** (one carries the `vero-` prefix, one does not). Cosmetic, one rename to fix, and worth settling before the next system rather than after. |
 | Session Duration | 24 hours — one PIN covers a day of demoing |
 | Subdomain / Domain | the `oct-<vertical-id>` label and the apex |
 | Path | empty — gate the whole host |

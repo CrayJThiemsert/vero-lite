@@ -68,6 +68,39 @@ durable, transferable lesson is the verification/CI discipline above.)*
   test-side (monkeypatch `_principal_index`); do **not** add a principals block to a
   production vertical that authors none by design (OQ-6).
 
+## Addendum (session 222, 2026-08-11) — a docs-only diff is not exempt, because prose is under test
+
+Thread 1 recurred in the shape least likely to be suspected: **a PR containing
+nothing but Markdown failed CI.** Runbook corrections named a second published
+system label and tripped
+`tests/deploy/test_published_profiles.py::test_ac5_no_file_outside_a_profile_lists_two_system_labels`
+— the AC-5 shadow-registry guard (ADR-0036 D2: one label is a reference, two is a
+roster).
+
+The subset was chosen *before* the edit: `tests/deploy/` was run green, then the
+runbook was edited, then nothing was re-run — on the assumption that prose cannot
+break tests. **In this repo that assumption is false.** Several guards assert over
+*committed text*: `git ls-files` supplies the file list, the working tree supplies
+the content. Documentation is inside the test surface.
+
+Pre-commit cannot close this — it runs ruff/mypy, not pytest. The guard's own
+exemption block already records the shape, having been extended once before after
+failing in CI on its own session's STATUS reconcile, with the note that *"a full
+local pytest tests/ cannot catch this … CI was the first place the two ever
+coexisted."* That was true there because STATUS is written after the code it
+describes; it recurred here, in a different tier, for the same reason.
+
+Two operational consequences:
+
+- **Run the full `tests/` before pushing even when the diff is only Markdown.**
+  "It's just docs" is exactly the reasoning that skips the run.
+- **Fix a shadow-registry hit by de-naming, not by exempting the tier.**
+  `docs/{adr,plans,plans/done,status-archive,lessons,logs}` and `docs/STATUS.md`
+  are exempt because they are *state or reasoning* tiers; `docs/runbooks/` is
+  deliberately **not**, because a runbook is generic procedure and *durable* —
+  which is precisely the accumulation AC-5 exists to prevent. Per-system facts
+  belong in `docs/logs/`, which is already exempt.
+
 Related: CLAUDE.md §6 (verification is hygiene) + §7 (all commits via PR);
 [[0026-interpret-before-run-pre-commit-outcome-meaning]] (green-against-the-wrong-thing);
 [[0028-omit-when-none-evolving-hash-chained-log]] (sibling from the same ADR-016 S2
