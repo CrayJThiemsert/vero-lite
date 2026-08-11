@@ -155,9 +155,13 @@ a change to it.
 **Subdomain-label convention.** Each vero-lite vertical-system takes the label
 `oct-<vertical-id>`, with `_` mapped to `-` (DNS labels forbid underscores):
 `oct-energy.` · `oct-procurement.` · `oct-fleet-maintenance.`. Labels only — the
-apex domain appears nowhere in this repo, per D1(3) (`0035:280-285`); the
-label→system binding is written in exactly one place, the portal repo's
-cross-system ingress map (`0035:432-456`).
+apex domain appears nowhere in this repo, per D1(3) (`0035:280-285`);
+_[Corrected s222, `was an error` — false at ratification: the apex domain does
+appear in this repo (five places in one archived tracked file), and the
+`0035:280-285` cite beside it has drifted; full account + the stable D1(3)
+citation form in the amendment blockquote below. The label convention
+stands.]_ the label→system binding is written in exactly one place, the
+portal repo's cross-system ingress map (`0035:432-456`).
 
 > **Amended 2026-08-11 (session 222) — factual correction; the convention
 > stands.** "The apex domain appears nowhere in this repo" was false when this
