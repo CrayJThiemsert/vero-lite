@@ -101,8 +101,19 @@ def _digest(raw: str) -> str:
 #: Buried inside what the visitor types. Distinctive enough that finding it anywhere
 #: downstream is proof of provenance rather than coincidence, and short enough to
 #: survive a truncation that a whole-description search would miss.
-_SENTINEL = "ZQ7"
-_VISITOR_TEXT = f"เพลาขาดกลางทางแถวปากช่อง มีเสียงดังใต้ท้องรถก่อนหน้านี้ ({_SENTINEL})"
+#: TWO of them, at opposite ends, and the position is the point. A single tail
+#: sentinel is blind to a leak that keeps the HEAD of the description and drops the
+#: rest — a truncating carrier ("first 80 chars of the trace") would evade it while
+#: putting the visitor's opening words in the immutable record. Bracketing catches a
+#: truncation from either end; only a leak that discards both ends AND the middle
+#: stays invisible, and that is no longer a leak of the visitor's text.
+_SENTINEL_HEAD = "ZQ7"
+_SENTINEL_TAIL = "WM8"
+_SENTINELS = (_SENTINEL_HEAD, _SENTINEL_TAIL)
+_VISITOR_TEXT = (
+    f"({_SENTINEL_HEAD}) เพลาขาดกลางทางแถวปากช่อง "
+    f"มีเสียงดังใต้ท้องรถมาหลายวันก่อนหน้านี้ ({_SENTINEL_TAIL})"
+)
 
 #: Two more sentinels for the emergency path, which is the one place a HUMAN's free
 #: text is DESIGNED to land in the chain: ``WaiverInvocation.justification``'s own
@@ -286,13 +297,27 @@ async def _audit_rows(session: AsyncSession, run_id: str) -> list[AuditLog]:
 
 
 def _dumped(payload: dict[str, Any] | None) -> str:
-    """The whole payload as text — nested values included.
+    """The whole payload as text — nested values included, at any depth.
 
-    ``ensure_ascii=False`` matters: the visitor types Thai, and an escaped dump would
-    not contain the sentinel as written even when the payload did carry it, turning
-    every absence assertion into a tautology.
+    ``ensure_ascii=False`` is for the failure OUTPUT, not for the oracle: the
+    sentinels are ASCII and would survive escaping either way, but a leak's failure
+    message has to show the Thai a human can recognise rather than a wall of ``\\uXXXX``.
+    (An earlier version of this docstring claimed the flag was load-bearing for the
+    assertion itself. It is not — corrected rather than quietly dropped, because a
+    test that overstates why it works invites the next reader to trust the wrong part.)
     """
     return json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
+
+
+def _leaked(payload: dict[str, Any] | None) -> list[str]:
+    """Which of the visitor's sentinels this payload carries — [] when none.
+
+    Returns rather than asserts so the caller can name WHICH end of the description
+    escaped, which is the difference between "a carrier folded the whole trace in" and
+    "a carrier truncated it" — different bugs with different erasure consequences.
+    """
+    dumped = _dumped(payload)
+    return [s for s in _SENTINELS if s in dumped]
 
 
 async def test_a_visitor_case_lands_in_the_monitor_beside_the_seed_not_instead_of_it(
@@ -381,10 +406,11 @@ async def test_the_chain_names_the_case_without_holding_what_the_visitor_typed(
     ours = next(p for p in proposals if case_id_of(p) == case_id)
     event = _ingested_event(ours, case_id)
     assert event is not None, "the grounding trace must carry the case's ingested event"
-    assert _SENTINEL in str(event["description"]), (
-        "the visitor's own words must be IN the run's reasoning trace — without this "
-        "the absence asserted below would also hold in the world where the text never "
-        "arrived, which is the same green for the opposite reason"
+    assert [s for s in _SENTINELS if s in str(event["description"])] == list(_SENTINELS), (
+        "BOTH of the visitor's sentinels must be IN the run's reasoning trace — without "
+        "this the absence asserted below would also hold in the world where the text "
+        "never arrived, which is the same green for the opposite reason; and a control "
+        "that checked only one end would leave that end's oracle unproven"
     )
 
     # --- the human decides, through the real route -----------------------------
@@ -414,11 +440,11 @@ async def test_the_chain_names_the_case_without_holding_what_the_visitor_typed(
     )
 
     for row in rows:
-        dumped = _dumped(row.payload)
-        assert _SENTINEL not in dumped, (
+        assert _leaked(row.payload) == [], (
             f"the visitor's typed text reached the tamper-evident chain via the "
-            f"{row.action!r} payload — this INVERTS D2.7's answer, and the DSR path "
-            f"for a repair case is no longer the same shape as the prompt log's"
+            f"{row.action!r} payload (sentinels seen: {_leaked(row.payload)}) — this "
+            f"INVERTS D2.7's answer, and the DSR path for a repair case is no longer "
+            f"the same shape as the prompt log's"
         )
         allowed = _ALLOWED_PAYLOAD_KEYS.get(row.action)
         assert allowed is not None, f"no allowlist declared for audit action {row.action!r}"
@@ -437,7 +463,7 @@ async def test_the_chain_names_the_case_without_holding_what_the_visitor_typed(
         "the gate decision is where the case is named: its `decisions` map is keyed by "
         f"action ids of the form action-{event_id_for('<case-id>')}"
     )
-    assert not any(_SENTINEL in _dumped(row.payload) for row in naming), (
+    assert all(_leaked(row.payload) == [] for row in naming), (
         "naming the case must not mean quoting it — this is the exact residue D2.7 "
         "leaves the controller: an opaque case id in an immutable record, and nothing "
         "the visitor wrote"
@@ -534,9 +560,10 @@ async def test_the_emergency_path_stores_the_recorders_own_words_but_still_not_t
             f"{row.action!r} payload grew a key the RoPA has not described: "
             f"{sorted(set(row.payload or {}) - allowed)}"
         )
-        assert _SENTINEL not in _dumped(row.payload), (
+        assert _leaked(row.payload) == [], (
             f"the VISITOR's typed text reached the tamper-evident chain via the "
-            f"{row.action!r} payload — D2.7's answer does not survive the emergency path"
+            f"{row.action!r} payload (sentinels seen: {_leaked(row.payload)}) — D2.7's "
+            f"answer does not survive the emergency path"
         )
 
     # --- the recorder's words ARE in there, and that is the finding ------------
