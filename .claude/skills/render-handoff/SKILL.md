@@ -65,6 +65,25 @@ Pull, don't guess. Run git via `wsl bash -lc` + `source .venv/bin/activate`:
 - **Next concrete steps** (the single unambiguous first action, then the rest).
 - **Session number:** `session:` in `docs/STATUS.md` frontmatter.
 - **Predecessor handoff:** newest file in the latest `.claude/handoffs/session-NN/`.
+- 🔴 **The live goal state — read `.claude/state/goal.json` and report it in §7, every
+  time, even when there is no goal.** This is the one piece of cross-session state that
+  **loads automatically**: a handoff is opt-in (someone must point a session at it) while
+  the goal is read by the Stop hook whether or not anyone chose it, so a finished goal is
+  inherited silently by the next session. Say which of the three states applies:
+  * **no file / not `active`** → "no goal is live"; the gate self-quiesces, nothing to do;
+  * **`active` and still describes work in flight** → say so, and that it carries forward;
+  * **`active` but its work is DONE** → 🔴 the dangerous one. Its criteria are now
+    satisfiable from evidence that still exists, so if the evaluator is reached it reports
+    **PASS** — a trail attesting to the *previous* session's work while the new session's
+    work goes unverified. Instruct: **declare a new goal (a declaration overwrites the
+    whole file) or `/goal clear` — never inherit.** Prefer declaring when the next session
+    has verification-shaped work: same overwrite, and the gate then guards something real.
+    ⚠️ Note `enforce:` — under `enforce: true` a stale goal **blocks** rather than warns.
+
+  Measured s221: the gate has **no session-mismatch check** (`session` is stored in
+  `goal.json` and never compared), so nothing catches this mechanically. The dispatch
+  prompt's "or the goal is stale → do NOT spawn" override is the only guard, and it is the
+  agent's judgment, not a rule.
 - 🔴 **Unhomed findings — the carve-out. Ask this explicitly; nothing else in this
   list reaches it.** *What did this session establish that has no tracked home?*
   Analysis that changed no file; a ranking worked out but never ratified; a
