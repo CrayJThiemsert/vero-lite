@@ -25,6 +25,19 @@ ADR-009 D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure).
 > at PR; ratification: Cray. Author≠reviewer separation: **INTACT**. Uncommitted
 > draft — Code commits per ADR-009 D2.
 
+> **Amendment pass 2026-08-11 (session 222; drafted in-harness by `plan-drafter`
+> from a Code dispatch).** One site: the D2 subdomain-label paragraph's factual
+> claim that the apex domain "appears nowhere in this repo" was **false at
+> ratification** and is corrected by the inline note there — the domain appears
+> at five places in one archived PLAN, all written after ADR-0035's rule was
+> live. The label convention, the `_`→`-` mapping, and the single-place-binding
+> rule are unchanged; no decision is reopened. Remedy per Cray (typed, s222):
+> annotate the ADRs; do **not** edit the archived PLAN. The underlying
+> collision — ADR-0035 D1(3)'s broad clause vs the evidence discipline — is
+> surfaced as **ADR-0035 OQ-6, open, not ruled**. `Status:` is unchanged.
+> Author≠reviewer separation: **INTACT** (drafter authored; Code R2 + Cray
+> review at PR).
+
 ## Context
 
 ### Why now — the requirement ADR-0035 does not cover
@@ -145,6 +158,48 @@ a change to it.
 apex domain appears nowhere in this repo, per D1(3) (`0035:280-285`); the
 label→system binding is written in exactly one place, the portal repo's
 cross-system ingress map (`0035:432-456`).
+
+> **Amended 2026-08-11 (session 222) — factual correction; the convention
+> stands.** "The apex domain appears nowhere in this repo" was false when this
+> ADR was ratified (2026-08-09, s218). A repo-wide search finds the apex domain
+> at **five places in one tracked file** —
+> `docs/plans/done/0100-exposure-published-demo-surface.md`, working-tree lines
+> 1101, 1702, 1719, 1726, 1967 at this amendment (the string itself is
+> deliberately not reproduced here, per the very clause under discussion; the
+> `0035:280-285` citation above has since drifted — cite it stably as
+> **ADR-0035 D1 item 3, "One domain, subdomains per system (L9), movable by
+> design (L6)"**, by item number and title rather than line range, because a
+> line range rots as its file grows: this one rotted twice within two weeks,
+> the second time inside this very amendment pass, whose own ADR-0035 header
+> note moved D1(3) again — the same fix PLAN-0103 Step 7's s220 correction
+> adopted, citing by branch/symbol so the reference cannot rot the same way
+> again). All five are evidence records of work
+> against the live zone: the rate-limiting rule as deployed (s215), the s216
+> Safe-Browsing incident — the flagged login-callback URL, the name-collision
+> theory in which the domain string itself is the evidence, and the Search
+> Console recovery step that takes the domain as its input — and the
+> 2026-08-05 zone-quota reading. The dating matters: ADR-0035 landed
+> 2026-08-01 (`234c40f`); the references entered in three commits **after**
+> the rule was live — 2026-08-05 (`36221a8`) and 2026-08-08 (`5934f1a`,
+> `c3c7b8c`) — so this is not pre-rule residue that nobody swept, and all
+> three predate this ADR's ratification. Say the breach precisely: ADR-0035
+> D1(3) has two clauses of different scope. Its **narrow runtime clause** —
+> the domain never in "any system's application code, image, compose file, or
+> env contract" — **holds**: the runtime is domain-ignorant, and moving
+> domains is still re-pointing DNS with zero application change. What is
+> breached is the **broad documentary clause** ("nothing in this repo may
+> reference the portal domain"), five times in one file. **Remedy (Cray,
+> typed, s222): do NOT edit the archived PLAN; correct this ADR so it stops
+> asserting something false.** The repository is public (CLAUDE.md §1/§8) and
+> the string is in git history regardless — deleting it from a working file
+> would buy the feeling of cleanliness rather than the fact of it, while an
+> ADR that asserts a false fact about its own repository actively misleads the
+> next reader into not checking. The dangerous artifact is the false claim,
+> not the leaked string. Whether the broad clause should govern evidence
+> records at all is **ADR-0035 OQ-6 — surfaced the same day, open, Cray's to
+> rule.** Everything else in this paragraph — labels only, `_`→`-`, the
+> label→system binding written in exactly one place — is correct and
+> unchanged.
 
 **How the `portal.` landing surface learns the list.** From the cross-system
 ingress map — the one place subdomain→system bindings exist — by whatever
