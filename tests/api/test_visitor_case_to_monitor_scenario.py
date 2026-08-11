@@ -113,8 +113,17 @@ def _digest(raw: str) -> str:
 #: of the visitor's text, not a degenerate case. It is left open because closing it
 #: needs a different instrument (a similarity check, or a payload schema that forbids
 #: free-form strings outright), not a third sentinel — n sentinels are always evaded
-#: by a slice that misses all n. Whether the residual risk is acceptable is a
-#: controller judgment; recorded here so it is a decision rather than an oversight.
+#: by a slice that misses all n.
+#:
+#: **RULED (Cray, typed, s222): the residual risk is ACCEPTED.** The reasoning, so a
+#: later reader can tell whether it still holds: a middle-slice carrier requires
+#: somebody to deliberately write string-slicing code and put the result in an audit
+#: payload, which is not a shape that arises by accident — unlike folding a whole
+#: trace or event dict in, which is one careless line and IS what these oracles catch.
+#: A similarity check was considered and deferred: it needs a threshold nobody can
+#: calibrate before a real instance exists. Revisit if an audit payload ever gains a
+#: field that legitimately holds a SLICE of operator-entered text — that is the
+#: condition under which this ruling stops being safe.
 #: (An earlier revision of this comment claimed such a leak "is no longer a leak of
 #: the visitor's text". That was false, and is corrected in place: a test that argues
 #: its own blind spot out of existence is worse than one that has the blind spot.)
