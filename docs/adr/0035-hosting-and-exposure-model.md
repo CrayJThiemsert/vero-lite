@@ -61,6 +61,24 @@ CLAUDE.md §8 (host-state gate; residency; assistive-AI posture). Prior-art hand
 > this repo (D1(3)). `Status:` is unchanged. Author≠reviewer separation:
 > **INTACT** (drafter authored; Code R2 + Cray review at PR).
 
+> **Amendment pass 2026-08-11, second of the day (session 222; drafted
+> in-harness by `plan-drafter` from a Code dispatch).** Two sites, neither a
+> ruling. **(i)** A new open question, **OQ-6**, is added under §Open
+> Questions: the apex domain appears at five places in one archived PLAN
+> (`docs/plans/done/0100-exposure-published-demo-surface.md`), all written
+> **after** this ADR was Accepted, each an evidence record of a measurement or
+> incident on the live zone. D1(3)'s narrow runtime clause holds; its broad
+> documentary clause is what those writes breached. The corrected factual
+> record and Cray's typed s222 remedy (annotate the ADRs; do **not** edit the
+> archived PLAN) live in the same-date ADR-0036 amendment; OQ-6 here asks the
+> scope question the breach exposes and is **deliberately left open —
+> surfaced, not ruled**. **(ii)** One clause of the preceding 2026-08-11
+> pass — "the domain itself stays out of this repo (D1(3))" — must be read as
+> restating the D1(3) norm, not as a repository inventory fact; the inventory
+> fact is the five occurrences above. The preceding note is left as written;
+> this note is its correction. `Status:` is unchanged. Author≠reviewer
+> separation: **INTACT** (drafter authored; Code R2 + Cray review at PR).
+
 ## Context
 
 ### Why now
@@ -296,6 +314,20 @@ reopens this ADR):
    env contract. vero-lite specifically remains domain-ignorant: nothing in this
    repo may reference the portal domain. Moving domains = re-pointing DNS + editing
    the ingress map; zero application changes.
+
+   > **Annotated 2026-08-11 (s222).** This item's two clauses have different
+   > scope, and only one has a recorded breach. The **narrow runtime clause**
+   > (never in "application code, image, compose file, or env contract")
+   > holds — no runtime surface references the domain, and portability by
+   > DNS re-point is intact. The **broad documentary clause** ("nothing in
+   > this repo may reference the portal domain") has a recorded breach: five
+   > references in one archived PLAN, all post-ratification evidence records
+   > (count, file, dating, and Cray's typed s222 remedy — annotate, don't
+   > delete — are recorded in the ADR-0036 amendment of the same date).
+   > Whether this clause governs evidence records at all, or only the runtime
+   > surfaces the narrow clause enumerates, is **OQ-6 — open**. The rule's
+   > text above is left exactly as ratified.
+
 4. **Honest data-path statement** (feeds D6's notice): *visitor* traffic — including
    every prompt a visitor types — traverses the public internet and the tunnel
    vendor's edge over HTTPS; TLS terminates at that edge before re-encryption to the
@@ -789,6 +821,8 @@ through the portal; it authorizes nothing about publishing a pilot.**
 
 Four of five were answered in the ratification pass; each was typed by Cray against
 the recommendation stated, and each is now binding. **OQ-4 stays open by design.**
+_[2026-08-11 (s222): a sixth question, **OQ-6**, was surfaced post-ratification
+and is **open** — it was not part of the ratification pass.]_
 
 - **OQ-1 — D3's reading of L1 (letter → intent): RATIFIED as drafted → Cloudflare
   Access + one-time-PIN email allowlist.** L1's letter said "one shared credential";
@@ -837,6 +871,51 @@ the recommendation stated, and each is now binding. **OQ-4 stays open by design.
   REQUIRED.** It is load-bearing regardless of which gate is deployed: a Basic Auth
   prompt renders no text at all, and the Access login page's text capability is
   vendor-side and unverified from this repo. The banner does not depend on either.
+- **OQ-6 — the scope of D1(3)'s broad clause vs the evidence discipline:
+  SURFACED 2026-08-11 (s222) — OPEN, deliberately not ruled.** The fact that
+  surfaced it: three commits, each **after** this ADR was Accepted — 2026-08-05
+  (`36221a8`) and 2026-08-08 (`5934f1a`, `c3c7b8c`), vs this ADR landing
+  2026-08-01 (`234c40f`) — wrote the apex domain into the exposure PLAN (now
+  `docs/plans/done/0100-exposure-published-demo-surface.md`; five occurrences,
+  working-tree lines 1101, 1702, 1719, 1726, 1967 at this pass). Each
+  occurrence is an evidence record that arguably cannot do its job without the
+  name: the rate-limiting rule as deployed names its zone (`:1101`); the s216
+  Safe-Browsing incident record pins the exact flagged callback URL (`:1702`),
+  states a name-collision theory in which the domain string itself is the
+  evidence (`:1719`), and records the Search Console recovery step, which
+  takes the domain as its input (`:1726`); the 2026-08-05 zone-quota reading
+  names the zone it measured (`:1967`). Three independent sessions resolved
+  the collision the same way without anyone noticing there was one — evidence
+  of a real tension, not of three lapses: a PLAN recording a measurement taken
+  against a real zone has to name the zone or the evidence stops being
+  checkable, and the project's own evidence discipline (CLAUDE.md §8: command
+  output is evidence; fresh on-disk evidence) pushes hard in that direction.
+  **The question, Cray's to rule:** does the broad clause ("nothing in this
+  repo may reference the portal domain") govern operational / evidence
+  documents (`docs/plans/`, `docs/logs/`) at all, or only the runtime surfaces
+  the narrow clause enumerates (application code, image, compose file, env
+  contract)? And if it governs both, what does an evidence record cite instead
+  so the measurement stays checkable? Options, stated neutrally — none
+  recommended here, none ruled:
+  **(a) narrow scope** — the broad clause is read as protecting the runtime
+  surfaces; evidence records may name the zone when the measurement requires
+  it (cost: the string recurs in tracked documents, and L6 portability rests
+  on the narrow clause alone);
+  **(b) categorical scope + indirection** — evidence records say "the portal
+  zone" (the OQ-4 operational answer) without the string (cost: re-checking a
+  measurement requires resolving the indirection out-of-band — dashboard or
+  Cray — so the record is no longer independently checkable from the repo);
+  **(c) categorical scope + two-artifact evidence** — the domain-bearing
+  detail lives in a gitignored companion and the tracked record cites its
+  path, the PLAN-004 v2 D6 two-artifact model `docs/logs/` already uses
+  (cost: the checkable half is unversioned and can be lost).
+  Whichever way Cray rules, D1(3)'s wording takes a scoping amendment
+  **then** — not now, and not by this note. Interim posture is only what s222
+  already ruled: the five existing occurrences stay (the repository is public
+  and git history retains the string regardless — deleting a working-file copy
+  buys the feeling of cleanliness, not the fact of it), ADR-0036 no longer
+  asserts their absence, and whether **new** evidence records may add
+  occurrences is exactly this question — unruled.
 
 ## Alternatives Considered
 
