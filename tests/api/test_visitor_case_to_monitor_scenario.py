@@ -105,8 +105,19 @@ def _digest(raw: str) -> str:
 #: sentinel is blind to a leak that keeps the HEAD of the description and drops the
 #: rest — a truncating carrier ("first 80 chars of the trace") would evade it while
 #: putting the visitor's opening words in the immutable record. Bracketing catches a
-#: truncation from either end; only a leak that discards both ends AND the middle
-#: stays invisible, and that is no longer a leak of the visitor's text.
+#: truncation from either end, and any payload holding the description VERBATIM.
+#:
+#: The hole it does NOT close, named rather than argued away: a **middle-slice**
+#: carrier — one that drops both bracketed ends and keeps the Thai in between — lands
+#: inside an already-allowed key and is invisible to BOTH oracles. That is a real leak
+#: of the visitor's text, not a degenerate case. It is left open because closing it
+#: needs a different instrument (a similarity check, or a payload schema that forbids
+#: free-form strings outright), not a third sentinel — n sentinels are always evaded
+#: by a slice that misses all n. Whether the residual risk is acceptable is a
+#: controller judgment; recorded here so it is a decision rather than an oversight.
+#: (An earlier revision of this comment claimed such a leak "is no longer a leak of
+#: the visitor's text". That was false, and is corrected in place: a test that argues
+#: its own blind spot out of existence is worse than one that has the blind spot.)
 _SENTINEL_HEAD = "ZQ7"
 _SENTINEL_TAIL = "WM8"
 _SENTINELS = (_SENTINEL_HEAD, _SENTINEL_TAIL)
