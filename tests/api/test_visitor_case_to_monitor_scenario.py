@@ -60,7 +60,13 @@ from services.api.config import settings
 from services.db.audit_log import AuditLog
 from services.engine import demo_events
 from services.engine.procedures import gate_hooks
+from services.engine.procedures.action_step import (
+    WaiverInvocation,
+    ratify_gated_step,
+    resolve_gated_step,
+)
 from services.engine.procedures.persistence import load_run
+from services.engine.procedures.spec import Person, load_procedures
 from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.case_events import event_id_for
 from verticals.fleet_maintenance.operate_seed import (
@@ -98,6 +104,17 @@ def _digest(raw: str) -> str:
 _SENTINEL = "ZQ7"
 _VISITOR_TEXT = f"เพลาขาดกลางทางแถวปากช่อง มีเสียงดังใต้ท้องรถก่อนหน้านี้ ({_SENTINEL})"
 
+#: Two more sentinels for the emergency path, which is the one place a HUMAN's free
+#: text is DESIGNED to land in the chain: ``WaiverInvocation.justification``'s own
+#: docstring says "It is stored in the durable audit chain", and the ratification row
+#: carries an optional ``note``. Distinct tokens so the third test can tell apart
+#: "the recorder's words are in there" (true, and intended) from "the visitor's words
+#: are in there" (the thing D2.7 asks about, and false on every path measured here).
+_WAIVER_SENTINEL = "RC4"
+_NOTE_SENTINEL = "SG2"
+_WAIVER_TEXT = f"รถจอดขวางทางหลวงอยู่ โทรหาเฮียแล้วเคาะมาว่าให้ซ่อมเลย ({_WAIVER_SENTINEL})"
+_RATIFY_NOTE = f"เซ็นย้อนหลังตามที่เคาะทางโทรศัพท์เมื่อวันเสาร์ ({_NOTE_SENTINEL})"
+
 #: What each audit action is allowed to carry at the TOP LEVEL of its payload, read
 #: off the write sites rather than guessed:
 #: ``persistence.py`` (``run_started``, ``run_resumed``) and ``action_step.py``
@@ -124,6 +141,18 @@ _ALLOWED_PAYLOAD_KEYS: dict[str, frozenset[str]] = {
     ),
     "handler_receipt": frozenset({"action_id", "receipt", "actor_kind"}),
     "run_resumed": frozenset({"final_status", "actor_kind"}),
+    "gate_ratified": frozenset(
+        {
+            "actor_kind",
+            "attested_approver_id",
+            "recorded_by",
+            "ratify_by_role",
+            "due_at",
+            "was_overdue",
+            "justification_ref",
+            "note",
+        }
+    ),
 }
 
 
@@ -412,4 +441,118 @@ async def test_the_chain_names_the_case_without_holding_what_the_visitor_typed(
         "naming the case must not mean quoting it — this is the exact residue D2.7 "
         "leaves the controller: an opaque case id in an immutable record, and nothing "
         "the visitor wrote"
+    )
+
+
+def _person(person_id: str) -> Person:
+    spec = load_procedures(_VERTICAL)
+    return next(p for p in spec.principals if p.person_id == person_id)
+
+
+async def test_the_emergency_path_stores_the_recorders_own_words_but_still_not_the_visitors(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """D2.7 on the path that DOES put human free text in the immutable record.
+
+    The test above measures the ordinary approval. This one measures the emergency
+    one, and the two answers are different in a way the RoPA has to state:
+
+    * ``WaiverInvocation.justification`` — the roadside "ทำไมถึงเคาะไปก่อน" — lands in
+      the ``gate_decision`` payload, and the ratification row can carry a ``note``.
+      Both are free text a human typed, in a hash-chained row that cannot be edited or
+      deleted. This is **designed, not leaked**: ``WaiverInvocation``'s own docstring
+      says it is stored in the durable audit chain so the obligation and its stated
+      reason cannot drift apart. Asserting it here pins it as a known fact rather than
+      leaving it to be rediscovered by whoever next writes the erasure procedure.
+    * The VISITOR's text still is not there — which is what D2.7 actually asks, and it
+      now holds on both paths rather than only on the one that was measured first.
+
+    The distinction that matters to the controller: the waiver text is typed by a
+    NAMED INTERNAL PRINCIPAL about their own act (``recorded_by`` sits in the same
+    payload), not by a member of the public describing their vehicle. Whether that
+    difference is decisive is a controller judgment, not a code fact — this test only
+    establishes which is true.
+
+    There is no HTTP surface for either driver (the resolve route takes no waiver, and
+    ``services/api/routers/`` has no ratify endpoint at all), so the drivers ARE the
+    production surface here — calling them is the real consumer, not a shortcut.
+    """
+    await seed_repair_gate_waiting_human_run(db_session)
+    case_id = await _visitor_opens_a_case(client_with_db)
+
+    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={}, headers=_HEADERS)
+    assert fired.status_code == 200, fired.text
+    run_id: str = fired.json()["run_id"]
+
+    proposals = await _parked_proposals(db_session, run_id)
+    decisions = {
+        str(p["action_id"]): ("approve" if case_id_of(p) == case_id else "reject")
+        for p in proposals
+    }
+    spec = load_procedures(_VERTICAL)
+    procedure = next(p for p in spec.procedures if p.procedure_id == _HERO)
+
+    # ต้อม RECORDS a decision เฮีย gave by phone — the recorder is the mechanic, which
+    # is the whole shape of ADR-0034's E-2 path.
+    await resolve_gated_step(
+        db_session,
+        run_id,
+        _GATE_STEP,
+        decisions,
+        _person(_MECHANIC),
+        procedure=procedure,
+        principals=list(spec.principals),
+        waiver_invocation=WaiverInvocation(justification=_WAIVER_TEXT),
+    )
+    # ...and เฮีย signs for it afterwards, with a note.
+    await ratify_gated_step(
+        db_session,
+        run_id,
+        _GATE_STEP,
+        _person(_OWNER),
+        decision="ratify",
+        procedure=procedure,
+        principals=list(spec.principals),
+        note=_RATIFY_NOTE,
+    )
+    assert gate_hooks.failures() == [], "the hook is fail-soft; a swallowed error must show here"
+
+    rows = await _audit_rows(db_session, run_id)
+    assert rows, "no audit rows means every assertion below is vacuous"
+    actions = {row.action for row in rows}
+    assert actions == {
+        "run_started",
+        "gate_decision",
+        "handler_receipt",
+        "gate_ratified",
+    }, f"unexpected audit actions for a provisional-then-ratified run: {sorted(actions)}"
+
+    for row in rows:
+        allowed = _ALLOWED_PAYLOAD_KEYS.get(row.action)
+        assert allowed is not None, f"no allowlist declared for audit action {row.action!r}"
+        assert set(row.payload or {}) <= allowed, (
+            f"{row.action!r} payload grew a key the RoPA has not described: "
+            f"{sorted(set(row.payload or {}) - allowed)}"
+        )
+        assert _SENTINEL not in _dumped(row.payload), (
+            f"the VISITOR's typed text reached the tamper-evident chain via the "
+            f"{row.action!r} payload — D2.7's answer does not survive the emergency path"
+        )
+
+    # --- the recorder's words ARE in there, and that is the finding ------------
+    by_action = {row.action: row for row in rows}
+    assert _WAIVER_SENTINEL in _dumped(by_action["gate_decision"].payload), (
+        "the waiver justification must be IN the chain — if this stops being true the "
+        "obligation and its stated reason can drift apart, which is the property "
+        "ADR-0034 D3(2) put it there for"
+    )
+    assert _NOTE_SENTINEL in _dumped(by_action["gate_ratified"].payload), (
+        "the ratifier's note is the second human free-text field the immutable record "
+        "carries; the erasure procedure has to know about both, not one"
+    )
+    assert by_action["gate_decision"].payload is not None
+    assert by_action["gate_decision"].payload["recorded_by"] == _MECHANIC, (
+        "the free text sits beside the NAMED principal who typed it — that pairing is "
+        "what makes it personal data about an identified internal person rather than "
+        "an anonymous string, and it is why this row needs its own RoPA line"
     )
