@@ -277,10 +277,10 @@ curl -sS -o /dev/null -D - https://<SUBDOMAIN>/health
 means Access is **not** applied and the request went straight through to the tunnel.
 
 🔴 **A `530` right after creating the application does NOT mean you configured it wrong.
-Access takes minutes to take effect.** Measured 2026-08-11 (session 222, procurement):
-`530` for roughly four minutes after the application was created — eleven consecutive
-20-second polls — then `302`. Read that before you go back and start editing a correct
-configuration, which is what the reading invites.
+Access takes minutes to take effect.** Measured 2026-08-11 (session 222, on the second
+system's bring-up — see `docs/logs/`): `530` for roughly four minutes after the
+application was created, eleven consecutive 20-second polls, then `302`. Read that before
+you go back and start editing a correct configuration, which is what the reading invites.
 
 🔴 **And propagation is per-path, not atomic.** In the same run, at the moment it
 flipped, four paths answered `302` while `/meta` still answered `530`. **Spot-checking a
@@ -446,11 +446,12 @@ docker compose -f deploy/published/oct-energy/docker-compose.yml config --quiet
 ### 🔴 Windows inherits a much wider ACL than the file deserves — and the fix below DOES NOT WORK on this host
 
 ⚠️ **Read this before running the `icacls` command that follows.** It was applied on
-2026-08-11 (session 222) and it **breaks Docker Desktop's bind mount outright**:
+2026-08-11 (session 222) and it **breaks Docker Desktop's bind mount outright** — the
+connector container fails at create time with:
 
 ```
-Container oct-procurement-cloudflared Error response from daemon:
-CreateFile C:\vero-secrets\cloudflared-credentials-procurement.json: Access is denied.
+Error response from daemon:
+CreateFile C:\vero-secrets\<credentials>.json: Access is denied.
 ```
 
 Docker Desktop reads the file through its own file-sharing path and needs one of the
@@ -535,19 +536,21 @@ rule exists to prevent. Note §6's finding first: as written, those reads cannot
 the Access gate at all.
 
 🔴 **Fix the reads against THIS system's `config.yml`, never by copying another system's
-checklist.** The admitted route set is per-system and is a ruled decision, not a default.
-Measured 2026-08-11: a "keyed `/whoami` = 200" check carried over from energy is
-**inapplicable to procurement**, whose ingress deliberately refuses `^/whoami$` — SD-3/SD-4
-ruled that system "anonymous read + hero, no personas", and the file records the
-consequence that decided it (Tab G renders Approve/Reject after a login, and those buttons
-call H-family routes the system does not admit, so admitting `/whoami` would buy a visitor
-a login leading to a control that 404s). energy admits it; procurement does not. A carried
-check asserts a route the system refuses **on purpose**, and then reads as a defect.
+checklist.** The admitted route set is **per-system and a ruled decision, not a default** —
+`config.yml` is the enforcement, and its header states the reasoning for each refusal.
+
+Measured 2026-08-11 (session 222; the worked example is in `docs/logs/`): a "keyed
+`/whoami` = 200" check was carried from the system it was written for onto a system whose
+ingress **deliberately refuses** `^/whoami$` under a ruling that it serves anonymous read
+with no personas. The refusal is load-bearing rather than incidental — admitting
+`/whoami` would give a visitor a login that leads to controls the same system does not
+admit, i.e. buttons that 404. A carried check asserts a route the system refuses **on
+purpose**, and then reads as a defect.
 
 The knock-on worth stating: with no keyed route admitted, that system's `API_KEYS` has no
-consumer, so the digest→person mapping is **unverifiable from outside** until a keyed route
-is admitted. Provision it if you like — but do not record it as verified, and say so where
-the value lives.
+consumer, so the digest→person mapping is **unverifiable from outside** until one is.
+Provision it if you like — but do not record it as verified, and say so where the value
+lives.
 
 ---
 
