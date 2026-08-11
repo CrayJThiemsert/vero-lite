@@ -105,8 +105,28 @@ def _digest(raw: str) -> str:
 #: sentinel is blind to a leak that keeps the HEAD of the description and drops the
 #: rest — a truncating carrier ("first 80 chars of the trace") would evade it while
 #: putting the visitor's opening words in the immutable record. Bracketing catches a
-#: truncation from either end; only a leak that discards both ends AND the middle
-#: stays invisible, and that is no longer a leak of the visitor's text.
+#: truncation from either end, and any payload holding the description VERBATIM.
+#:
+#: The hole it does NOT close, named rather than argued away: a **middle-slice**
+#: carrier — one that drops both bracketed ends and keeps the Thai in between — lands
+#: inside an already-allowed key and is invisible to BOTH oracles. That is a real leak
+#: of the visitor's text, not a degenerate case. It is left open because closing it
+#: needs a different instrument (a similarity check, or a payload schema that forbids
+#: free-form strings outright), not a third sentinel — n sentinels are always evaded
+#: by a slice that misses all n.
+#:
+#: **RULED (Cray, typed, s222): the residual risk is ACCEPTED.** The reasoning, so a
+#: later reader can tell whether it still holds: a middle-slice carrier requires
+#: somebody to deliberately write string-slicing code and put the result in an audit
+#: payload, which is not a shape that arises by accident — unlike folding a whole
+#: trace or event dict in, which is one careless line and IS what these oracles catch.
+#: A similarity check was considered and deferred: it needs a threshold nobody can
+#: calibrate before a real instance exists. Revisit if an audit payload ever gains a
+#: field that legitimately holds a SLICE of operator-entered text — that is the
+#: condition under which this ruling stops being safe.
+#: (An earlier revision of this comment claimed such a leak "is no longer a leak of
+#: the visitor's text". That was false, and is corrected in place: a test that argues
+#: its own blind spot out of existence is worse than one that has the blind spot.)
 _SENTINEL_HEAD = "ZQ7"
 _SENTINEL_TAIL = "WM8"
 _SENTINELS = (_SENTINEL_HEAD, _SENTINEL_TAIL)
