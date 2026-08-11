@@ -56,6 +56,17 @@ beat).
 > visitor-path scenario module; the three card-copy files + the AC-9 guard +
 > the `docs/logs/` entry). No ruling, scope, step, or SD slot changed; SD-8
 > remains unruled. Separation still **INTACT**.
+>
+> **Step-10 record round (2026-08-11, session 222, same drafter — Code
+> dispatch, every claim re-verified on disk this session):** procurement's
+> bring-up — published system #2, the first Step-10 execution — recorded
+> against Step 10 and AC-10, citing the committed execution log by path
+> rather than restating its evidence. AC-10 explicitly **stays open** (a
+> per-bring-up obligation; fleet outstanding, AC-11-gated); one
+> delivery-medium deviation from Step 10 item (2) recorded per Step 1's
+> s221 answer; one live input appended to SD-8's slot, which **remains
+> unruled**. No AC ticked, no ruling or scope changed, no Status change.
+> Separation still **INTACT**.
 
 ---
 
@@ -268,6 +279,22 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   measurement session itself each have their own explicit Cray go (§8 —
   host-state changes, do-no-harm to co-tenant stacks). Evidence: the recorded
   measurement + per-action go records in the execution log.
+  _[Partial record, 2026-08-11 — deliberately NOT ticked: this AC is a
+  per-bring-up obligation and one of two bring-ups is done; one live system
+  does not approximate "every bring-up". On record so far: the measurement
+  session's go (typed, s221 — one go covering migration phase 2 and the
+  Step 9 measurement;
+  `docs/logs/2026-08-10-oct-energy-migration-phase2-and-step9-headroom.md`)
+  and procurement's bring-up go (typed, s222, for that bring-up
+  specifically, plus a second typed go for its ACL step;
+  `docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md` — the full
+  execution record; cited, not restated). The first clause held in both
+  directions: headroom was measured (s221) before any second system
+  existed, and the first two-system measurement (recorded in the s222 log)
+  landed well inside Step 9's three-system projection — the first evidence
+  the measurement was any good, not merely that it was taken. Outstanding,
+  and exactly why the box stays empty: fleet's bring-up has not happened,
+  requires its own typed go, and is gated on AC-11's RoPA (still `[ ]`).]_
 - [ ] **AC-11 — the RoPA reflects fleet's posture BEFORE fleet is reachable
   (appended 2026-08-10, amendment round; precondition of Step 10's fleet
   bring-up, not a follow-up).** Before the fleet system's go: the
@@ -644,6 +671,35 @@ No RoPA, no bring-up: a stop condition, not a warning.
 Pass/fail: AC-10's second clause, plus AC-11 for the fleet system; per-system
 live evidence recorded.
 
+**EXECUTED — system #2 (procurement), 2026-08-11, session 222; recorded here
+the same day.** The full execution record is committed at
+`docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md` — the gos, the
+image/credentials/edge/allowlist evidence, the ACL-step failure and revert,
+the runbook corrections, and the two-system headroom reading all live there
+and are **cited, not restated** (two copies of a measurement are two chances
+to disagree). PLAN-side record, so nothing surfaces later as drift:
+
+- **Procurement's bring-up is COMPLETE**, under Cray's typed s222 §8 go for
+  *that bring-up specifically*, plus a second typed go for the ACL step —
+  exactly the per-bring-up evidence AC-10's second clause asks for. All five
+  items ran in order; the live checks were evidence-not-gate per §8.
+- **AC-10 remains open** (see its annotation): the obligation is
+  per-bring-up; fleet's bring-up has not happened, needs its own go, and is
+  AC-11-gated. Nothing about this record is "closed in substance".
+- **One deviation from item (2)'s literal text:** "one ingress entry + one
+  Access policy" was delivered as **Cloudflare dashboard configuration** —
+  the `oct-procurement` label's DNS route plus the Access application with
+  its one allow policy — not as repo files, per Step 1's s221 answer (no
+  portal repo; the "does not exist" branch is permanent). ADR-0036 D2's
+  two-artifact-per-system price is unchanged; only the medium moved. Item
+  (2)'s wording predates Step 1's answer — this is executed-as-answered,
+  recorded here so it is never later read as drift.
+- **Item (4)'s keyed-`/whoami` sub-check is not applicable to this system** —
+  an energy-shaped check carried over in error: procurement's allowlist
+  deliberately refuses `^/whoami$` (the log's "Not done, and why" section).
+  The consequence — a provisioned `API_KEYS` with no consumer — is recorded
+  as a live input in SD-8's slot; SD-8 stays unruled.
+
 ## Surfaced decisions — Cray's slots (recommendation ≠ ruling; nothing below is assumed by the steps)
 
 - **SD-1 — What authorizes per-system DB posture (LOCKED-1's governance
@@ -882,6 +938,18 @@ live evidence recorded.
   visitor meets on the public surface is trust posture — ADR-0032 D5
   territory, the same class as SD-4 — and no oracle catches a wrong first
   impression.
+  **Live input (2026-08-11, s222 — input to this slot, NOT a ruling; the
+  slot stays unruled and no option gains a recommendation):** the shipped
+  state — option (i) — is now the *live public surface*: procurement runs as
+  published system #2 with `^/whoami$` refused at its edge, so that system
+  has no login path and its provisioned `API_KEYS` has no consumer — the
+  digest→person mapping is unverifiable from outside until a keyed route is
+  admitted. Cray ruled (typed, s222): **keep the key provisioned** anyway,
+  ready if the ruling here admits a keyed route. Record:
+  `docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md` ("Not done,
+  and why"); the inline reasoning the next reader meets first lives in
+  `deploy/published/oct-procurement/cloudflared/config.yml`'s header, which
+  flags this exact coupling as this slot's question and not closed.
 
 ## Verification
 

@@ -276,6 +276,35 @@ curl -sS -o /dev/null -D - https://<SUBDOMAIN>/health
 `302` with a `location:` at `<TEAM>.cloudflareaccess.com` means the gate is live. A `530`
 means Access is **not** applied and the request went straight through to the tunnel.
 
+🔴 **A `530` right after creating the application does NOT mean you configured it wrong.
+Access takes minutes to take effect.** Measured 2026-08-11 (session 222, on the second
+system's bring-up — see `docs/logs/`): `530` for roughly four minutes after the
+application was created, eleven consecutive 20-second polls, then `302`. Read that before
+you go back and start editing a correct configuration, which is what the reading invites.
+
+🔴 **And propagation is per-path, not atomic.** In the same run, at the moment it
+flipped, four paths answered `302` while `/meta` still answered `530`. **Spot-checking a
+single path can therefore give a false PASS or a false FAIL depending which one you
+pick.** Probe several and re-probe the laggards before concluding anything. (§9 already
+says "probe several paths, not one" for a different reason — a shell variable failing to
+expand. Both reasons are real and they compound.)
+
+**Take the `530` reading BEFORE creating the application.** It costs one command and it
+is what makes the later `302` attributable: a gate that was never absent cannot be shown
+to have been added. Reading a live sibling system in the same second is even better —
+one gated, one not, same client, same moment.
+
+**Then prove the policy discriminates, because `302` does not.** A policy open to
+everyone returns exactly the same `302` and lets anyone in after a PIN. The cheapest real
+test is a **differential PIN delivery**: attempt a login with an allowlisted address and
+with a non-allowlisted one, and see which receives mail. Measured 2026-08-11: the
+allowlisted address received a code, the non-allowlisted one **never did** — Access shows
+the same "Enter your code" screen to both (so the screen tells you nothing) but only
+mails the allowlisted one. No code entry and no second mailbox needed. Corroborate in
+**Zero Trust → Insights & Logs → Access**, and note that a non-allowlisted attempt may
+leave **no row at all** — it never reached a decision — so an empty Blocked list is the
+expected result rather than a gap.
+
 ### 🔴 Access also blocks automation — and that collides with Step 11
 
 Access gates every client, not just browsers. A plain `curl` gets `302`, so **PLAN-0100
@@ -414,7 +443,32 @@ variables substituted:
 docker compose -f deploy/published/oct-energy/docker-compose.yml config --quiet
 ```
 
-### 🔴 Windows inherits a much wider ACL than the file deserves
+### 🔴 Windows inherits a much wider ACL than the file deserves — and the fix below DOES NOT WORK on this host
+
+⚠️ **Read this before running the `icacls` command that follows.** It was applied on
+2026-08-11 (session 222) and it **breaks Docker Desktop's bind mount outright** — the
+connector container fails at create time with:
+
+```
+Error response from daemon:
+CreateFile C:\vero-secrets\<credentials>.json: Access is denied.
+```
+
+Docker Desktop reads the file through its own file-sharing path and needs one of the
+grants the tightening removes. Reverted with `icacls C:\vero-secrets /reset /t`, which
+restored the prior ACL ACE-for-ACE, after which `up -d` succeeded.
+
+**The exposure below is therefore still OPEN and is Cray's to rule.** One untried idea
+with a real chance: the dangerous grant is **Modify**, not Read, and Docker plausibly
+needs only Read — keeping `(RX)` and dropping `(M)` may satisfy both sides.
+
+🔴 **If you try any ACL change, tighten and then IMMEDIATELY bring up a system nobody is
+using — never test on the live one.** The directory holds every system's credentials, so
+tightening it touches the live system too; it keeps running only because an ACL governs
+*opening* a file and its container already holds the handle. Without an immediate canary,
+the breakage surfaces at the next Docker Desktop restart or host reboot, with nothing
+connecting it back to an ACL change made weeks earlier. Full record:
+`docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md`.
 
 A credentials file created on Linux lands `0400`. The same file copied to `C:\…` inherits
 the drive's default ACL, which was measured as **`BUILTIN\Users: Read`** and
@@ -480,6 +534,23 @@ From here the measured run is Step 11's, against pass/fail reads fixed **before*
 starts. Do not improvise them at the console — that is precisely what the fixed-in-advance
 rule exists to prevent. Note §6's finding first: as written, those reads cannot run through
 the Access gate at all.
+
+🔴 **Fix the reads against THIS system's `config.yml`, never by copying another system's
+checklist.** The admitted route set is **per-system and a ruled decision, not a default** —
+`config.yml` is the enforcement, and its header states the reasoning for each refusal.
+
+Measured 2026-08-11 (session 222; the worked example is in `docs/logs/`): a "keyed
+`/whoami` = 200" check was carried from the system it was written for onto a system whose
+ingress **deliberately refuses** `^/whoami$` under a ruling that it serves anonymous read
+with no personas. The refusal is load-bearing rather than incidental — admitting
+`/whoami` would give a visitor a login that leads to controls the same system does not
+admit, i.e. buttons that 404. A carried check asserts a route the system refuses **on
+purpose**, and then reads as a defect.
+
+The knock-on worth stating: with no keyed route admitted, that system's `API_KEYS` has no
+consumer, so the digest→person mapping is **unverifiable from outside** until one is.
+Provision it if you like — but do not record it as verified, and say so where the value
+lives.
 
 ---
 
