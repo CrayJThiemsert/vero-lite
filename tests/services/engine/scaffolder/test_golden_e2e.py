@@ -201,6 +201,17 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         "hero_demo/__init__.py",
         "hero_demo/impact.py",
         "hero_demo/governance_audit.py",
+        # * `operate_seed.py` — PLAN-0103 Step 7, session 221. Seeds ONE parked run so this
+        #   vertical's published Monitor tab does not open empty. Post-scaffold for the same
+        #   reason as `hero_demo/`, one level milder: it is DEMO furniture, not package
+        #   shape. It names a specific procedure (`governed_repair_approval`), a specific
+        #   authored principal (`req-mechanic-tom`) and a fixed demo run id — three things a
+        #   scaffolded vertical has no authored answer for. Worth stating plainly, because a
+        #   near-empty seeder is exactly the kind of file that looks generic enough to
+        #   generate: what makes it work is knowing WHICH procedure parks and WHO requests
+        #   it, and a generated guess would hand a new vertical a boot-time seed that either
+        #   raises or, worse, parks a run nobody meant.
+        "operate_seed.py",
     }
 )
 

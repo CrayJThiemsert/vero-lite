@@ -241,6 +241,56 @@ async def _register_fleet_maintenance_executors() -> None:
     await register_fleet_maintenance_procedure_executors()
 
 
+async def _seed_fleet_operate_demo(vertical: str) -> None:
+    """Seed fleet's ONE parked repair-approval run so Tab H's first paint is not empty
+    (PLAN-0103 Step 7; SD-5 ruling (a), Cray typed s218 — seed one **and** keep the
+    visitor path).
+
+    Same contract as procurement's inline block: **idempotent** (a fixed run_id, skipped
+    when already present) and **FAIL-SOFT** — a seed error logs and never blocks the demo
+    boot, leaving the Monitor exactly as empty as it was before Step 7 rather than taking
+    the whole surface down.
+
+    The visitor path is NOT replaced: a case opened at Tab I still reaches H through
+    ``case_projection``. This only removes the empty first paint.
+
+    **BOTH gates live HERE — the vertical check and the env flag — so the call site spends
+    NO branch at all.** ``lifespan`` sat exactly at the C901 ceiling (10), so any ``if`` added
+    there pushed it over; this is a no-op for every other vertical and whenever the flag is
+    off. That is a real constraint worth stating rather than a style preference: the next
+    per-vertical boot hook has to take the same shape or it will redden the same rule.
+
+    Imports stay lazy — a vertical-specific harness must not be imported when another
+    vertical boots — while ``async_session`` stays module-scope on purpose (a local import
+    of it inside ``lifespan`` would bind the name function-local for the whole function and
+    break the unrelated fleet projection blocks; see the note in the procurement branch).
+    """
+    if vertical != "fleet_maintenance" or not settings.oct_demo_seed_operate:
+        return
+
+    from services.engine.procedures.persistence import load_run
+    from verticals.fleet_maintenance.operate_seed import (
+        DEMO_RUN_ID,
+        seed_repair_gate_waiting_human_run,
+    )
+
+    try:
+        async with async_session() as session:
+            if await load_run(session, DEMO_RUN_ID) is not None:
+                _boot_logger.info(
+                    "fleet operate-demo seed: run %r already present — skip", DEMO_RUN_ID
+                )
+                return
+            seeded = await seed_repair_gate_waiting_human_run(session)
+        _boot_logger.info(
+            "fleet operate-demo seed: run %r seeded (status=%s)",
+            DEMO_RUN_ID,
+            seeded.run.status,
+        )
+    except Exception as exc:  # fail-soft — a seed error must never block the demo boot
+        _boot_logger.warning("fleet operate-demo seed skipped (error): %s", exc)
+
+
 _PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
     "aquaculture": _register_aquaculture_executors,
     "energy": _register_energy_executors,
@@ -374,6 +424,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                         )
             except Exception as exc:  # fail-soft — a seed error must never block the demo boot
                 _boot_logger.warning("operate-demo seed skipped (error): %s", exc)
+    # PLAN-0103 Step 7 — fleet's own operate-demo seed, a SIBLING of the procurement block
+    # above and deliberately NOT a clause inside it. 🔴 The seed gate WAS procurement-only,
+    # so flipping OCT_DEMO_SEED_OPERATE alone for fleet was a NO-OP THAT READS LIKE A FIX:
+    # the flag set, the log silent, Tab H still empty. Both of this call's gates (the
+    # vertical and the flag) live inside the helper because ``lifespan`` sits exactly at the
+    # C901 ceiling — see its docstring. Procurement's block stays inline: Step 7's scope is
+    # fleet's seed, not a refactor of a working path.
+    await _seed_fleet_operate_demo(vertical)
     # PLAN-0096 Step 9 / AC-10: load the confirmed-PM view once at boot, so a restart
     # does not silently revert every truck an operator has already confirmed to its
     # fixture value. Fail-SOFT and LOUD: the DB-less demo (PLAN-0095) must still boot,
