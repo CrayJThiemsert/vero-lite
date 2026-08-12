@@ -534,9 +534,10 @@ the same volume is a rename, so the file carries its old — wide — ACEs acros
 **not** re-inherit from its new parent. Measured 2026-08-12: a file moved in still showed
 `BUILTIN\Users:(RX)` and `Authenticated Users:(M)` after it was already sitting in the
 tightened directory. That is worse than leaving it outside, because its location now
-suggests it is protected. A *copy* does inherit; a *move* does not. Verify the whole tree
-in one call — `icacls C:\<secrets-dir> /t` — rather than spot-checking the files you
-happen to remember.
+suggests it is protected. ⚠️ Only the *move* half of this is measured here — that a *copy*
+re-inherits instead is documented Windows behaviour but was **not** tested in that session,
+so check rather than assume it. Either way, verify the whole tree in one call —
+`icacls C:\<secrets-dir> /t` — rather than spot-checking the files you happen to remember.
 
 #### 🔴 The canary discipline — this part is not optional
 
