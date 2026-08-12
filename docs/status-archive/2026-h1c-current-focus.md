@@ -2542,3 +2542,68 @@ have to infer which is which:
 > composes `docker compose config --quiet` exit 0 — schema-valid, not merely
 > YAML-parseable · ruff + format + `mypy --strict services/` clean. **AC-4 +
 > AC-5 CLOSED**; the **#1114 / #1116 bodies** carry the tables.
+
+
+## Rotated this reconcile (session-225, 2026-08-12 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED; #1136–#1141 reconciled)
+
+### Current-Focus block — Session 221
+
+Rotated out when session 225's block entered the R2 four-session window (225, 224, 223, 222 cont.).
+
+⚠️ **Not the same artifact as `### Session 221 — full pre-trim original` earlier in this file.** That one is the pre-trim text, archived by the s223 reconcile. This is the **trimmed** block as it actually stood in `docs/STATUS.md` until the s225 rotation evicted it — extracted from `git show HEAD:docs/STATUS.md` rather than retyped, so it is byte-identical to what was removed.
+
+> **Session 221, 2026-08-10 (head_commit `f78068e` → `e938cf6`) — two code PRs
+> merged (#1119, #1118), 0 open, plus a host-state run that carries no PR of its
+> own.** _[s222: session 221 did not end here — #1121, #1122 and #1123 merged
+> after this block was written; they are recorded in the s222 block above and
+> not restated.]_ **Theme: PLAN-0103 Step 8a landed together with the repair of a build
+> context that could not build, and energy's LIVE system finally caught up with
+> the rename the repo made two sessions ago.**
+>
+> ✅ **Step 8a SHIPPED (#1119) — every profile now carries its card copy, so
+> AC-3 CLOSES.** `card-copy.md` exists in all three profile directories
+> (`oct-energy`, `oct-procurement`, `oct-fleet-maintenance`), bilingual TH/EN,
+> asserted **structurally** — section presence, not copy quality, which has no
+> oracle — by `test_ac9_the_card_copy_is_bilingual_and_structurally_complete`.
+> 🔴 **AC-9 is NOT closed by this:** its second clause is the portal-side
+> assembly request (Step 8b), still owed, and itself a Step 10 input.
+>
+> 🔴 **The same PR repaired a compose build context that could not build — and
+> "all three composes validate" had been reported while none of them could.**
+> `context: ../..` from `deploy/published/<system>/` reaches `deploy/`, one
+> directory short of the repo root; Step 4a moved the file deeper without
+> following the relative path, and all three profiles inherited the error.
+> `docker compose config --quiet` returned 0 over all three because it validates
+> the **schema**, not whether the context resolves — so the check that was
+> trusted in the s220 record could not have caught this. Now `../../..` in all
+> three, guarded by `test_the_build_context_resolves_to_a_real_dockerfile`.
+>
+> ✅ **#1118 discharged the PLAN-0103 self-citation TODO** — the four stale
+> citations are corrected in the PLAN itself. The fourth item that TODO carried,
+> **whether Tab G's "Act — the human DOA gate" card should render at all on a
+> personaless system**, is now homed in the PLAN as **SD-8, explicitly NOT
+> RULED**, with three neutral options and no step assuming an answer. It stops
+> being a STATUS-only item; it is Step 6's question and **Cray's call**.
+>
+> ✅ **energy's LIVE system migration is COMPLETE and Step 9's headroom is
+> MEASURED — both under one typed Cray §8 go.** The demo now runs as compose
+> project **`oct-energy`**; `vero-published` is gone from the host in every
+> form. Prompt-log rows migrated volume→volume, **byte-identical on both
+> sides** (per-file checksums), and the app proven able to **write** as its
+> non-root user — **refuting** the s215 silent-`OSError` mode, not assuming it
+> absent. **Read the record, never a restatement:
+> `docs/logs/2026-08-10-oct-energy-migration-phase2-and-step9-headroom.md`**
+> — every number, the method, the pre-committed reads, the deletion order, the
+> two things the run could not prove, MS-S1's ~half-to-VRAM memory split (so
+> any projection starting from 128 GB overstates RAM ~2×), and the
+> block-buffered instrument failure that overran the downtime window.
+>
+> ⚠️ **What the headroom measurement does NOT settle, so it is not read as
+> broader than it is.** RAM and CPU do not constrain a second or third published
+> system — but the binding constraint on a second *assisted* system was never
+> container footprint; it is the resident LLM and the number of concurrent
+> in-flight model calls. That is **ADR-0036 OQ-2, and it stays OPEN.** One term
+> in the projection — Postgres idle footprint — is **declared unmeasured**
+> rather than folded silently into the total. **Step 9 is MEASURED; AC-10 is NOT
+> closed** — its first clause is discharged, its second (every bring-up carries
+> its own explicit §8 go) stands.
