@@ -92,12 +92,37 @@ appearing to succeed. `/inheritance:d` must come first.
 Removing an inheritable ACE on the directory propagated to both existing files
 automatically — they still report `(I)`. `/t` was not needed and would have been wrong.
 
-## Left on the host — needs cleanup
+## The `icacls /save` backup — resolved, and it taught one more thing
 
-`C:\vero-secrets-acl-backup-s223.txt`, written by `icacls /save` before rung A. It holds
-no secret material, only ACL descriptors — but it is a snapshot of the **wide** ACL, so
-restoring it would reopen the exposure. Delete it rather than keep it as a rollback
-reference; the rollback that matters is documented in bring-up §8, not in that file.
+`icacls /save` wrote `C:\vero-secrets-acl-backup-s223.txt` before rung A. It holds no
+secret material, only ACL descriptors — but it sat **outside** the directory being
+tightened, so it kept the wide inherited ACL (`BUILTIN\Users:(RX)` +
+`Authenticated Users:(M)`) while everything it described had been locked down.
+
+**Cray ruled: move it into the tightened directory rather than delete it** — the record of
+the prior ACL is worth keeping, just not readable by every local account. It now lives at
+`C:\vero-secrets\acl-backup-s223.txt`.
+
+🔴 **A same-volume move does NOT re-inherit the destination's ACL — measured, not assumed.**
+On Windows a move within one volume is a rename: the file carries its existing ACEs
+across. The capture shows the wide set **still on the file after it had landed inside the
+tightened directory**; only `icacls <file> /reset` made it pick up the parent's ACEs. A
+move done without that step produces a file that looks protected because of where it sits
+and is not — the worst of both, since nothing about its location suggests checking.
+
+Verified after the fact across **all 8 paths** under the directory (`icacls C:/vero-secrets
+/t`): `icacls_processed=8 failed=0`, zero `Authenticated Users` or `BUILTIN\Users` ACEs,
+and the old `C:\` root path reporting *the system cannot find the file specified*.
+
+### Also worth recording: the enumeration was wider than the evidence
+
+The first four captures read back only the directory and the two credentials files. The
+directory also holds `rollback-s220\` with its own `.env`, `config.yml` and
+`docker-compose.yml` — three paths, one of them a plausible secret carrier, that were
+**inside the blast radius but outside the evidence**. Inheritance had in fact propagated to
+all of them, so nothing was wrong; but that was known by theory and not by measurement
+until a reviewer asked. `icacls <dir> /t` reads the whole tree in one call and costs
+nothing extra.
 
 ## Not a defect
 
