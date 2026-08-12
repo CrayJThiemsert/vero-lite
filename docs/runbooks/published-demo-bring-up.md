@@ -529,6 +529,15 @@ Three mechanics that are easy to get wrong:
 `*S-1-5-32-545` is `BUILTIN\Users` and `*S-1-5-11` is `Authenticated Users`. Use SIDs, not
 names — they are locale-proof (same reason as `ms-s1-ssh-access.md` §5.1).
 
+🔴 **Anything added to the directory LATER needs `icacls <file> /reset`.** A move within
+the same volume is a rename, so the file carries its old — wide — ACEs across and does
+**not** re-inherit from its new parent. Measured 2026-08-12: a file moved in still showed
+`BUILTIN\Users:(RX)` and `Authenticated Users:(M)` after it was already sitting in the
+tightened directory. That is worse than leaving it outside, because its location now
+suggests it is protected. A *copy* does inherit; a *move* does not. Verify the whole tree
+in one call — `icacls C:\<secrets-dir> /t` — rather than spot-checking the files you
+happen to remember.
+
 #### 🔴 The canary discipline — this part is not optional
 
 **Tighten, then IMMEDIATELY force-recreate a connector on a system nobody is using —
