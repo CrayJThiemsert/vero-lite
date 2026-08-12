@@ -571,7 +571,13 @@ real authority ladder (`procedures.yaml:102-111`): `req-mechanic-tom` (ต้อ
   published-profile-only **persona picker**, backed by raw demo keys in a
   host-env var, never git. The **on-screen disclosure** ships with it,
   bilingual: *you are acting as \<persona\>; every decision is recorded in
-  the audit trail under this name.*
+  the audit trail under this name.* _[Implementation note, verified s224:
+  the published-profile branch this requires does not exist yet in
+  `view-monitor.js` — the file has zero `isPublished()` references, and its
+  `authBar()` login form (free-text identity + password-type key input,
+  `view-monitor.js:425-467`) renders unconditionally whenever Tab H mounts;
+  invisible today (fleet is the only system publishing Tab H, per SD-3's
+  ruled sets) and visible at fleet's bring-up.]_
 - **Scope note (verified nuance):** membership enforcement arms only where the
   vertical *ships* principals (`auth.py:9-18`) — the persona layer is
   meaningful on fleet — and the persona layer is now **fleet-only by
@@ -901,8 +907,11 @@ to disagree). PLAN-side record, so nothing surfaces later as drift:
   typed ruling and remains Cray's at Step 8 delivery — the one open
   sub-item of this slot.
 - **SD-8 — Tab G's Act card on a personaless system (surfaced s220 by Step
-  5's execution; ⚠️ NOT RULED — no recommendation is offered, and no step
-  assumes an answer).** SD-3's joint ruling dropped Tab H from procurement's
+  5's execution; unruled s220–s223 — no recommendation was offered and no
+  step assumed an answer; RULED s224 — stamp at the end of this slot;
+  ⚠️ corrected s224, `was an error`: the slot's factual premise about the
+  rendered surface was false when written — measured block below).**
+  SD-3's joint ruling dropped Tab H from procurement's
   set by reasoning about *Tab H, the monitor* — H's backing run is written
   through `async_session` and procurement is DB-less, so H is
   storage-blocked, not persona-blocked. That reasoning is sound and is not
@@ -916,32 +925,80 @@ to disagree). PLAN-side record, so nothing surfaces later as drift:
   surface than absence". Step 5 shipped a defensive posture: `^/whoami$` is
   **denied** on procurement's allowlist, and since `auth.js` makes
   `GET /whoami` the one auth-validating read, login is impossible at the
-  edge — the buttons are never reached, and an unauthenticated visitor sees
-  a login form, not a broken control. That is consistent with SD-3/SD-4's
-  "anonymous read + hero, no personas", and nothing is broken on first
+  edge — the buttons are never reached. _[Corrected s224, `was an error` —
+  the draft continued "and an unauthenticated visitor sees a login form,
+  not a broken control", and that was false on the published surface: no
+  login form renders there at all (measured block below); the visitor meets
+  neither a form nor a broken control.]_ The posture is consistent with
+  SD-3/SD-4's "anonymous read + hero, no personas", and nothing is broken on first
   paint; the full reasoning lives today in
   `deploy/published/oct-procurement/cloudflared/config.yml`'s header and PR
   #1114's body — neither of which is this PLAN, which is why this slot
-  exists. **The residual question, genuinely open:** Tab G's Act card still
-  renders a login form on a system that will always refuse the login.
-  Whether that card should render at all on a personaless system is a UI
-  call belonging to **Step 6** (the persona layer). The options, stated
-  neutrally: **(i)** keep the shipped state — the login form is a real
+  exists. **The residual question, corrected:** what a cold visitor should
+  meet in the Act card's place on a personaless published system — a UI
+  call belonging to **Step 6** (the persona layer). _[Corrected s224, `was
+  an error` — as authored (s220) the question read "Tab G's Act card still
+  renders a login form on a system that will always refuse the login" and
+  asked whether that card should render at all. That premise was false when
+  written: the Act card and its login form do not render on any published
+  profile, and had not since PLAN-0100 Step 3 — which predates this slot's
+  authoring, so the slot was written over a surface that had already
+  changed. Classification per CLAUDE.md §6: `was an error`, not `superseded
+  by new info`. It stood uncorrected through s222/s223 because nobody ran
+  the published profile and looked.]_
+  **The s224 measurement behind that correction:** the published
+  procurement profile was reproduced locally from its own committed
+  `deploy/published/oct-procurement/published.env` (`UI_PROFILE=published`,
+  `UI_PUBLISHED_VIEWS=G,F`, `OCT_VERTICAL=procurement`,
+  `API_AUTH_ENABLED=true`, no `API_KEYS` provisioned) and the rendered DOM
+  probed in a browser. ⚠️ A faithful local **reproduction**, not a
+  live-system reading — the published domain is deliberately absent from
+  this repo (ADR-0035 D1(3)) and the live surface sits behind Cloudflare
+  Access (ADR-0035 D3); the branch under test reads `O.isPublished()`,
+  driven by the same `UI_PROFILE=published` the live container receives.
+  Probes: "Act — the human DOA gate" absent from the DOM; zero `input`
+  elements of any type on Tab G and on Tab F (hence zero password fields);
+  no login-affordance words anywhere; rendered tabs `G`,`F` only. The
+  mechanism is two facts in `services/api/static/assets/view-hero.js` that
+  compose: the Act card renders only in event mode (`view-hero.js:655`)
+  while `mount()` defaults to manual (`view-hero.js:662`), and the only
+  control that reaches event mode — the manual↔event toggle — is suppressed
+  on every published profile (`view-hero.js:604-614`, `if (!published)`
+  over `O.isPublished()`), the code comment stating the reason verbatim:
+  "PLAN-0100 Step 3: not rendered on the published profile — event mode
+  fires POST /demo/hero/event, the unauthenticated DB write D5(2) excludes
+  (F4)." So on any published profile `mode` stays `'manual'`,
+  `renderActPanel` is never called, and the Act card does not exist on the
+  published surface — on every published system, not just personaless ones,
+  and for a data-write reason, not a persona reason.
+  The options as authored, stated neutrally, with the s224 corrections
+  marked: **(i)** keep the shipped state — the login form is a real
   control honestly refused at the edge, zero code, but a visitor who tries
-  it hits a dead end; **(ii)** suppress the Act card on personaless
-  published systems — no dead-end control, at the cost of a new
-  published-profile UI branch; **(iii)** replace it there with narrative
-  copy (the approve beat is fleet's story) — no dead end and the portal
-  narrative gains a pointer, at the cost of copy with no oracle. The shipped
-  state is safe and reversible, so nothing here is urgent; it is recorded so
-  Step 6 does not execute over an unstated hole. *Why Cray:* what a cold
-  visitor meets on the public surface is trust posture — ADR-0032 D5
-  territory, the same class as SD-4 — and no oracle catches a wrong first
-  impression.
-  **Live input (2026-08-11, s222 — input to this slot, NOT a ruling; the
-  slot stays unruled and no option gains a recommendation):** the shipped
-  state — option (i) — is now the *live public surface*: procurement runs as
-  published system #2 with `^/whoami$` refused at its edge, so that system
+  it hits a dead end _[Corrected s224, `was an error` — this rationale
+  describes a state that does not exist: there is no form, so no dead end.
+  The option's outcome (change nothing) was coherent; its rationale was
+  not]_; **(ii)** suppress the Act card on personaless published systems —
+  no dead-end control, at the cost of a new published-profile UI branch
+  _[Corrected s224, `was an error` — already done, and it cost no new
+  branch: PLAN-0100 Step 3 paid that price for the unrelated D5(2)/F4
+  data-write reason, and the suppression is `if (!published)`-scoped to
+  every published system, not personaless-scoped]_; **(iii)** replace it
+  there with narrative copy (the approve beat is fleet's story) — no dead
+  end and the portal narrative gains a pointer, at the cost of copy with no
+  oracle. The shipped state is safe and reversible, so nothing here is
+  urgent; it is recorded so Step 6 does not execute over an unstated hole.
+  *Why Cray:* what a cold visitor meets on the public surface is trust
+  posture — ADR-0032 D5 territory, the same class as SD-4 — and no oracle
+  catches a wrong first impression.
+  **Live input (2026-08-11, s222 — input to this slot, NOT a ruling; as of
+  s222 the slot stayed unruled and no option gained a recommendation):**
+  the shipped state is now the *live public surface* _[Corrected s224, `was
+  an error` — the s222 note named the shipped state "option (i)"; option
+  (i)'s rationale described a rendered login form, and no form renders
+  (measured block above). What s222 observed live — the edge refusals
+  below — is real; its characterisation as option (i) was not]_: procurement
+  runs as published system #2 with `^/whoami$` refused at its edge, so that
+  system
   has no login path and its provisioned `API_KEYS` has no consumer — the
   digest→person mapping is unverifiable from outside until a keyed route is
   admitted. Cray ruled (typed, s222): **keep the key provisioned** anyway,
@@ -950,6 +1007,17 @@ to disagree). PLAN-side record, so nothing surfaces later as drift:
   and why"); the inline reasoning the next reader meets first lives in
   `deploy/published/oct-procurement/cloudflared/config.yml`'s header, which
   flags this exact coupling as this slot's question and not closed.
+  **RULED (Cray, typed, s224; recorded 2026-08-12): (iii) — replace it
+  there with narrative copy** (the approve beat is fleet's story). The cost
+  stated above stands and is accepted: copy with no oracle — no test
+  reddens if the copy is wrong. Operational reading against the corrected
+  facts: the Act card already never renders on a published profile, so
+  (iii) is executed by Step 6 *adding* the narrative copy where the card
+  would have been — nothing needs removing. (iii) admits no keyed route, so
+  the s222-kept key remains provisioned without a consumer on procurement.
+  ⚠️ `cloudflared/config.yml`'s header still describes this slot as open —
+  it predates the ruling and is corrected on the next touch of that file,
+  not by this PLAN edit.
 
 ## Verification
 
