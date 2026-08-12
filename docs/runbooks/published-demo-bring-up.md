@@ -481,8 +481,11 @@ group is marked *deny-only* — so an `Administrators:(F)` ACE grants that proce
 
 #### ✅ The form that works
 
-Measured 2026-08-12 (session 223), canary-verified first on an idle system and then
-end-to-end on the live one:
+What follows is the **consolidated single-shot form**, ordered for safety. ⚠️ It is not a
+transcript: what was measured on 2026-08-12 (session 223) was this same **end state**
+reached in two separately canary-verified rungs — first dropping `Authenticated Users`,
+then dropping `BUILTIN\Users` while granting the account SID. These four commands have
+never been run as one uninterrupted sequence.
 
 ```
 icacls C:\<secrets-dir> /inheritance:d
@@ -490,6 +493,14 @@ icacls C:\<secrets-dir> /grant:r "*<signed-in-account-SID>:(OI)(CI)(RX)"
 icacls C:\<secrets-dir> /remove:g *S-1-5-32-545
 icacls C:\<secrets-dir> /remove:g *S-1-5-11
 ```
+
+⚠️ **The `/grant:r` deliberately precedes both `/remove:g` lines**, which is the one way
+this ordering differs from the measured rungs. Run as written, the signed-in account never
+loses access mid-sequence. Reverse it and there is a window in which only `Administrators`
+and `SYSTEM` remain — and `Administrators` is deny-only in Docker's filtered token, which
+is the exact condition that produced the `Access is denied` above. The two-rung route is
+equally safe (rung one leaves `BUILTIN\Users:(RX)` standing throughout) and is the better
+choice if you want each change canary-verified on its own.
 
 Leaving exactly:
 
