@@ -300,10 +300,13 @@ The connector was **not** recreated, correctly: none of the 14 changed files was
   connector declares that variable required. Any path works — the script passes a
   placeholder. Nothing is created there; volumes are materialised at
   container-create time, not at build.
-- **The credentials file's ACL on the host is inherited and wide**
-  (`BUILTIN\Users: Read`, `Authenticated Users: Modify`). The `icacls` fix is in
-  bring-up §8 and **was not applied as of session 213**. It needs a bind-mount
-  re-test in the same sitting.
+- **The credentials directory's ACL is now tightened** — as of 2026-08-12 (session
+  223) it grants only the signed-in account `(RX)`, `BUILTIN\Administrators` and
+  `NT AUTHORITY\SYSTEM`; `BUILTIN\Users` and `Authenticated Users` are gone. It was
+  inherited and wide before that. The working `icacls` form, the filtered-token
+  reason the obvious form fails, and the force-recreate canary discipline are all in
+  bring-up §8. A redeploy does not touch the ACL — but any change to it needs the
+  canary in the same sitting.
 - **Docker Desktop does not auto-start on the host** (`com.docker.service` =
   `Manual`), and the daemon has been reachable over SSH anyway. Why it stopped
   serving 12 days before session 213 is still unexplained — if a deploy fails at

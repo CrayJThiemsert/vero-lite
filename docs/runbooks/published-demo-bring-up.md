@@ -453,48 +453,103 @@ variables substituted:
 docker compose -f deploy/published/oct-energy/docker-compose.yml config --quiet
 ```
 
-### 🔴 Windows inherits a much wider ACL than the file deserves — and the fix below DOES NOT WORK on this host
-
-⚠️ **Read this before running the `icacls` command that follows.** It was applied on
-2026-08-11 (session 222) and it **breaks Docker Desktop's bind mount outright** — the
-connector container fails at create time with:
-
-```
-Error response from daemon:
-CreateFile C:\vero-secrets\<credentials>.json: Access is denied.
-```
-
-Docker Desktop reads the file through its own file-sharing path and needs one of the
-grants the tightening removes. Reverted with `icacls C:\vero-secrets /reset /t`, which
-restored the prior ACL ACE-for-ACE, after which `up -d` succeeded.
-
-**The exposure below is therefore still OPEN and is Cray's to rule.** One untried idea
-with a real chance: the dangerous grant is **Modify**, not Read, and Docker plausibly
-needs only Read — keeping `(RX)` and dropping `(M)` may satisfy both sides.
-
-🔴 **If you try any ACL change, tighten and then IMMEDIATELY bring up a system nobody is
-using — never test on the live one.** The directory holds every system's credentials, so
-tightening it touches the live system too; it keeps running only because an ACL governs
-*opening* a file and its container already holds the handle. Without an immediate canary,
-the breakage surfaces at the next Docker Desktop restart or host reboot, with nothing
-connecting it back to an ACL change made weeks earlier. Full record:
-`docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md`.
+### 🔴 Windows inherits a much wider ACL than the file deserves — tighten it, but not the obvious way
 
 A credentials file created on Linux lands `0400`. The same file copied to `C:\…` inherits
 the drive's default ACL, which was measured as **`BUILTIN\Users: Read`** and
 **`NT AUTHORITY\Authenticated Users: Modify`** — every local account can read the tunnel
 secret, and any authenticated one can replace it.
 
-Tighten it deliberately:
+#### ❌ The obvious tightening breaks the bind mount — and *why* is the whole lesson
+
+Applied 2026-08-11 (session 222), this form killed the connector at container-create time:
 
 ```
+# DO NOT USE — measured to break Docker Desktop's bind mount
 icacls C:\<secrets-dir> /inheritance:r /grant:r "BUILTIN\Administrators:(OI)(CI)F" "NT AUTHORITY\SYSTEM:(OI)(CI)F"
 ```
 
-⚠️ **Then re-run `docker compose up` and confirm the bind mount still works.** Docker
-Desktop reads the file through its own file-sharing path; stripping `Authenticated Users`
-may break that, and you want to find out in the same sitting rather than at the next
-restart.
+```
+Error response from daemon:
+CreateFile C:\<secrets-dir>\<credentials>.json: Access is denied.
+```
+
+It fails **even though the signed-in account is an Administrator**. Docker Desktop's
+backend runs under a **filtered (non-elevated) token**, in which the `Administrators`
+group is marked *deny-only* — so an `Administrators:(F)` ACE grants that process
+**nothing**. What it had actually been relying on all along was `BUILTIN\Users:(RX)`.
+
+#### ✅ The form that works
+
+What follows is the **consolidated single-shot form**, ordered for safety. ⚠️ It is not a
+transcript: what was measured on 2026-08-12 (session 223) was this same **end state**
+reached in two separately canary-verified rungs — first dropping `Authenticated Users`,
+then dropping `BUILTIN\Users` while granting the account SID. These four commands have
+never been run as one uninterrupted sequence.
+
+```
+icacls C:\<secrets-dir> /inheritance:d
+icacls C:\<secrets-dir> /grant:r "*<signed-in-account-SID>:(OI)(CI)(RX)"
+icacls C:\<secrets-dir> /remove:g *S-1-5-32-545
+icacls C:\<secrets-dir> /remove:g *S-1-5-11
+```
+
+⚠️ **The `/grant:r` deliberately precedes both `/remove:g` lines**, which is the one way
+this ordering differs from the measured rungs. Run as written, the signed-in account never
+loses access mid-sequence. Reverse it and there is a window in which only `Administrators`
+and `SYSTEM` remain — and `Administrators` is deny-only in Docker's filtered token, which
+is the exact condition that produced the `Access is denied` above. The two-rung route is
+equally safe (rung one leaves `BUILTIN\Users:(RX)` standing throughout) and is the better
+choice if you want each change canary-verified on its own.
+
+Leaving exactly:
+
+```
+<HOST>\<account>:(OI)(CI)(RX)
+BUILTIN\Administrators:(OI)(CI)(F)
+NT AUTHORITY\SYSTEM:(OI)(CI)(F)
+```
+
+Three mechanics that are easy to get wrong:
+
+- **`/inheritance:d` first, always.** The wide ACEs arrive *inherited* from the drive
+  root, and an inherited ACE cannot be edited in place. A bare `/grant:r` adds an
+  **explicit** ACE that unions with the inherited one, so the Modify grant survives and
+  the tightening *looks* applied while changing nothing. `/inheritance:d` converts the
+  inherited ACEs to explicit copies with identical effective rights; only then can they
+  be removed.
+- **Grant the account SID, not a group.** The user SID is always present and enabled in a
+  filtered token; group membership is not reliably so — which is exactly what sank the
+  Administrators-only form above. Get it with
+  `[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value`.
+- **No `/t`.** Removing an inheritable ACE on the directory propagates to existing
+  children automatically — they keep reporting `(I)`. Adding `/t` would additionally
+  strip *explicit* ACEs from children, which is more than intended.
+
+`*S-1-5-32-545` is `BUILTIN\Users` and `*S-1-5-11` is `Authenticated Users`. Use SIDs, not
+names — they are locale-proof (same reason as `ms-s1-ssh-access.md` §5.1).
+
+#### 🔴 The canary discipline — this part is not optional
+
+**Tighten, then IMMEDIATELY force-recreate a connector on a system nobody is using —
+never test on the live one, and never with a plain `restart`.** Three reasons, each of
+which has already cost a session:
+
+1. The directory holds **every** system's credentials, so tightening it touches the live
+   system too.
+2. An ACL governs *opening* a file, and a running container **already holds the handle**.
+   It therefore keeps serving after a tightening that would refuse it at create time —
+   the breakage surfaces at the next Docker Desktop restart or host reboot, with nothing
+   connecting it back to an ACL change made weeks earlier.
+3. For the same reason a `restart` proves nothing. Use
+   `docker compose up -d --force-recreate <connector-service>` and confirm the container
+   **id actually changed** — an unchanged id means the canary never ran.
+
+Then read the connector's log for `Registered tunnel connection` before believing it: a
+container in `State=running` has not yet proven the tunnel came back.
+
+Full records: `docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md` (the failure)
+and `docs/logs/2026-08-12-ms-s1-secrets-acl-tightening.md` (the working form).
 
 Put the file **outside every git worktree** — `C:\projects\vero-lite` is a repo, so the
 secrets directory must not live under it. `verify_tunnel_credentials.py` refuses a path

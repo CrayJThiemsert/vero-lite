@@ -117,6 +117,13 @@ surfaced at the next Docker Desktop restart or host reboot, with nothing connect
 back to an ACL change made weeks earlier. The live system was never at risk during the
 test; the new one absorbed it.
 
+> ✅ **CLOSED 2026-08-12 (session 223).** The untried idea below was tested and held —
+> then went further: `Authenticated Users` **and** `BUILTIN\Users` are both gone, replaced
+> by a direct grant to the signed-in account's SID, force-recreate-proven on both systems.
+> The runbook's remedy has been replaced with the working form. Record:
+> `docs/logs/2026-08-12-ms-s1-secrets-acl-tightening.md`. The paragraph below is preserved
+> as the state at the time of writing — **do not act on it**.
+
 **Residual, and it is pre-existing rather than introduced here.** Both credentials files
 remain `BUILTIN\Users:(RX)` and `NT AUTHORITY\Authenticated Users:(M)` — every local
 account can read the tunnel secrets and every authenticated one can modify them. The
