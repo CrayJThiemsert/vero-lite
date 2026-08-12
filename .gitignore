@@ -73,6 +73,16 @@ node_modules/
 # project-local entry blocks accidental commits if a developer places it inside.
 .claude/.anthropic_api_key
 
+# Per-machine dev-server launch configs. Credential-shaped by construction: a
+# published-profile entry carries UI_DEMO_PERSONA_KEYS (person_id -> RAW key),
+# and a local one can carry whatever the operator was holding at the time.
+# The demo personas are synthetic and their keys are browser-served by ruling
+# (PLAN-0103 SD-4 / the s224 credential ruling), so the exposure is not what
+# makes this an entry — the FILE CLASS is: an un-ignored credential-shaped file
+# in a public repo is one `git add -A` away from a commit, and the next value
+# placed here may not be synthetic.
+.claude/launch.json
+
 # PLAN-0010 loop — messages are uncommitted by design (producer has no git
 # per K-1; consumer processes in place then archives to processed/).
 # Directory layout + schema specced in docs/plans/done/0010-step1-message-schema.md.

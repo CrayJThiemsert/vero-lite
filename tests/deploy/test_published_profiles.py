@@ -482,6 +482,105 @@ def test_no_profile_commits_a_database_credential() -> None:
                 )
 
 
+#: AC-6's named secrets, per profile. `API_KEYS` maps sha256(raw key) -> person_id;
+#: `UI_DEMO_PERSONA_KEYS` maps person_id -> the RAW key. Both are credentials and
+#: neither may be ASSIGNED A VALUE in a committed file (CLAUDE.md §8).
+#:
+#: ⚠️ Naming them is not the violation, and a guard that treated it as one would
+#: redden against correct files: fleet's `published.env` carries ~20 lines of
+#: comment explaining exactly why each is absent, its `docker-compose.yml` must
+#: DECLARE both bare for the host pass-through to work at all, and its README
+#: documents the generation recipe. The violation is a committed VALUE.
+_SECRET_ENV_NAMES = ("API_KEYS", "UI_DEMO_PERSONA_KEYS")
+
+
+def _read_env_file(profile: Path) -> dict[str, str]:
+    """`published.env`'s real assignments, comments and blanks discarded.
+
+    Returns only lines that actually bind a name to a value, so a commented-out
+    `# API_KEYS=...` cannot register as an assignment — and, in the other
+    direction, cannot hide one either.
+    """
+    out: dict[str, str] = {}
+    for raw in (profile / "published.env").read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, sep, value = line.partition("=")
+        if sep:
+            out[key.strip()] = value.strip()
+    return out
+
+
+@pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
+def test_ac6_no_profile_commits_a_key_credential(profile: Path) -> None:
+    """AC-6: neither named secret carries a committed VALUE, on ANY profile.
+
+    This closes the half of AC-6 that its own wording asks for and that nothing
+    enforced until now: "the per-system env-parse tests assert each committed env
+    file's key set excludes `API_KEYS` (and the persona-key variable if SD-4
+    introduces one)". SD-4 introduced one — `UI_DEMO_PERSONA_KEYS` — and the s224
+    credential ruling made it a store of RAW keys.
+
+    ⚠️ Why this lives here and not in `test_published_compose.py`, where the
+    energy-only `test_ac4_no_secret_is_committed` already sits: that module pins
+    `_DEPLOY` to `oct-energy` and says so deliberately, on a reason that has since
+    expired ("procurement's and fleet's are authored in the next step" — they
+    shipped in #1114/#1116). This module is parametrized over every discovered
+    profile, and `test_every_discovered_profile_has_an_expected_allow_set` makes a
+    NEW profile redden rather than ride along uncovered. Fleet is precisely the
+    profile that introduced the raw-key variable, so per-profile coverage is the
+    property AC-6 actually needs.
+
+    Two carriers, and they have OPPOSITE correct shapes — which is the whole
+    difficulty:
+
+    * `published.env` is loaded wholesale by `env_file:`, so a secret name
+      appearing there as an assignment at all is the violation.
+    * `docker-compose.yml` MUST list both names under `environment:` — a BARE
+      entry (`- API_KEYS`, no `=`) is what makes the host value reach the
+      container, and its absence is its own bug (`test_published_compose.py::
+      test_the_app_can_actually_receive_api_keys_from_the_host`). Here the
+      violation is the same name carrying a value.
+
+    `_env_items` already normalizes both compose forms: a bare entry yields `""`,
+    an assignment yields its value.
+    """
+    committed_env = _read_env_file(profile)
+    compose_env = {
+        key: value
+        for svc in (_compose(profile).get("services") or {}).values()
+        for key, value in _env_items(svc).items()
+    }
+
+    # RULED (Cray, typed, s225): a REQUIRED interpolation (`${API_KEYS:?...}`) is
+    # NOT accepted here, even though the sibling guard just above DEMANDS that
+    # shape for database credentials. The two differ on purpose. A `:?` default
+    # still names the variable in a committed file and reads as provisioning
+    # guidance; the compose file argues against that form for `API_KEYS` in its
+    # own comment, and a guard accepting a shape the file itself rejects is a
+    # guard that has stopped enforcing the file's design. Bare or absent, nothing
+    # else. Recorded because it is a decision, not an oversight — if the compose
+    # file's posture ever changes, this line is what has to change with it.
+    for name in _SECRET_ENV_NAMES:
+        assert name not in committed_env, (
+            f"{profile.name}/published.env ASSIGNS {name}={committed_env[name]!r}. "
+            f"That file is committed AND loaded wholesale by `env_file:`, so the "
+            f"value ships in a public repo (CLAUDE.md §8, AC-6). Naming {name} in a "
+            f"comment is fine and expected; provision the value host-env-local per "
+            f"that profile's README."
+        )
+        if name in compose_env:
+            assert compose_env[name] == "", (
+                f"{profile.name}/docker-compose.yml gives {name} the value "
+                f"{compose_env[name]!r}. The only accepted form is a BARE "
+                f"pass-through (`- {name}`), which takes the value from the host "
+                f"environment without committing it. An interpolation such as "
+                f"`${{{name}:?...}}` is deliberately refused here (s225 ruling) — "
+                f"see the comment above this loop."
+            )
+
+
 # --------------------------------------------------------------------------- #
 # Step 5 — each system's allowlist, per instance
 # --------------------------------------------------------------------------- #
