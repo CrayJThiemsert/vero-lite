@@ -1,5 +1,6 @@
 """Application configuration via environment variables."""
 
+import hashlib
 from typing import Literal, Self
 
 from pydantic import Field, model_validator
@@ -83,6 +84,37 @@ class Settings(BaseSettings):
             "authenticates. Digests only — raw keys are never stored. Provision "
             'via the API_KEYS env var as JSON, e.g. {"<sha256-hex>": "appr-x"} '
             "(.env.example documents a key-generation one-liner)."
+        ),
+    )
+    # PLAN-0103 Step 6 (SD-4 ruling (b); credential path RULED (a), Cray typed
+    # s224) — the persona picker's RAW demo keys, person_id -> raw key.
+    #
+    # 🔴 READ THIS BEFORE COPYING THE PATTERN. Every other credential in this
+    # file is a digest or a pass-through the server keeps to itself. These are
+    # raw keys, and on the published profile they are DELIBERATELY SERVED TO THE
+    # BROWSER over /meta so a visitor can pick a persona without being handed a
+    # secret to type. The consequence is intended, not overlooked: anyone can
+    # read them out of the page and call the API directly as any persona — the
+    # same power the picker already grants them through the UI. That is
+    # acceptable ONLY because these authenticate three SYNTHETIC demo principals
+    # on a synthetic dataset. A key that authenticates anything real must never
+    # be put here.
+    #
+    # Still never in git (AC-6): provisioned host-env-local through the compose
+    # bare pass-through, exactly like the database credentials.
+    #
+    # Empty default = the feature is OFF, which is the correct posture for every
+    # system except fleet — procurement takes no personas (SD-3/SD-4) and energy
+    # stays keyless.
+    ui_demo_persona_keys: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "person_id -> RAW demo API key for the published persona picker. "
+            "Served to the browser on the published profile by design (PLAN-0103 "
+            "Step 6, credential option (a)); synthetic demo principals ONLY. "
+            'Provision via UI_DEMO_PERSONA_KEYS as JSON, e.g. {"appr-owner": '
+            '"<raw>"}. Empty = no picker. Every raw key here must digest to an '
+            "API_KEYS entry naming the SAME person_id — validated at boot"
         ),
     )
 
@@ -561,6 +593,65 @@ class Settings(BaseSettings):
                 "would silently collapse them, so a repeat is always a typo, and a "
                 "typo in this value is a typo about what the public sees."
             )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_demo_persona_keys(self) -> Self:
+        """Refuse to boot on a persona picker that would offer a login it cannot honour.
+
+        Both halves of the pairing live in this file, so the whole check is
+        offline: ``ui_demo_persona_keys`` holds ``person_id -> raw key`` and
+        ``api_keys`` holds ``sha256(raw key) -> person_id``. They are typed into
+        a deployment by hand, from two different places, and every way of
+        mistyping either one produces the SAME visible symptom — a visitor picks
+        a persona and is refused. On a public demo whose entire story is the
+        approve beat, that reads as the product being broken, and it reads that
+        way to the one audience the system exists for.
+
+        Deliberately not deferred to the first login: the failure would then fire
+        in a visitor's browser rather than in the operator's terminal at deploy
+        time. Same asymmetry ``_validate_published_views`` encodes one field up.
+
+        NOT checked here: that each ``person_id`` is authored in the active
+        vertical's principals. That needs the vertical's YAML, which this module
+        deliberately does not read — it happens at boot in ``main.py``'s
+        lifespan helper, where ``load_procedures`` is already in hand.
+        """
+        if not self.ui_demo_persona_keys:
+            return self
+        if not self.api_keys:
+            raise ValueError(
+                "UI_DEMO_PERSONA_KEYS is provisioned but API_KEYS is empty, so "
+                "every persona the picker offers would be refused at login. The "
+                "picker is not a second credential source — it is a front end "
+                "onto API_KEYS, and both are provisioned together or neither is."
+            )
+        for person_id, raw_key in self.ui_demo_persona_keys.items():
+            if not raw_key:
+                raise ValueError(
+                    f"UI_DEMO_PERSONA_KEYS has an empty key for {person_id!r}. An "
+                    "empty value is the shape an unset host-env pass-through takes, "
+                    "so this is more likely a provisioning miss than a typo."
+                )
+            digest = hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
+            mapped = self.api_keys.get(digest)
+            if mapped is None:
+                raise ValueError(
+                    f"UI_DEMO_PERSONA_KEYS[{person_id!r}] holds a raw key whose "
+                    "SHA-256 digest is absent from API_KEYS, so the picker would "
+                    "offer that persona and the login would 401. Regenerate the "
+                    "pair together — the digest of the raw key IS the API_KEYS "
+                    "entry, never a separately-chosen value."
+                )
+            if mapped != person_id:
+                raise ValueError(
+                    f"UI_DEMO_PERSONA_KEYS[{person_id!r}] holds the raw key that "
+                    f"API_KEYS maps to {mapped!r}. The picker would then label the "
+                    "card with one persona while the audit trail recorded the "
+                    "other — the exact confusion the on-screen disclosure promises "
+                    "cannot happen (SD-4(b)). A crossed pair is worse than a "
+                    "missing one, because nothing downstream looks wrong."
+                )
         return self
 
     @model_validator(mode="after")

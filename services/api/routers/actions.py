@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
+from services.api.demo_personas import resolve_demo_personas
 from services.api.models.actions import (
     ExecuteResponse,
     ObjectListResponse,
@@ -216,10 +217,20 @@ async def get_meta() -> OntologyMeta:
     settings dependency.
     """
     meta = load_ontology_meta(settings.oct_vertical)
+    # PLAN-0103 Step 6 — personas ride the PUBLISHED profile only, unlike the two
+    # fields above. They carry raw credentials, so the branch is the point: a dev
+    # process resolves nothing and emits nothing, and the both-directions test
+    # asserts that emptiness rather than assuming it.
+    personas = (
+        resolve_demo_personas(settings.oct_vertical, settings.ui_demo_persona_keys)
+        if settings.ui_profile == "published"
+        else []
+    )
     return meta.model_copy(
         update={
             "ui_profile": settings.ui_profile,
             "ui_published_views": list(settings.published_view_keys),
+            "ui_demo_personas": personas,
         }
     )
 

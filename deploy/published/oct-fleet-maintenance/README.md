@@ -112,6 +112,43 @@ Supply the digest→`person_id` mapping env-local on the host — a shell export
 systemd drop-in, or a host-side env file **outside this repo**. Only the sha256
 digest is ever stored; the raw key is what the visitor holds.
 
+### 4. `UI_DEMO_PERSONA_KEYS` — the picker's half of the same pair
+
+The picker offers a card per persona and logs the visitor in with that persona's
+**raw** key, so the raw side of every pair generated above goes here, as JSON
+mapping `person_id` → raw key. Bare pass-through in the compose; **never** in
+`published.env`.
+
+🔴 **These keys are served to the browser.** That is the ruled credential path
+(Cray, typed s224, option (a)): the cards cannot log anyone in otherwise. So
+anyone can read the three keys out of `/meta` and drive the API directly as any
+persona — the same power the cards grant, now stated rather than discovered.
+Acceptable **only** because these three authenticate synthetic demo principals on
+synthetic data. A key that authenticates anything real must never appear here.
+
+Generate both halves together, so they cannot drift:
+
+```bash
+python - <<'PY'
+import hashlib, json, secrets
+people = ["req-mechanic-tom", "appr-fleet-manager-wirat", "appr-owner"]
+raw = {p: secrets.token_urlsafe(32) for p in people}
+print("export API_KEYS=" + json.dumps(
+    {hashlib.sha256(k.encode()).hexdigest(): p for p, k in raw.items()}))
+print("export UI_DEMO_PERSONA_KEYS=" + json.dumps(raw))
+PY
+```
+
+**Boot refuses rather than degrades** if the two disagree — a digest missing from
+`API_KEYS`, a **crossed pair** (one persona's raw key mapping to another's
+`person_id`), or a `person_id` this vertical does not author. The crossed pair is
+the one that earns the check: it logs in successfully, and the card would name one
+persona while the audit trail recorded another — making the on-screen disclosure
+("recorded in the audit trail under this name") false with nothing visibly wrong.
+
+Leave it unset and Tab H falls back to the operator-key + free-text identity form,
+which on a public surface asks a visitor for a key they do not have.
+
 ## Bring it up
 
 ⚠️ **Read the gate section above first.** Then:
@@ -162,8 +199,10 @@ docker run --rm -v "$(pwd)/deploy/published/oct-fleet-maintenance/cloudflared":/
   operate-demo seed on the *procurement* vertical, so it does nothing here.
   `OCT_DEMO_SEED_OPERATE=false` is pinned so the flag means what it says.
   ⚠️ Flipping it alone would be a no-op that reads like a fix.
-- **The persona picker UI.** Step 6. This profile pins the auth posture the picker
-  needs; it does not ship the picker.
+- ~~**The persona picker UI.** Step 6.~~ **SHIPPED s224.** Tab H renders three
+  persona cards on this profile — the authored ladder, in authored order, from
+  `procedures.yaml`. Provisioning below; the code is `view-monitor.js`'s
+  `personaPicker` behind `O.isPublished() && demoPersonas().length`.
 - **Card copy.** Step 8a — AC-3's fifth committed artifact, not yet written for
   **any** system.
 - **The per-IP rate cap.** A Cloudflare **zone** rule with no file in this repo.

@@ -49,6 +49,24 @@ services:
       # three personas (LOCKED-5) are the whole story — a visitor is meant to be
       # REFUSED as one persona and GRANTED as another. Provision it at bring-up.
       - API_KEYS
+      # PLAN-0103 Step 6 — the persona picker's RAW demo keys, person_id -> raw
+      # key as JSON. Bare pass-through for the same reason as API_KEYS: it never
+      # enters this repo.
+      #
+      # 🔴 UNLIKE API_KEYS, THIS VALUE IS SERVED TO THE BROWSER. That is the ruled
+      # credential path (Cray, typed s224, option (a)) — the picker cannot log a
+      # visitor in as a persona without handing the page that persona's key, so
+      # anyone can read the three keys out of /meta and call the API directly as
+      # any of them. That is the same power the cards already grant, and it is
+      # acceptable ONLY because these three authenticate SYNTHETIC demo
+      # principals on synthetic data. Never put a key here that authenticates
+      # anything real.
+      #
+      # Boot refuses if any raw key's digest is missing from API_KEYS or maps to
+      # a different person_id, and if any person_id is not authored in
+      # verticals/fleet_maintenance/procedures.yaml. Unset = no picker, and the
+      # key+identity form renders instead.
+      - UI_DEMO_PERSONA_KEYS
       # The database URL carries the password, so it is composed at RUNTIME from a
       # host-env secret rather than committed. Required with no default: a missing
       # value must fail the `up` loudly rather than silently starting a system whose

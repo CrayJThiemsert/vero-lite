@@ -253,6 +253,35 @@
     ]);
   }
 
+  /* ---- SD-8 RULED (iii) (Cray, typed s224): narrative copy where the Act card would be.
+     Measured s224, and the ruling was made against the measurement: on a published
+     profile the Act card renders on NO system. It needs event mode (:656) while
+     mount() defaults to manual (:663), and the only control that reaches event mode
+     is suppressed on published (:604-614) — PLAN-0100 Step 3 did that for a
+     data-write reason (D5(2)), not a persona one. So (iii) ADDS copy; nothing is
+     removed, and the slot's options (i) and (ii) described a surface that had
+     already changed.
+
+     Deliberately NOT a link and NOT a system name. ADR-0036 D1 makes the portal
+     landing surface portal-repo property and this PLAN builds no landing page here;
+     AC-5 additionally forbids a committed file outside a profile naming two `oct-*`
+     labels. The copy points at the beat, not at a destination.
+
+     Its accepted cost, stated in the ruling: copy with no oracle. No test reddens
+     if the wording is wrong — only that it is PRESENT on the published profile and
+     absent on dev, which is a different claim and is the one asserted. ---- */
+  function renderApproveBeatNote() {
+    const body = h('div', { class: 'hero-badges', 'data-testid': 'hero-approve-beat' }, [
+      h('span', { class: 'faint' },
+        'การอนุมัติโดยมนุษย์เป็นบทของอีกระบบหนึ่งในเดโม่ชุดนี้ — ที่นี่แสดงว่า'
+        + 'ใครมีอำนาจเคาะ และเพราะอะไร'),
+      h('span', { class: 'faint' },
+        'The human approval step is another system’s chapter in this demo. What this '
+        + 'page shows is who holds the authority to sign, and on what basis.')
+    ]);
+    return card('Act — where the approval happens', 'the DOA ladder resolves it here; a human signs it elsewhere', [body]);
+  }
+
   /* ---- PLAN-0072 (beat 3): the "act" panel GENUINELY resolves the parked DOA gate.
      SD-A(b): drives the REAL production POST /runs/{id}/gate/resolve (authenticated approver,
      RF-1); SD-B(b): approve AND reject as real affordances; SD-D(a): inline login here — the
@@ -653,6 +682,7 @@
     container.appendChild(renderDoaCard(hero));
     container.appendChild(renderSodCard(hero));
     if (mode === 'event') container.appendChild(renderActPanel(hero, host, gov.hero && gov.hero.run_id));
+    if (O.isPublished()) container.appendChild(renderApproveBeatNote());
     container.appendChild(renderJoinCard(hero));
     container.appendChild(renderContrast(contrast));
     container.appendChild(renderLedger(ledger));
