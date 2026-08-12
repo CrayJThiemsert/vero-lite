@@ -59,16 +59,36 @@
 # 404s. SD-3 named exactly that shape: "a visible waiting approval a visitor cannot
 # act on reads as *broken*, worse on the public surface than absence".
 #
-# ⚠️ NOTE WHAT SD-3 DID **NOT** RULE ON, so the next reader does not mistake this
-# for settled: SD-3 dropped Tab H reasoning about *Tab H the monitor*. That Tab
-# **G** reaches the same H-family routes from its own approve handler is a coupling
-# this step surfaced, not one the ruling weighed. Unauthenticated visitors see a
-# LOGIN FORM there, not the buttons, so nothing is broken on first paint — but the
-# card does invite a login this system will always refuse. Whether Tab G's Act card
-# should render at all on a personaless system is a UI question, owned by Step 6
-# (the persona layer) and ultimately Cray's — it is NOT closed here, and this file
-# deliberately takes the reversible side: adding a row later is one line; un-showing
-# a broken Approve to someone who already clicked it is not.
+# ⚠️ NOTE WHAT SD-3 DID **NOT** RULE ON: SD-3 dropped Tab H reasoning about *Tab H
+# the monitor*. That Tab **G** reaches the same H-family routes from its own approve
+# handler is a coupling this step surfaced, not one the ruling weighed. That
+# observation stands, and it is why this file takes the reversible side: adding a
+# row later is one line; un-showing a broken Approve to someone who already clicked
+# it is not.
+#
+# 🔴 CORRECTED s224, `was an error` — this header previously continued:
+# "Unauthenticated visitors see a LOGIN FORM there, not the buttons, so nothing is
+# broken on first paint — but the card does invite a login this system will always
+# refuse." Both halves were false, and the reasoning above must not be read through
+# them. MEASURED s224 against a local reproduction of THIS profile
+# (UI_PROFILE=published, UI_PUBLISHED_VIEWS=G,F, no API_KEYS): the Act card does not
+# render on a published profile at all — zero `input` elements of any type on Tab G
+# or Tab F, and the string "Act — the human DOA gate" is absent from the DOM. The
+# mechanism is upstream of personas: the card renders only in event mode
+# (`view-hero.js:655`), `mount()` defaults to manual (`:662`), and the one control
+# that reaches event mode is suppressed on every published profile
+# (`:604-614`, `if (!published)`) because event mode fires POST /demo/hero/event —
+# the unauthenticated DB write D5(2) excludes. PLAN-0100 Step 3 did that, before
+# this header was written. So a visitor meets neither a login form nor a broken
+# control; the `/whoami` exclusion above remains correct as a defensive posture, it
+# simply is not the thing standing between a visitor and the Approve buttons.
+#
+# ✅ SD-8 is CLOSED. **RULED (Cray, typed, s224): option (iii)** — Tab G's Act card
+# is replaced with narrative copy on a personaless published system, Step 6's to
+# build. The accepted cost is stated in the PLAN: copy with no oracle, so no test
+# reddens if the copy is wrong. Full record + the four corrections:
+# `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` §Surfaced
+# decisions, SD-8 — read it there, never a restatement.
 
 tunnel: vero-oct-procurement
 credentials-file: /etc/cloudflared/credentials.json
