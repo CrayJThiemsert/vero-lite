@@ -4,8 +4,9 @@
 **Owner:** Claude Code (execution) · Cray (SD rulings, every §8 go, all copy/tone calls)
 **Created:** 2026-08-09
 **Related ADRs:** ADR-0036 (D6 names this PLAN — its scope list is binding here),
-ADR-0037 (**Proposed** — the SD-1-ruled persistence-posture ADR; gates **fleet's
-DB half only** — see Step 4's gate map), ADR-0035 (portal arrangement — extended,
+ADR-0037 (**Accepted** — ratified 2026-08-10, s218; the SD-1-ruled
+persistence-posture ADR; gated **fleet's DB half only** — see Step 4's gate
+map, whose gate is now satisfied), ADR-0035 (portal arrangement — extended,
 never touched), ADR-0032 (D5 positioning vocabulary), ADR-0026 (procurement
 principals), PLAN-0100 (`deploy/published/` is the template artifact this PLAN
 parameterizes — built on, never replaced), PLAN-0095 (the image every system
@@ -67,6 +68,29 @@ beat).
 > s221 answer; one live input appended to SD-8's slot, which **remains
 > unruled**. No AC ticked, no ruling or scope changed, no Status change.
 > Separation still **INTACT**.
+>
+> **Step-6 record + AC-closure round (2026-08-12, session 225, same drafter —
+> Code dispatch; every on-disk claim re-verified this session by opening the
+> cited file; run / PR-body / git-history facts are Code's 2026-08-12
+> verifications against `main` = `445d18a`, attributed inline):** six ACs
+> ticked against on-disk evidence (AC-1/2/3/4/5/7); AC-6 deliberately left
+> open with its unmet clause named — no test anywhere guards
+> `UI_DEMO_PERSONA_KEYS` out of any committed file, and the committed-env
+> `API_KEYS` guard still covers energy only. Two corrections carried: AC-7's
+> ladder premise (`was an error` — the DOA ladder that refuses วิรัช was on
+> disk before the AC was written) and AC-1's literal grep closure
+> (`superseded by new info` — the shipped oracle is comment-stripped,
+> deliberately stronger than the AC's phrasing). Step 6's execution recorded
+> under its step (PR #1138). One freshness correction carried across the file
+> (`superseded by new info` — true when written, never refreshed): ADR-0037
+> is **Accepted** on disk (`0037:3`, ratified by Cray 2026-08-10, s218), and
+> the header's Related-ADRs line, Step 4's gate-map bullet, SD-1's ruling
+> stamp, and the References entry called it "Proposed" — each now carries the
+> Accepted status, the gate marked satisfied; the dated 2026-08-10
+> rulings-round paragraph above keeps its original "(Proposed)" as a
+> historical record, per this block's own convention for past rounds. No
+> ruling, scope, step, or SD slot changed; no Status change. Separation still
+> **INTACT**.
 
 ---
 
@@ -140,7 +164,7 @@ Every AC names the evidence that closes it. None is satisfiable by mocking the
 seam under test; guards get a non-vacuity probe (plant the violation from a
 `/tmp` copy, see the RED, restore).
 
-- [ ] **AC-1 — the hardcode is dead, replaced by a declared set.**
+- [x] **AC-1 — the hardcode is dead, replaced by a declared set.**
   `PUBLISHED_EXCLUDED_VIEWS` appears nowhere under `services/api/static/`
   (Grep = 0 matches at execution time; today's sole definition+use:
   `app.js:68,72`). Published tab visibility is a per-system server-declared
@@ -152,7 +176,30 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   With no env override, system #1's rendered tab set is **bit-identical** to
   today's published energy set — proven by the existing published-profile UI
   assertions in `tests/api/test_ui_profile.py` passing unmodified.
-- [ ] **AC-2 — all 11 `isPublished()` consumers accounted for.** The step's PR
+  _[Closed 2026-08-12 — with one correction to this AC's literal closure
+  condition, `superseded by new info`: a raw grep under `services/api/static/`
+  returns **1 match today, not 0** — `app.js:36`, comment prose explaining
+  what replaced the constant (a second such comment sits at
+  `services/api/config.py:276`, outside this AC's stated path). Both are
+  comments; live code carries zero mentions anywhere. The implementation kept
+  the historical prose on purpose, and the shipped oracle is deliberately
+  **stronger** than this AC's phrasing:
+  `tests/api/test_ui_profile.py::test_the_n1_exclusion_constant_is_gone_from_every_asset`
+  (`:446`) scans every `services/api/static/assets/*.js` through
+  `strip_js_comments` — its own docstring records that a raw substring scan
+  "reddens against a correct file for the crime of documenting itself".
+  Corrected closure condition, so a future session running the literal grep
+  does not read a 1-match result as an unclosed AC: **no live-code mention,
+  comment-stripped**; the two comment sites above are the surviving, intended
+  mentions. Rest of the AC, closed as written: the replacement setting is
+  `ui_published_views` (`services/api/config.py:274-279` — the Step 2 block
+  naming what it replaced); unknown key fails boot
+  (`test_ui_profile.py:509`); a published page with no declared set refuses
+  to render (`:571`); the two carriers agree (`:134`); the ten-tab census
+  agrees in both of its homes (`:471`); the bit-identical clause is held as a
+  property against the historical energy pin (`:338-348`, asserted at
+  `:490`). Shipped in PR #1109 (`70e5b36`, merged `d162770`).]_
+- [x] **AC-2 — all 11 `isPublished()` consumers accounted for.** The step's PR
   body carries a per-site disposition table for the full census — `api.js:37`
   (the predicate), `app.js:70,129`, `view-story.js:821,902`,
   `view-anomaly.js:112`, `view-hero.js:606`, `view-procedures.js:221,669`,
@@ -168,7 +215,23 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   Step 5 admits their routes on fleet's own allowlist — see Step 3's s220
   correction note) is exercised by a test on that system's vertical fixture.
   Evidence: the table + the named tests.
-- [ ] **AC-3 — three committed per-system profiles.** `deploy/published/`
+  _[Closed 2026-08-12 — both clauses. Clause 1: the per-site disposition
+  table lives in **PR #1109's body** — ⚠️ off-disk evidence, named honestly
+  so nobody greps the repo for it: retrieve it as PR #1109 (verified by Code
+  2026-08-12 via `gh pr view 1109 --json body`); it carries nine disposition
+  rows with exactly one site classified tab-set (`app.js:70`) and the rest
+  profile-behaviour, plus the record that one census entry was a
+  `PUBLISHED_EXCLUDED_VIEWS.indexOf` line rather than an `isPublished()`
+  site. Cited, not restated — two copies of a table are two chances to
+  disagree. Clause 2: discharged by Step 3 (s219, PR #1111) and on disk as
+  `tests/api/test_published_newly_reachable.py` — Tab G's published branch,
+  the one genuinely newly-reachable surface, is exercised by
+  `test_tab_g_published_branch_gates_both_toggles` (`:123`) and
+  `test_the_event_wrapper_is_called_only_behind_that_branch` (`:146`), with
+  the per-system hero behaviour driven on procurement's and fleet's own
+  fixtures (`:91`, `:104`); the module's header carries the corrected audit
+  table matching Step 3's s220 note.]_
+- [x] **AC-3 — three committed per-system profiles.** `deploy/published/`
   is restructured into per-system profile directories (shape finalized in
   Step 4 under ADR-0036 D5's "PLAN's to finalize" grant): `oct-energy`'s
   content is PLAN-0100 Step 8's artifact **moved, functionally intact**
@@ -185,7 +248,21 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   fold-in: fleet's profile is the **ADR-0037-gated half** (Step 4's gate
   map); energy's move and procurement's authoring are ungated and land
   first. AC re-read at the fold-in: still correct as written otherwise.
-- [ ] **AC-4 — per-system network + project isolation (the ADR-0035 reopening
+  _[Closed 2026-08-12 — the three profile directories are on disk
+  (`deploy/published/{oct-energy,oct-procurement,oct-fleet-maintenance}/`),
+  each carrying the five committed artifacts, guard-asserted per profile:
+  `tests/deploy/test_published_profiles.py::test_a_profile_carries_every_committed_artifact`
+  (`:211`, over `_REQUIRED_ARTIFACTS` `:201-207`). Fleet-only database,
+  asserted in both directions:
+  `test_only_a_granted_profile_declares_a_database` (`:410`, over
+  `_DB_GRANTED` `:406`). The hardcoded-path clause:
+  `tests/deploy/test_published_compose.py:58-59` now reads
+  `_DEPLOY_ROOT = Path("deploy/published")` /
+  `_DEPLOY = _DEPLOY_ROOT / "oct-energy"`. PRs: #1113 (energy moved), #1114
+  (procurement authored), #1116 (fleet authored — the ADR-0037-gated half;
+  the gate is satisfied on disk: ADR-0037's Status line reads **Accepted**,
+  ratified 2026-08-10, s218).]_
+- [x] **AC-4 — per-system network + project isolation (the ADR-0035 reopening
   tripwire).** No two per-system compose files share a Docker network or a
   compose project name. _[Corrected s220, `superseded by new info`: as
   drafted, this AC cited the pre-Step-4a compose at
@@ -207,19 +284,63 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   makes a shared network structurally impossible), plus globally-unique
   container and volume names; non-vacuity probe: plant a colliding `name:`,
   see RED.
-- [ ] **AC-5 — no shadow registry, still domain-ignorant.** A guard test
+  _[Closed 2026-08-12 — all four named guards on disk in
+  `tests/deploy/test_published_profiles.py`:
+  `test_ac4_the_project_name_is_the_directory_name` (`:273`),
+  `test_ac4_no_two_profiles_share_a_project_name` (`:288`),
+  `test_ac4_no_profile_declares_a_fixed_network_name` (`:301`),
+  `test_ac4_no_two_profiles_share_a_container_or_volume_name` (`:318`).]_
+- [x] **AC-5 — no shadow registry, still domain-ignorant.** A guard test
   asserts: no committed file outside a per-system profile directory mentions
   **two or more** distinct `oct-*` system labels (`0036:142-147` label
   convention); each profile directory mentions **only its own** label; the
   apex domain appears nowhere in the repo (ADR-0035 D1(3) via `0036:149-155`).
   Non-vacuity probe: plant a two-label file, see RED.
+  _[Closed 2026-08-12 — all three clauses guarded on disk. Labels:
+  `tests/deploy/test_published_profiles.py::test_ac5_no_file_outside_a_profile_lists_two_system_labels`
+  (`:629`) and `::test_ac5_a_profile_mentions_only_its_own_label` (`:658`).
+  Domain:
+  `tests/deploy/test_published_compose.py::test_no_unknown_domain_appears_in_the_deploy_docs`
+  (`:499`), scanning the whole `deploy/published/` tree plus the
+  published-demo runbooks — the surfaces where a real hostname wants to be
+  pasted, per that module's own scope comment (`:50-57`).]_
 - [ ] **AC-6 — secrets stay out of git.** `API_KEYS` and any raw persona-key
   material appear in **no committed file**: the per-system env-parse tests
   assert each committed env file's key set excludes `API_KEYS` (and the
   persona-key variable if SD-4 introduces one); `detect-secrets` stays green;
   each per-system README documents host-env-local provisioning (the compose
   bare pass-through pattern, `docker-compose.yml:26-47`).
-- [ ] **AC-7 — the persona loop is real (the demo's core moment).** A scenario
+  _[Partial record, 2026-08-12 — deliberately NOT ticked: the parenthetical
+  above is now a LIVE obligation, and its guard does not exist. SD-4's ruling
+  (b) (s218) introduced the persona-key variable — `UI_DEMO_PERSONA_KEYS` —
+  and the s224 credential ruling (option (a); Step 6's record) made it a
+  raw-key store served to the browser. What holds on inspection today
+  (verified 2026-08-12): no committed file carries raw key **values** —
+  `deploy/published/oct-fleet-maintenance/published.env:88-90` states the
+  variable's deliberate absence and why; `docker-compose.yml:69` declares it
+  as a bare host pass-through (rationale `:52-68`); `README.md:115-140`
+  documents host-env-local provisioning including the generation recipe;
+  `detect-secrets` green (CI). What is UNMET — the automated half of this
+  AC's own wording: (1) **no test anywhere asserts `UI_DEMO_PERSONA_KEYS` is
+  absent from any committed file** — the only two test files naming it
+  (`tests/api/test_ui_profile.py`, `tests/api/test_fleet_persona_scenario.py`)
+  CONSUME the setting; neither guards a committed file. (2) The `API_KEYS`
+  env guard covers energy only:
+  `tests/deploy/test_published_compose.py::test_ac4_no_secret_is_committed`
+  (`:335`) checks its three forbidden names against `_ENV`, which resolves
+  under `oct-energy/` (`:58-61`); the module's own comment (`:43-57`) records
+  the non-parametrization as deliberate-and-temporary for a stated reason —
+  "procurement's and fleet's are authored in the next step" — that EXPIRED
+  when #1114/#1116 shipped. (3) The per-profile module's credential guard
+  (`test_published_profiles.py::test_no_profile_commits_a_database_credential`,
+  `:457`) scans only `PASSWORD`/`DATABASE_URL` values (`:454`) — no
+  `API_KEYS` or persona-key coverage. Net: fleet's and procurement's
+  committed env files are unguarded against exactly this AC's named secrets,
+  and fleet is precisely the profile that introduced the raw-key variable.
+  Closing this is a small CODE change (extend the per-profile guard), not a
+  governance one — recorded here so it gets closed as code, never ticked as
+  prose.]_
+- [x] **AC-7 — the persona loop is real (the demo's core moment).** A scenario
   test drives fleet's **real** procedures + auth + audit stack — no side
   mocked (CLAUDE.md §8 scenario rule) — with the three authored principals
   (`verticals/fleet_maintenance/procedures.yaml:102-111`): `req-mechanic-tom`
@@ -228,6 +349,44 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   PLAN-0075 Policy B); each decision lands in the real audit trail under the
   `person_id` that acted. Evidence: the named scenario test, green, with the
   refusal asserted **by name**, not by generic 4xx.
+  _[Closed 2026-08-12 — with a correction to this AC's own middle clause,
+  🔴 `was an error` (CLAUDE.md §6): "`appr-fleet-manager-wirat` approves
+  within tier" was **false when written**. The engine refuses him —
+  `tier_role_mismatch … routed to 'appr-owner'` — because the DOA ladder
+  (`verticals/fleet_maintenance/procedures.yaml:290-293`: ฿0 ช่างใหญ่ ·
+  ฿5,001 ผจก.เดินรถ · ฿30,001 เจ้าของกิจการ) routes the hero repair's amount
+  to the owner tier, above วิรัช's rung; the YAML's own comment block
+  (`:280-286`) says so in words — the ฿48,000 breakdown "clears ฿30,000 and
+  lands on the OWNER's desk". Classification evidence (git history, Code
+  2026-08-12): `git log --since=2026-08-08 --
+  verticals/fleet_maintenance/procedures.yaml` is EMPTY — the file last
+  changed 2026-07-29 (`f7f85ef`), the tier block at `c4aca35` (PLAN-0096
+  Step 1) — so the ladder that refuses him was already on disk when this AC
+  was authored (s218, 2026-08-09). Nobody ran it. Same failure family as
+  Lesson #0041: a claim restated instead of grounded, carried as fact. The AC
+  nevertheless CLOSES, because what shipped is strictly STRONGER than what it
+  asked for: two refusals from two **different** governance mechanisms (ต้อม
+  refused by separation of duties; วิรัช refused by DOA tier routing) plus
+  one grant (เฮีย holds the routed tier) — as the evidence module's docstring
+  puts it, a suite showing only a granted approval passes with SoD deleted,
+  and one showing only an SoD refusal passes with the ladder flattened. The
+  correction is to this AC's premise about the ladder, never a weakening of
+  its closure. Evidence: `tests/api/test_fleet_persona_scenario.py` (PR
+  #1138) — `test_the_offered_keys_are_the_keys_that_authenticate` (every card
+  the picker renders resolves through the real auth seam to the `person_id`
+  printed on that card; bearer tokens are read out of the picker's own offer
+  set, never declared by the test),
+  `test_all_three_personas_meet_the_ladder_refused_refused_granted` (the SoD
+  refusal asserted by name — `sod`/`distinct` in the response text — and the
+  tier refusal asserting `tier`; never a generic 4xx), and
+  `test_the_audit_trail_records_the_acting_persona` (the structured
+  `actor_person_id` column asserted positively AND negatively, plus
+  `run_started` attributed to ต้อม). No side mocked: the producer is
+  `resolve_demo_personas` (the exact function `/meta` calls), the consumers
+  the real `POST /procedures/{id}/run` + `POST /runs/{id}/gate/resolve`
+  behind the real `get_current_principal`. Fresh run (Code, 2026-08-12,
+  `main` = `445d18a`): 3 passed in 4.17s, DB-backed and NOT skipped — the
+  module's own docstring holds that a skip is never satisfaction.]_
 - [x] **AC-8 — fleet's first paint is not empty.** Under SD-5's **ruling (a)**
   (Cray, typed, s218 — seed one at boot **and** keep the visitor path), a
   fleet scenario test proves Tab H's backing read returns ≥ 1 waiting run at
@@ -475,8 +634,10 @@ SD-1's reading): `deploy/published/<system-label>/` per system —
   (ADR-0035 D7 — three systems, one demo tenant). Energy's and procurement's
   composes carry none.
   🔴 **ADR-GATED (SD-1 ruling — Cray, typed, s218):** fleet's persistence
-  posture is legitimate only under **ADR-0037** (Proposed) — the ADR merges
-  before the related implementation PR (CLAUDE.md §8), and its D2
+  posture is legitimate only under **ADR-0037** (**Accepted** — ratified
+  2026-08-10, s218; this bullet read "Proposed" until the s225 freshness
+  pass, `superseded by new info` — the gate is SATISFIED, not pending) — the
+  ADR merges before the related implementation PR (CLAUDE.md §8), and its D2
   obligations (RoPA-first, retention number, DSR path, in-app disclosure,
   isolation, tenancy, the D2.7 audit-chain measurement) attach to the grant.
   **Gate map — read this before stalling anything:** *gated on ADR-0037's
@@ -591,6 +752,56 @@ real authority ladder (`procedures.yaml:102-111`): `req-mechanic-tom` (ต้อ
 
 Pass/fail: AC-7's scenario test — refused-then-granted across real personas,
 audit rows by name.
+
+**EXECUTED — 2026-08-12, session 224; recorded here session 225.** Shipped as
+PR #1138 (`45d0107`, merged to `main` as `445d18a`): 15 files, +1062/−15 (the
+PR's diffstat) — `services/api/demo_personas.py` (new: one resolver, called
+from both the lifespan and `/meta`, resolving through the same
+`_principal_index` auth uses so "the picker offers a persona auth would
+refuse" is structurally impossible), `config.py`'s paired-provisioning
+validation, the picker UI (`view-monitor.js`, `auth.js`, `view-hero.js`),
+`services/engine/ontology_meta.py`, the AC-7 scenario module
+(`tests/api/test_fleet_persona_scenario.py`), the Step-6 guard block in
+`tests/api/test_ui_profile.py`, and fleet's three profile files. PLAN-side
+record, so nothing surfaces later as drift:
+
+- **Cray's two typed rulings (s224), recorded before the first line of code —
+  restated here, not re-litigated:** Step 6 **layout = option A** (three
+  persona cards, over a one-line dropdown); Step 6 **credential = option
+  (a)** (raw demo keys declared to the browser, over a new published-only
+  login endpoint).
+- **The credential ruling's standing consequence, stated as posture:** on
+  fleet's published profile the raw persona keys **are served to the
+  browser**, by ruling — anyone can read all three out of `/meta` and call
+  the API as any persona. Acceptable **only** because they authenticate
+  synthetic demo principals on synthetic data; the committed rationale lives
+  at `deploy/published/oct-fleet-maintenance/docker-compose.yml:56-63` and is
+  cited, not restated.
+- **Boot refuses rather than degrades** on a mis-provisioned persona pair: a
+  digest missing from `API_KEYS`, a **crossed pair** (one persona's raw key
+  mapping to another's `person_id`), or a `person_id` the vertical does not
+  author. The crossed pair is the case that earns the check — it logs in
+  successfully while the card names one persona and the audit trail records
+  another, making the on-screen disclosure false with nothing visibly wrong.
+  Guards: `tests/api/test_ui_profile.py:659,673,683,699,711,723` — the
+  refusals, the crossed pair at `:683`, the positive control at `:699`, the
+  unauthored-persona refusals at `:711,723`.
+- **`view-monitor.js`'s `isPublished()` count went 0 → 1** (the picker
+  branch, `view-monitor.js:506`). Stated because Step 3's s220 correction
+  note recorded the ZERO — a future reader comparing the two needs the
+  transition, not an apparent contradiction.
+- **SD-8's ruled (iii) was executed here, in the same PR** — the narrative
+  copy in the Act card's place on procurement (guard:
+  `tests/api/test_ui_profile.py::test_sd8_iii_narrative_copy_is_published_only`,
+  `:616`). The slot's own stamp already carries the ruling and its
+  "executed by Step 6 *adding* the narrative copy" reading; this line records
+  only that Step 6 is where that happened.
+- ⚠️ **Provenance limit:** the session-224 closeout additionally records
+  8 pre-test non-vacuity probes, a browser display-honesty probe against a
+  false typed identity, and a 4007 → 4025 test-count delta. Those are
+  attributed to that closeout record and PR #1138, **not re-verified by this
+  edit** — kept out of PLAN-level fact deliberately (Lesson #0041 is exactly
+  the laundering of such items).
 
 ### Step 7: Fleet's first-paint posture (Tab H must not open empty)
 
@@ -770,7 +981,10 @@ to disagree). PLAN-side record, so nothing surfaces later as drift:
   ADR.** This overrules the recommendation above (drafter and Code both
   recommended no separate ADR; recorded for attribution honesty — settled,
   not re-argued). The ADR is **ADR-0037**
-  (`docs/adr/0037-published-system-data-persistence-posture.md`, Proposed);
+  (`docs/adr/0037-published-system-data-persistence-posture.md` —
+  **Accepted**, ratified by Cray 2026-08-10, s218; this stamp read
+  "Proposed" until the s225 freshness pass, `superseded by new info` — true
+  at recording, never refreshed);
   it gates **fleet's half only** (Step 4's gate map — procurement's half
   proceeds while it is in flight), and the D6-scope question this clause
   could only surface now has its home there (ADR-0037 D3).
@@ -1061,9 +1275,10 @@ to disagree). PLAN-side record, so nothing surfaces later as drift:
   `verticals/energy/procedures.yaml` (zero `principal` occurrences; positive
   control passed) · `tests/deploy/` path targets.
 - ADR-0037 `docs/adr/0037-published-system-data-persistence-posture.md`
-  (Proposed — the SD-1-ruled persistence-posture ADR: D1 grant, D2
-  obligations incl. the D2.7 audit-chain measurement, D3 D6-bounding, D4
-  erasure question; gates fleet's half only).
+  (**Accepted** — ratified 2026-08-10, s218; the SD-1-ruled
+  persistence-posture ADR: D1 grant, D2 obligations incl. the D2.7
+  audit-chain measurement, D3 D6-bounding, D4 erasure question; gated
+  fleet's half only — satisfied).
 - Compliance (amendment round, 2026-08-10):
   `docs/compliance/ropa-published-demo.md` — the demo RoPA instance, DB-less
   as written (`:64-70` stored set · `:100` retention · `:112-115` the
