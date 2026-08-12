@@ -305,7 +305,10 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   path. 🔴 **Authorship boundary: the RoPA is Cray's artifact, in Cray's
   controller voice — this PLAN gates on it and supplies the change statement
   (SD-1's consequence clause); it authors none of the text** (mirroring the
-  portal-repo file boundary). Evidence that closes it: the updated RoPA on
+  portal-repo file boundary). The change statement is tracked at
+  `docs/compliance/ropa-change-statement-fleet.md` (moved out of a session
+  scratchpad, s224) — the controller's **input**, not RoPA text; its
+  existence closes nothing here. Evidence that closes it: the updated RoPA on
   `main` (authored by Cray; committed via Code's PR per ADR-009 D2) **and**
   fleet's Step-10 go record citing it by path. No test double can satisfy
   this AC: the gate is the committed artifact plus the go record, and a fleet
