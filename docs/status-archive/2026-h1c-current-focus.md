@@ -2194,3 +2194,288 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > prescribed the fix ("the entry and its Status line move together, in both
 > directions"). Morning exercised removal; evening, addition. It caught it only
 > because it enumerates `docs/adr/` on disk rather than a hardcoded census.
+
+## Rotated this reconcile (session-223, 2026-08-12 — STATUS reconciled EIGHT PRs behind, #1126–#1133; the MS-S1 secrets-ACL exposure CLOSED)
+
+Three blocks land here for two different reasons, stated so a later reader does not
+have to infer which is which:
+
+- **Session 219 — ROTATED OUT** of the R2 4-session window (223, 222, 221, 220).
+- **Sessions 221 and 220 — TRIMMED IN PLACE**, still live in `docs/STATUS.md` in
+  shortened form. R2's per-block cap (≤ 4,096 B, Cray-ratified s194) had never been
+  enforced on them: s221 stood at 5,528 B and s220 at 7,613 B. **R4 requires the full
+  original be archived before a trim lands — move, never drop** — so the pre-trim text
+  is preserved below verbatim. STATUS now carries s221 at 3,813 B and s220 at 4,152 B.
+  _(s220 finishes 56 B over the cap. Trimming further would have cut measured evidence
+  to hit a number, which is gaming the criterion rather than meeting it; the overage is
+  recorded instead of hidden.)_
+
+---
+
+### Session 219 — rotated out of the window
+
+> **Session 219, 2026-08-10 (head_commit `faf48b6` → `ac93b64`) — two code PRs
+> merged (#1109, #1111) plus the #1110 reconcile, 0 open. Theme: PLAN-0103 Steps
+> 2 + 3 — published-ness stops being guessed and becomes **declared per system**,
+> and the last guess left in the surface now refuses instead.**
+>
+> **Step 2 (#1109) — the declaration.** `PUBLISHED_EXCLUDED_VIEWS` is gone.
+> `config.ALL_VIEW_KEYS` + `ui_published_views` refuse the process **at boot** on
+> an unknown key, an empty set or a repeat; `main.py` emits `<meta name="ui-views">`
+> from the **same substitution** as the profile tag, so the pair cannot
+> half-arrive; `/meta` carries the same set (a test asserts the two carriers agree
+> on a **non-default** value); `app.js` maps the keys **in order**, first = landing tab.
+>
+> **What Cray ruled (typed).** A page that declares no views **refuses to render
+> and says so** — never guesses: a calm panel with no internals for the visitor
+> plus a short statement of what vero-lite is (the failure page doubles as the one
+> honest place to say it), and the precise diagnostic on the operator's console.
+> The **empty-set boot refusal** is Code's extension of that reasoning
+> (deploy-time terminal, never a visitor's browser) — flagged as inference, not
+> ruling, and accepted. Cray also **took** Step 3's *optional* hero hardening.
+>
+> **Step 3 (#1111) — the last guess closed.** `_FALLBACK_VERTICAL = "procurement"`
+> served procurement's hero to any vertical lacking one: correct while exactly one
+> system was published, inverted by multi-system, since a hero is **bespoke per
+> design partner** (ADR-0032 D1.2) — the failure mode is a Fastenal hero under an
+> energy banner, which is why PLAN-0100 had to *edge-exclude* Tab G. Refusal moves
+> from the **edge** (an allowlist that must remember to exclude G for every future
+> heroless vertical) to the **route**, which knows: a heroless vertical now 404s,
+> and the docstring asserting the fallback as current behaviour was fixed.
+>
+> 🔴 **Closing it exposed a test-integrity defect, not a code one.**
+> `tests/api/test_demo_hero_routes.py` asserts **procurement's** hero throughout
+> (Fastenal's ledger, `AST-CNC-014`, `SUP-RAPIDMRO`) while booting the default
+> `energy` — it reached those numbers *through the fallback*, so it read as "the
+> hero routes work on a default boot" while proving "the fallback works". The
+> fixture now pins `OCT_VERTICAL=procurement`; **no assertion changed.**
+>
+> 🔴 **Step 3's own text named the wrong targets — the THIRD doc-vs-code mismatch
+> in this PLAN.** `view-flow.js` is Tab **D**, published by energy all along and
+> never unreachable; `view-monitor.js` has **no `isPublished()` at all**. Corrected
+> scope: `view-hero.js` (G — dead branch today) and `view-monitor/case/export.js`
+> (H/I/J — **no branch, which is correct**: fleet has a Postgres and Step 5 puts
+> those on fleet's own allowlist). Property: publishing them adds no *unguarded*
+> excluded-backend call — measured zero, now tripwired.
+>
+> **AC-2 is FULLY CLOSED** (first clause #1109, second #1111) and **AC-1 closed in
+> #1109** with two documented literal-wording gaps; AC-2's census was wrong in both
+> prior records (`was an error`) — **9** call sites, not 11. Record: PLAN-0103 row.
+>
+> **Evidence, both steps:** ruff + `ruff format` clean · `mypy --strict services/`
+> Success (133 files) · `tests/` **3915** then **3926 passed / 8 skipped / 0
+> failed** (3906 +10 −1, then +11 — exact arithmetic is the check that nothing
+> vanished) · **nine non-vacuity probes RED**, notably Step 3's probe 1, which
+> **restored the real fallback** rather than breaking the function, so the 404 test
+> discriminates closed-vs-open and not working-vs-crashing · Step 2 also driven
+> **live in a browser**. **#1109 / #1111 bodies** carry the tables and the probes.
+
+
+---
+
+### Session 221 — full pre-trim original (5,528 B; STATUS now carries 3,813 B)
+
+> **Session 221, 2026-08-10 (head_commit `f78068e` → `e938cf6`) — two code PRs
+> merged (#1119, #1118), 0 open, plus a host-state run that carries no PR of its
+> own.** _[s222: session 221 did not end here — #1121, #1122 and #1123 merged
+> after this block was written; they are recorded in the s222 block above and
+> not restated.]_ **Theme: PLAN-0103 Step 8a landed together with the repair of a build
+> context that could not build, and energy's LIVE system finally caught up with
+> the rename the repo made two sessions ago.**
+>
+> ✅ **Step 8a SHIPPED (#1119) — every profile now carries its card copy, so
+> AC-3 CLOSES.** `card-copy.md` exists in all three profile directories
+> (`oct-energy`, `oct-procurement`, `oct-fleet-maintenance`), bilingual TH/EN,
+> asserted **structurally** — section presence, not copy quality, which has no
+> oracle — by `test_ac9_the_card_copy_is_bilingual_and_structurally_complete`.
+> 🔴 **AC-9 is NOT closed by this:** its second clause is the portal-side
+> assembly request (Step 8b), still owed, and itself a Step 10 input.
+>
+> 🔴 **The same PR repaired a compose build context that could not build — and
+> "all three composes validate" had been reported while none of them could.**
+> `context: ../..` from `deploy/published/<system>/` reaches `deploy/`, one
+> directory short of the repo root; Step 4a moved the file deeper without
+> following the relative path, and all three profiles inherited the error.
+> `docker compose config --quiet` returned 0 over all three because it validates
+> the **schema**, not whether the context resolves — so the check that was
+> trusted in the s220 record could not have caught this. Now `../../..` in all
+> three, guarded by `test_the_build_context_resolves_to_a_real_dockerfile`.
+>
+> ✅ **#1118 discharged the PLAN-0103 self-citation TODO** — the four stale
+> citations are corrected in the PLAN itself. The fourth item that TODO carried,
+> **whether Tab G's "Act — the human DOA gate" card should render at all on a
+> personaless system**, is now homed in the PLAN as **SD-8, explicitly NOT
+> RULED**, with three neutral options and no step assuming an answer. It stops
+> being a STATUS-only item; it is Step 6's question and **Cray's call**.
+>
+> ✅ **energy's LIVE system migration is COMPLETE and Step 9's headroom is
+> MEASURED — both under one typed Cray §8 go.** The demo now runs as compose
+> project **`oct-energy`** on network `oct-energy_vero_oct`; project
+> `vero-published` no longer exists on the host in any form — containers,
+> network or volume. The prompt-log rows were migrated volume→volume and
+> verified **byte-identical on both sides** (per-file checksums, not merely
+> sizes), and the running app was proven able to **write** to the log as its
+> non-root user — **refuting** the s215 silent-`OSError` failure mode rather
+> than assuming it absent. The old volume was removed **last**, and the off-host
+> backup — which held personal data outside the retention system — was deleted
+> only after the edge check passed. **Read the record, never a restatement:
+> `docs/logs/2026-08-10-oct-energy-migration-phase2-and-step9-headroom.md`**
+> carries every number, the method, the pre-committed pass/fail reads, and the
+> two things the run could not prove.
+>
+> ⚠️ **What the headroom measurement does NOT settle, so it is not read as
+> broader than it is.** RAM and CPU do not constrain a second or third published
+> system — but the binding constraint on a second *assisted* system was never
+> container footprint; it is the resident LLM and the number of concurrent
+> in-flight model calls. That is **ADR-0036 OQ-2, and it stays OPEN.** One term
+> in the projection — Postgres idle footprint — is **declared unmeasured**
+> rather than folded silently into the total. **Step 9 is MEASURED; AC-10 is NOT
+> closed** — its first clause is discharged, its second (every bring-up carries
+> its own explicit §8 go) stands.
+>
+> ⚠️ **A hardware correction worth one clause.** MS-S1's 128 GB unified memory
+> is deliberately split roughly in half with the GPU, so only about half of it
+> is visible to Windows at all. `CLAUDE.md` §5 / ADR-002 record the hardware
+> figure, which is **true of the machine and false of what any process can
+> allocate** — any projection starting from 128 GB overstates available RAM.
+>
+> ⚠️ **Honest miss:** downtime overran its planned window, and the overrun was
+> an **instrument failure, not migration work** — a display-only
+> `docker network ls` wedged inside a remote PowerShell script whose output was
+> block-buffered, so the log sat at zero bytes while containers had already been
+> removed. Zero bytes was not evidence that nothing had happened. The log file
+> carries the diagnosis and what actually finished the run.
+>
+> **What remains on PLAN-0103:** Steps **6** (persona picker), **7** (fleet's
+> Tab-H seed), **8b** (the portal-side assembly request — AC-9's open clause),
+> **10** (bring-up — procurement first per SD-2's ruling, fleet gated on AC-11's
+> RoPA, which is Cray's to author). ⚠️ **A hazard Step 7 must not walk into:**
+> the operate-demo seed gate in `services/api/main.py` sits inside a
+> `vertical == "procurement"` branch, so flipping `OCT_DEMO_SEED_OPERATE` alone
+> for fleet is a **no-op that reads like a fix**. ⚠️ **AC bookkeeping:** the
+> PLAN's checkboxes read `[ ]` for all eleven ACs on disk because Code cannot
+> edit `docs/plans/` (G2 gate) — trust this record, not the checkbox tally.
+
+
+---
+
+### Session 220 — full pre-trim original (7,613 B; STATUS now carries 4,152 B)
+
+> **Session 220, 2026-08-10 (head_commit `ac93b64` → `f78068e`) — two code PRs
+> merged (#1114, #1116), 0 open. Theme: PLAN-0103 Steps 4b + 5 — every
+> published system now has a profile of its own, and per-system isolation stops
+> being a convention and becomes a guarded property.**
+>
+> ✅ **Steps 4b and 5 are COMPLETE.** Step 4 authors three profiles and Step 5
+> authors two allowlists; procurement's half landed first (#1114) and fleet's
+> closed both Steps (#1116). 🔴 **AC-3 is still NOT closed, and not for the
+> reason the half-way record gave:** it requires **five** committed artifacts
+> per profile — `{docker-compose.yml, published.env, cloudflared/config.yml,
+> README, card copy}` — and **the card copy has been written for NO system**.
+> That is Step 8a. **AC-4 and AC-5 remain closed** as guarded properties, and
+> the third profile now exercises them rather than merely inheriting them.
+>
+> **Step 4b — procurement's profile.** `deploy/published/oct-procurement/` is
+> authored, all four artifacts, **DB-less**. Published set `G,F`, default `G`,
+> **no personas** — SD-3 and SD-4 ruled jointly, so the profile answers "which
+> views" and "who can act" in one shape rather than two.
+>
+> **AC-4 resolved the standing instruction energy's compose addressed to this
+> PLAN.** The compose project `name:` is now the profile **directory** name —
+> asserted equal by a guard, not left to convention — and the fixed network
+> `name:` key is **dropped** so compose scopes the network per project instead
+> of pinning every system onto one. Energy was renamed `vero-published` →
+> `oct-energy` across the project, both containers, the prompt-log volume and
+> the derived image tag, with the ripple carried through `deploy.py`,
+> `test_deploy.py` and ~19 runbook commands.
+>
+> **AC-5 closed as a property, not a checklist.** New
+> `tests/deploy/test_published_profiles.py` (**45 tests**): no committed file
+> outside a profile names two or more `oct-*` labels, and each profile names
+> only its own. That is the form that survives a third system being added by
+> someone who never read this PLAN.
+>
+> 🔴 **Step 4a left six broken operator paths behind, and executing 4b is what
+> found them** — two in `published-demo-redeploy.md` written as Windows host
+> paths, four in `oct-energy/README.md`. All six fixed, plus **a guard that
+> reads the runbooks as instructions** rather than as prose, so the next move
+> cannot silently orphan a command again. Two comments in
+> `oct-energy/cloudflared/config.yml` that **Steps 2 and 3 of this same PLAN
+> had falsified** were also corrected — the allowlist **row** was and is
+> correct; only the stated reasons were stale. Doc-vs-code drift inside this
+> PLAN is now a pattern, not an incident (see the PLAN-0103 self-citation TODO).
+>
+> 🔴 **The rename does not follow the LIVE system, and that is now an owed
+> migration.** Measured on MS-S1 read-only under Cray's typed §8 go:
+> `vero-published` is **`running(2)`** — app up 43 h healthy, cloudflared up 2
+> days — the `vero-published-prompt-log` volume **holds real data**, and the
+> host checkout sits at `00ddca0`, far behind main. Docker does not follow a
+> rename, so a plain `up -d` under the new name would raise a **second parallel
+> stack** and leave the prompt log stranded. A **§0b STOP CONDITION** was added
+> to `published-demo-redeploy.md` and the migration is carried as its own
+> Active TODO — offline tests cannot see any of this.
+>
+> **Evidence:** `tests/` **3926 → 3971 passed** (+45), 8 skipped, 0 failed —
+> the arithmetic closes exactly · **eleven non-vacuity probes**, each RED then
+> restored green · `ruff` + `ruff format` + `mypy --strict services/` all
+> clean. **AC-4 and AC-5 are both CLOSED**; **#1114's body** carries the tables,
+> the probes and the open Tab G question.
+>
+> **Steps 4b + 5 CLOSED — fleet's profile and allowlist (#1116).**
+> `deploy/published/oct-fleet-maintenance/` is authored, all four artifacts.
+> Published set `A,C,F,H,I,J`, default **A** (SD-3). It is the only published
+> system carrying **both personas** (LOCKED-5) **and** a database (LOCKED-1 /
+> ADR-0037), so it is the first profile forced to answer questions the other
+> two never raised.
+>
+> **The database is a grant, not a default.** Three services instead of two:
+> `postgres:16-alpine` on this system's own network, its own named volume, and
+> **no `ports:` key at all** — worth stating because the repo-root dev compose
+> *does* publish 5432, so "not published" here is a deliberate departure rather
+> than something inherited. Both credentials are **required host-env
+> pass-throughs with no default**, in the postgres service *and* inside the
+> `DATABASE_URL` the app composes at runtime.
+>
+> ⚠️ **Energy's recommender defaults would have opened fleet's own landing tab
+> on five anomalies.** Fleet lands on Tab A and the five `OCT_RECOMMEND_*`
+> values are energy's; fleet's `measured_value` is a repair quote in THB
+> (readings 1,800 / 2,400 / 3,200 / 15,000 / 48,000), so energy's threshold of
+> 90.0 breaches **all five**. The real boundary is the **฿5,000 DOA ceiling** —
+> pinned at 5000.0, exactly two breach and they route to **two different
+> tiers**, which is the fixture's stated design intent: the demo shows the
+> ladder ROUTING, which a single-breach fixture cannot.
+>
+> **The allowlist is 21 rows and every re-admission carries its own written
+> basis**, because the original exclusions never shared one. Tabs I/J were
+> excluded on SD-1(a) **DB-less** grounds — a basis that simply **dissolves**
+> for a system ADR-0037 grants a database. Tab H's five routes were excluded by
+> default-deny plus SD-1's C-3, which is **not** a storage fact, so `/runs`,
+> `/runs/{id}`, `/runs/{id}/gate/resolve`, `/runs/{id}/cancel` and
+> `/audit/verify` are each admitted on their own merits. Only routes the UI
+> actually drives are admitted, and the export admits the **cover only**,
+> keeping the typed s192 ruling in force.
+>
+> **Two new guards — and the second was widened by a probe that was itself
+> mis-aimed.** (i) Only an ADR-0037-granted profile may declare a database,
+> asserted in **both** directions. (ii) Every credential-bearing env value must
+> be a required pass-through. The non-vacuity probe for (ii) switched the
+> credential inside the app's `DATABASE_URL` connection string to a `:-`
+> default and the guard stayed **green**: it was reading only
+> `postgres.POSTGRES_PASSWORD`. The probe was mis-targeted, and **in failing it
+> exposed a real hole in the assertion** — so the guard was widened to cover
+> the connection string too.
+>
+> **Evidence (#1116):** `tests/` **3971 → 3994 passed** (+23), 8 skipped; the
+> profile module collects **68** (was 45) — 45+23=68 *and* 3971+23=3994, so the
+> arithmetic closes both ways · **nine non-vacuity probes**, each RED then
+> restored green · **all three composes validated with `docker compose config
+> --quiet` (exit 0)** — schema-valid, not merely YAML-parseable, and that check
+> caught a real defect (the app service mixed sequence and mapping form in one
+> `environment:` block, which is invalid YAML) · `ruff` + `ruff format` +
+> `mypy --strict services/` clean.
+>
+> **What remains on PLAN-0103:** Steps 6 (persona picker), 7 (fleet's Tab H
+> seed), 8 (card copy + portal request), 9 (MS-S1 headroom measurement), 10
+> (bring-up). Two are live candidates and the choice between them is Cray's,
+> not this record's: **Step 8a card copy closes AC-3 for all three systems at
+> once**, while **Step 6's only consumer is fleet**, which now exists.
