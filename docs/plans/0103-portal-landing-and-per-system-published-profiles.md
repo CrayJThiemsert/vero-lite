@@ -91,6 +91,22 @@ beat).
 > historical record, per this block's own convention for past rounds. No
 > ruling, scope, step, or SD slot changed; no Status change. Separation still
 > **INTACT**.
+>
+> **AC-6 closure round (2026-08-12, session 225 — the same drafter's second
+> edit that day; Code dispatch; every on-disk citation re-verified this
+> session by opening the cited file; PR / merge / probe / gate facts are
+> Code's 2026-08-12 verifications against `main` = `0c1be0f`, attributed
+> inline):** AC-6 ticked — closed **as code**, exactly as its partial record
+> demanded: the per-profile guard
+> `test_ac6_no_profile_commits_a_key_credential` shipped in PR #1140. The
+> partial record is kept verbatim under a superseded-status marker
+> (`superseded by new info` — true when written, earlier that same day; the
+> guard it named missing now exists) because it is the record of why the AC
+> was open, not debris. One typed Cray ruling (s225) recorded in the closure
+> block: a REQUIRED interpolation is **not** accepted for the named key
+> secrets — embedded in the guard's code, cited by this PLAN. No other AC
+> changed state; no ruling, scope, step, or SD slot changed; no Status
+> change. Separation still **INTACT**.
 
 ---
 
@@ -304,13 +320,18 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   (`:499`), scanning the whole `deploy/published/` tree plus the
   published-demo runbooks — the surfaces where a real hostname wants to be
   pasted, per that module's own scope comment (`:50-57`).]_
-- [ ] **AC-6 — secrets stay out of git.** `API_KEYS` and any raw persona-key
+- [x] **AC-6 — secrets stay out of git.** `API_KEYS` and any raw persona-key
   material appear in **no committed file**: the per-system env-parse tests
   assert each committed env file's key set excludes `API_KEYS` (and the
   persona-key variable if SD-4 introduces one); `detect-secrets` stays green;
   each per-system README documents host-env-local provisioning (the compose
   bare pass-through pattern, `docker-compose.yml:26-47`).
-  _[Partial record, 2026-08-12 — deliberately NOT ticked: the parenthetical
+  _[Partial record, 2026-08-12 — **status superseded later the same s225
+  day, `superseded by new info` (every claim below was true when written;
+  the guard it demanded now exists — see the closure block after this one).
+  The AC closed as code, exactly as this record's closing sentence required;
+  the record itself stays verbatim, because it is the record of WHY this AC
+  was open** — deliberately NOT ticked: the parenthetical
   above is now a LIVE obligation, and its guard does not exist. SD-4's ruling
   (b) (s218) introduced the persona-key variable — `UI_DEMO_PERSONA_KEYS` —
   and the s224 credential ruling (option (a); Step 6's record) made it a
@@ -340,6 +361,70 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   Closing this is a small CODE change (extend the per-profile guard), not a
   governance one — recorded here so it gets closed as code, never ticked as
   prose.]_
+  _[Closed 2026-08-12, later the same s225 session — as code, exactly as the
+  partial record above demanded, never as prose. The missing guard now
+  exists:
+  `tests/deploy/test_published_profiles.py::test_ac6_no_profile_commits_a_key_credential`
+  (`:516`), parametrized over every discovered profile via the module's own
+  `_profiles()`/`_profile_ids()` (`:515`), over both named secrets in
+  `_SECRET_ENV_NAMES` (`:494` — `API_KEYS`, `UI_DEMO_PERSONA_KEYS`). Shipped
+  in PR #1140 (`f936e55`, merged as `0c1be0f`; 2 files, +109 — the PR /
+  merge / probe / gate facts in this block are Code's 2026-08-12
+  verifications against that `main`). The record's three unmet items,
+  discharged in order: (1) the persona-key variable is now guarded out of
+  every committed profile file; (2) coverage is per-profile — the module
+  choice is written in the guard's own docstring (`:525-533`), cited not
+  restated: `test_published_compose.py::test_ac4_no_secret_is_committed`
+  keeps its deliberate energy-only `_DEPLOY` pin (`:58-59` — that module's
+  scope reasons remain valid *for it*), while the profiles module already
+  reddens when a NEW profile arrives uncovered
+  (`test_every_discovered_profile_has_an_expected_allow_set`, `:184`) — the
+  property this AC actually needs; (3) the DB-credential guard's
+  `PASSWORD`/`DATABASE_URL` scope stands unwidened — the key secrets take
+  their own guard with two DIFFERENT assertions, because the two carriers
+  have opposite correct shapes: in `published.env` (loaded wholesale by
+  `env_file:`) any real assignment of a secret name is the violation,
+  parsed through the comment-stripping `_read_env_file` (`:497`) since the
+  names legitimately appear there in comments — a mere-mention guard would
+  redden a correct file; in `docker-compose.yml` both names MUST be
+  declared bare for the host pass-through to work at all (their absence is
+  its own bug —
+  `test_published_compose.py::test_the_app_can_actually_receive_api_keys_from_the_host`,
+  `:345`), so there the violation is the same name carrying a value.
+  🔴 **RULED (Cray, typed, s225) — a posture, embedded in the guard:** a
+  REQUIRED interpolation (`${API_KEYS:?…}`) is **not** accepted for these
+  secrets, even though the sibling DB-credential guard
+  (`test_no_profile_commits_a_database_credential`, `:457`) demands exactly
+  that shape — the divergence is deliberate: the compose files argue
+  against that form for `API_KEYS` in their own comments
+  (`deploy/published/oct-energy/docker-compose.yml:53-59`), and a guard
+  accepting a shape the file itself rejects has stopped enforcing the
+  file's design. The full rationale — including which line must change if
+  the posture ever does — is committed above the guard's assertion loop
+  (`test_published_profiles.py:556-564`), cited not restated. Non-vacuity,
+  each clause independently (Code, 2026-08-12; planted from a `/tmp` copy,
+  restoration verified byte-identical, green after): a planted
+  `UI_DEMO_PERSONA_KEYS` assignment in fleet's `published.env` reddened
+  clause 1 with its own assertion; a value on fleet's bare compose
+  pass-through reddened clause 2 with its own assertion. The AC's other
+  clauses, re-verified 2026-08-12 rather than assumed (Code):
+  `detect-secrets` green on the shipping commit with `.secrets.baseline`
+  unmodified; all three per-system READMEs document host-env-local
+  provisioning — `oct-energy/README.md:82-84`,
+  `oct-procurement/README.md:41,53` (this system expects no `API_KEYS`
+  consumer, consistent with SD-8's live-input note),
+  `oct-fleet-maintenance/README.md:98-143` (including the key-pair
+  generation recipe). Gate on the shipping commit (Code, 2026-08-12): 4028
+  passed / 8 skipped — the delta over the prior suite is exactly the three
+  per-profile cases — `mypy --strict services/` clean over 134 source
+  files, ruff check + format clean. PR #1140's second file, named so its
+  diff is never read as an unexplained rider: `.gitignore` gained
+  `.claude/launch.json` — an untracked-but-uncovered file naming
+  `UI_DEMO_PERSONA_KEYS`, one `git add -A` away from a public-repo commit,
+  the same file class this guard now catches. Not AC-6 evidence (the AC
+  binds committed files, and that file was never committed); its rationale
+  is committed in `.gitignore`'s own comment block above the entry, cited
+  not restated.]_
 - [x] **AC-7 — the persona loop is real (the demo's core moment).** A scenario
   test drives fleet's **real** procedures + auth + audit stack — no side
   mocked (CLAUDE.md §8 scenario rule) — with the three authored principals
