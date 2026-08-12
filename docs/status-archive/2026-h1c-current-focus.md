@@ -2479,3 +2479,66 @@ have to infer which is which:
 > (bring-up). Two are live candidates and the choice between them is Cray's,
 > not this record's: **Step 8a card copy closes AC-3 for all three systems at
 > once**, while **Step 6's only consumer is fleet**, which now exists.
+
+> **Session 220, 2026-08-10 (head_commit `ac93b64` → `f78068e`) — two code PRs
+> merged (#1114, #1116), 0 open. Theme: PLAN-0103 Steps 4b + 5 — every
+> published system now has a profile of its own, and per-system isolation stops
+> being a convention and becomes a guarded property.**
+>
+> ✅ **Steps 4b and 5 are COMPLETE** — procurement's half landed first (#1114),
+> fleet's closed both Steps (#1116). 🔴 **AC-3 was still NOT closed, and not for
+> the reason the half-way record gave:** it requires **five** committed
+> artifacts per profile, and the fifth — the **card copy — had been written for
+> NO system** (Step 8a, shipped s221). **Procurement's profile:**
+> `deploy/published/oct-procurement/`, all four artifacts, **DB-less**, set
+> `G,F`, default `G`, **no personas** (SD-3 + SD-4 ruled jointly).
+>
+> **AC-4 + AC-5 — per-system isolation stopped being a convention and became a
+> GUARDED property.** Compose project `name:` == the profile **directory**
+> (guard-asserted); the fixed network `name:` key **dropped** so compose scopes
+> it per project; energy renamed `vero-published` → `oct-energy` across
+> containers, volume, image tag, `deploy.py`, `test_deploy.py` and ~19 runbook
+> commands. New `tests/deploy/test_published_profiles.py` (**45 tests**): no
+> committed file outside a profile names two or more `oct-*` labels, each names
+> only its own — the form that survives a third system added by a stranger.
+>
+> 🔴 **Step 4a left six broken operator paths behind, and executing 4b found
+> them** (two Windows-host paths in `published-demo-redeploy.md`, four in
+> `oct-energy/README.md`; all fixed, plus **a guard that reads the runbooks as
+> instructions**, not prose), along with two `cloudflared/config.yml` comments
+> this same PLAN had falsified — the allowlist **row** was always right, only
+> its stated reasons stale. Doc-vs-code drift inside this PLAN is a pattern.
+>
+> **Fleet's profile + allowlist (#1116) closed both Steps.**
+> `deploy/published/oct-fleet-maintenance/`, all four artifacts, published set
+> `A,C,F,H,I,J`, default **A** (SD-3) — the only system with **both personas**
+> (LOCKED-5) **and** a database (LOCKED-1 / ADR-0037). **The database is a
+> grant, not a default:** `postgres:16-alpine` on its own network and volume,
+> **no `ports:` key at all** (deliberate — the dev compose *does* publish
+> 5432); both credentials are **required host-env pass-throughs**, in the
+> postgres service *and* in the runtime `DATABASE_URL`. ⚠️ Energy's recommender
+> defaults would have opened fleet's landing tab **on five anomalies** (a THB
+> repair quote against a 90.0 threshold), so it is pinned to the **฿5,000 DOA
+> ceiling** — exactly two breach, routing to **two different tiers**, which is
+> what shows the ladder ROUTING.
+>
+> **The allowlist is 21 rows, each re-admission on its own written basis**,
+> because the original exclusions never shared one: I/J's SD-1(a) **DB-less**
+> basis **dissolves** once ADR-0037 grants a database, while Tab H's five
+> routes were excluded on C-3, not a storage fact. Only routes the UI drives
+> are admitted; the export admits the **cover only** (typed s192 ruling).
+>
+> **Two new guards — and the second was widened by a probe that was itself
+> mis-aimed.** (i) Only an ADR-0037-granted profile may declare a database,
+> asserted in **both** directions. (ii) Every credential-bearing env value must
+> be a required pass-through — the probe switched the credential inside the
+> app's `DATABASE_URL` to a `:-` default and the guard stayed **green**, so in
+> failing it exposed a real hole; the guard now covers the connection string
+> too (durable form: **Lesson #0040**).
+>
+> **Evidence, both PRs:** `tests/` **3926 → 3994** (+45, +23), 8 skipped; the
+> profile module collects **68** (was 45), so the arithmetic closes both ways ·
+> **twenty non-vacuity probes**, each RED then restored green · all three
+> composes `docker compose config --quiet` exit 0 — schema-valid, not merely
+> YAML-parseable · ruff + format + `mypy --strict services/` clean. **AC-4 +
+> AC-5 CLOSED**; the **#1114 / #1116 bodies** carry the tables.
