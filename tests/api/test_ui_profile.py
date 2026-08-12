@@ -22,6 +22,7 @@ is why each gets a test rather than a comment.
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -30,6 +31,7 @@ from httpx import AsyncClient
 from pydantic import ValidationError
 
 from services.api.config import ALL_VIEW_KEYS, Settings, settings
+from services.api.demo_personas import DemoPersonaError, resolve_demo_personas
 from services.api.main import _UI_PROFILE_META_DEV
 from tests.api.js_source import strip_js_comments
 
@@ -597,8 +599,11 @@ def test_every_edited_asset_got_a_cache_bust() -> None:
         ("view-anomaly.js", 26),
         ("view-flow.js", 38),
         ("view-procedures.js", 26),
-        ("view-hero.js", 48),
         ("view-story.js", 39),
+        # PLAN-0103 Step 6 raised these three.
+        ("view-hero.js", 49),
+        ("auth.js", 34),
+        ("view-monitor.js", 41),
     ):
         match = re.search(rf"assets/{re.escape(name)}\?v=c(\d+)", index)
         assert match, f"{name} is not versioned in index.html"
@@ -606,3 +611,237 @@ def test_every_edited_asset_got_a_cache_bust() -> None:
             f"{name} is served at ?v=c{match.group(1)} but was edited at "
             f"c{minimum} — a stale cache-bust serves the pre-edit file"
         )
+
+
+def test_sd8_iii_narrative_copy_is_published_only() -> None:
+    """SD-8's ruled option (iii), asserted at the only level it HAS an oracle.
+
+    🔴 What is deliberately NOT asserted: the wording. The ruling's accepted cost
+    is "copy with no oracle" — no test can say the sentence is the right sentence,
+    and one that pinned a string it also defined would be vacuous by construction
+    while looking rigorous. Softening that cost by inventing an oracle would
+    quietly overturn what Cray accepted.
+
+    What IS assertable, and is: the copy is reachable on the published profile and
+    unreachable on dev. Read off the shipped source, so a call site deleted or
+    moved out from behind the profile guard reddens this.
+    """
+    src = strip_js_comments((_ASSETS / "view-hero.js").read_text(encoding="utf-8"))
+    assert "renderApproveBeatNote" in src, "the SD-8 (iii) copy has no producer"
+    assert "if (O.isPublished()) container.appendChild(renderApproveBeatNote());" in src, (
+        "the copy must render on the PUBLISHED profile and only there — an "
+        "unguarded call would put it on the dev console too, and a guard on "
+        "anything but the profile would not be SD-8's answer"
+    )
+    assert "hero-approve-beat" in src, (
+        "the block needs a stable test id, or the browser check that it actually "
+        "paints has nothing to look for"
+    )
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0103 Step 6 — the published persona picker.
+#
+# The picker hands RAW credentials to a browser (Cray, typed s224, credential
+# option (a)), so every assertion below is about a boundary rather than a
+# nicety: which profile may emit them, which person_ids may be offered, and
+# whether the name on screen is the one the audit trail will record.
+# --------------------------------------------------------------------------- #
+
+_RAW_TOM = "test-raw-tom"
+_RAW_WIRAT = "test-raw-wirat"
+_DIG_TOM = hashlib.sha256(_RAW_TOM.encode()).hexdigest()
+_DIG_WIRAT = hashlib.sha256(_RAW_WIRAT.encode()).hexdigest()
+_AUTH_JS = _ASSETS / "auth.js"
+_MONITOR_JS = _ASSETS / "view-monitor.js"
+
+
+def test_personas_configured_without_api_keys_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A picker with no digests behind it offers three logins that all 401.
+
+    Caught at boot rather than at the first click, because the click happens in
+    a visitor's browser on the one system whose whole story is the approve beat.
+    """
+    monkeypatch.setenv("UI_DEMO_PERSONA_KEYS", f'{{"req-mechanic-tom": "{_RAW_TOM}"}}')
+    monkeypatch.setenv("API_KEYS", "{}")
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_a_persona_key_absent_from_api_keys_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The raw key and its digest are typed in from two places; they can drift."""
+    monkeypatch.setenv("UI_DEMO_PERSONA_KEYS", f'{{"req-mechanic-tom": "{_RAW_TOM}"}}')
+    monkeypatch.setenv("API_KEYS", f'{{"{_DIG_WIRAT}": "appr-fleet-manager-wirat"}}')
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_a_crossed_persona_pair_fails_the_process(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The failure mode nothing downstream would look wrong for.
+
+    A crossed pair logs in successfully. The card says one persona, the audit
+    trail records the other, and the on-screen disclosure — "recorded under this
+    name" — becomes false while every surface still looks healthy. That is worse
+    than a missing pair, which merely refuses.
+    """
+    monkeypatch.setenv("UI_DEMO_PERSONA_KEYS", f'{{"req-mechanic-tom": "{_RAW_WIRAT}"}}')
+    monkeypatch.setenv("API_KEYS", f'{{"{_DIG_WIRAT}": "appr-fleet-manager-wirat"}}')
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+def test_a_correctly_paired_persona_boots(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The positive control for the three refusals above.
+
+    Without it, all three would also pass in a world where ``Settings()`` raised
+    for some unrelated reason — an absence oracle needs a matching presence one
+    (Lesson #0040).
+    """
+    monkeypatch.setenv("UI_DEMO_PERSONA_KEYS", f'{{"req-mechanic-tom": "{_RAW_TOM}"}}')
+    monkeypatch.setenv("API_KEYS", f'{{"{_DIG_TOM}": "req-mechanic-tom"}}')
+    assert Settings().ui_demo_persona_keys == {"req-mechanic-tom": _RAW_TOM}
+
+
+def test_an_unauthored_persona_is_refused_at_boot() -> None:
+    """The picker may only offer principals the vertical actually authors.
+
+    Resolved through the same ``_principal_index`` ``get_current_principal``
+    uses, so a card cannot exist for a persona auth would 403. Asserting the
+    refusal here is what keeps that reuse from being quietly replaced by a
+    second, more permissive lookup.
+    """
+    with pytest.raises(DemoPersonaError):
+        resolve_demo_personas("fleet_maintenance", {"appr-nobody": _RAW_TOM})
+
+
+def test_personas_on_a_vertical_that_authors_none_is_refused() -> None:
+    """energy ships no principals, so a picker there would offer nobody."""
+    with pytest.raises(DemoPersonaError):
+        resolve_demo_personas("energy", {"req-mechanic-tom": _RAW_TOM})
+
+
+def test_no_personas_configured_resolves_empty_rather_than_raising() -> None:
+    """OFF is the correct posture for every system but fleet, not an error."""
+    assert resolve_demo_personas("energy", {}) == []
+
+
+def test_the_offer_set_is_in_authored_order_not_env_order() -> None:
+    """The three cards ARE the authority ladder, so their order carries meaning.
+
+    Deliberately fed in shuffled: an operator re-ordering a JSON object in a
+    deployment file must not re-order the ladder a visitor reads.
+    """
+    personas = resolve_demo_personas(
+        "fleet_maintenance",
+        {"appr-owner": "k3", "req-mechanic-tom": "k1", "appr-fleet-manager-wirat": "k2"},
+    )
+    assert [p.person_id for p in personas] == [
+        "req-mechanic-tom",
+        "appr-fleet-manager-wirat",
+        "appr-owner",
+    ]
+
+
+def test_the_persona_name_is_the_authored_name_never_the_config_key() -> None:
+    """The card's label is projected from procedures.yaml, not from the env.
+
+    So the name on the card cannot drift from the name the SoD ladder enforces —
+    they are the same string, read once.
+    """
+    personas = resolve_demo_personas("fleet_maintenance", {"appr-owner": "k"})
+    assert personas[0].name == "เฮีย — เจ้าของกิจการ"
+    assert personas[0].roles == sorted(
+        personas[0].roles
+    ), "roles must be sorted for a stable wire shape"
+
+
+@pytest.mark.anyio
+async def test_the_dev_profile_emits_no_personas(
+    monkeypatch: pytest.MonkeyPatch, client: AsyncClient
+) -> None:
+    """Direction one of two: raw credentials never leave a dev process.
+
+    The picker's own gate in ``view-monitor.js`` is ``O.isPublished() &&
+    demoPersonas().length`` — two independent reasons it cannot render here, and
+    this asserts the SERVER-side one so the browser is never the only thing
+    standing between a dev box and a credential in a response body.
+    """
+    monkeypatch.setattr(settings, "ui_profile", "dev")
+    monkeypatch.setattr(settings, "ui_demo_persona_keys", {"appr-owner": "k"})
+    body = (await client.get("/meta")).json()
+    assert body["ui_demo_personas"] == []
+
+
+@pytest.mark.anyio
+async def test_the_published_profile_emits_the_configured_personas(
+    monkeypatch: pytest.MonkeyPatch, client: AsyncClient
+) -> None:
+    """Direction two: the same configuration DOES reach a published response.
+
+    Without this the emptiness above would also pass in the world where the
+    field was never wired to anything at all.
+    """
+    monkeypatch.setattr(settings, "ui_profile", "published")
+    monkeypatch.setattr(settings, "oct_vertical", "fleet_maintenance")
+    monkeypatch.setattr(settings, "ui_demo_persona_keys", {"appr-owner": "k-owner"})
+    body = (await client.get("/meta")).json()
+    assert [p["person_id"] for p in body["ui_demo_personas"]] == ["appr-owner"]
+    assert body["ui_demo_personas"][0]["key"] == "k-owner", (
+        "the raw key must reach the browser — that is the ruled credential path, "
+        "and a picker without it would offer a card that cannot log in"
+    )
+
+
+def test_the_stored_identity_prefers_the_server_over_anything_typed() -> None:
+    """The display-honesty fix, asserted over the shipped source.
+
+    Before Step 6 ``auth.js`` stored the operator's TYPED identity while
+    ``/whoami`` was already returning the authored ``Person.name`` for the key it
+    resolved. On a public surface that gap let a visitor's own words render
+    beside a governed decision. The ordering below is the fix: ``served`` first,
+    the typed value only as the auth-disabled fallback.
+    """
+    src = strip_js_comments(_AUTH_JS.read_text(encoding="utf-8"))
+    assert (
+        "served.display_name || served.person_id" in src
+    ), "auth.js must resolve the identity from /whoami's answer"
+    resolved_at = src.index("const resolved =")
+    fallback_at = src.index("(ident || '').trim()")
+    assert resolved_at < fallback_at, (
+        "the typed value must be the FALLBACK, not the preference — if it is "
+        "read first the server's answer can never win"
+    )
+
+
+def test_the_disclosure_is_gated_on_the_server_having_resolved_the_name() -> None:
+    """SD-4(b)'s promise is only true when the server said the name.
+
+    On an auth-disabled dev box the identity is whatever was typed, so claiming
+    it is the audited one would be the same dishonesty this Step removes,
+    pointing the other way.
+    """
+    src = strip_js_comments(_MONITOR_JS.read_text(encoding="utf-8"))
+    assert "O.Auth.serverResolved && O.Auth.serverResolved()" in src
+    assert "operate-disclosure" in src
+
+
+def test_the_picker_replaces_the_key_form_rather_than_joining_it() -> None:
+    """Asking a public visitor for a key they do not have is the dead control.
+
+    The branch must RETURN, so the raw key + free-text identity inputs cannot
+    render underneath the cards.
+    """
+    src = strip_js_comments(_MONITOR_JS.read_text(encoding="utf-8"))
+    gate = src.index("if (O.isPublished() && demoPersonas().length)")
+    key_input = src.index("'operate-key'")
+    assert gate < key_input, "the picker branch must precede the key form"
+    assert "return bar;" in src[gate:key_input], (
+        "the published branch must return — otherwise the key form renders below "
+        "the cards, which is the dead-control shape SD-3 called worse than absence"
+    )

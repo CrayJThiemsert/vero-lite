@@ -13,6 +13,7 @@ from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
 from services.api.config import settings
+from services.api.demo_personas import resolve_demo_personas
 from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
@@ -367,6 +368,27 @@ def _absorb_boot_load_failure(
     )
 
 
+def _validate_demo_personas(vertical: str) -> None:
+    """Refuse to boot on a persona picker the active vertical cannot honour.
+
+    PLAN-0103 Step 6. A FUNCTION rather than an inline block because ``lifespan``
+    sits exactly at the C901 ceiling — the same reason the other per-vertical
+    checks live outside it. It also takes no branch of its own here: the
+    empty-config case is handled by the resolver, so the call site is one
+    unconditional line.
+
+    The complementary half — that each raw key digests to the API_KEYS entry
+    naming the SAME person_id — is a settings validator, because both values are
+    settings and the check needs no vertical. This half needs the vertical's
+    authored principals, so it happens here, where they are loadable.
+
+    Deliberately BEFORE the adapter warm below: a deployment that will serve a
+    broken picker should stop before it does any work, and the operator should
+    read why in their terminal rather than in a visitor's failed login.
+    """
+    resolve_demo_personas(vertical, settings.ui_demo_persona_keys)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Auto-discover + register all verticals at startup (import-scan over
@@ -382,6 +404,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
             f"OCT_VERTICAL={vertical!r} is not a discovered vertical; "
             f"known: {', '.join(known) or '(none)'}"
         )
+    _validate_demo_personas(vertical)
     # PLAN-0015 D1: warm the per-process live OperationalEvent view so the
     # real-time anchor base = server start (the breach is anchored to "now").
     # Reads raw object dicts only (no LLM call), so it is safe even when MS-S1 is

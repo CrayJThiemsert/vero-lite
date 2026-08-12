@@ -421,21 +421,93 @@
     wrap.appendChild(steps);
   }
 
+  /* ---- the published persona picker (PLAN-0103 Step 6) --------------------------
+     SD-4 ruled (b) — a published-profile-only picker over the vertical's AUTHORED
+     principals; layout RULED option A (Cray, typed s224): three cards, so the
+     authority ladder is visible BEFORE the click rather than hidden inside a
+     dropdown. The ladder IS the demo's point on this system.
+
+     The offer set arrives on /meta (`ui_demo_personas`), which the server stamps
+     on the published profile only and resolves through the same
+     `_principal_index` auth uses — so a card cannot exist for a persona auth
+     would refuse. The raw key riding in that payload is the ruled credential
+     path (option (a)) and is safe only because these are synthetic demo
+     principals; `Settings.ui_demo_persona_keys` carries the full statement. ---- */
+  function demoPersonas() {
+    const meta = O.State && O.State.meta;
+    const list = meta && meta.ui_demo_personas;
+    return Array.isArray(list) ? list : [];
+  }
+
+  function personaPicker(err, onPicked) {
+    const wrap = h('div', { class: 'mon-personas', 'data-testid': 'operate-personas' });
+    wrap.appendChild(h('div', { class: 'mon-persona-lead faint' },
+      'เลือกบทบาทเพื่อดำเนินการ · Choose a role to act as'));
+    const grid = h('div', { class: 'mon-persona-grid' });
+    demoPersonas().forEach(p => {
+      const card = h('button', {
+        class: 'mon-persona', type: 'button',
+        'data-testid': 'operate-persona-' + p.person_id,
+        onClick: async () => {
+          // No identity argument: auth.js takes the name from /whoami, so what
+          // the card says and what the trail records cannot diverge.
+          try { await O.Auth.login(p.key, ''); onPicked(); }
+          catch (e) { err.textContent = String(e.message || e); }
+        }
+      });
+      card.appendChild(h('span', { class: 'mon-persona-name' }, p.name));
+      card.appendChild(h('span', { class: 'mon-persona-id mono faint' }, p.person_id));
+      card.appendChild(h('span', { class: 'mon-persona-roles faint' }, (p.roles || []).join(' · ')));
+      grid.appendChild(card);
+    });
+    wrap.appendChild(grid);
+    return wrap;
+  }
+
   /* ---- operate auth bar (PLAN-0054 Step 3, SD-A): login form <-> logged-in banner ---- */
   function authBar() {
     const bar = h('div', { class: 'mon-authbar', 'data-testid': 'operate-auth' });
     if (O.Auth && O.Auth.isLoggedIn()) {
-      bar.appendChild(h('span', { class: 'mon-auth-who', 'data-testid': 'operate-who' }, [
-        icon('check', { width: 14, height: 14 }), 'Operating as ', h('b', null, O.Auth.identity())
-      ]));
+      const who = h('span', { class: 'mon-auth-who', 'data-testid': 'operate-who' }, [
+        icon('check', { width: 14, height: 14 }),
+        'กำลังทำงานในนาม · Operating as ', h('b', null, O.Auth.identity())
+      ]);
+      const pid = O.Auth.personId && O.Auth.personId();
+      if (pid) {
+        who.appendChild(h('span', { class: 'mon-auth-pid mono faint',
+          'data-testid': 'operate-person-id' }, pid));
+      }
+      bar.appendChild(who);
       bar.appendChild(h('button', {
         class: 'btn sm ghost', 'data-testid': 'operate-logout',
         onClick: () => { O.Auth.logout(); state.decisions = {}; state.operateMsg = null; afterAuth(); }
       }, 'Log out'));
+      // SD-4(b)'s bilingual disclosure. Shown ONLY when the server resolved the
+      // identity: on an auth-disabled dev box the name is just what someone
+      // typed, and promising it is the audited one would be the same dishonesty
+      // this Step exists to remove, pointing the other way.
+      if (O.Auth.serverResolved && O.Auth.serverResolved()) {
+        bar.appendChild(h('div', { class: 'mon-auth-disclosure faint',
+          'data-testid': 'operate-disclosure' },
+          'ทุกการตัดสินใจถูกบันทึกในสมุดตรวจสอบภายใต้ชื่อนี้ · '
+          + 'Every decision is recorded in the audit trail under this name.'));
+      }
       return bar;
     }
     if (!O.Auth) {
       bar.appendChild(h('span', { class: 'faint' }, 'Operate unavailable — auth module not loaded.'));
+      return bar;
+    }
+    // The picker REPLACES the key+identity form rather than sitting beside it:
+    // asking a public visitor for a key they do not have, next to cards that log
+    // them in, is the dead control SD-3 called "worse than absence". The form
+    // survives untouched on every surface the picker does not cover — the dev
+    // console, and any published system with no personas provisioned.
+    if (O.isPublished() && demoPersonas().length) {
+      const perr = h('span', { class: 'mon-auth-err', role: 'status', 'aria-live': 'polite',
+        'data-testid': 'operate-login-err' });
+      bar.appendChild(personaPicker(perr, () => afterAuth()));
+      bar.appendChild(perr);
       return bar;
     }
     const keyIn = h('input', {
@@ -618,6 +690,21 @@
   padding: 5px 8px; color: var(--tx-0); font: inherit; font-size: 12.5px; min-width: 150px; }
 .mon-auth-in:focus { outline: none; border-color: var(--accent-line); }
 .mon-auth-err { color: var(--crit); font-size: 11.5px; }
+.mon-auth-pid { font-size: 11px; margin-left: 6px; }
+.mon-auth-disclosure { flex-basis: 100%; font-size: 11.5px; line-height: 1.5;
+  border-top: 1px solid var(--line); padding-top: 7px; margin-top: 2px; }
+.mon-personas { flex-basis: 100%; }
+.mon-persona-lead { font-size: 12px; margin-bottom: 8px; }
+.mon-persona-grid { display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+.mon-persona { display: flex; flex-direction: column; gap: 2px; text-align: left;
+  background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md);
+  padding: 9px 11px; color: var(--tx-0); font: inherit; cursor: pointer; }
+.mon-persona:hover { border-color: var(--accent-line); }
+.mon-persona:focus-visible { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+.mon-persona-name { font-size: 13.5px; font-weight: 600; }
+.mon-persona-id { font-size: 11px; }
+.mon-persona-roles { font-size: 11px; }
 .mon-detail-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
   padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--line); }
 .mon-detail-actor { margin-left: auto; }

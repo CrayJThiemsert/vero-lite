@@ -139,6 +139,28 @@ class LinkTypeMeta(BaseModel):
     )
 
 
+class DemoPersonaMeta(BaseModel):
+    """One selectable persona on the published profile's persona picker.
+
+    PLAN-0103 Step 6. A DEPLOYMENT fact like ``ui_profile`` below it, not an
+    ontology one — ``name`` and ``roles`` are projected from the vertical's
+    AUTHORED principals (``procedures.yaml``) so the card cannot drift from the
+    ladder the engine actually enforces, while ``key`` comes from the
+    deployment's own env.
+
+    🔴 ``key`` is a RAW credential and it leaves the process. That is the ruled
+    design (Cray, typed s224, credential option (a)) and is safe ONLY for the
+    synthetic demo principals this picker exists to offer — see
+    ``Settings.ui_demo_persona_keys``, which carries the full statement of what
+    is being accepted. The route emits this list on the published profile only.
+    """
+
+    person_id: str
+    name: str
+    roles: list[str]
+    key: str
+
+
 class OntologyMeta(BaseModel):
     """The UI-facing projection of a vertical's ontology."""
 
@@ -174,6 +196,24 @@ class OntologyMeta(BaseModel):
         description=(
             "Ordered view keys the published profile renders; first key is the "
             "default landing tab. Empty until the route stamps the configured value"
+        ),
+    )
+    # PLAN-0103 Step 6 — the persona picker's offer set.
+    #
+    # UNLIKE the two fields above, this one is stamped on the PUBLISHED profile
+    # ONLY, and the asymmetry is deliberate rather than an oversight of the
+    # "carried on every profile so it is assertable" rationale. Those carry a
+    # view-set string; this carries raw credentials. A dev process has no reason
+    # to hand them out and every reason not to, so the narrower surface wins over
+    # the uniform one — and the both-directions test asserts the emptiness on dev
+    # rather than taking it on trust.
+    ui_demo_personas: list[DemoPersonaMeta] = Field(
+        default_factory=list,
+        description=(
+            "Selectable demo personas for the published persona picker, projected "
+            "from the vertical's authored principals. Empty on the dev profile and "
+            "on any published system with no personas provisioned (procurement "
+            "takes none by ruling; energy stays keyless)"
         ),
     )
 
