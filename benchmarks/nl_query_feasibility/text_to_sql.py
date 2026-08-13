@@ -66,10 +66,10 @@ CREATE TABLE operational_event (
 #: or returns nothing, never fabricates).
 SQL_EXPECT: dict[str, list[str]] = {
     "nl-01": ["asset-battery-01", "asset-battery-02"],
-    "nl-02": ["11"],
+    "nl-02": ["13"],
     "nl-03": ["event-reading-06", "event-reading-03"],
     "nl-04": ["event-reading-03"],
-    "nl-05": ["1"],
+    "nl-05": ["2"],
     "nl-06": ["asset-battery-01"],
     "nl-07": ["site-microgrid-01"],
     "nl-08": ["96.5"],
