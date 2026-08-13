@@ -200,12 +200,30 @@ class AggregateResult:
     ``value`` is the overall aggregate across every matched record; ``groups``
     carries a per-group breakdown when the query set ``group_by`` (its keys are
     relabelled to the referenced entity's title when ``group_by`` is a ref).
+
+    ``property`` is the measured property the number is computed OVER — and it
+    is ``None`` for exactly one operation, ``count`` (PLAN-0104 SD-1 (a),
+    RULED s226). A count is a **cardinality of records**, not a number computed
+    over a property: it has no property, no unit and no measured kind
+    (ADR-0021 — kind and unit attach to measures). The invariant *"property is
+    None iff operation == 'count'"* is enforced at construction, so a caller
+    that forgets it gets a loud error instead of a receipt that quietly names a
+    property the figure was never computed over. For a grouped count the
+    ``groups`` values are cardinalities rather than measures; they ride as
+    floats and render as integers (``_fmt_num`` prints ``5.0`` as ``"5"``).
     """
 
     operation: str
-    property: str
+    property: str | None = None
     value: float | None = None
     groups: dict[str, float] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if (self.operation == "count") != (self.property is None):
+            raise ValueError(
+                "AggregateResult invariant violated: property is None iff operation "
+                f"== 'count' (got operation={self.operation!r}, property={self.property!r})"
+            )
 
 
 PHRASED_BY_DETERMINISTIC = "deterministic"
@@ -246,7 +264,9 @@ class NlAnswer:
     ``grounded`` is True iff the answer is backed by at least one source
     object. ``query`` is ``None`` only when translation itself failed.
     ``aggregate`` carries the deterministically-computed aggregate when the
-    query's operation was max/min/avg/sum.
+    query's operation was max/min/avg/sum, or when it was a ``count`` WITH
+    ``group_by`` (PLAN-0104 — the per-group cardinalities). An ungrouped count
+    carries no aggregate: its figure is ``result_count``.
     """
 
     question: str
@@ -516,6 +536,44 @@ def _validate_query(query: StructuredQuery, type_index: dict[str, ObjectTypeMeta
     return errors
 
 
+def _validate_operation_intent(query: StructuredQuery) -> list[str]:
+    """Reject an operation paired with aggregate intent it cannot carry.
+
+    Split out of :func:`_validate_extras` by PLAN-0104 Step 3, which turned one
+    rule into two. The single rule these replace rejected aggregate_property AND
+    group_by on any non-aggregate operation, for a reason its own comment stated:
+    the deterministic aggregate was computed ONLY for max/min/avg/sum, so a
+    'list'/'count' op would silently drop the grouping.
+
+    PLAN-0104 discharges exactly one half of that gap — ``count`` + ``group_by``
+    is now EXECUTED (:func:`_compute_group_count`), so continuing to refuse it
+    would refuse a question the engine answers deterministically. The other three
+    combinations stay rejected for the ORIGINAL, undischarged reason: each still
+    names an aggregate nothing would ever compute. That is the nl-08 / nl-11
+    translate gap — a superlative "which X is most Y?" emitted operation 'list'
+    with aggregate_property + group_by set, so no aggregate was ever computed
+    (AC-8 re-verify, 2026-06-15).
+
+    Every message names the valid correction, because these errors are fed back
+    into the translate retry loop: a rejection the model cannot act on is a
+    refusal, not feedback.
+    """
+    errors: list[str] = []
+    if query.aggregate_property and query.operation not in _AGGREGATE_OPS:
+        errors.append(
+            f"operation '{query.operation}' must not set aggregate_property; aggregating a "
+            "numeric property requires operation 'max'/'min'/'avg'/'sum' (use 'max' for a "
+            "highest/most question, 'min' for lowest/least, 'avg' for average, 'sum' for total)"
+        )
+    if query.group_by and query.operation not in _AGGREGATE_OPS and query.operation != "count":
+        errors.append(
+            f"operation '{query.operation}' must not set group_by; use 'count' with group_by "
+            "for a 'how many per <thing>' question, or 'max'/'min'/'avg'/'sum' together with "
+            "aggregate_property for a numeric per-group aggregate"
+        )
+    return errors
+
+
 def _validate_extras(
     query: StructuredQuery,
     type_index: dict[str, ObjectTypeMeta],
@@ -524,29 +582,7 @@ def _validate_extras(
     props_list: str,
 ) -> list[str]:
     """Validate aggregate / group_by / resolve coherence (split from _validate_query)."""
-    errors: list[str] = []
-
-    # Aggregate-intent (aggregate_property or group_by) with a non-aggregate
-    # operation is incoherent: the deterministic aggregate is computed ONLY for
-    # max/min/avg/sum, so a 'list'/'count' op silently drops it. Reject so the
-    # validate-and-retry loop nudges the model to an aggregate op. This is the
-    # nl-08 / nl-11 translate gap — a superlative "which X is most Y?" emitted
-    # operation 'list' with aggregate_property + group_by set, so no aggregate
-    # was ever computed (AC-8 re-verify, 2026-06-15).
-    if query.operation not in _AGGREGATE_OPS and (query.aggregate_property or query.group_by):
-        intent = " and ".join(
-            field
-            for field, is_set in (
-                ("aggregate_property", query.aggregate_property),
-                ("group_by", query.group_by),
-            )
-            if is_set
-        )
-        errors.append(
-            f"operation '{query.operation}' must not set {intent}; aggregating a numeric "
-            "property requires operation 'max'/'min'/'avg'/'sum' (use 'max' for a "
-            "highest/most question, 'min' for lowest/least, 'avg' for average, 'sum' for total)"
-        )
+    errors: list[str] = _validate_operation_intent(query)
 
     if query.operation in _AGGREGATE_OPS:
         if not query.aggregate_property:
@@ -810,6 +846,31 @@ def _compute_aggregate(
     return AggregateResult(operation=op, property=prop, value=overall, groups=groups)
 
 
+def _compute_group_count(query: StructuredQuery, matched: list[dict[str, Any]]) -> AggregateResult:
+    """Compute a deterministic per-group cardinality for a ``count`` + ``group_by`` query.
+
+    PLAN-0104 Step 2. Unlike :func:`_compute_aggregate` this never returns None:
+    a count over a non-empty matched set is always answerable (the orchestrator
+    has already short-circuited the empty case), and there is no numeric property
+    that could be missing.
+
+    A record whose group key is ``None`` counts toward ``value`` but joins no
+    group — the same convention :func:`_collect_numeric` already applies, stated
+    here so it is a decision rather than an accident. The consequence is
+    deliberate and visible: ``sum(groups.values()) <= value``, and the shortfall
+    is exactly the number of records that carry no value for ``group_by``.
+    """
+    groups: dict[str, float] = {}
+    if query.group_by:
+        for obj in matched:
+            key = obj.get(query.group_by)
+            if key is not None:
+                groups[str(key)] = groups.get(str(key), 0.0) + 1.0
+    return AggregateResult(
+        operation="count", property=None, value=float(len(matched)), groups=groups
+    )
+
+
 async def _relabel_groups(
     aggregate: AggregateResult,
     query: StructuredQuery,
@@ -1050,8 +1111,30 @@ def _fmt_num(value: float | None) -> str:
 _AGG_LABEL = {"max": "highest", "min": "lowest", "avg": "average", "sum": "total"}
 
 
+def _phrase_group_count(query: StructuredQuery, aggregate: AggregateResult) -> str:
+    """Phrase a counted cardinality — the one aggregate with no property to name.
+
+    ``_AGG_LABEL`` is deliberately NOT extended with a ``count`` entry (PLAN-0104
+    Step 2 left the choice to execution). Every label there is an adjective
+    qualifying a property — "the highest measured_value" — and a count has no
+    property for one to qualify, so borrowing the shape would emit "the count
+    measured_value is 5". The count sentence is a different sentence, so it gets
+    its own branch instead of a label.
+    """
+    total = _fmt_num(aggregate.value)
+    if not aggregate.groups:
+        return f"{total} {query.object_type} record(s) match that query."
+    parts = ", ".join(f"{key} = {_fmt_num(val)}" for key, val in aggregate.groups.items())
+    return (
+        f"{total} {query.object_type} record(s) match that query — "
+        f"per {query.group_by}: {parts}."
+    )
+
+
 def _phrase_aggregate(query: StructuredQuery, aggregate: AggregateResult) -> str:
     """Deterministic phrasing of a computed aggregate (the grounded receipt)."""
+    if aggregate.operation == "count":
+        return _phrase_group_count(query, aggregate)
     label = _AGG_LABEL.get(aggregate.operation, aggregate.operation)
     prop = aggregate.property
     if aggregate.groups:
@@ -1300,6 +1383,14 @@ async def answer_question(  # noqa: C901
         aggregate = _compute_aggregate(query, matched)
         if aggregate is None:
             return _no_data_nlanswer(question, query)
+        aggregate = await _relabel_groups(aggregate, query, obj_meta, type_index, adapter)
+    elif query.operation == "count" and query.group_by:
+        # PLAN-0104: "how many X per Y?". The grouped count rides the SAME
+        # _relabel_groups call as a numeric aggregate, so a ref-keyed group
+        # (asset_id) surfaces as the entity's title rather than its id. An
+        # UNGROUPED count is deliberately not routed here — it keeps the flat
+        # _fallback_answer branch it has always had (AC-3).
+        aggregate = _compute_group_count(query, matched)
         aggregate = await _relabel_groups(aggregate, query, obj_meta, type_index, adapter)
 
     # `limit` bounds a LIST query's returned objects only (per the field's own

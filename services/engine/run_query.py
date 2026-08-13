@@ -103,9 +103,12 @@ def run_corpus_meta() -> dict[str, ObjectTypeMeta]:
 class RunQueryResult:
     """A deterministically-computed answer over the run corpus.
 
-    ``count`` is set for a count operation; ``aggregate`` for max/min/avg/sum.
-    ``matched`` is the number of runs behind the figure — 0 means the honest
-    no-matching-records path, never a fabricated zero-valued answer.
+    ``count`` is set for a count operation; ``aggregate`` for max/min/avg/sum,
+    and — since PLAN-0104 — also for a ``count`` WITH ``group_by``, where it
+    carries the per-group cardinalities (``count`` still carries the overall
+    total, so an ungrouped count is unchanged). ``matched`` is the number of runs
+    behind the figure — 0 means the honest no-matching-records path, never a
+    fabricated zero-valued answer.
     """
 
     matched: int = 0
@@ -161,21 +164,61 @@ def _keep(filters: list[QueryFilter], procedure_id: str, status: str) -> bool:
     return not (want_status is not None and want_status != status)
 
 
+def _count_result(total: int, groups: dict[str, float]) -> RunQueryResult:
+    """Wrap a counted total, carrying per-group cardinalities when grouped.
+
+    ``matched``/``count`` stay the OVERALL figure — a grouped count's receipt is
+    still the whole matched set — and ``aggregate`` is populated only when there
+    are groups, so an ungrouped count keeps byte-for-byte the shape and the
+    deterministic phrasing it has always had.
+    """
+    aggregate = (
+        AggregateResult(operation="count", property=None, value=float(total), groups=groups)
+        if groups
+        else None
+    )
+    return RunQueryResult(matched=total, count=total, aggregate=aggregate)
+
+
 async def _count(session: Any, query: StructuredQuery) -> RunQueryResult:
-    """Count runs, optionally grouped by the ISO-week bucket."""
+    """Count runs, grouped by the ISO-week / procedure / status bucket when asked.
+
+    PLAN-0104 Step 4 (SD-2 (a), RULED s226). Both rollups the substrate already
+    publishes are GROUPED — ``week_rollup`` per ISO week, ``run_status_rollup``
+    per procedure x status — so per-group figures need no new SQL and no O(runs)
+    shape. What this function used to do was fold those groups into one total and
+    return only that. Harmless while the shared validator refused
+    ``count`` + ``group_by``; the moment Step 3 admits the pair, the same fold
+    would answer "how many runs per week?" with a single number — a silently
+    WRONG answer replacing what was at least an honest refusal. AC-5 forbids any
+    commit where that is reachable, which is why Steps 2-4 land as one PR.
+    """
     if query.group_by == "started_week" or _wanted(query.filters, "started_week") is not None:
         weeks = await run_analytics.week_rollup(session)
         wanted = _wanted(query.filters, "started_week")
         week_rows = [w for w in weeks if wanted is None or w.period == wanted]
-        week_total = sum(w.run_count for w in week_rows)
-        return RunQueryResult(matched=week_total, count=week_total)
+        # PRE-EXISTING GAP, deliberately not widened here: this branch applies the
+        # started_week filter only — a procedure_id/status filter alongside it is
+        # dropped, because week_rollup carries no such dimension. Reachable today
+        # via a started_week FILTER, so PLAN-0104 neither introduces nor fixes it;
+        # surfaced to Cray rather than repaired silently (out of this PLAN's scope).
+        week_groups: dict[str, float] = (
+            {w.period: float(w.run_count) for w in week_rows}
+            if query.group_by == "started_week"
+            else {}
+        )
+        return _count_result(sum(w.run_count for w in week_rows), week_groups)
     status_rows = [
         r
         for r in await run_analytics.run_status_rollup(session)
         if _keep(query.filters, r.procedure_id, r.status)
     ]
-    total = sum(r.run_count for r in status_rows)
-    return RunQueryResult(matched=total, count=total)
+    status_groups: dict[str, float] = {}
+    if query.group_by in ("procedure_id", "status"):
+        for row in status_rows:
+            key = row.procedure_id if query.group_by == "procedure_id" else row.status
+            status_groups[key] = status_groups.get(key, 0.0) + float(row.run_count)
+    return _count_result(sum(r.run_count for r in status_rows), status_groups)
 
 
 async def _aggregate_duration(session: Any, query: StructuredQuery) -> RunQueryResult:
