@@ -2607,3 +2607,100 @@ Rotated out when session 225's block entered the R2 four-session window (225, 22
 > rather than folded silently into the total. **Step 9 is MEASURED; AC-10 is NOT
 > closed** — its first clause is discharged, its second (every bring-up carries
 > its own explicit §8 go) stands.
+
+## Rotated this reconcile — session 226 (2026-08-13)
+
+_Current Focus blocks for sessions 222 and 222-cont., rotated out of `docs/STATUS.md`
+by the s226 reconcile (R2 window). Extracted byte-exact from `git show HEAD:docs/STATUS.md`._
+
+> **Session 222 cont., 2026-08-11 (head_commit `3a11e87` → `bd43d67`) — five
+> PRs merged (#1127–#1131) after the #1126 reconcile, 0 open. The block below
+> was written by #1126 and stops at #1125; this one carries the rest. Theme:
+> PLAN-0103 Step 10 EXECUTED — procurement is live as published system #2 —
+> and three corrections that each REFUTED a claim rather than filling a gap.**
+>
+> ✅ **AC-8 and AC-9 are TICKED (#1127)**, PLAN-0103 **Step 1 recorded**, and
+> **ADR-0037 D2.7 DISCHARGED**. 🔴 **F4's stated premise was corrected BY
+> MEASUREMENT** — refuted, not merely filled in — and **ADR-0035 OQ-4's dead
+> trigger retired**.
+>
+> 🔴 **ADR-0036's claim that the apex domain "appears nowhere in this repo"
+> was FALSE (#1128), and #1129 moved that correction INLINE** so a reader who
+> stops at the false clause is stopped **by** it. ⚠️ **ADR-0035 OQ-6 is
+> SURFACED and OPEN:** does D1(3)'s broad documentary clause govern **evidence
+> documents**? Three options stated neutrally, **none recommended** — Cray's
+> call. **RULED (Cray, typed): correct the ADR, do NOT edit the archived
+> PLAN.**
+>
+> ✅ **Step 10 EXECUTED — procurement is LIVE as published system #2
+> (#1130)**, under a typed §8 go, with 5 runbook corrections riding along.
+> Execution record:
+> `docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md`. 🔴 Its first
+> head **failed CI on the AC-5 shadow-registry guard — on a docs-only PR**,
+> the guard firing on exactly the class of file nobody expects to trip it.
+> **RULED (Cray, typed): keep `API_KEYS` on procurement** despite it having no
+> consumer, so it is ready if Step 6 admits `/whoami`.
+>
+> ✅ **s222's four unhomed findings are REHOMED (#1131)** — a new **Lesson
+> #0040**, a **session-222 addendum to Lesson #0029**, and two runbook
+> entries.
+
+> **Session 222, 2026-08-11 (head_commit `e938cf6` → `3a11e87`) — five PRs
+> merged, 0 open, across two sessions: #1121/#1122/#1123 are session 221's tail
+> (STATUS stopped at `d71b2ed`, written mid-session) and #1124/#1125 are s222's.
+> Theme: PLAN-0103's two open ACs both close in substance, and ADR-0037 D2.7
+> stops being a code read and becomes a measurement.**
+>
+> ✅ **AC-8 clause 2 CLOSES (#1124).**
+> `tests/api/test_visitor_case_to_monitor_scenario.py` (3 tests) drives a Tab-I
+> case into `GET /runs`, the read Tab H actually makes. ⚠️ Step 7's seed (#1122)
+> makes H non-empty *before any visitor arrives*, so a presence check would pass
+> **with the case removed entirely** — every assertion is a **delta** against a
+> post-seed baseline, tied to the visitor's own `case_id`.
+>
+> ✅ **ADR-0037 D2.7 MEASURED, not read** — s221 read 2 of 14 `append_audit`
+> sites; #1124 asserts over **every `audit_log` row the run produces**, on both
+> the ordinary and the waiver→ratify paths. **Result: no visitor-typed case text
+> in the chain; `case_id` recoverable.** Two oracles (a positively-controlled
+> bracketing sentinel; a structural payload-key allowlist) and why each: the
+> module docstring, not a restatement. ⚠️ **One finding D4 must price:**
+> `WaiverInvocation.justification` and the ratification `note` **are** human free
+> text in the hash-chained log **by design** — a named internal principal's, not
+> the visitor's, so possibly its own RoPA line.
+>
+> 🔴 **#1125 retracted a false claim in #1124's own comment** — that a
+> **middle-slice** leak (dropping both bracketed ends, keeping the Thai between)
+> "is no longer a leak of the visitor's text". False: it lands in an
+> already-allowed key, invisible to **both** oracles. **RULED (Cray, typed,
+> s222): that residual risk is ACCEPTED**; **revisit if an audit payload gains a
+> field that legitimately holds a SLICE of operator-entered text.**
+>
+> ✅ **Session 221's tail, unrecorded until now.** **#1121 delivered Step 8b**,
+> the portal-side assembly request — gitignored handoff + tracked summary
+> `docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md`; with Step
+> 8a's card files in place, **AC-9's evidence is complete**. ⚠️ It is **parked,
+> not sent**, and **the landing page itself has been built by nobody**. **#1122
+> shipped Step 7** (`operate_seed.py` + `main.py` wiring + tests), discharging
+> the s221 no-op hazard — the seed gate now branches on `fleet_maintenance`; it
+> did **not** close AC-8. **#1123** made `render-handoff` report live goal state.
+>
+> 🔴 **Cray rulings this record exists to carry.** (1) **No portal REPO will be
+> created** — PLAN-0103 **Step 1's** answer, unrecorded through three sessions.
+> ⚠️ In full, because the shorthand has been misread once as "no portal": the
+> portal/landing surface **still exists**, with DNS, Access policies and the
+> landing surface configured in the **Cloudflare dashboard**, each system on its
+> own `oct-<vertical-id>` subdomain label. **ADR-0036 D2's two-artifact price
+> per system is unchanged** — dashboard config rather than repo files. (2) **Step
+> 7 before Step 6**, with **SD-8 ruled before Step 6 is built**; Step 7 shipped,
+> so the live half is SD-8. (3) D2.7's residual risk **ACCEPTED**, above.
+>
+> ⚠️ **What this does NOT close.** **AC-8 and AC-9 are closed in SUBSTANCE; the
+> PLAN's checkboxes are NOT ticked** — the tick is owed to a `plan-drafter`
+> dispatch. _[Corrected s225, `was an error`: this read "Code cannot write
+> `docs/plans/` (G2)". **G2 does not gate an existing PLAN** — it fires only on
+> a numbered artifact that does not yet exist. The routing rule is the ADR-009
+> D1 convention; the full correction is in the PLAN-0103 Active TODO.]_
+> **ADR-0037 D4 is UNBLOCKED, not
+> decided.** **SD-8 is still NOT RULED** and gates Step 6. Two live obligations
+> stand unchanged: **AC-11's RoPA** (Cray's, as controller, before fleet's
+> bring-up) and **a typed §8 go per bring-up** (AC-10 clause 2).
