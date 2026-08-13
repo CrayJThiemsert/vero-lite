@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-13T13:01:21+07:00
-session: 226
-current_batch: "s226 — PLAN-0104 DRAFTED (#1143), its three SD slots RULED (#1144), Step 1 SHIPPED (#1145): two wrong gold tokens repaired and the vacuous guard that missed them rebuilt."
+last_updated: 2026-08-13T22:21:13+07:00
+session: 227
+current_batch: "s227 — PLAN-0104 Steps 2+3+4 SHIPPED as ONE PR (#1148, AC-5's hard merge dependency) and Steps 5+6 SHIPPED (#1149). Steps 1–6 are done; only the host-state Step 7 remains."
 current_actor: code
-blocked_on: "NOTHING blocks repo work. PLAN-0104 Steps 2–6 are offline and unblocked; Step 7 needs its OWN typed §8 go, asked at that step. PLAN-0103 AC-11's RoPA (Cray's) still gates fleet's bring-up."
-next_action: "PLAN-0104 Steps 2+3+4 as ONE PR — AC-5's hard merge dependency: no commit may exist where the count+group_by pair validates while _count still collapses. Then Steps 5–6, both offline."
-head_commit: fa8a61c
-recent_commits: [fa8a61c, 0b0de18, 0e5b67c, f95982c, 280e62c, efe6d1c, 337302e, d972caf, b229fcd, 8f68ee8]
+blocked_on: "NOTHING blocks repo work. PLAN-0104 Step 7 is the only remaining Step and needs its OWN typed §8 go, asked at that step BY NAME — none given. PLAN-0103 AC-11's RoPA (Cray's) still gates fleet's bring-up."
+next_action: "Cray's call — PLAN-0104 Step 7 needs a typed §8 go before any MS-S1 run; otherwise pick fresh work (one-pager v2 is design-ready and ranked #1)."
+head_commit: 75243b0
+recent_commits: [75243b0, fdf7143, 30bca83, 52bf712, 21a4359, 48d3c48, 305f7c5, be1585d, fa8a61c, 0b0de18]
 ---
 
 # vero-lite — Project Status
@@ -18,236 +18,57 @@ recent_commits: [fa8a61c, 0b0de18, 0e5b67c, f95982c, 280e62c, efe6d1c, 337302e, 
 
 ## Current Focus
 
-> **Session 226, 2026-08-13 (head_commit `b229fcd` → `fa8a61c`) — three PRs
-> merged (#1143–#1145), 0 open; the block below stops at `b229fcd` and could
-> not know about **#1142**, its own reconcile merge. Theme: PLAN-0104 exists
-> because the refusal it removes is enforced at THREE independent layers — and
-> drafting it surfaced a benchmark guard that could not fail.**
+> **Session 227, 2026-08-13 (head_commit `fa8a61c` → `75243b0`) — two PRs
+> merged (#1148, #1149), 0 open, and PLAN-0104 went from ONE shipped Step to
+> SIX. What is left in it is the one claim no fixture can settle.**
 >
-> ✅ **PLAN-0104 DRAFTED (#1143)** —
-> `docs/plans/0104-nl-query-count-with-group-by.md`, 480 lines, `Status:
-> Draft`. It executes **PLAN-0100 D-4, RULED s217 (Cray, typed): option (a),
-> teach the engine** — `count` **WITH** `group_by`. Authored by `plan-drafter`
-> from a Code dispatch; **reviewed by Code against a rubric fixed BEFORE the
-> draft was seen**.
+> ✅ **Steps 2+3+4 SHIPPED as ONE PR (#1148)** — the carrier, the validator
+> relaxation and the run-corpus execution, deliberately inseparable. **AC-5 is a
+> hard merge dependency, not a preference:** no commit may exist where
+> `count`+`group_by` validates while `run_query.py`'s `_count` still collapses
+> groups to a total — that intermediate state answers *"how many runs per week?"*
+> with a single **silently wrong** number, which is strictly worse than the
+> honest refusal it replaces. `AggregateResult.property` is now `str | None`
+> under a **construction-enforced** invariant (*None iff `count`*), so a
+> grounding receipt can never name a property the figure was not computed over.
 >
-> 🔴 **Why a PLAN and not a patch: the refusal has THREE independent
-> enforcers**, so no single edit changes observable behaviour — the **system
-> prompt** (`services/engine/nl_query.py:393`, verbatim *"never list/count"*),
-> the **validator** (`:536-549`), and the result carrier **`AggregateResult`**
-> (`:195-208` — `property: str` required, group values are measures). That is
-> why the long-circulating *"≈ one PR + tests"* estimate was wrong.
+> ✅ **Steps 5+6 SHIPPED (#1149)** — gold case **nl-13** (`group-count`;
+> per-asset **5/3/3/2 = 13**, hand-verified against `synthetic.py`), a
+> **tolerance-free exact** `groups` scorer, and the prompt's blanket *"never
+> list/count"* rule inverted. Gates: **4045 passed / 8 skipped** (4028 at s226
+> close), `mypy --strict services/` clean over 134 files, ruff + format clean
+> **judged on the HEAD tree**, not the working dir.
 >
-> ✅ **All three SD slots RULED s226 (Cray, typed) (#1144).** **SD-1 = (a)**
-> `AggregateResult.property` becomes `str | None` under a
-> construction-enforced invariant — *property is None iff operation ==
-> `count`*. **SD-2 = (a)** fix `run_query.py`'s `_count` inside this PLAN.
-> **SD-3 = NO** — keep the existing structural unit-coherence bypass. Every
-> ruling matched the drafted recommendation, so **no Step re-shaped**; two
-> Steps' live conditionals were **RESOLVED in place, not deleted**, with the
-> rejected alternatives kept as lineage.
+> 🔴 **The strongest thing added this session is a test that grades the gold
+> against the ENGINE.** nl-13's numbers are not restated in a test beside them:
+> the real engine runs the real adapter and the **real scorer** grades the
+> **real gold case**, so a drift on *either* side reddens. That is exactly the
+> s226 defect — a gold token nothing ever compared against a real result stayed
+> wrong for 168 sessions while scoring green — and this **closes** it for this
+> case rather than merely avoiding a repeat.
 >
-> ✅ **PLAN-0104 Step 1 SHIPPED (#1145)** — two factually-wrong gold tokens
-> repaired and the guard that should have caught them rebuilt. 🔴 **That guard
-> was VACUOUS.** `tests/benchmark/test_nl_query_text_to_sql.py`'s
-> `test_gold_values_cross_check_against_real_sql` has claimed in its docstring
-> **since session 58** that it "validates the gold set"; its body **never
-> referenced `SQL_EXPECT`**, restating the numbers as literals beside the
-> constant. That is the mechanism by which `SQL_EXPECT["nl-02"] = ["11"]` and
-> `["nl-05"] = ["1"]` survived **PLAN-0070 adding two readings** (true values
-> **13** and **2**): `score_sql` requires every expected token to appear in the
-> result, so both cases scored **`wrong` on every run of that arm, silently**.
-> **A guard that reads its own copy of the answer cannot fail.**
+> ✅ **SD-2 (a)'s one marked claim is RESOLVED, and the answer was "no API
+> change".** `RunQueryAnswer` carries `aggregate_value` under `extra="forbid"`
+> and has **no groups field** — and needs none: the per-group figures reach the
+> user through the phrased answer plus the `structured_query` receipt, exactly
+> as the ontology path's grouped numbers already do. **Scope was NOT widened.**
 >
-> 🔴 **The `run_query.py` hazard is BROADER than the known dead `started_week
-> ==` branch.** `DIMENSIONS` has **three** members (`run_query.py:68`) and
-> `_count`'s fall-through collapses all of them to a single total, while
-> `_run_query_schema` (`:296-300`) **already advertises the pair to the
-> model**. **AC-5 therefore makes it a hard merge dependency** — no
-> intermediate commit may exist where the pair validates and `_count` still
-> collapses.
+> 🔴 **Found while executing, deliberately NOT fixed — RULED (Cray, typed,
+> s227): record it as a TODO.** `_count`'s week branch applies only the
+> `started_week` filter, so a `procedure_id`/`status` filter alongside it is
+> **silently dropped** (`week_rollup` carries no such dimension). Reachable
+> **today** via a filter, so PLAN-0104 neither introduced nor repaired it; a
+> comment now names it at the site. Its own Active TODO row below.
 >
-> ✅ **Step 1's fix keeps TWO layers rather than swapping one for the other.**
-> The literal assertions stay (they redden if `synthetic.py` moves), and a new
-> loop feeds **real result rows through the PRODUCTION `score_sql`** for
-> **every** scored qid, asserting coverage explicitly. **Non-vacuity probe run,
-> RED SEEN:** replanting `["11"]` from a `/tmp` copy failed at the new layer —
-> `nl-02: SQL_EXPECT=['11'] does not match the real result [(13,)]` /
-> `assert 'wrong' == 'correct'` — while **layer 1 stayed green through the
-> mutation**, which is the evidence that the old guard could not have caught
-> it.
+> ⚠️ **Step 7 is ALL that remains, and it needs its OWN typed §8 go, asked for
+> at that step BY NAME — not inherited from the SD rulings and not implied by
+> merging #1149. None has been given, and MS-S1 was untouched all session.**
 >
-> **Gates on the tip (`0b0de18`, captured after committing / before pushing,
-> `git diff --stat HEAD` empty):** **4028 passed / 8 skipped**, `mypy --strict
-> services/` clean over **134** files, `ruff check .` + `ruff format --check`
-> clean — ruff run against `git archive HEAD` extracted to a temp dir, i.e.
-> **CI's actual view**, because a bare `ruff check .` in the working dir also
-> lints untracked local scratch.
->
-> 🆕 **One Active TODO added on a Cray ruling — `nl-03`'s `SQL_EXPECT` is
-> UNDER-SPECIFIED, recorded and deliberately NOT changed.** It is a
-> **different defect class** from nl-02/nl-05: that oracle is **weaker than it
-> should be, not wrong**. The row below carries why tightening it is a
-> **measurement decision**, not a typo fix.
->
-> ⚠️ **Where PLAN-0104 stands: Step 1 DONE, nothing else built.** Steps 2–6 are
-> unblocked and **entirely offline**; **Steps 2/3/4 must land as ONE PR**
-> (AC-5). **Step 7 is the only host-state step and needs its OWN typed §8 go,
-> asked for at that step by name and never inherited from the SD rulings — no
-> §8 go has been given.** `Status:` stays `Draft`. Unchanged by this session:
-> **PLAN-0103's AC-11 (the RoPA) is Cray's and still gates fleet's bring-up.**
-
-> **Session 225, 2026-08-12 (head_commit `853d827` → `b229fcd`) — six PRs
-> merged (#1136–#1141), 0 open. #1136–#1138 are session 224's tail and are
-> recorded here, because the block below was written by #1135 and stops
-> there. Theme: an inherited "these ACs are closed in substance" claim was
-> VERIFIED rather than relayed, and two of them were false.**
->
-> ✅ **PLAN-0103 Step 6 SHIPPED (#1138)** — fleet's three-persona picker plus
-> SD-8(iii)'s narrative copy where Tab G's Act card would be. 15 files,
-> **+1062**, tests **4007 → 4025**. **#1139** then closed six ACs in the PLAN
-> (**AC-1..AC-5, AC-7**), recorded Step 6's execution, and carried three
-> corrections.
->
-> 🔴 **Verifying the inherited claim is what found the two falsehoods.**
-> **AC-7's own text described an approval the engine refuses** — wrong from
-> the moment it was written, not drifted into. **AC-6 was not closed at all:
-> the guard its text names had never existed.** Both were **fixed rather than
-> ticked over** — **#1140** shipped AC-6's missing guard (tests **4025 →
-> 4028**; `.gitignore` also gained `.claude/launch.json`) and **#1141** ticked
-> AC-6, closed **as code**.
->
-> ✅ **Nine of eleven ACs are now closed.** Open: **AC-10** (the per-bring-up
-> obligation — fleet's bring-up has not happened and needs its own typed §8
-> go) and **AC-11** (the RoPA, Cray's artifact as data controller). AC-11
-> gates fleet's bring-up, which gates AC-10, and `Status:` is still `Draft`.
-> ⚠️ **Nothing remaining in this PLAN is Code-executable.**
->
-> ✅ **The session-224 tail.** **#1136** reconciled s224 and corrected
-> procurement's `cloudflared/config.yml` header, which still repeated SD-8's
-> false premise. **#1137** tracked the RoPA change statement at
-> `docs/compliance/ropa-change-statement-fleet.md` — so **AC-11 now names its
-> path** — and added **Lesson #0041**.
->
-> 🔴 **Three of STATUS's OWN standing claims were measured false and are
-> corrected IN PLACE, not annotated beside the wrong sentence.** (1) *"Code
-> cannot edit `docs/plans/` (G2)"* — **false**: G2 fires only on a numbered
-> artifact that does **not yet exist** (creating one consumes a number), and
-> G1 is scoped to `docs/adr/` with `Status: Accepted`, never `docs/plans/`.
-> What actually routes an existing PLAN to the drafter is the **ADR-009 D1
-> convention** plus the advisory Stop classifier — practice unchanged, stated
-> reason wrong. (2) PLAN-0100 D-4's *"four seams in one file"* — an
-> **undercount**: eight or more, and the decisive omitted seam is the **system
-> prompt**, which forbids the very combination the work exists to enable.
-> (3) The stream-3 (primitives) *"ZERO ratified ACs/Steps"* — false as worded:
-> PLAN-0076 has six ACs and four Steps; the true claim is *zero that direct a
-> build*.
->
-> 🆕 **Two Active TODOs added, each on its MEASURED basis** — the ฿
-> realized-vs-projected join (⚠️ the circulating *"~40 lines by reusing
-> `benefit_rollup`"* framing was **checked and is wrong**) and the demo-key
-> rotation cadence (Cray's, posture not code). Read the rows below.
-
-> **Session 224, 2026-08-12 (head_commit `b4cb860` → `853d827`) — one PR
-> merged (#1135), 0 open. Theme: a governance slot's own factual premise had
-> been wrong for three sessions, and RUNNING THE SURFACE is what found it.**
->
-> ✅ **RULED (Cray, typed, s224): PLAN-0103 SD-8 = option (iii)** — Tab G's Act
-> card is replaced with **narrative copy** on a personaless published system,
-> and **Step 6 builds it**. The cost is accepted unsoftened: **copy with no
-> oracle — no test reddens if the copy is wrong.**
->
-> 🔴 **The slot's premise was FALSE, and measurement is what found it.** SD-8
-> asked whether Tab G's Act card "should render at all" on a personaless
-> system. Measured against a **local reproduction** of procurement's own
-> committed `published.env` (`UI_PROFILE=published`, `UI_PUBLISHED_VIEWS=G,F`,
-> no `API_KEYS`): the card **does not render on any published profile** — zero
-> `input` elements of any type on Tab G and Tab F, "Act — the human DOA gate"
-> absent from the DOM, rendered tabs `G`,`F` only. ⚠️ **A reproduction, never a
-> live-system reading** — the domain is deliberately absent from this repo
-> (ADR-0035 D1(3)) and the live surface sits behind Access.
->
-> **The mechanism is upstream of personas.** The card renders only in event
-> mode (`view-hero.js:655`) and `mount()` defaults to manual (`:662`), while
-> the one control that reaches event mode is suppressed on every published
-> profile (`:604-614`, `if (!published)`) because event mode fires
-> `POST /demo/hero/event` — the unauthenticated DB write D5(2) excludes.
-> **PLAN-0100 Step 3 did that BEFORE SD-8 was authored**, which is why the
-> classification is **`was an error`, not `superseded by new info`**. It stood
-> through s222 and s223 because nobody ran the surface and looked.
->
-> **Four statements corrected INLINE, each marked**, on this PLAN's own
-> #1128→#1129 precedent: the "visitor sees a login form" claim; the slot's
-> premise; option (i)'s rationale (it describes a dead end that cannot occur —
-> its *outcome* was coherent, its *reasoning* was not); and option (ii)'s
-> quoted price of "a new published-profile UI branch", already paid by
-> PLAN-0100 for an unrelated reason. The s222 Live-input paragraph was
-> **corrected rather than struck** — it carries a separate typed ruling (keep
-> `API_KEYS` provisioned) plus true edge facts; only its "option (i)"
-> characterisation was wrong.
->
-> 🆕 **One implementation note added under Step 6 — rides SD-4 RULED (b), no
-> new slot.** `view-monitor.js` contains **zero** `isPublished()` references,
-> so its `authBar()` login form — free-text identity + password-type key input
-> (`view-monitor.js:425-463`) — renders **unconditionally** whenever Tab H
-> mounts. **Fleet is the only system publishing H**, so this is invisible today
-> and **becomes visible at fleet's bring-up**. SD-4(b) already rules that
-> surface is the published-profile-only persona picker; the published branch
-> that would make "published-profile-only" true **does not exist yet**.
->
-> **Gates on the tip:** 4007 passed / 8 skipped, ruff + `ruff format` +
-> `mypy --strict services/` clean, CI green on the same SHA. ⚠️ Riding in the
-> reconcile PR and **not** in `853d827`: `oct-procurement/cloudflared/config.yml`'s
-> header, which still described SD-8 as open and repeated the same false
-> login-form claim, is corrected there.
-
-> **Session 223, 2026-08-12 (head_commit `bd43d67` → `b4cb860`) — two PRs
-> merged (#1132, #1133), 0 open. STATUS had fallen EIGHT PRs behind
-> (#1126–#1133); #1127–#1131 are session 222's tail and are recorded in the
-> next block, not here. Theme: the MS-S1 secrets exposure session 222 left
-> open is CLOSED and PROVEN.**
->
-> ✅ **The exposure is CLOSED (#1132).** Run as a ladder under **two typed §8
-> gos**: rung A dropped `Authenticated Users`; rung C also dropped
-> `BUILTIN\Users` and granted the signed-in account's SID `(OI)(CI)(RX)`.
-> Final ACL on the directory and all **8** paths under it: that account
-> `(RX)` + `BUILTIN\Administrators (F)` + `NT AUTHORITY\SYSTEM (F)`. The
-> bring-up §8 remedy that s222 **measured** to break Docker Desktop's bind
-> mount is replaced with the working form, together with the **filtered-token**
-> mechanism that explains why the old Administrators-only tightening failed.
-> Record, never a restatement:
-> `docs/logs/2026-08-12-ms-s1-secrets-acl-tightening.md`.
->
-> 🔴 **The canary discipline is the transferable part — and it is why s222's
-> breakage stayed invisible.** Each rung was verified by a **force-recreate,
-> never a restart**: a running container already holds the file handle, so a
-> restart cannot see a broken ACL. A rung was believed only on a **changed
-> container id** plus `Registered tunnel connection` in the connector log.
-> Canaries were **procurement-only**; `oct-energy`'s connector was recreated
-> **exactly once**, deliberately, as the terminal end-to-end proof, and
-> **`oct-energy-app` was never recreated** (Up 40 h throughout). The verifier
-> was seen **RED before GREEN** (`authenticated_users_aces` 4 → 0) with a
-> positive anchor, so an ssh failure fails **closed**. Gates: **4007 passed /
-> 8 skipped**.
->
-> ✅ **#1133 — the leftover `icacls /save` backup relocated** into the
-> tightened directory rather than deleted (Cray, typed). 🔴 **A same-volume
-> move keeps the OLD ACL** — measured, and now in the runbook; an unmeasured
-> "a copy inherits" claim was **scoped back to what was actually measured**.
->
-> 🔴 **The one Cray ruling this record exists to carry — J4's per-action
-> reading.** "Run the full `tests/` before pushing" stays **BINDING**, but is
-> evaluated against **the commit(s) being pushed at evaluation time**; earlier
-> uncovered pushes are **residual gaps, not a standing FAIL** — a criterion no
-> future work can turn green is defective, not strict. ⚠️ **This ruling lived
-> in a gitignored `goal.json` that has since been DELETED. STATUS and the s223
-> handoff are now its only homes — do NOT trim it on a later reconcile without
-> rehoming it first (R2 carve-out).**
->
-> ⚠️ **Unchanged by this session.** **SD-8 is still NOT RULED** and gates Step
-> 6. **AC-11's RoPA** (Cray's, as data controller) gates **fleet's** bring-up,
-> the last Step 10. **AC-10 stays deliberately NOT ticked** — three typed §8
-> gos are on record, fleet's is outstanding.
+> **Carried forward from the s226 block (rotated this reconcile to
+> `docs/status-archive/2026-h1d-current-focus.md`) because both outlive it:**
+> the refusal had **three independent enforcers**, which is why the *"≈ one PR +
+> tests"* price was wrong twice; and **a guard that reads its own copy of the
+> answer cannot fail**.
 
 ## Prior focus (archived)
 
@@ -266,6 +87,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-13 | **s227 — PLAN-0104 Steps 2+3+4 SHIPPED as ONE PR (#1148) and Steps 5+6 SHIPPED (#1149); Steps 1–6 COMPLETE, gates 4028 → 4045 passed / 8 skipped, `mypy --strict services/` clean.** 🔴 **AC-5 is a hard merge dependency, not a preference:** no commit may exist where `count`+`group_by` validates while `_count` still collapses groups to a total — that state answers *"how many runs per week?"* with a **silently wrong** single number, strictly worse than the honest refusal it replaces. `AggregateResult.property` is now `str | None` under a **construction-enforced** invariant (*None iff `count`*). ✅ **SD-2 (a)'s one marked claim RESOLVED — and the answer was NO API CHANGE**: `RunQueryAnswer` has no groups field and needs none; per-group figures ride the phrased answer + the `structured_query` receipt. 🔴 **The gold-versus-engine test closes the s226 defect for nl-13** — the real scorer grades the real gold case against the real engine, so a drift on either side reddens. 🔴 **RULED (Cray, typed, s227): the `_count` week-branch filter drop is RECORDED, not fixed** — reachable today, neither introduced nor repaired here. ⚠️ **Step 7 needs its OWN typed §8 go, asked BY NAME — none given; MS-S1 untouched** | `75243b0` (head_commit) / [#1148](https://github.com/CrayJThiemsert/vero-lite/pull/1148) / [#1149](https://github.com/CrayJThiemsert/vero-lite/pull/1149) / `docs/plans/0104-nl-query-count-with-group-by.md` |
 | 2026-08-13 | **s226 — PLAN-0104 DRAFTED (#1143, `Status: Draft`), its three SD slots RULED (Cray, typed) (#1144), Step 1 SHIPPED (#1145); gates 4028 passed / 8 skipped.** 🔴 The refusal of `count`+`group_by` has **three independent enforcers** — system prompt, validator, `AggregateResult` — so no single edit changes observable behaviour and the circulating *"≈ one PR + tests"* price was wrong. 🔴 The gold guard was **VACUOUS**: it restated the numbers as literals instead of reading `SQL_EXPECT`, which is how two wrong tokens scored `wrong` on **every** run of that arm, silently. **SD-1 = (a)** `property: str | None`, invariant *None iff `count`*; **SD-2 = (a)** fix `_count` in this PLAN; **SD-3 = NO**. ⚠️ **Step 7 needs its OWN typed §8 go — none given** | `fa8a61c` (head_commit) / [#1143](https://github.com/CrayJThiemsert/vero-lite/pull/1143) / [#1144](https://github.com/CrayJThiemsert/vero-lite/pull/1144) / [#1145](https://github.com/CrayJThiemsert/vero-lite/pull/1145) / `docs/plans/0104-nl-query-count-with-group-by.md` |
 | 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED (#1138) and nine of eleven ACs CLOSED (#1139, #1141); tests 4007 → 4028.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE:** AC-7's own text described an approval the engine refuses (wrong when written), and AC-6 was never closed — the guard its text names had never existed (#1140 built it). **Both fixed, not ticked over.** ⚠️ **AC-10 + AC-11 stay OPEN and nothing left in the PLAN is Code-executable.** Three of STATUS's own claims corrected in place: the G2 scope, D-4's seam count, stream-3's wording | `b229fcd` (head_commit) / [#1138](https://github.com/CrayJThiemsert/vero-lite/pull/1138) / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` |
 | 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)** — narrative copy in the Act card's place, **Step 6 builds it**; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE:** on a *local reproduction* of procurement's committed `published.env`, the Act card renders on **no** published profile (zero inputs on G/F) — suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. Four statements corrected inline. 🆕 `view-monitor.js` has zero `isPublished()`, so Tab H's login form renders unconditionally — invisible until **fleet's** bring-up | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
@@ -275,7 +97,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-11 | **s222 — PLAN-0103 AC-8 clause 2 CLOSED in substance and ADR-0037 D2.7 MEASURED (#1124): no visitor-typed case text in the audit chain, `case_id` recoverable, asserted over EVERY `audit_log` row on both the ordinary and the waiver→ratify paths, via a positively-controlled bracketing sentinel + a structural payload-key allowlist.** ⚠️ `WaiverInvocation.justification` and the ratify `note` ARE human free text by design — possibly its own RoPA line. 🔴 #1125 retracted a false claim (a middle-slice leak IS invisible to both oracles) and records **RULED (Cray, typed, s222): that residual risk is ACCEPTED**, revisit condition stated in place. ⚠️ **D4 is UNBLOCKED, NOT decided**; the AC checkbox is NOT ticked — owed to a `plan-drafter` dispatch _(corrected s225: **not** G2, which fires only on a numbered artifact that does not yet exist)_ | `3a11e87` (head_commit) / [#1124](https://github.com/CrayJThiemsert/vero-lite/pull/1124) / [#1125](https://github.com/CrayJThiemsert/vero-lite/pull/1125) / `tests/api/test_visitor_case_to_monitor_scenario.py` |
 | 2026-08-10 | **s221 cont. — PLAN-0103 Steps 7 and 8b SHIPPED (#1122, #1121), so AC-8's first clause and AC-9's evidence are complete; #1123 made `render-handoff` report live goal state.** 🔴 **RULED (Cray, typed): NO portal REPO will be created** — Step 1's answer, unrecorded through three sessions. ⚠️ The portal/landing surface **still EXISTS**: DNS, Access policies and the landing surface are configured in the **Cloudflare dashboard**, one `oct-<vertical-id>` subdomain label per system; **ADR-0036 D2's two-artifact price is unchanged** — dashboard config, not repo files. The Step 8b request is **parked, not sent**, and the landing page is built by nobody. Also ruled: **Step 7 before Step 6**, and SD-8 ruled before Step 6 is built | [#1121](https://github.com/CrayJThiemsert/vero-lite/pull/1121) / [#1122](https://github.com/CrayJThiemsert/vero-lite/pull/1122) / [#1123](https://github.com/CrayJThiemsert/vero-lite/pull/1123) / `docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md` |
 | 2026-08-10 | **s221 — energy's LIVE system MIGRATED and PLAN-0103 Step 9 headroom MEASURED (one typed Cray §8 go); Step 8a SHIPPED (#1119) so AC-3 CLOSES, and the self-citation TODO DISCHARGED (#1118).** The demo now runs as compose project `oct-energy` on `oct-energy_vero_oct`; `vero-published` is gone from the host in every form. The prompt log was verified **byte-identical on both sides** (per-file checksums) and the app proven able to **write** it as its non-root user — refuting the s215 silent-`OSError` mode, not assuming it absent. 🔴 **#1119 repaired a compose build context that could NOT build** — `context: ../..` was one directory short of the repo root, and `docker compose config --quiet` validates schema, not context, so "all three composes validate" had been reported while none could build. ⚠️ **Step 9 is MEASURED; AC-10 is NOT closed** (clause 2 = an explicit go per bring-up) and **ADR-0036 OQ-2 stays OPEN** — capacity was never its constraint. ⚠️ **AC-9 is NOT closed**: Step 8b still owed. Read the log, never a restatement | `e938cf6` (head_commit) / [#1119](https://github.com/CrayJThiemsert/vero-lite/pull/1119) / [#1118](https://github.com/CrayJThiemsert/vero-lite/pull/1118) / `docs/logs/2026-08-10-oct-energy-migration-phase2-and-step9-headroom.md` |
-| 2026-08-10 | **s220 cont. — PLAN-0103 Steps 4b + 5 COMPLETE (#1116): fleet's profile + allowlist landed, so all three per-system profiles now exist.** `oct-fleet-maintenance` publishes `A,C,F,H,I,J` default **A** — the only system with BOTH personas (LOCKED-5) and a database (LOCKED-1/ADR-0037): postgres on its own network + volume, **no `ports:`**, both credentials required host-env pass-throughs. **21 allowlist rows, each re-admission on its own written basis** (I/J's DB-less basis dissolves; Tab H's five were never a storage question). Fleet's landing tab needed the DOA ฿5,000 ceiling as its recommender threshold, not energy's 90.0. 🔴 **AC-3 is NOT closed — the card copy exists for no system** (Step 8a). Evidence: 3971 → 3994 (+23), 9 probes, all three composes `docker compose config --quiet` exit 0 | `f78068e` (head_commit) / [#1116](https://github.com/CrayJThiemsert/vero-lite/pull/1116) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` |
 
 ## In-Flight Discussions
 
@@ -291,15 +112,16 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
-- [ ] **PLAN-0104 — teach the NL query engine `count` WITH `group_by`. DRAFTED s226 (#1143), `Status: Draft`; Step 1 SHIPPED (#1145), Steps 2–7 NOT built.** Executes **PLAN-0100 D-4, RULED s217 (Cray, typed): option (a), teach the engine**. **Read the PLAN, never a restatement:** `docs/plans/0104-nl-query-count-with-group-by.md` (480 lines). 🔴 **Why this is a PLAN and not a patch:** the refusal is enforced at **three independent layers** — the **system prompt** (`services/engine/nl_query.py:393`, verbatim *"never list/count"*), the **validator** (`:536-549`), and the result carrier **`AggregateResult`** (`:195-208`, `property: str` required, group values are measures) — so **no single edit changes observable behaviour**. ✅ **All three SD slots RULED s226 (Cray, typed) (#1144):** **SD-1 = (a)** `AggregateResult.property` becomes `str | None` under a construction-enforced invariant, *property is None iff operation == `count`*; **SD-2 = (a)** fix `run_query.py`'s `_count` inside this PLAN; **SD-3 = NO**, keep the existing structural unit-coherence bypass. Each matched the drafted recommendation, so no Step was re-shaped. 🔴 **Steps 2/3/4 must land as ONE PR** — AC-5 makes it a **hard merge dependency**: `DIMENSIONS` has **three** members (`run_query.py:68`), `_count`'s fall-through collapses all of them to a single total, and `_run_query_schema` (`:296-300`) **already advertises the pair to the model**, so no intermediate commit may exist where the pair validates while `_count` still collapses. ⚠️ **Steps 2–6 are entirely OFFLINE and unblocked. Step 7 is the ONLY host-state step and needs its OWN typed §8 go, asked for at that step by name and never inherited from the SD rulings — none has been given.** The §8 surface is re-recording `benchmarks/nl_query_feasibility/gold.yaml` + the A/B fixtures on MS-S1.
+- [ ] **PLAN-0104 — teach the NL query engine `count` WITH `group_by`. Steps 1–6 SHIPPED (#1145, #1148, #1149); ONLY Step 7 remains, and it is the host-state one.** Executes **PLAN-0100 D-4, RULED s217 (Cray, typed): option (a), teach the engine**. **Read the PLAN, never a restatement:** `docs/plans/0104-nl-query-count-with-group-by.md`. ✅ **AC-1..AC-6 and AC-8 are CLOSED. AC-7 is the only one open** — and it is the one claim **no fixture can settle**: whether the LIVE model actually emits the pair now that the prompt rule is inverted. ✅ **All three SD slots RULED s226 (Cray, typed) (#1144):** SD-1 = (a) `AggregateResult.property` → `str | None` under a construction-enforced invariant (*None iff `count`*) — now shipped and enforced at construction; SD-2 = (a) fix `_count` here — shipped; SD-3 = NO, keep the structural unit-coherence bypass. ✅ **SD-2 (a)'s one marked claim RESOLVED s227, and the answer was NO API CHANGE:** `RunQueryAnswer` carries `aggregate_value` under `extra="forbid"` and has **no groups field** — and needs none, because per-group figures ride the phrased answer plus the `structured_query` receipt exactly as the ontology path's grouped numbers do. **Scope was not widened.** ⚠️ **Step 7 needs its OWN typed §8 go, asked for at that step BY NAME — never inherited from the SD rulings and not implied by merging #1149. None has been given.** 🔴 **Its pass/fail is pre-committed IN THE PLAN, before any run:** (i) the recorded raw translate output for nl-13 sets `operation: "count"` + `group_by` — a canned translate JSON explicitly does NOT satisfy it; (ii) nl-13 scores `correct` under the Step-5 scorer; (iii) all **13** gold cases re-run and the fresh accuracy recorded — **the prior accuracy figure must be RETIRED as non-comparable, not silently overwritten**, because the shared system prompt changed. A previously-correct case going wrong is re-run **once** (the local backend is non-deterministic even at temp 0); a repeat failure is a defect investigated before merge, not noise.
+- [ ] **`run_query._count`'s week branch DROPS a `procedure_id`/`status` filter SILENTLY — RULED (Cray, typed, s227): RECORD it, do NOT fix it now.** Found while executing PLAN-0104 Step 4. Whenever a query reaches the ISO-week branch (either `group_by == "started_week"` **or** a `started_week` filter), only the `started_week` filter is applied — `week_rollup` publishes no procedure or status dimension — so *"how many runs of procedure X in week W?"* returns the count of **ALL** runs in week W. 🔴 **That is a silently WRONG answer, not a refusal**, and it is **reachable today** through a plain `started_week` filter: PLAN-0104 neither introduced it nor was authorized to repair it, which is why it is recorded rather than patched. A comment now names the gap at the site (`services/engine/run_query.py`, `_count`'s week branch). **Two candidate dispositions when it is picked up, NEITHER ruled:** (a) reject the combination in `validate_run_query` — an honest refusal, cheap, and symmetric with the existing `list` rejection; or (b) give the rollup the missing dimension — the correct answer, but it touches SQL and must stay inside SD-8(a)'s O(groups) discipline, which is test-pinned by statement capture.
 - [ ] **`nl-03`'s `SQL_EXPECT` is UNDER-SPECIFIED — RULED (Cray, typed, s226): RECORD it, do NOT change the token now.** Its list omits `event-reading-08`, which `gold.yaml` lists among nl-03's three expected ids. 🔴 **This is a DIFFERENT defect class from the nl-02/nl-05 tokens Step 1 repaired, and keeping the distinction is the point of the row:** `score_sql` matches a **subset**, so nl-03's present tokens are **correct** and the case still scores `correct` — **the oracle is WEAKER than it should be, not WRONG**, where nl-02/nl-05 were factually wrong and therefore scored `wrong` on every run. ⚠️ **Adding the token would make the benchmark STRICTER:** a model whose SQL filters by unit would flip nl-03 from `correct` to `wrong`, which **changes what the measured numbers mean and breaks comparability with earlier runs**. That makes it a **measurement decision, not a typo fix** — which is why it is recorded rather than patched. On the same basis, noted and deliberately not acted on: **`score_sql` matches tokens as SUBSTRINGS**, so an expected `"1"` would match a result of `"21"`.
 - [ ] **PLAN-0103 — vero-lite's side of the multi-vertical portal. DRAFTED s218 (#1101), `Status: Draft`; every Step except Step 10's FLEET bring-up has SHIPPED (2, 3, 4a, 4b, 5, 6, 7, 8a, 8b, and Step 10 for procurement), and AC-1..AC-9 are `[x]` on disk.** _[s226: the per-Step shipped narrative this row carried is ROTATED to `docs/status-archive/2026-h1-status.md` — the PLAN itself and git history hold it. Only the live remainder and the standing corrections stay here.]_ ADR-0036's D6 follow-on: per-system published profiles + the landing/framing **content spec**. 10 Steps, **11 ACs** _(corrected s226 from "10 ACs", verified by reading the PLAN's own checkboxes: AC-1..AC-11)_, **8 SD slots** _(corrected s226 from "7 SD slots", which contradicted this row's own next clause; §Surfaced decisions runs SD-1..SD-8)_. ✅ **ALL EIGHT SLOTS RULED s218 (#1104)** — read them in the PLAN's §Surfaced decisions, each stamped `RULED (Cray, typed, s218)`. ✅ **ADR-0037 RATIFIED s218 (#1107), so nothing gates execution any more** — the whole PLAN is startable. 🔴 **One live obligation instead of a gate: AC-11 — the RoPA must cover fleet's posture BEFORE fleet's bring-up, and it is Cray's artifact as controller (the PLAN gates on it, cannot author it).** **Read the PLAN, never a restatement:** `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions). ⚠️ **One thing a future reader must not re-derive — the hard boundary:** ADR-0036 D1 + ADR-0035 D4/L5 make the `portal.` landing surface, ingress map, Access policies and domain **portal-repo property**, so this PLAN builds no landing page here and ships a spec instead. 🔴 **Step 1 ANSWERED (Cray, typed): no portal REPO will be created** — ⚠️ the shorthand gets misread as "no portal": the surface **still exists** in the Cloudflare dashboard (DNS + Access policies; each system on its own `oct-<vertical-id>` subdomain label), and **ADR-0036 D2's two-artifact price per system is unchanged**. ⚠️ The Step 8b request is **parked, not sent**; the landing surface itself is **Cray's dashboard work, not a repo PLAN** — see the SUPERSEDED landing-layer row below. **Remaining: Step 10's last bring-up** — ✅ **procurement went LIVE s222-tail (#1130)** under a typed §8 go, so only **fleet** remains, gated on AC-11's RoPA (Cray's to author) **plus its own typed §8 go** (AC-10 clause 2). ✅ **s225 — AC-1..AC-9 are CLOSED** (#1139; #1141 once #1140 built AC-6's guard). **Only AC-10 and AC-11 remain `[ ]`**, and `Status:` is still `Draft`. 🔴 **Two of that batch were VERIFIED rather than relayed and both were FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed — **both were fixed rather than ticked over**. _[s226: the per-AC detail is ROTATED to `docs/status-archive/2026-h1-status.md`.]_ ⚠️ **Nothing remaining in this PLAN is Code-executable:** AC-11 (Cray authors the RoPA, now homed at `docs/compliance/ropa-change-statement-fleet.md` per #1137) → fleet's typed §8 go → Step 10's bring-up → AC-10. _[Corrected s225, `was an error` — the durable half, kept: **G2 does NOT gate an existing PLAN** (it fires only when a numbered artifact does **not yet exist**), and **G1 is scoped to `docs/adr/` + `Status: Accepted`**, never `docs/plans/`. Routing `docs/plans/` through the drafter is an **ADR-009 D1 convention**, not a gate. Full before-text ROTATED s226 to `docs/status-archive/2026-h1-status.md`.]_
 - [ ] **The ฿ realized-vs-projected join — RECORDED ON ITS MEASURED BASIS, because the version circulating in session notes is PARTLY FALSE and it was ranked #1 next work on the strength of the false part.** ✅ **True:** the realized side already carries `total_thb` and `run_id` on the **same** `ExportRow` (`services/db/repair_spend_export.py`, linked via `RepairCaseRunLink`), so **no migration is needed**. 🔴 **False as circulated:** that `benefit_rollup` in `services/db/run_analytics.py` "already extracts `net_benefit_thb` by `run_id`". It does **not** — it aggregates by currency × procedure × facet-kind × day and touches `run_id` only inside a `count(distinct …)`, so it yields **no per-run figure at all**. **Therefore the join needs a NEW per-run aggregation, not a reuse of `benefit_rollup`'s output**; the `GROUP BY run_id` pattern to copy is the per-run SUM inner subquery in that same module. ✅ **RE-PRICED s226 — MEASURED, not estimated: ~150–250 lines across 6–7 files, ONE PR.** The circulating **"~40 lines by reusing `benefit_rollup`" framing was CHECKED and is WRONG**. 🔴 **Three constraints the old framing missed, all TEST-PINNED:** (a) `run_analytics.py`'s **SD-8(a) discipline FORBIDS O(runs) result shapes**, pinned by `tests/services/db/test_run_analytics.py` with statement capture — so **"per-run rows on screen" is a design decision, not a mechanical add**; (b) `tests/api/test_export_cover_ui_contract.py` asserts **set equality** against an **empty** `_UNREAD_COVER_FIELDS`, so a new `ExportCoverResponse` field **must ship with its `view-export.js` tile in the SAME PR** or CI reddens; (c) **`/insights/impact` — the only existing consumer of the projected side — is ABSENT from fleet's Cloudflare allowlist**, so the figure **must ride the existing cover response**. Pattern to copy: the per-run `GROUP BY` in `run_duration_totals` (`run_analytics.py:448`), **not** `benefit_rollup` (`:521`). Lands on **Tab J**, which fleet publishes.
 - [ ] **Demo-key rotation cadence — CRAY'S, posture not code.** Fleet's README documents how to **generate** a persona key pair but says nothing about **when to rotate**. Measured s225: `git grep -i -e rotate -e rotation` under `deploy/published/oct-fleet-maintenance/` returns **zero** matches. The keys are served to the browser by ruling, so they are **public the moment fleet is reachable** — which makes the cadence a real posture question rather than a nicety. No code change is implied; the answer is Cray's.
 - [ ] **Ungated items rehomed s219 out of the `next_action` frontmatter — they survived ONLY there, and R3 caps that field to one short line.** (1) ✅ **PLAN-0103 Step 9's MS-S1 headroom is MEASURED s221** (`docs/logs/2026-08-10-oct-energy-migration-phase2-and-step9-headroom.md`) — RAM and CPU do not constrain a second or third published system, and AC-10's first clause is discharged. ⚠️ **ADR-0036 OQ-2 does NOT follow from it and remains OPEN:** the aggregate in-flight LLM posture is a different question — the constraint on a second *assisted* system is the resident model and concurrent in-flight calls, not container footprint — and one term in the projection (Postgres idle) is declared unmeasured rather than folded silently into the total. (2) **The public one-pager v2 — now has its OWN row below** (design-ready; destination RULED s226). (3) **ADR-0037 D4's FINAL ruling is still Cray's — now UNBLOCKED, still UNDECIDED.** It was deferred until D2.7 measured whether visitor case text reaches the audit chain; **s222 MEASURED it (#1124): it does not, on both the ordinary and the waiver→ratify paths, and `case_id` stays recoverable** — so the precondition is discharged and the ruling is not. ⚠️ One input D4 must price that the measurement surfaced: `WaiverInvocation.justification` and the ratification `note` **are** human free text in the hash-chained log by design — a named internal principal's, not the visitor's — which may need its own RoPA line. ⚠️ And the one hole the oracles do not close, **ACCEPTED (Cray, typed, s222)**: a middle-slice carrier is invisible to both; revisit if an audit payload gains a field legitimately holding a SLICE of operator-entered text. (This is the durable home; the Recent Decisions row rotates.) (4) **Edge cache-purge needs a Cloudflare API token = a new secret + host-state**, which is why the purge step in the PLAN-0100 row below is not simply "add a step". _(The remainder of that field — the `nl_query.py` seam count, versioned font URLs, the unpinned `OLLAMA_KEEP_ALIVE` — is homed in the PLAN-0104 and PLAN-0100 rows and is not duplicated here.)_
 - [ ] **Public one-pager v2 — DESIGN-READY; a WRITE job, not a design job. ✅ RULED (Cray, typed, s226): if it is built, its output goes to `docs/strategy/private/` (GITIGNORED), NOT tracked `docs/`.** 🔴 **Recorded here because it had ZERO tracked home:** `git grep` across `docs/ services/ tests/ benchmarks/` returned **0 hits** — it lived only in a gitignored handoff, which is exactly how a ruling was lost in s223. **Grounded status, because it changes the item's cost:** a complete spec already exists at `docs/strategy/private/2026-08-10-onepager-v2-spec-and-q5-q12-triage.md`, carrying a **locked six-block structure**, the **bilingual roof line and CTA already written**, a **must-NOT-contain list**, and a **14-row claim→evidence ledger** pinning every claim to DEMO / PILOT / DESCRIPTION. Source material verified present: the wedge one-pager, the b3 talking points, the GTM ammo pack, and all three `deploy/published/*/card-copy.md`. ⚠️ **One honesty constraint the spec itself flags:** the DOA/SoD governed-approval claim is **`DESCRIPTION`, not `DEMO`**, because Tab G is not published — the spec calls this **"the lead pillar's gap"**. **Reference that path BY PATH ONLY — pricing and spec body never get copied into STATUS.**
-- [ ] **Landing-layer PLAN — CLOSED s226 as SUPERSEDED. NOT work to do; recorded so nobody schedules it again.** The marketing carrier doc's §8 still says "dispatch `plan-drafter` when PLAN-0100 Steps 8–9 close" — a trigger now **stale by two PLANs**. **Measured:** PLAN-0103 **Step 8 already consumed the repo-side half** (8a shipped three `card-copy.md` files; 8b authored the portal-side assembly request — **AC-9 is ticked**; sending that request is separately parked, per the PLAN-0103 row above), and **ADR-0036 D1/D2 place the landing surface, ingress map and Access policies OUTSIDE this repo** — a vero-lite file enumerating the published systems is **guard-rejected as "a shadow ingress map"** (`tests/deploy/test_published_profiles.py:729`). Cray ruled **s221 (typed)** that **no portal repo will be created**; the surface lives in the **Cloudflare dashboard**. 🔴 **So the entire remainder is CRAY'S DASHBOARD WORK, not a repo PLAN — there is nothing here for Code to build, and no `plan-drafter` dispatch is owed.** Only live thread: the carrier doc's **§8 item 4 should be corrected on next touch**.
-- [ ] **PLAN-0100's residuals outlive the PLAN** (COMPLETE 13/13 and ARCHIVED s216; the demo is LIVE, REDEPLOYABLE and DRIVEN). **Read the archived PLAN, never a restatement:** `docs/plans/done/0100-exposure-published-demo-surface.md` (§"Step 11 closure verdict"; §"Defects the live run found" for D-1..D-5, incl. the *transient* D-5 Safe-Browsing flag on the Access login callback, cause UNDETERMINED; §Instrument failures). _[s222: the completion narrative is dropped per R2's ratified Active-TODO rule — `[x]` items older than the session window go, git history + the archived PLAN hold them. Only the live residuals stay.]_ **Live, and recorded ONLY here:** (1) **D-4 RULED s217 (Cray, typed): option (a), teach the engine — NO LONGER an unowned item: it is PLAN-0104** (DRAFTED s226 #1143, `Status: Draft`; Step 1 SHIPPED #1145). _[Corrected s226 IN PLACE, `superseded by new info`: this item read "nothing built, no PLAN drafted, still the largest ungated Code item" and carried the seam analysis inline. A PLAN now owns both, so the analysis is not kept in two divergent copies — it lives in the PLAN and, in summary, in the PLAN-0104 Active TODO above. The demand this item existed to make — **"re-price before scheduling; '≈ one PR + tests' rested on the four-seam count"** — is **DISCHARGED**: drafting re-priced it, and the answer is that the refusal has **three independent enforcers**, so no single edit changes behaviour. The s225 measurement it carried (`group_by` touched at **eight or more** sites, the decisive omitted one being the system prompt) is rotated to `docs/status-archive/2026-h1-status.md`.]_ **Read `docs/plans/0104-nl-query-count-with-group-by.md`, never a restatement.** (2) **No cache-purge step or versioned font URLs** in the redeploy runbook — nothing in the pipeline purges the edge and `?v=cNN` does not reach fonts; a purge needs a Cloudflare API token = a new secret + host-state. (3) **`published.env` pins no `OLLAMA_KEEP_ALIVE`**, so the published surface silently inherits the code default of 30m.
+- [ ] **Landing-layer PLAN — CLOSED s226 as SUPERSEDED. NOT work to do; this row exists so nobody schedules it again.** Measured s226: PLAN-0103 Step 8 already consumed the repo-side half (AC-9 ticked), and ADR-0036 D1/D2 place the landing surface, ingress map and Access policies **outside this repo** — a vero-lite file enumerating published systems is guard-rejected as *"a shadow ingress map"* (`tests/deploy/test_published_profiles.py`). Cray ruled s221 (typed): **no portal repo**. 🔴 **The whole remainder is CRAY'S DASHBOARD WORK — nothing for Code to build, and no `plan-drafter` dispatch is owed.** Only live thread: the marketing carrier doc's **§8 item 4 still names a trigger stale by two PLANs** ("dispatch when PLAN-0100 Steps 8–9 close") — correct on next touch. _[s227: the measurement narrative is ROTATED to `docs/status-archive/2026-h1-status.md`.]_
+- [ ] **PLAN-0100's residuals outlive the PLAN** (COMPLETE 13/13 and ARCHIVED s216; the demo is LIVE, REDEPLOYABLE and DRIVEN). **Read the archived PLAN, never a restatement:** `docs/plans/done/0100-exposure-published-demo-surface.md` (§"Step 11 closure verdict"; §"Defects the live run found" for D-1..D-5, incl. the *transient* D-5 Safe-Browsing flag on the Access login callback, cause UNDETERMINED; §Instrument failures). _[s222: the completion narrative is dropped per R2's ratified Active-TODO rule — `[x]` items older than the session window go, git history + the archived PLAN hold them. Only the live residuals stay.]_ **Live, and recorded ONLY here:** (1) ✅ **D-4 is DISCHARGED IN SUBSTANCE — RULED s217 (Cray, typed): option (a), teach the engine; delivered as PLAN-0104, whose Steps 1–6 SHIPPED s226–s227 (#1145, #1148, #1149).** The engine now executes `count` WITH `group_by` end-to-end. Only PLAN-0104's host-state Step 7 (live evidence) is outstanding — tracked in its own row above, not here. _[Corrected s226 IN PLACE, `superseded by new info`: this item read "nothing built, no PLAN drafted, still the largest ungated Code item" and carried the seam analysis inline. A PLAN now owns both, so the analysis is not kept in two divergent copies — it lives in the PLAN and, in summary, in the PLAN-0104 Active TODO above. The demand this item existed to make — **"re-price before scheduling; '≈ one PR + tests' rested on the four-seam count"** — is **DISCHARGED**: drafting re-priced it, and the answer is that the refusal has **three independent enforcers**, so no single edit changes behaviour. The s225 measurement it carried (`group_by` touched at **eight or more** sites, the decisive omitted one being the system prompt) is rotated to `docs/status-archive/2026-h1-status.md`.]_ **Read `docs/plans/0104-nl-query-count-with-group-by.md`, never a restatement.** (2) **No cache-purge step or versioned font URLs** in the redeploy runbook — nothing in the pipeline purges the edge and `?v=cNN` does not reach fonts; a purge needs a Cloudflare API token = a new secret + host-state. (3) **`published.env` pins no `OLLAMA_KEEP_ALIVE`**, so the published surface silently inherits the code default of 30m.
 - [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it dies at the next context reset. 🔴 **BLOCKING GAP, measured s226 — the SERIES is banked here, but the METHOD is banked NOWHERE AT ALL:** no numerator, no denominator, no window is recorded anywhere in the repo. **A tripwire built today therefore emits a number that CANNOT be compared to those three.** One decision slot must be filled **before any build**: pin the metric definition (numerator / denominator / window), and rule whether the three banked figures are **reproducible under it** or must be **declared unrecoverable**.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet. 🔴 **SCOPING BLOCKER, measured s226 — scenario tests cannot be machine-scoped today, by marker OR by filename:** `pyproject.toml` defines exactly **two** pytest markers, `slow` and `host_state` (`:113–115`), so there is **no `scenario` marker**; and `tests/api/test_fleet_pilot_scenarios.py` is **plural** where eight sibling files are singular `_scenario.py`. ✅ **XS prerequisite, worth doing on its own and independent of the CI job: add a `scenario` marker and normalise that filename.** The CI job itself stays effort **L**, with three unresolved design questions — what **marks** a scenario test, what **enumerates** a seam, which **mutation engine**.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; nothing blocking remains.** **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. (A5 stays **parked** — no real Wialon export exists yet.) _[s226: the per-answer ledger A1–A7 is ROTATED to `docs/status-archive/2026-h1-status.md`; `docs/plans/done/0096-fleet-flow-completion-phase1.md` holds the detail.]_
