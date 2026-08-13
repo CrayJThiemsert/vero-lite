@@ -391,7 +391,8 @@ in history, and is not protected against an accidental commit either. *(Earlier
 addenda in this file call their own dumps "gitignored" — same inherited error,
 left in place rather than rewritten across sections; this note is the
 correction.)* **Pass/fail was fixed in the PLAN before the run**
-(`docs/plans/0104-*.md` §Step 7); this records the reads against it.
+(`docs/plans/done/0104-nl-query-count-with-group-by.md` §Step 7); this records
+the reads against it.
 
 **Result: 12/13 correct · expressible 92% · ceiling-rescue 100% · lone miss nl-06
 · latency p50 15.9 s / p95 75.7 s / max 75.7 s.**
