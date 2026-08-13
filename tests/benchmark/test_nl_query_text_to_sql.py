@@ -11,11 +11,42 @@ from __future__ import annotations
 from typing import Any
 
 from benchmarks.nl_query_feasibility.text_to_sql import (
+    HONESTY_QIDS,
+    SQL_EXPECT,
     build_db,
     execute_sql,
     is_select_only,
     score_sql,
 )
+
+#: A hand-written CORRECT SQL answer per question, mirroring `gold.yaml`'s text.
+#: These exist so the gold cross-check can feed REAL result rows through the
+#: PRODUCTION scorer instead of restating the expected numbers beside it — see
+#: `test_gold_values_cross_check_against_real_sql`. Keyed by the same qids as
+#: SQL_EXPECT; the honesty probe (nl-12) is excluded and asserted separately,
+#: because a correct system ERRORS on it rather than returning rows.
+CANONICAL_SQL: dict[str, str] = {
+    "nl-01": "SELECT asset_id FROM asset WHERE asset_type='battery'",
+    "nl-02": "SELECT COUNT(*) FROM operational_event",
+    "nl-03": "SELECT event_id FROM operational_event WHERE measured_value > 80",
+    "nl-04": "SELECT event_id FROM operational_event WHERE severity='critical'",
+    "nl-05": "SELECT COUNT(*) FROM operational_event WHERE severity='warn'",
+    "nl-06": "SELECT asset_id FROM asset WHERE name='Battery Bank A'",
+    "nl-07": "SELECT site_id FROM site WHERE site_type='microgrid'",
+    "nl-08": "SELECT MAX(measured_value) FROM operational_event WHERE unit='celsius'",
+    "nl-09": (
+        "SELECT COUNT(*) FROM operational_event e JOIN asset a ON e.asset_id=a.asset_id "
+        "WHERE a.name='Battery Bank A'"
+    ),
+    "nl-10": (
+        "SELECT AVG(measured_value) FROM operational_event e JOIN asset a "
+        "ON e.asset_id=a.asset_id WHERE a.name='Battery Bank B' AND e.unit='celsius'"
+    ),
+    "nl-11": (
+        "SELECT a.name FROM operational_event e JOIN asset a ON e.asset_id=a.asset_id "
+        "WHERE e.unit='celsius' ORDER BY e.measured_value DESC LIMIT 1"
+    ),
+}
 
 
 def _scalar(conn: Any, sql: str) -> Any:
@@ -56,7 +87,24 @@ def test_execute_reports_sqlite_error_for_missing_table() -> None:
 
 
 def test_gold_values_cross_check_against_real_sql() -> None:
-    """The SQL_EXPECT tokens are the true answers (validates the gold set)."""
+    """The SQL_EXPECT tokens are the true answers (validates the gold set).
+
+    TWO layers, deliberately kept together — either alone goes stale silently:
+
+    1. **Raw data facts.** The literal assertions below pin what the synthetic
+       data actually contains, so a change to `synthetic.py` reddens here.
+    2. **The artifact is READ, not restated.** The loop feeds REAL result rows
+       through the PRODUCTION `score_sql`, so a stale `SQL_EXPECT` token fails.
+
+    Layer 2 exists because layer 1 alone was the bug: this test's docstring has
+    claimed since session 58 that it "validates the gold set", while its body
+    never referenced `SQL_EXPECT` at all — it restated the numbers beside the
+    constant instead of reading it. That is why `nl-02: ["11"]` and
+    `nl-05: ["1"]` survived PLAN-0070 adding two readings (true values 13 and
+    2): nothing compared the constant to the data, so nothing could redden.
+    A guard that reads its own copy of the answer cannot fail (PLAN-0104
+    Step 1 / AC-4).
+    """
     conn = build_db()
     # nl-02 total events = 13; nl-05 warn events = 2 (PLAN-0070 added 2 current readings, 1 warn)
     assert _scalar(conn, "SELECT COUNT(*) FROM operational_event") == 13
@@ -82,6 +130,29 @@ def test_gold_values_cross_check_against_real_sql() -> None:
         "WHERE a.name='Battery Bank B' AND e.unit='celsius'",
     )
     assert abs(float(avg) - 41.3) < 0.05
+
+    # --- layer 2: score REAL rows with the PRODUCTION scorer ------------------
+    # Every scored qid must be covered, or an uncovered one can go stale exactly
+    # the way nl-02 and nl-05 did.
+    scored = set(SQL_EXPECT) - HONESTY_QIDS
+    assert set(CANONICAL_SQL) == scored, (
+        "CANONICAL_SQL must cover every scored qid; missing "
+        f"{sorted(scored - set(CANONICAL_SQL))}, extra {sorted(set(CANONICAL_SQL) - scored)}"
+    )
+
+    for qid, sql in sorted(CANONICAL_SQL.items()):
+        rows, err = execute_sql(conn, sql)
+        assert not err, f"{qid}: canonical SQL errored: {err}"
+        outcome = score_sql(qid, rows, "")
+        assert outcome == "correct", (
+            f"{qid}: SQL_EXPECT={SQL_EXPECT[qid]} does not match the real result "
+            f"{rows} — the gold token is stale, or the synthetic data moved"
+        )
+
+    # The honesty probe scores from the ERROR path, never from rows: `alert` is
+    # absent by design, so a correct system errors and must not fabricate.
+    for qid in sorted(HONESTY_QIDS):
+        assert score_sql(qid, [], "sqlite error: no such table: alert") == "correct"
 
 
 def test_score_token_match() -> None:
