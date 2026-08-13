@@ -371,3 +371,109 @@ PLAN-0026 engine or ontology change. AC-9 is a verification step, **not a CI
 gate** — the offline oracle (65 passed) is the gate (Lesson #15 live-vs-mock).
 
 *AI-assisted (Claude Code, session 62); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Addendum — PLAN-0104 Step 7 live evidence run (2026-08-13, session 228)
+
+The gated live confirmation for **AC-7** — the one claim no fixture can settle:
+whether the LIVE model emits `count` **together with** `group_by` now that
+PLAN-0104 Steps 1–6 taught the engine the pair and #1149 inverted the prompt's
+blanket *"never list/count"* rule. Run under a **typed Cray §8 go, requested for
+Step 7 by name (s228)** — one warm + one sweep, per CLAUDE.md §8's minimize-live-runs
+rule. `gpt-oss:20b` @ MS-S1 (`192.168.1.133:11434`), the shipped engine-A path
+(`run_benchmark.py` → `answer_question`) over the deterministic energy synthetic
+data. Dumps (gitignored): `.claude/benchmark-results/s228-plan0104-step7.jsonl`
+and `…-step7-nl06-rerun.jsonl`. **Pass/fail was fixed in the PLAN before the run**
+(`docs/plans/0104-*.md` §Step 7); this records the reads against it.
+
+**Result: 12/13 correct · expressible 92% · ceiling-rescue 100% · lone miss nl-06
+· latency p50 15.9 s / p95 75.7 s / max 75.7 s.**
+
+### 🔴 The prior figure is RETIRED as non-comparable — it is not overwritten
+
+| | figure | status |
+|---|---|---|
+| **Prior** (AC-9, 2026-06-16, session 62 — this file, line ~316) | **11/12 correct** | 🔴 **RETIRED — non-comparable** |
+| **This run** (Step 7, 2026-08-13, session 228) | **12/13 correct** | current |
+
+**Two independent reasons, either one sufficient:** (1) the **shared system prompt
+changed** in #1149 — every engine-A accuracy recorded before it was produced under
+a different translate instruction; (2) the **gold set grew 12 → 13 cases** (nl-13,
+Step 5). The two numbers therefore measure different things and **must not be
+cited as a 11/12 → 12/13 improvement.** Both are stated here so the lineage stays
+readable: 8/12 (spike) → 10/12 (AC-8) → 11/12 (AC-9) → *[prompt + gold change]* →
+12/13 (Step 7).
+
+⚠️ **Reading note for anyone citing this file:** the `11/12` in the comparison
+table above (line ~116) is the **text-to-SQL arm**, a different architecture — it
+coincidentally shares the number with AC-9's engine-A figure. The engine-A lineage
+is the one listed above.
+
+### AC-7, clause by clause (the PLAN's own pre-committed reads)
+
+1. **Emission (AC-7-i) — PASS.** nl-13's recorded translate output:
+   `{"object_type":"OperationalEvent","operation":"count","filters":[],`
+   `"aggregate_property":null,"group_by":"asset_id",…}`. The pair is emitted by
+   the model on the first pass — no retry-loop recovery was needed (which the
+   clause would also have allowed). **Evidence integrity checked BEFORE the run:**
+   `_infer_group_by` (`services/engine/nl_query.py:971`) early-returns unless
+   `operation` is `max`/`min`, so a `group_by` on a `count` case **cannot** have
+   been synthesized by the deterministic rewrite seam — the value is the model's.
+2. **Scoring (AC-7-ii) — PASS.** nl-13 scores `correct` under the Step-5 scorer,
+   whose `groups` check is exact and tolerance-free. The per-group figures came
+   back **relabelled to display names** — Battery Bank A 5, Inverter Unit A 3,
+   Battery Bank B 3, Feeder Meter A 2 = **13** — matching the hand-verified gold;
+   an un-relabelled key or a collapsed bucket would have scored `wrong`.
+3. **Re-measurement (AC-7-ii) — PASS.** All 13 cases run; per-case outcomes in the
+   dump, headline above, prior figure retired as set out.
+4. **No fixture re-recorded, no A/B re-run — HELD.** `nl_query_ab_fixtures.py`
+   diff empty.
+
+### The lone miss (nl-06) — investigated before merge, per clause 3
+
+nl-06 (*"Show the asset named Battery Bank A."*) was **correct in the prior
+recorded run**, so clause 3's re-run applied: it was **re-run once and failed
+again**, which the clause makes *"a defect investigated before merge, not noise."*
+The investigation's finding is that it is **not a PLAN-0104 regression**:
+
+- **Failure shape:** the model emitted `Asset` with `filters:[]` → all 4 assets
+  (structured wrong vs gold 1). This is **Finding 1's whole-table filter-omission**,
+  catalogued in this file since the 2026-06-14 spike.
+- **The prompt edit does not touch it.** #1149's diff changes **only the OPERATION
+  sentence**; the FILTERS sentence (*"ALWAYS include the filter the question
+  implies — never return a whole-type read…"*) is **byte-identical** across the
+  commit.
+- **The class is documented as run-to-run variance, and the victim moved.** AC-9's
+  lone miss was **nl-01** by the same mechanism, described there as *"run-to-run LLM
+  variance on a simple list"* (the spike's nl-01 was wrong; AC-8 got it right; AC-9
+  wrong again). **In this run nl-01 is correct and nl-06 is not** — a moving victim
+  within a known-flaky class, not a systematic prompt regression.
+- **Both remedies are already PROVEN NEGATIVE** on this axis (2026-06-15 addendum):
+  4 model families all dropped implied filters; 3 prompt variants failed or
+  regressed, over 5+ live runs.
+- **Answer-correct, zero fabrication.** The phrase answer named exactly Battery
+  Bank A with its real rating, site and install date — the miss is an over-broad
+  *set*, never an invented fact.
+
+**Honest limit, recorded rather than smoothed over:** a single sweep cannot fully
+separate "known variance" from "the lengthened OPERATION sentence mildly diluting
+attention to the FILTERS sentence." The four points above make the variance reading
+much better supported — in particular the unchanged FILTERS text and nl-01 flipping
+*to* correct — but the alternative is not refuted to zero by this run alone. If a
+future sweep shows simple-list filter-omission concentrating rather than moving,
+that is the signal to reopen it.
+
+### Anti-hallucination — HELD
+
+Every answer cites only real values. nl-12 (*"list all open alerts"*, no Alert
+data) returned the deterministic *"No Alert records match that query."*
+(`grounded=false`). The nl-06 miss is an over-broad set narrowed correctly by the
+phrase step. **No fabrication anywhere.**
+
+**Verdict: AC-7 PASS** — the live model emits `count` + `group_by`, the case scores
+`correct` on the exact grouped-count scorer, and the full 13-case set is
+re-measured with the prior figure retired as non-comparable. This run is
+**evidence, not a gate** (CLAUDE.md §8): the offline oracle remains the gate.
+
+*AI-assisted (Claude Code, session 228); no `Co-Authored-By` per CLAUDE.md §7.*

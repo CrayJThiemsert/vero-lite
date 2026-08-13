@@ -1,6 +1,6 @@
 # PLAN-0104: Teach the NL query engine `count` WITH `group_by` (PLAN-0100 D-4, option (a))
 
-**Status:** Draft
+**Status:** Complete (8/8 ACs closed, session 228)
 **Owner:** Claude Code (execution) · Cray (SD rulings; the one §8 go)
 **Created:** 2026-08-13
 **Related ADRs:** none new proposed — ADR-0032 D1 (the demo→pilot wedge this
@@ -77,7 +77,7 @@ None of these is satisfiable by mocking the seam it tests; guards get a
 non-vacuity probe (plant the violation from a `/tmp` copy, see the RED,
 restore — never restore from git).
 
-- [ ] **AC-1 — the validator admits exactly the new pair, nothing else.**
+- [x] **AC-1 — the validator admits exactly the new pair, nothing else.**
   `_validate_query` accepts `count` + `group_by` (with `aggregate_property`
   unset) and still rejects: `list` + `group_by`, `list` + `aggregate_property`,
   and `count` + `aggregate_property` — each with a corrective message that
@@ -86,7 +86,7 @@ restore — never restore from git).
   (`tests/services/engine/test_nl_query.py:664-671`) is **rewritten into the
   acceptance test, not deleted**; the three remaining rejections each keep a
   named test. Offline.
-- [ ] **AC-2 — the scenario test drives the real producer into the real
+- [x] **AC-2 — the scenario test drives the real producer into the real
   consumer on realistic simulated data (CLAUDE.md §8, binding).** A scenario
   test runs `answer_question` end-to-end against the **real energy synthetic
   adapter** (`verticals/energy/data_adapter/synthetic.py`) with the translate
@@ -102,12 +102,12 @@ restore — never restore from git).
   convention): Battery Bank A = 5, Inverter Unit A = 3, Battery Bank B = 3,
   Feeder Meter A = 2 (sums to 13). ⚠️ This AC deliberately does **not** claim
   the live model emits the pair — that is AC-7's, and only AC-7's, claim.
-- [ ] **AC-3 — ungrouped `count` is regression-frozen.** Every existing
+- [x] **AC-3 — ungrouped `count` is regression-frozen.** Every existing
   `count`-without-`group_by` test passes **unmodified**, and the flat count
   branch of `_fallback_answer` (`nl_query.py:1080-1081`) still serves the
   ungrouped case (a grouped count rides the aggregate branch instead —
   asserted by a test that an ungrouped count answer carries no group listing).
-- [ ] **AC-4 — the benchmark's own gold is repaired and the repair is
+- [x] **AC-4 — the benchmark's own gold is repaired and the repair is
   guarded.** `SQL_EXPECT` (`benchmarks/nl_query_feasibility/text_to_sql.py:
   67-80`) reads `nl-02: ["13"]` and `nl-05: ["2"]` (today: `["11"]` / `["1"]`
   — stale by PLAN-0070's two added readings), **and** the cross-check test
@@ -117,7 +117,7 @@ restore — never restore from git).
   docstring claims validation the body does not perform, so the stale tokens
   pass silently; the fix makes the precondition read the SUT's output).
   Non-vacuity probe: replant `"11"`, see the RED. Offline.
-- [ ] **AC-5 — the run-corpus surface never silently collapses a grouped
+- [x] **AC-5 — the run-corpus surface never silently collapses a grouped
   count.** Whichever way SD-2 is ruled, a test proves it: either (a) a grouped
   count over the run corpus returns per-group figures (per-week from
   `week_rollup`, per-procedure/status from `run_status_rollup`), or (b)
@@ -129,7 +129,7 @@ restore — never restore from git).
   🔴 **Merge dependency (both SD-2 branches):** the shared-validator
   relaxation and this AC's change land in the **same PR** — there is no
   intermediate commit where the pair validates and `_count` collapses.
-- [ ] **AC-6 — the gold set gains the grouped-count case, offline.**
+- [x] **AC-6 — the gold set gains the grouped-count case, offline.**
   `benchmarks/nl_query_feasibility/gold.yaml` gains a case (nl-13, category
   `group-count`) for the AC-2 question with `expected_operation: count`,
   `expected_count: 13`, and per-group expectations; the harness scorer
@@ -140,7 +140,7 @@ restore — never restore from git).
   `synthetic.py` at execution. No synthetic event is added or changed (the
   energy events couple the existing gold — freezing them keeps nl-01..nl-12's
   values valid).
-- [ ] **AC-7 — the live model emits the pair, measured on MS-S1 (HOST-STATE —
+- [x] **AC-7 — the live model emits the pair, measured on MS-S1 (HOST-STATE —
   the one claim no fixture can settle).** Under a typed Cray §8 go (Step 7):
   (i) the raw translate output for the nl-13 question, recorded from the live
   run artifact, sets `operation: "count"` + `group_by` — a canned translate
@@ -149,7 +149,7 @@ restore — never restore from git).
   prompt changed, so every previously recorded accuracy is non-comparable and
   is not cited as if current. Pass/fail is pre-committed in Step 7 before the
   run.
-- [ ] **AC-8 — gates and the frozen corpus.** Full `tests/` green, `mypy
+- [x] **AC-8 — gates and the frozen corpus.** Full `tests/` green, `mypy
   --strict services/` clean, ruff clean; `git diff` for
   `tests/services/engine/nl_query_ab_fixtures.py` is **empty** across every
   PR of this PLAN (see Out of Scope), and its `len(FIXTURES) == 27` assertion
@@ -466,6 +466,21 @@ Pre-committed pass/fail, fixed here before the run:
 4. No fixture is re-recorded; no A/B re-run (Out of Scope).
 
 Pass/fail: the three numbered reads, against the run artifact.
+
+✅ **EXECUTED s228 under Cray's typed §8 go, requested for this step by name.**
+All four reads PASS; the record is
+`benchmarks/nl_query_feasibility/RESULTS.md` §"Addendum — PLAN-0104 Step 7 live
+evidence run" — **read it, not this summary**. Headline: nl-13 emitted
+`operation:"count"` + `group_by:"asset_id"` on the first pass and scored
+`correct`; **12/13** over the full gold set; the prior **11/12** (AC-9,
+2026-06-16) is **RETIRED as non-comparable** for two independent reasons
+(the shared prompt changed in #1149; the gold set grew 12 → 13). The lone miss
+(nl-06) was re-run once per clause 3, failed again, and was **investigated
+before merge**: it is the pre-existing, catalogued simple-list filter-omission
+variance — #1149's diff leaves the FILTERS sentence byte-identical, and the
+victim moved (AC-9's miss was nl-01, correct in this run) — **not a PLAN-0104
+regression**. The addendum records the one alternative this single sweep cannot
+refute to zero.
 
 ## Verification
 
