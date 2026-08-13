@@ -190,7 +190,21 @@ restore — never restore from git).
 
 ## Surfaced decisions — Cray's slots (recommendation ≠ ruling; nothing below is assumed by the steps)
 
-- **SD-1 — What carries a grouped count?** `AggregateResult.property` is a
+> ✅ **ALL THREE SLOTS RULED s226 (Cray, typed)** — SD-1 = **(a)**, SD-2 = **(a)**,
+> SD-3 = **NO (keep the bypass)**, each stamped in place below. Every ruling
+> matched the drafted recommendation, so no Step re-shapes. **Nothing gates
+> execution of Steps 1–6 any more.** Step 7 remains gated on its own typed §8
+> go, which is a separate ask made at that step, never inherited from these.
+> The rejected alternatives are kept as the reasoning lineage — do not
+> re-litigate them.
+
+- **SD-1 — What carries a grouped count?**
+  ✅ **RULED (Cray, typed, s226): (a)** — `AggregateResult.property` becomes
+  `str | None = None` with the construction-enforced invariant *"property is
+  None iff operation == 'count'"*. Step 2 executes against this; (b), (c) and
+  (d) below are recorded as the rejected alternatives, not re-litigated.
+
+  `AggregateResult.property` is a
   required `str` with no meaning for a count, and `groups: dict[str, float]`
   values are measures, not cardinalities (`nl_query.py:195-208`). The §Frontier
   clause of the dispatch explicitly permits eliminating the wrong carrier
@@ -232,7 +246,17 @@ restore — never restore from git).
   shape — is a design-identity call on the grounding receipt, not a
   judgment call the drafter should bury in a diff.
 - **SD-2 — `run_query.py:_count`: fix in this PLAN, or scope out behind a
-  guard?** Options:
+  guard?**
+  ✅ **RULED (Cray, typed, s226): (a) — fix it here.** Step 4 executes the
+  grouped-count path from the existing rollups. ⚠️ The hard merge dependency in
+  AC-5 stands **unchanged and is not softened by this ruling**: the
+  shared-validator relaxation and this fix land in the SAME PR — no
+  intermediate commit may exist where the pair validates and `_count` still
+  collapses groups to a total. The one marked claim survives the ruling: if the
+  `/insights/query` response shape cannot carry grouped figures without an API
+  change, **surface to Cray — this PLAN does not authorize widening scope.**
+
+  Options:
   - **(a) Fix it here.** The substrate already computes grouped counts —
     `week_rollup` returns per-ISO-week `run_count` (`run_query.py:167-170`)
     and `run_status_rollup` per procedure×status (`:172-176`) — so `_count`
@@ -260,7 +284,13 @@ restore — never restore from git).
   refusal. *Why Cray:* it is a scope call with a cost/risk trade (option (a)
   touches a PDPA-sensitive surface's response shape), and the dispatch names
   it as Cray's.
-- **SD-3 — Does unit-coherence apply to a grouped count?** Verified basis: the
+- **SD-3 — Does unit-coherence apply to a grouped count?**
+  ✅ **RULED (Cray, typed, s226): NO — keep the existing structural bypass.** A
+  grouped count counts *records*, not measures. Step 3's expected groups
+  therefore stand as drafted (per-asset counts **include** transitions and
+  alarms, not only readings), and no unit filter is synthesized for a count.
+
+  Verified basis: the
   coherence seam is *already structurally bypassed* for count —
   `_apply_coherence` returns immediately unless
   `query.operation in _AGGREGATE_OPS and query.aggregate_property`
@@ -304,8 +334,9 @@ restore), green after; AC-4.
 
 ### Step 2: The carrier + deterministic grouped-count execution (offline)
 
-Under SD-1's ruling (drafted against recommendation (a); the step re-shapes
-mechanically if Cray rules (c)/(d)):
+**SD-1 is RULED (a), s226** — the carrier is the loosened `AggregateResult`,
+so this Step executes exactly as drafted; the "re-shapes mechanically if Cray
+rules (c)/(d)" conditional this paragraph carried is now moot and resolved:
 
 - `AggregateResult.property` becomes `str | None = None` with the
   construction-time invariant (SD-1); docstring updated to define the count
@@ -353,9 +384,12 @@ Pass/fail: AC-1 + AC-2 evidence.
 
 ### Step 4: The run-corpus disposition (offline, same PR as Steps 2/3 — SD-2)
 
-Under SD-2's ruling: either grouped-count execution from the existing rollups
-(recommendation (a)), or the explicit `validate_run_query` refusal (b). In
-both branches: delete or subsume the now-un-deadened
+**SD-2 is RULED (a), s226** — so this Step builds grouped-count execution from
+the existing rollups; the (b) refusal branch is not taken. _[The two-branch
+wording this paragraph carried while the slot was open is resolved, not
+deleted: (b) stays recorded in §Surfaced decisions as the rejected
+alternative.]_ Either way the following holds and is unchanged by the ruling:
+delete or subsume the now-un-deadened
 `group_by == "started_week"` half of `_count` (`run_query.py:166-171`) so no
 path folds groups into a single total, and add AC-5's test asserting the
 collapse is impossible. If (a): confirm the `/insights/query` response shape
