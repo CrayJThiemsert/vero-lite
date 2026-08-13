@@ -14,7 +14,7 @@ of truth (CLAUDE.md §4). It reports; it never ranks or decides (that is
 
 | # | Stream | Where its state lives |
 |---|--------|----------------------|
-| 1 | **demo→pilot** | `docs/plans/0100-*.md` (published demo surface — read its AC checkboxes + Steps section, not prose claims); PLAN-0096 residual risks (`docs/plans/done/0096-*.md` §Verification preamble); the STATUS Active-TODO row for PLAN-0100; ADR-0032 D1 (the wedge motion itself) |
+| 1 | **demo→pilot** | `docs/plans/done/0100-*.md` (published demo surface — **COMPLETE 13/13, archived s216**; read its AC checkboxes + Steps section, not prose claims); PLAN-0096 residual risks (`docs/plans/done/0096-*.md` §Verification preamble); the STATUS Active-TODO row for PLAN-0100 (its residuals outlive the PLAN); ADR-0032 D1 (the wedge motion itself) |
 | 2 | **harness/governance debt** | `docs/plans/done/0102-*.md` (retire L1 — **COMPLETE 11/11, archived s217**); STATUS Active-TODO rows: CLAUDE.md extraction pass (parked), assembly-cost tripwire, seam-scoped mutation-testing CI |
 | 3 | **primitives** | `docs/plans/0076-*.md` §A (T1 F-FACTORY — the procedure-aware ExecutorFactory half); the O-2 residue (`docs/plans/done/0078-*.md` §L-3 + Out-of-Scope); custom Postgres image (needs fresh ADR + PLAN, neither drafted — STATUS TODO) |
 | 4 | **marketing/FDE** | `docs/strategy/private/2026-08-06-marketing-fde-plan-synthesis.md` (gitignored — reference BY PATH ONLY in any tracked output; it carries pricing) + its §4 asset roadmap and §6 open questions; tracked-side artifacts (landing-layer PLAN, one-pager assets) as they appear |

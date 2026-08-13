@@ -108,6 +108,63 @@ def test_tilde_fence_is_also_skipped(repo: Path) -> None:
     assert find_violations(repo, [Path("docs/lessons/0012-x.md")]) == []
 
 
+# --- glob-style references -------------------------------------------------
+#
+# A registry citing a PLAN by a `0100-*.md` glob rots exactly like one citing the
+# full slug, but was INVISIBLE to the guard: the slug class admitted no `*`, so
+# the reference never matched and the scan stayed silent. The measured cost was
+# one live dead pointer -- the `stream-status` skill's stream-1 row, dead since
+# PLAN-0100 was archived at s216 and never once reported.
+
+GLOB_MOVED = "0094-*.md"
+GLOB_LIVE = "0076-*.md"
+
+
+def test_glob_citation_of_a_moved_plan_is_a_violation(repo: Path) -> None:
+    _write(repo, "docs/lessons/0033-x.md", f"Stream 1 state: `docs/plans/{GLOB_MOVED}`.\n")
+    found = find_violations(repo, [Path("docs/lessons/0033-x.md")])
+    assert len(found) == 1
+    rel, lineno, slug, _line = found[0]
+    assert (rel, lineno, slug) == ("docs/lessons/0033-x.md", 1, GLOB_MOVED)
+
+
+def test_glob_matching_a_live_plan_never_trips(repo: Path) -> None:
+    _write(repo, "docs/lessons/0033-x.md", f"See `docs/plans/{GLOB_LIVE}`.\n")
+    assert find_violations(repo, [Path("docs/lessons/0033-x.md")]) == []
+
+
+def test_glob_matching_nothing_anywhere_never_trips(repo: Path) -> None:
+    """MOVED, not MISSING -- the predicate that makes the guard usable.
+
+    Widening the slug class must not smuggle in the "path does not resolve"
+    rule the module docstring rejects: a glob with no twin under `done/` is a
+    forward reference, not rot.
+    """
+    _write(repo, "docs/lessons/0033-x.md", "Planned: `docs/plans/0199-*.md`.\n")
+    assert find_violations(repo, [Path("docs/lessons/0033-x.md")]) == []
+
+
+def test_has_moved_handles_globs(repo: Path) -> None:
+    assert has_moved(repo, GLOB_MOVED) is True
+    assert has_moved(repo, GLOB_LIVE) is False
+    assert has_moved(repo, "0199-*.md") is False
+    assert has_moved(repo, "NNNN-*.md") is False
+    # Present in BOTH (mid-archival, or a duplicate) is NOT a dead pointer --
+    # the same rule the literal branch enforces.
+    (repo / "docs" / "plans" / MOVED).write_text("also here\n", encoding="utf-8")
+    assert has_moved(repo, GLOB_MOVED) is False
+
+
+def test_glob_does_not_match_across_the_done_boundary(repo: Path) -> None:
+    """`docs/plans/<glob>` must resolve against `plans/` only.
+
+    If the live-side lookup were allowed to descend into `done/`, every archived
+    PLAN would report as still-live and the guard would silently pass on the
+    exact rot it exists to catch -- a fail-OPEN inversion.
+    """
+    assert has_moved(repo, GLOB_MOVED) is True
+
+
 # --- exemptions ------------------------------------------------------------
 
 
@@ -118,6 +175,7 @@ def test_tilde_fence_is_also_skipped(repo: Path) -> None:
         "docs/plans/done/0009-x.md",
         "docs/status-archive/2026-h1-status.md",
         "docs/adr/0018-x.md",
+        "benchmarks/stop_classifier/gold.yaml",
     ],
 )
 def test_exempt_paths_are_not_scanned(repo: Path, rel: str) -> None:
@@ -131,6 +189,31 @@ def test_non_exempt_sibling_of_an_exempt_prefix_is_scanned(repo: Path) -> None:
     assert not is_exempt("docs/plans/0076-active.md")
     _write(repo, "docs/plans/0076-active.md", f"See `docs/plans/{MOVED}`.\n")
     assert len(find_violations(repo, [Path("docs/plans/0076-active.md")])) == 1
+
+
+def test_gold_set_exemption_is_file_scoped_not_directory_scoped() -> None:
+    """Only the gold set is data; its sibling RESULTS.md is navigation.
+
+    `benchmarks/stop_classifier/gold.yaml` is a corpus of SIMULATED assistant
+    turns scored by the stop-classifier -- the `tests/` carve-out reasoning
+    exactly: one gold case has an assistant narrating `git mv
+    docs/plans/0028-*.md into docs/plans/done/`, so re-pointing it at `done/`
+    would render the sentence self-contradictory and silently change what the
+    benchmark measures.
+
+    Exempting the DIRECTORY would have un-guarded the RESULTS.md beside it --
+    and a benchmark RESULTS.md is precisely where this rot was found (a
+    `docs/plans/0104-*.md` pointer that goes dead the day PLAN-0104 archives).
+    """
+    assert is_exempt("benchmarks/stop_classifier/gold.yaml")
+    assert not is_exempt("benchmarks/stop_classifier/RESULTS.md")
+    assert not is_exempt("benchmarks/nl_query_feasibility/RESULTS.md")
+
+
+def test_the_gold_sets_sibling_results_is_still_scanned(repo: Path) -> None:
+    rel = "benchmarks/stop_classifier/RESULTS.md"
+    _write(repo, rel, f"Pass/fail was fixed in `docs/plans/{GLOB_MOVED}` §Step 7.\n")
+    assert len(find_violations(repo, [Path(rel)])) == 1
 
 
 # --- predicate unit --------------------------------------------------------

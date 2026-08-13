@@ -492,6 +492,20 @@ reason the rule is enforceable. Measured on the tree at s183:
 | "the path does not resolve" | **89** | **No.** Overwhelmingly placeholders (`NNNN-name.md`, `0011-xxx.md`, `x.md`) and forward references to files never written. |
 | "gone from `docs/plans/` **and** present in `docs/plans/done/`" | **29** | **Yes** — every hit a real dead pointer. A placeholder has no twin under `done/`, so it cannot trip. |
 
+**Both the full slug and the GLOB form are matched.** Registries and closeout
+notes routinely cite a PLAN as `docs/plans/<NNNN>-*.md`, and that citation rots
+exactly like a full-slug one — but the guard's slug pattern originally admitted
+no `*`, so those references matched nothing and it passed over them in silence.
+A glob is judged by the **same** MOVED-not-MISSING predicate: a violation only
+when it matches **nothing** under `docs/plans/` *and* **something** under
+`docs/plans/done/`. Placeholders (`NNNN-*.md`) and never-written forward
+references therefore still cannot trip it.
+
+*Measured cost of that blindspot:* the `stream-status` skill's stream-1 row went
+dead when PLAN-0100 was archived at **s216** and was never once reported —
+including by the very commit that updated the stream-2 row beside it, for this
+same reason, one session later.
+
 **What to write instead:** re-point the reference at `docs/plans/done/<slug>`.
 
 **If you are NARRATING a stale pointer rather than citing one** — a correction
@@ -499,7 +513,8 @@ note, a lesson *about* the rot — name it **descriptively** ("the PLAN-0095
 reference"), never as a literal path. The guard cannot tell narration from
 assertion, so prose about a dead pointer that contains one re-breaks the very
 check it is describing. (Observed s183, twice, in the same session that wrote
-this rule.)
+this rule — and again in the change that widened it to globs, which flagged its
+own source comments the moment the widening went live.)
 
 **Enforcement:** `tools/check_plan_archive_refs.py` — deterministic, fail-closed
 at the commit boundary, `always_run` because the violation is authored by moving
@@ -517,6 +532,7 @@ would falsify the historical record rather than repair a link.
 | `docs/plans/done/**` | An archived PLAN narrating its own pre-archive path is describing its own history, not pointing at a live file. ~40 archived PLANs do this by construction. |
 | `docs/status-archive/**` | Tier-3 frozen history. Same mandatory reasoning as R7's carve-out: R4 makes archives move-only and never rewritten, so a path frozen inside an archived block must stay exactly as written. |
 | `docs/adr/**` | **TEMPORARY — not a ruling that ADRs may rot.** 8 Accepted ADRs carry pre-archive PLAN references, and `CLAUDE.md`'s G1 gate blocks Code from editing an Accepted ADR's body, so they cannot be repaired from Tier 2. They are queued to ride the parked CLAUDE.md Cowork dispatch. **Remove this prefix in the same change that lands those fixes.** |
+| `benchmarks/stop_classifier/gold.yaml` | The stop-classifier **gold set** — a corpus of *simulated* assistant turns fed to the classifier and scored, so a path inside one is benchmark **input**, not navigation (the `tests/**` reasoning exactly). Its `pause-plan-status-flip` case has an assistant announcing it is about to `git mv` the PLAN-0028 reference into `done/`; re-pointing that reference would make the sentence self-contradictory and silently change what the benchmark measures. **File-scoped, not directory-scoped, deliberately** — the `RESULTS.md` beside it is a genuine navigation surface, and a benchmark `RESULTS.md` is exactly where this rot shows up. |
 
 ### Responsibility matrix
 

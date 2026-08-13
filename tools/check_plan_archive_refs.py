@@ -21,6 +21,20 @@ reference to ``docs/plans/<slug>`` where that file is absent *and*
 * "moved to done/" flags **29 files, every one a real dead pointer.** Placeholders
   cannot trip it: ``NNNN-name.md`` has no twin under ``done/``.
 
+References are matched in both their full-slug and **glob** (``0100-*.md``)
+forms. The glob shape is what registries and closeout notes actually write, and
+it rots identically -- but the original slug class admitted no ``*``, so those
+citations never matched and the guard stayed silent on them from R8's landing
+until this change. Measured cost of the blindspot: the ``stream-status`` skill's
+stream-1 row went dead when PLAN-0100 was archived at s216 and was never once
+reported, including by the very commit that updated the stream-2 row beside it
+for the same reason one session later.
+
+Widening the class does not soften the predicate: a glob is a violation only
+when it matches nothing under ``docs/plans/`` **and** something under
+``docs/plans/done/``, so placeholders and forward references still cannot trip
+it.
+
 Exit codes: 0 = clean; 1 = at least one pre-archive citation found.
 
 ``PLAN_REF_ROOT`` overrides the scanned repo root for tests (mirrors the
@@ -29,15 +43,28 @@ Exit codes: 0 = clean; 1 = at least one pre-archive citation found.
 
 from __future__ import annotations
 
+import fnmatch
 import os
 import re
 import subprocess
 import sys
 from pathlib import Path
 
-# `docs/plans/0094-loop-detect-...md` and the legacy `docs/plans/PLAN-001-...md`.
+# `docs/plans/0094-loop-detect-...md`, the legacy `docs/plans/PLAN-001-...md`,
+# and the GLOB form (a `0094-*.md` slug) that registries and closeout notes use.
 # The slug is captured so it can be re-tested under `done/`.
-PLAN_REF_RE = re.compile(r"docs/plans/((?:\d{4}|PLAN-\d+)-[A-Za-z0-9._-]+\.md)")
+#
+# The glob example above is deliberately written WITHOUT its `docs/plans/`
+# prefix: spelled in full it is a live citation of an archived PLAN, and this
+# guard would flag its own source. That is the narration trap the failure
+# message at the bottom of this file describes -- prose about a dead pointer
+# that contains one re-breaks the check it is describing.
+#
+# `*` belongs in the slug class: a glob citation rots exactly like a full-slug
+# one, but matched nothing here, so the guard passed over it in silence. It
+# does NOT widen the predicate toward "path does not resolve" -- `has_moved`
+# still demands a twin under `done/`, and a placeholder (`NNNN-*.md`) has none.
+PLAN_REF_RE = re.compile(r"docs/plans/((?:\d{4}|PLAN-\d+)-[A-Za-z0-9._*-]+\.md)")
 
 # Paths where a `docs/plans/...` string is DATA, not navigation -- exempt on
 # principle, not convenience.
@@ -61,6 +88,19 @@ EXEMPT_PREFIXES = (
     # from here. They are queued to ride the parked CLAUDE.md Cowork dispatch.
     # Remove this prefix in the same change that lands those fixes.
     "docs/adr/",
+    # The stop-classifier GOLD SET: a corpus of SIMULATED assistant turns fed to
+    # the classifier and scored, so a path inside one is benchmark INPUT, not
+    # navigation -- the `tests/` reasoning exactly. Its `pause-plan-status-flip`
+    # case has an assistant announcing it is about to `git mv` the PLAN-0028
+    # reference into `done/`; re-pointing that reference at `done/` makes the
+    # sentence self-contradictory and silently changes what the benchmark
+    # measures. (Named descriptively, not as a literal path, for the reason
+    # given beside PLAN_REF_RE.)
+    #
+    # FILE-scoped, not directory-scoped, and that is the whole point: the
+    # RESULTS.md beside it is a genuine navigation surface, and a benchmark
+    # RESULTS.md is exactly where this rot shows up.
+    "benchmarks/stop_classifier/gold.yaml",
 )
 
 
@@ -102,14 +142,34 @@ def tracked_files(root: Path) -> list[Path]:
     return [Path(p) for p in proc.stdout.split("\0") if p]
 
 
+def _dir_has_match(directory: Path, slug: str) -> bool:
+    """True iff a regular file DIRECTLY in `directory` matches the glob `slug`.
+
+    Deliberately not `Path.glob`: `slug` is untrusted text scraped out of prose,
+    and `glob` assigns extra meaning to `**` and to path separators. Matching
+    names from a single flat `iterdir()` keeps the lookup one level deep, which
+    is what stops the live-side probe from descending into `done/` and reporting
+    every archived PLAN as still-live -- a fail-OPEN inversion of the guard.
+    """
+    if not directory.is_dir():
+        return False
+    return any(fnmatch.fnmatch(e.name, slug) and e.is_file() for e in directory.iterdir())
+
+
 def has_moved(root: Path, slug: str) -> bool:
     """True iff `docs/plans/<slug>` is gone AND `docs/plans/done/<slug>` exists.
 
     Both halves are load-bearing. Without the first, a live PLAN's own path
     reports as a violation; without the second, every placeholder and every
     never-written forward reference does.
+
+    `slug` may be a glob (`0094-*.md`). The predicate is unchanged in kind --
+    still MOVED, not MISSING -- it just asks the two questions of a pattern:
+    does it match nothing live, and something archived?
     """
     plans = root / "docs" / "plans"
+    if "*" in slug:
+        return not _dir_has_match(plans, slug) and _dir_has_match(plans / "done", slug)
     return not (plans / slug).is_file() and (plans / "done" / slug).is_file()
 
 
