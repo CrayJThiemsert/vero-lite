@@ -27,6 +27,7 @@ from services.engine.nl_query import (
     _Coherence,
     _coherence_rewrite,
     _compute_aggregate,
+    _compute_group_count,
     _filter_matches,
     _fmt_num,
     _infer_group_by,
@@ -34,6 +35,7 @@ from services.engine.nl_query import (
     _object_id,
     _object_title,
     _parse_query,
+    _phrase_aggregate,
     _scalar_equal,
     _to_number,
     _translate,
@@ -571,6 +573,113 @@ async def test_count_with_name_resolve_grounds_to_five_events(energy_adapter: No
     }
 
 
+# --- grouped count: "how many X per Y?" (PLAN-0104 Steps 2-3) ---------------
+
+
+def test_aggregate_result_invariant_is_enforced_at_construction() -> None:
+    """SD-1 (a): 'property is None iff operation == count', enforced where the
+    object is BUILT — so a grounding receipt can never name a property the figure
+    was not computed over, and a caller that forgets gets a loud error rather
+    than a quietly wrong receipt."""
+    with pytest.raises(ValueError, match="property is None iff"):
+        AggregateResult(operation="count", property="measured_value", value=3.0)
+    with pytest.raises(ValueError, match="property is None iff"):
+        AggregateResult(operation="max", property=None, value=3.0)
+
+
+def test_compute_group_count_counts_records_not_measures() -> None:
+    """SD-3 (RULED NO): a grouped count counts RECORDS. A record carrying no
+    measured_value still counts — which is exactly where this differs from
+    ``_compute_aggregate``, whose ``_collect_numeric`` skips those records."""
+    query = StructuredQuery(object_type="OperationalEvent", operation="count", group_by="asset_id")
+    matched: list[dict[str, Any]] = [
+        {"event_id": "e1", "asset_id": "a1", "measured_value": 1.0},
+        {"event_id": "e2", "asset_id": "a1"},  # no measured_value at all
+        {"event_id": "e3", "asset_id": "a2"},
+    ]
+    agg = _compute_group_count(query, matched)
+    assert agg.operation == "count"
+    assert agg.property is None
+    assert agg.value == 3.0
+    assert agg.groups == {"a1": 2.0, "a2": 1.0}
+    # Non-vacuity: _compute_aggregate over the same set sees only ONE number, so
+    # the two functions genuinely disagree about what a record is worth here.
+    numeric = _compute_aggregate(
+        StructuredQuery(
+            object_type="OperationalEvent",
+            operation="sum",
+            aggregate_property="measured_value",
+            group_by="asset_id",
+        ),
+        matched,
+    )
+    assert numeric is not None
+    assert numeric.groups == {"a1": 1.0}
+
+
+def test_compute_group_count_none_key_counts_in_total_but_joins_no_group() -> None:
+    """The documented convention, asserted rather than assumed (it mirrors
+    ``_collect_numeric``): a record whose group key is missing counts toward the
+    total and joins no group, so the groups sum SHORT of the total by exactly
+    the number of such records."""
+    query = StructuredQuery(object_type="OperationalEvent", operation="count", group_by="asset_id")
+    matched: list[dict[str, Any]] = [{"asset_id": "a1"}, {"asset_id": None}, {}]
+    agg = _compute_group_count(query, matched)
+    assert agg.value == 3.0
+    assert agg.groups == {"a1": 1.0}
+    assert sum(agg.groups.values()) == 1.0
+
+
+def test_phrase_group_count_names_every_group_with_an_integer_cardinality() -> None:
+    """The count branch of ``_phrase_aggregate``: no property is named (there is
+    none), every group is listed, and cardinalities render as integers — a
+    receipt reading '5.0 events' would betray that counts ride as floats."""
+    query = StructuredQuery(object_type="OperationalEvent", operation="count", group_by="asset_id")
+    agg = AggregateResult(
+        operation="count",
+        property=None,
+        value=13.0,
+        groups={"Battery Bank A": 5.0, "Feeder Meter A": 2.0},
+    )
+    text = _phrase_aggregate(query, agg)
+    assert "Battery Bank A = 5" in text
+    assert "Feeder Meter A = 2" in text
+    assert "asset_id" in text  # the grouping dimension is named
+    assert "5.0" not in text
+    assert "None" not in text  # the absent property must not leak into the text
+
+
+async def test_grouped_count_over_an_enum_key_is_not_relabelled(energy_adapter: None) -> None:
+    """Grouping by a plain enum property: the relabel path is a no-op (there is no
+    ref target to resolve), so the enum values themselves are the group keys."""
+    client = _StubQueryClient(
+        query={"object_type": "OperationalEvent", "operation": "count", "group_by": "severity"},
+        raise_on="phrase",  # exercise the deterministic count phrasing
+    )
+    answer = await answer_question("how many events per severity?", "energy", client=client)
+    assert answer.aggregate is not None
+    assert answer.aggregate.groups == {"info": 9.0, "warn": 2.0, "error": 1.0, "critical": 1.0}
+    assert sum(answer.aggregate.groups.values()) == 13.0
+
+
+async def test_ungrouped_count_keeps_the_flat_answer_with_no_group_listing(
+    energy_adapter: None,
+) -> None:
+    """AC-3 — the regression freeze. A count WITHOUT group_by must keep the flat
+    ``_fallback_answer`` branch: no aggregate on the receipt, no per-group
+    listing in the text. If the grouped branch ever widened to capture the
+    ungrouped case, this is what would redden."""
+    client = _StubQueryClient(
+        query={"object_type": "OperationalEvent", "operation": "count"},
+        raise_on="phrase",
+    )
+    answer = await answer_question("how many events?", "energy", client=client)
+    assert answer.aggregate is None
+    assert answer.result_count == 13
+    assert answer.answer == "13 OperationalEvent record(s) match that query."
+    assert " = " not in answer.answer  # the per-group listing shape never appears
+
+
 # --- aggregates + resolve preserve the anti-hallucination guard (AC-5) ------
 
 
@@ -661,14 +770,60 @@ def test_aggregate_property_with_list_operation_is_rejected() -> None:
     assert any("aggregate_property" in e and "max" in e for e in errors)
 
 
-def test_group_by_with_count_operation_is_rejected() -> None:
-    """group_by with a non-aggregate operation ('count') is the superlative miss
-    (group_by set, operation not an aggregate) — rejected for retry."""
+def test_count_with_group_by_is_accepted() -> None:
+    """PLAN-0104 AC-1 — the ONE pair the relaxation admits.
+
+    This test replaces ``test_group_by_with_count_operation_is_rejected``, which
+    pinned the opposite behaviour. That rejection guarded a real execution gap
+    (nothing computed a grouped count, so the grouping would have been silently
+    dropped); ``_compute_group_count`` discharges the gap, so continuing to
+    refuse the pair would refuse a question the engine now answers
+    deterministically.
+    """
     meta = load_ontology_meta("energy")
     type_index = {t.name: t for t in meta.object_types}
     query = StructuredQuery(object_type="OperationalEvent", operation="count", group_by="asset_id")
+    assert _validate_query(query, type_index) == []
+
+
+def test_count_with_aggregate_property_is_rejected() -> None:
+    """AC-1: the relaxation is exactly one pair wide. A count has no property to
+    aggregate over, so naming one is still incoherent — and the message must name
+    the aggregate ops, or the retry loop has nothing to correct toward."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="count", aggregate_property="measured_value"
+    )
     errors = _validate_query(query, type_index)
-    assert any("group_by" in e and "max" in e for e in errors)
+    assert any("aggregate_property" in e and "max" in e for e in errors)
+
+
+def test_count_with_group_by_and_aggregate_property_is_rejected() -> None:
+    """AC-1: admitting `count` + group_by must not leak into admitting
+    `count` + group_by + aggregate_property — the aggregate_property half is
+    still an aggregate nothing would compute."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(
+        object_type="OperationalEvent",
+        operation="count",
+        group_by="asset_id",
+        aggregate_property="measured_value",
+    )
+    errors = _validate_query(query, type_index)
+    assert any("aggregate_property" in e for e in errors)
+
+
+def test_list_with_group_by_is_rejected_and_offers_count() -> None:
+    """AC-1: `list` + group_by stays rejected. The corrective message must NAME
+    'count' now that it is a valid correction — a rejection the retry loop cannot
+    act on is a refusal, not feedback."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(object_type="OperationalEvent", operation="list", group_by="asset_id")
+    errors = _validate_query(query, type_index)
+    assert any("group_by" in e and "count" in e for e in errors)
 
 
 def test_aggregate_op_with_property_and_group_by_is_accepted() -> None:

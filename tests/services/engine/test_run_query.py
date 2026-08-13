@@ -184,6 +184,69 @@ async def test_week_grouped_count_matches_the_corpus(seeded: _Seeded) -> None:
     assert result.count == seeded.corpus.week_counts[week]
 
 
+# --- AC-5: a grouped count must never collapse to a single total (PLAN-0104) --
+
+
+async def test_grouped_count_by_week_returns_per_week_figures_not_a_single_total(
+    seeded: _Seeded,
+) -> None:
+    """AC-5, in the shape the AC names.
+
+    Written to FAIL against the pre-PLAN-0104 ``_count``: that version summed the
+    week rollup into ``week_total`` and returned it alone, so ``aggregate`` was
+    None and the per-week figures were unrecoverable. Once the shared validator
+    admits ``count`` + ``group_by``, that fold would answer "how many runs per
+    week?" with one number — a silently wrong answer where the old refusal was at
+    least honest.
+    """
+    query = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE, operation="count", group_by="started_week"
+    )
+    result = await rq.execute_run_query(seeded.session, query)
+    assert result.aggregate is not None
+    assert result.aggregate.groups == {
+        week: float(count) for week, count in seeded.corpus.week_counts.items()
+    }
+    assert result.matched == seeded.corpus.run_count
+
+
+async def test_grouped_count_by_status_returns_one_figure_per_status(seeded: _Seeded) -> None:
+    """The STRONG form of AC-5, and the one that can actually catch a fake grouping.
+
+    The seeded corpus spans a single ISO week (``_N_DAYS = 5`` from a Monday
+    base), so a per-week grouping has exactly one bucket — which cannot
+    distinguish a real grouping from the total wrapped in one group. ``status``
+    is genuinely multi-valued, so it can: a collapse-to-total would put the whole
+    run count into a single bucket, and every assertion below would fail.
+    """
+    expected: dict[str, float] = {}
+    for (_procedure_id, status), count in seeded.corpus.run_status_counts.items():
+        expected[status] = expected.get(status, 0.0) + float(count)
+
+    query = StructuredQuery(object_type=rq.RUN_CORPUS_TYPE, operation="count", group_by="status")
+    result = await rq.execute_run_query(seeded.session, query)
+
+    assert result.aggregate is not None
+    assert result.aggregate.groups == expected
+    assert result.matched == seeded.corpus.run_count
+    # Non-vacuity: more than one bucket, no bucket holds the total, and the
+    # buckets account for every run.
+    assert len(expected) > 1
+    assert max(result.aggregate.groups.values()) < float(seeded.corpus.run_count)
+    assert sum(result.aggregate.groups.values()) == float(seeded.corpus.run_count)
+
+
+async def test_ungrouped_count_over_the_run_corpus_carries_no_aggregate(seeded: _Seeded) -> None:
+    """AC-3's run-corpus half: an ungrouped count keeps exactly its old shape —
+    a plain ``count`` with no aggregate, phrased by the flat template."""
+    query = StructuredQuery(object_type=rq.RUN_CORPUS_TYPE, operation="count")
+    result = await rq.execute_run_query(seeded.session, query)
+    assert result.count == seeded.corpus.run_count
+    assert result.aggregate is None
+    expected_text = f"{seeded.corpus.run_count} run(s) match that question."
+    assert rq.fallback_run_answer(query, result) == expected_text
+
+
 # --- property (3): empty result short-circuits honestly ----------------------
 
 
