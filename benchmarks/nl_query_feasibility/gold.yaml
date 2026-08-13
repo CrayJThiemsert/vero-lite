@@ -195,3 +195,30 @@ cases:
     expected_grounded: false
     expected_count: 0
     expected_answer_substrings: ["No"]
+
+  # --- grouped count: "how many X per Y?" (PLAN-0104, 1) ---------------------
+  # The cardinality case. Until PLAN-0104 this was unrepresentable — count with
+  # group_by was refused at three independent layers — so it never had a gold
+  # case at all. It is ceiling:false because the executed result IS the answer:
+  # the engine computes the per-group cardinalities deterministically, so this
+  # is scored on the structured result, never on how the sentence reads.
+  - id: nl-13
+    text: "How many operational events are recorded for each asset?"
+    category: group-count
+    ceiling: false
+    # count + group_by asset_id over all 13 events. Group keys are the Asset
+    # TITLES, relabelled from asset_id by _relabel_groups — an un-relabelled
+    # result keyed 'asset-battery-01' scores wrong, which is the point.
+    # Hand-verified against synthetic.py: 5 + 3 + 3 + 2 = 13, the full event set
+    # (a count counts RECORDS, so transitions and alarms are included, not only
+    # readings — PLAN-0104 SD-3, RULED s226: no unit coherence for a count).
+    expected_object_type: OperationalEvent
+    expected_operation: count
+    expected_count: 13
+    expected_aggregate:
+      groups:
+        Battery Bank A: 5
+        Inverter Unit A: 3
+        Battery Bank B: 3
+        Feeder Meter A: 2
+    expected_grounded: true
