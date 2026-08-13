@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-14T00:01:01+07:00
-session: 228
-current_batch: "s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go (#1151): AC-7 CLOSED, the PLAN is COMPLETE 8/8 and ARCHIVED. Fresh 12/13; the prior figure is RETIRED as non-comparable, not beaten."
+last_updated: 2026-08-14T08:14:17+07:00
+session: 229
+current_batch: "s229 — #1153 MERGED (ee968e5): R8's guard was structurally blind to glob-style PLAN refs; the blindspot is closed and the one live dead pointer it had been missing is repaired."
 current_actor: code
-blocked_on: "NOTHING blocks repo work, and PLAN-0104 no longer blocks on anything. PLAN-0103 AC-11's RoPA (Cray's) still gates fleet's bring-up."
+blocked_on: "NOTHING blocks repo work. PLAN-0103 AC-11's RoPA (Cray's) still gates fleet's bring-up."
 next_action: "Cray's call — pick fresh work; the one-pager v2 is design-ready and ranked #1."
-head_commit: ad2804d
-recent_commits: [ad2804d, c80df02, f7af8d0, 33dfc26, 001aa10, 75243b0, fdf7143, 30bca83, 52bf712, 21a4359]
+head_commit: ee968e5
+recent_commits: [ee968e5, d084f81, 9df016e, 7cd5ee2, ad2804d, c80df02, f7af8d0, 33dfc26, 001aa10, 75243b0]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,79 @@ recent_commits: [ad2804d, c80df02, f7af8d0, 33dfc26, 001aa10, 75243b0, fdf7143, 
 ---
 
 ## Current Focus
+
+> **Session 229, 2026-08-14 (head_commit `9df016e` → `ee968e5`) — one PR
+> MERGED (#1153). R8's PLAN-reference guard was structurally blind to a glob;
+> the blindspot is closed, and the one live dead pointer it had been missing
+> since s216 is repaired.**
+>
+> 🔴 **The R8 pre-archive PLAN-reference guard had a STRUCTURAL blindspot — it
+> could not see a glob.** `tools/check_plan_archive_refs.py`'s `PLAN_REF_RE`
+> slug class (`[A-Za-z0-9._-]`) admits no `*`, so a reference written as a
+> `NNNN-*.md` glob — **the form registries and closeout notes actually use** —
+> matched nothing, and the guard stayed silent even after the PLAN had moved to
+> `docs/plans/done/`. Present since R8 landed (s183).
+>
+> **Measured cost, one live instance:** the `stream-status` skill's stream-1
+> row went dead when PLAN-0100 was archived at **s216** and was never reported
+> once — including by `906aea8`, the very commit that updated the **stream-2**
+> row beside it for exactly this reason, one session later.
+>
+> **The fix (#1153, 4 files, +163/-4, MERGED as `ee968e5`):** widen the slug class to admit
+> `*`, and resolve a glob through the **same MOVED-not-MISSING predicate**
+> (violation only when it matches nothing under `docs/plans/` **and** something
+> under `docs/plans/done/`), so placeholders and never-written forward
+> references still cannot trip it — ⚠️ **the rejected "path does not resolve"
+> rule (89 files flagged) is NOT reintroduced.** Globs resolve via a flat
+> `iterdir()` + `fnmatch`, **not `Path.glob`**: the slug is untrusted text
+> scraped from prose, and a one-level match cannot descend into `done/`, which
+> would otherwise report every archived PLAN as still-live — **a fail-OPEN
+> inversion**. One new exemption, `benchmarks/stop_classifier/gold.yaml` — that
+> gold set is a corpus of simulated assistant turns scored by the classifier,
+> so a path inside one is benchmark **INPUT, not navigation** (the `tests/`
+> reasoning) — deliberately **file-scoped, not directory-scoped**, because the
+> `RESULTS.md` beside it is a real navigation surface. Live instance repaired:
+> the stream-1 registry row now points at `docs/plans/done/`, marked COMPLETE
+> 13/13, archived s216. Glob form + the new exemption are documented in the R8
+> section of `docs/runbooks/memory-architecture.md`.
+>
+> ✅ **Non-vacuity: the six new tests were run RED against the unfixed regex
+> before the fix landed.** The widening then immediately flagged **two of the
+> change's own source comments** — the narration trap the runbook already
+> records from s183 (prose about a dead pointer that contains one). **Third
+> occurrence, and it fired in the very commit that widened the rule.** Both are
+> now named descriptively.
+>
+> 🔴 **A correction to record, classified `superseded by new info` — NOT `was
+> an error`.** The session's brief named
+> `benchmarks/nl_query_feasibility/RESULTS.md` as a second live dead pointer,
+> hand-repaired in s228. Verified at the session's base `ad2804d`: it was **not
+> dead** — PLAN-0104 was still in `docs/plans/` and `docs/plans/done/0104*` had
+> **never existed in git history**, so its `0104-*.md` glob was a **correct
+> live pointer**. ⚠️ **Then the tree moved underneath the session:** #1151/#1152
+> archived PLAN-0104 and hand-repaired that citation to the full
+> `docs/plans/done/` slug — **by hand precisely because this guard could not
+> see the glob.** After the rebase onto `9df016e`, `has_moved("0104-*.md")`
+> returns True, so an unrepaired copy would now be caught. The file needs no
+> edit and is untouched by #1153.
+>
+> **Gates (re-run after the rebase onto `9df016e`):** guard test module **23
+> passed**; the real tree reports **0 violations across 1027 tracked files**;
+> full offline suite at the pre-rebase base **3654 passed / 400 skipped / 7
+> failed — all seven worktree-environmental** (UNC-gitdir enumeration ×2,
+> PreToolUse absolute-path shape ×4, a `goal.json` leak) and unrelated to the
+> four files touched. `mypy --strict services/` clean over 134 files; `ruff
+> check` + `ruff format --check` clean, including a bare `ruff check .` on the
+> archived HEAD tree. Full `pre-commit` passed on the commit, including
+> `detect-secrets` and the R8 guard itself.
+>
+> ⚠️ **Measured environment fact worth recording — the Windows-worktree
+> environmental-RED baseline is 7, NOT the 6 previously recorded.** The 7th is
+> `tests/deploy/test_published_profiles.py::test_ac5_no_file_outside_a_profile_lists_two_system_labels`,
+> failing from the same git-enumeration cause. Relatedly,
+> `test_the_real_repo_is_clean` **cannot run under WSL in this worktree** (git
+> cannot resolve the UNC gitdir), so it was discharged separately against the
+> **shipped module** from the Windows side.
 
 > **Session 228, 2026-08-13 (head_commit `75243b0` → `ad2804d`) — one PR
 > merged (#1151), 0 open. PLAN-0104 Step 7 ran under Cray's typed §8 go, AC-7
@@ -127,6 +200,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-14 | **s229 — #1153 MERGED: R8's PLAN-reference guard was structurally blind to glob refs** (`NNNN-*.md` — the form registries actually use) **since s183**, so the `stream-status` stream-1 row stayed dead from s216, never reported — including by the very commit that fixed the stream-2 row beside it. The fix widens the slug class and resolves a glob through the **same MOVED-not-MISSING predicate** (the rejected "path does not resolve" rule is NOT back), via a flat `iterdir()`+`fnmatch` — `Path.glob` would descend into `done/` and fail **OPEN**. 🔴 The brief's second "dead pointer" was verified NOT dead at base `ad2804d` (`superseded by new info`, not `was an error`) — and became catchable only after #1151/#1152 archived PLAN-0104 mid-flight, which is the failure mode demonstrated live. ⚠️ The Windows-worktree environmental-RED baseline is **7, not 6** | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
 | 2026-08-13 | **s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go (#1151): AC-7 CLOSED, the PLAN is COMPLETE 8/8 and ARCHIVED; all four pre-committed reads PASS on the FIRST pass; gates 4045 passed / 8 skipped.** 🔴 **The fresh 12/13 RETIRES the prior figure as non-comparable — it does NOT beat it** (the shared prompt changed in #1149; the gold set grew 12 → 13); the obvious citation is a trap — `RESULTS.md:116`'s `11/12` is the text-to-SQL arm, not engine-A's at `:316`. ✅ **nl-06's miss: re-run, failed again, investigated — NOT a regression; the victim MOVED** | `ad2804d` (head_commit) / [#1151](https://github.com/CrayJThiemsert/vero-lite/pull/1151) / `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum |
 | 2026-08-13 | **s227 — PLAN-0104 Steps 2+3+4 SHIPPED as ONE PR (#1148) and Steps 5+6 SHIPPED (#1149); Steps 1–6 COMPLETE, gates 4028 → 4045 passed / 8 skipped, `mypy --strict services/` clean.** 🔴 **AC-5 is a hard merge dependency, not a preference:** no commit may exist where `count`+`group_by` validates while `_count` still collapses groups to a total — that state answers *"how many runs per week?"* with a **silently wrong** single number, strictly worse than the honest refusal it replaces. `AggregateResult.property` is now `str | None` under a **construction-enforced** invariant (*None iff `count`*). ✅ **SD-2 (a)'s one marked claim RESOLVED — and the answer was NO API CHANGE**: `RunQueryAnswer` has no groups field and needs none; per-group figures ride the phrased answer + the `structured_query` receipt. 🔴 **The gold-versus-engine test closes the s226 defect for nl-13** — the real scorer grades the real gold case against the real engine, so a drift on either side reddens. 🔴 **RULED (Cray, typed, s227): the `_count` week-branch filter drop is RECORDED, not fixed** — reachable today, neither introduced nor repaired here. ⚠️ **Step 7 needs its OWN typed §8 go, asked BY NAME — none given; MS-S1 untouched** _(closed s228)_ | `75243b0` (head_commit) / [#1148](https://github.com/CrayJThiemsert/vero-lite/pull/1148) / [#1149](https://github.com/CrayJThiemsert/vero-lite/pull/1149) / `docs/plans/done/0104-nl-query-count-with-group-by.md` |
 | 2026-08-13 | **s226 — PLAN-0104 DRAFTED (#1143, `Status: Draft`), its three SD slots RULED (Cray, typed) (#1144), Step 1 SHIPPED (#1145); gates 4028 passed / 8 skipped.** 🔴 The refusal of `count`+`group_by` has **three independent enforcers** — system prompt, validator, `AggregateResult` — so no single edit changes observable behaviour and the circulating *"≈ one PR + tests"* price was wrong. 🔴 The gold guard was **VACUOUS**: it restated the numbers as literals instead of reading `SQL_EXPECT`, which is how two wrong tokens scored `wrong` on **every** run of that arm, silently. **SD-1 = (a)** `property: str | None`, invariant *None iff `count`*; **SD-2 = (a)** fix `_count` in this PLAN; **SD-3 = NO**. ⚠️ **Step 7 needs its OWN typed §8 go — none given** | `fa8a61c` (head_commit) / [#1143](https://github.com/CrayJThiemsert/vero-lite/pull/1143) / [#1144](https://github.com/CrayJThiemsert/vero-lite/pull/1144) / [#1145](https://github.com/CrayJThiemsert/vero-lite/pull/1145) / `docs/plans/done/0104-nl-query-count-with-group-by.md` |
@@ -136,7 +210,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-12 | 🔴 **s223 — RULED (Cray, typed): J4 ("run the full `tests/` before pushing") stays BINDING, but is evaluated PER ACTION — against the commit(s) being pushed at evaluation time; earlier uncovered pushes are residual gaps, not a standing FAIL.** Rationale: a criterion no future work can turn green is defective, not strict. ⚠️ **R2 CARVE-OUT — do NOT trim this row without rehoming it first:** the ruling lived in a gitignored `goal.json` that has since been DELETED, so this row, the s223 Current Focus block and the s223 handoff are its only homes | s223 Current Focus block / the s223 handoff (gitignored) |
 | 2026-08-11 | **s222 cont. — PLAN-0103 Step 10 EXECUTED: procurement is LIVE as published system #2 (#1130, under a typed §8 go); AC-8 + AC-9 TICKED, Step 1 recorded, ADR-0037 D2.7 discharged, F4's premise corrected BY MEASUREMENT and ADR-0035 OQ-4's dead trigger retired (#1127); s222's four unhomed findings REHOMED — Lesson #0040, a Lesson #0029 addendum, two runbook entries (#1131).** 🔴 ADR-0036's "the apex domain appears nowhere in this repo" was FALSE — corrected, then moved INLINE (#1128, #1129). ⚠️ **ADR-0035 OQ-6 is OPEN** (does D1(3)'s documentary clause govern evidence documents? three options, none recommended). **RULED: correct the ADR, do not edit the archived PLAN; keep `API_KEYS` on procurement** | `bd43d67` / [#1127](https://github.com/CrayJThiemsert/vero-lite/pull/1127) / [#1130](https://github.com/CrayJThiemsert/vero-lite/pull/1130) / [#1131](https://github.com/CrayJThiemsert/vero-lite/pull/1131) / `docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md` |
 | 2026-08-11 | **s222 — PLAN-0103 AC-8 clause 2 CLOSED in substance and ADR-0037 D2.7 MEASURED (#1124): no visitor-typed case text in the audit chain, `case_id` recoverable, asserted over EVERY `audit_log` row on both the ordinary and the waiver→ratify paths, via a positively-controlled bracketing sentinel + a structural payload-key allowlist.** ⚠️ `WaiverInvocation.justification` and the ratify `note` ARE human free text by design — possibly its own RoPA line. 🔴 #1125 retracted a false claim (a middle-slice leak IS invisible to both oracles) and records **RULED (Cray, typed, s222): that residual risk is ACCEPTED**, revisit condition stated in place. ⚠️ **D4 is UNBLOCKED, NOT decided**; the AC checkbox is NOT ticked — owed to a `plan-drafter` dispatch _(corrected s225: **not** G2, which fires only on a numbered artifact that does not yet exist)_ | `3a11e87` (head_commit) / [#1124](https://github.com/CrayJThiemsert/vero-lite/pull/1124) / [#1125](https://github.com/CrayJThiemsert/vero-lite/pull/1125) / `tests/api/test_visitor_case_to_monitor_scenario.py` |
-| 2026-08-10 | **s221 cont. — PLAN-0103 Steps 7 and 8b SHIPPED (#1122, #1121), so AC-8's first clause and AC-9's evidence are complete; #1123 made `render-handoff` report live goal state.** 🔴 **RULED (Cray, typed): NO portal REPO will be created** — Step 1's answer, unrecorded through three sessions. ⚠️ The portal/landing surface **still EXISTS**: DNS, Access policies and the landing surface are configured in the **Cloudflare dashboard**, one `oct-<vertical-id>` subdomain label per system; **ADR-0036 D2's two-artifact price is unchanged** — dashboard config, not repo files. The Step 8b request is **parked, not sent**, and the landing page is built by nobody. Also ruled: **Step 7 before Step 6**, and SD-8 ruled before Step 6 is built | [#1121](https://github.com/CrayJThiemsert/vero-lite/pull/1121) / [#1122](https://github.com/CrayJThiemsert/vero-lite/pull/1122) / [#1123](https://github.com/CrayJThiemsert/vero-lite/pull/1123) / `docs/logs/2026-08-10-plan0103-step8b-portal-assembly-request.md` |
 
 ## In-Flight Discussions
 
