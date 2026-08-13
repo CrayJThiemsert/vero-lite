@@ -383,8 +383,14 @@ blanket *"never list/count"* rule. Run under a **typed Cray §8 go, requested fo
 Step 7 by name (s228)** — one warm + one sweep, per CLAUDE.md §8's minimize-live-runs
 rule. `gpt-oss:20b` @ MS-S1 (`192.168.1.133:11434`), the shipped engine-A path
 (`run_benchmark.py` → `answer_question`) over the deterministic energy synthetic
-data. Dumps (gitignored): `.claude/benchmark-results/s228-plan0104-step7.jsonl`
-and `…-step7-nl06-rerun.jsonl`. **Pass/fail was fixed in the PLAN before the run**
+data. Dumps: `.claude/benchmark-results/s228-plan0104-step7.jsonl` and
+`…-step7-nl06-rerun.jsonl` — ⚠️ **untracked, NOT gitignored.** No `.gitignore`
+pattern matches `.claude/benchmark-results/`; `git status` reports it `??`. So
+the raw per-case evidence lives only in the working tree, is preserved nowhere
+in history, and is not protected against an accidental commit either. *(Earlier
+addenda in this file call their own dumps "gitignored" — same inherited error,
+left in place rather than rewritten across sections; this note is the
+correction.)* **Pass/fail was fixed in the PLAN before the run**
 (`docs/plans/0104-*.md` §Step 7); this records the reads against it.
 
 **Result: 12/13 correct · expressible 92% · ceiling-rescue 100% · lone miss nl-06
