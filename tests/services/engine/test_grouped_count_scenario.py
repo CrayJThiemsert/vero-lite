@@ -28,14 +28,13 @@ Battery Bank A 5, Inverter Unit A 3, Battery Bank B 3, Feeder Meter A 2 = 13.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterator
 from typing import Any
 
 import pytest
 
-from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.nl_query import answer_question
+from tests.support.nl_query_transport_stub import TranslateOnlyStub
 from verticals.energy.data_adapter import register_energy_adapter
 
 QUESTION = "How many operational events are recorded for each asset?"
@@ -57,36 +56,9 @@ def energy_adapter() -> Iterator[None]:
     yield
 
 
-class _TranslateOnlyStub:
-    """Stubs the MODEL TRANSPORT and nothing else.
-
-    A call carrying ``response_format`` is the translate stage and returns the
-    canned query JSON; the phrase call raises, which routes phrasing to the real
-    deterministic template. Both are transport behaviours — no engine seam is
-    replaced.
-    """
-
-    def __init__(self, query: dict[str, Any]) -> None:
-        self._query_json = json.dumps(query)
-        self.translate_calls = 0
-
-    async def chat(
-        self,
-        messages: list[dict[str, str]],
-        *,
-        think: bool | None = None,
-        response_format: dict[str, Any] | None = None,
-        temperature: float = 0.0,
-    ) -> ChatResult:
-        if response_format is not None:
-            self.translate_calls += 1
-            return ChatResult(content=self._query_json, thinking=None, model="stub", raw={})
-        raise OllamaError("forced phrase transport failure — exercise the deterministic answer")
-
-
 async def test_events_per_asset_is_counted_relabelled_and_named(energy_adapter: None) -> None:
     """The flagship grouped-count question, end to end on the real dataset."""
-    client = _TranslateOnlyStub(
+    client = TranslateOnlyStub(
         {"object_type": "OperationalEvent", "operation": "count", "group_by": "asset_id"}
     )
 
@@ -141,4 +113,4 @@ async def test_the_grouped_answer_differs_from_the_ungrouped_one(energy_adapter:
 
 async def _answer_with(query: dict[str, Any]) -> Any:
     """Run one question through the real engine with a canned translate output."""
-    return await answer_question(QUESTION, "energy", client=_TranslateOnlyStub(query))
+    return await answer_question(QUESTION, "energy", client=TranslateOnlyStub(query))

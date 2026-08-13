@@ -89,8 +89,18 @@ def score_case(case: dict[str, Any], ans: NlAnswer) -> str:
 def _aggregate_ok(expected: dict[str, Any], agg: AggregateResult | None) -> bool:
     """Check a deterministically-computed aggregate against gold expectations.
 
-    Supports ``{value: X}`` (overall aggregate, within tolerance) and
-    ``{top: name}`` (the group carrying the extreme value for a max/min).
+    Supports ``{value: X}`` (overall aggregate, within tolerance),
+    ``{top: name}`` (the group carrying the extreme value for a max/min), and
+    ``{groups: {name: n, ...}}`` (PLAN-0104 — the FULL per-group breakdown).
+
+    The ``groups`` check is deliberately EXACT and tolerance-free, unlike
+    ``value``: it scores grouped counts, whose values are cardinalities of
+    records — integers, where "within 0.05" would be meaningless. Exactness is
+    also what gives the check teeth. Equality of the whole mapping means a
+    missing group, an extra group, a mislabelled key (an un-relabelled
+    ``asset-battery-01`` instead of ``Battery Bank A``) and a grouping collapsed
+    into one bucket holding the total each score ``wrong`` — a subset or
+    best-effort match would let every one of those through.
     """
     if agg is None:
         return False
@@ -104,6 +114,11 @@ def _aggregate_ok(expected: dict[str, Any], agg: AggregateResult | None) -> bool
         chooser = min if agg.operation == "min" else max
         top = chooser(agg.groups, key=lambda k: agg.groups[k])
         if top != expected["top"]:
+            return False
+    if "groups" in expected:
+        want = {str(k): float(v) for k, v in dict(expected["groups"]).items()}
+        got = {str(k): float(v) for k, v in agg.groups.items()}
+        if got != want:
             return False
     return True
 
