@@ -164,6 +164,17 @@ or something else is **Step 10's** to settle against a deployment that has actua
 run — it is deliberately not invented here. Do not assume `up -d` alone yields a
 working system.
 
+_[Input added s232 — narrowing the question, not answering it. **The image already
+carries the tooling and the intended command**: `Dockerfile:21-25` copies
+`alembic/` and `alembic.ini` in specifically so that *"`docker run <image> alembic
+upgrade head` is the pilot/production migration step (PLAN-0095 SD-2)"*, while the
+default `CMD` never reads them. So the open part is **when and by what** that
+command is invoked — a one-shot run before `app` starts, a compose service, or an
+operator step in the runbook — not whether the mechanism exists. ⚠️ This is the
+single largest delta from procurement's bring-up, which had no database at all, so
+there is **no precedent to copy** for this step and it is the likeliest place for a
+first live run to stop.]_
+
 ## Verifying the allowlist without an account
 
 `cloudflared` can evaluate the committed ingress offline — no Cloudflare account,
@@ -193,22 +204,44 @@ docker run --rm -v "$(pwd)/deploy/published/oct-fleet-maintenance/cloudflared":/
 
 ## What is NOT here
 
-- **Tab H's seed.** SD-5 ruled (a) — seed one waiting run at boot **and** keep the
-  visitor path, so the Monitor is never empty at the moment the demo must not look
-  dead. That seed is **Step 7** and is not built: `main.py` gates the existing
-  operate-demo seed on the *procurement* vertical, so it does nothing here.
-  `OCT_DEMO_SEED_OPERATE=false` is pinned so the flag means what it says.
-  ⚠️ Flipping it alone would be a no-op that reads like a fix.
+- ~~**Tab H's seed.** Step 7.~~ **SHIPPED s221; the flag was armed s232.** SD-5
+  ruled (a) — seed one waiting run at boot **and** keep the visitor path, so the
+  Monitor is never empty at the moment the demo must not look dead.
+  `_seed_fleet_operate_demo` (`services/api/main.py`) carries **both** gates
+  itself — the vertical check and `OCT_DEMO_SEED_OPERATE` — and AC-8 closed on
+  it. `published.env` now pins `OCT_DEMO_SEED_OPERATE=true`.
+  _[Corrected s232. This bullet said the seed "is not built", that `main.py`
+  gates it on the *procurement* vertical, and that flipping the flag "would be a
+  no-op that reads like a fix" — all true when written at Step 4b, all false from
+  s221 onward. The pin itself carried the same stale claim and stayed `false` for
+  eleven sessions because of it. **Nothing reads a comment or a README**, so ruff,
+  mypy and the full suite were all silent. Read `published.env`'s own block for
+  the fuller record.]_
 - ~~**The persona picker UI.** Step 6.~~ **SHIPPED s224.** Tab H renders three
   persona cards on this profile — the authored ladder, in authored order, from
   `procedures.yaml`. Provisioning below; the code is `view-monitor.js`'s
   `personaPicker` behind `O.isPublished() && demoPersonas().length`.
-- **Card copy.** Step 8a — AC-3's fifth committed artifact, not yet written for
-  **any** system.
+- ~~**Card copy.** Step 8a.~~ **SHIPPED — AC-9 closed.** All three published
+  profiles carry a `card-copy.md`, this one included. _[Corrected s232: this read
+  "not yet written for **any** system", which was true at Step 4b and stopped
+  being true when Step 8a landed.]_
 - **The per-IP rate cap.** A Cloudflare **zone** rule with no file in this repo.
 - **The domain.** ADR-0035 D1(3) — portal repo and DNS only, which is why
   `config.yml` carries no `hostname:` key.
-- **`deploy.py`.** The redeploy script at `deploy/published/` is pinned to system
-  #1 and is not parameterized (deferred to Step 10). This system will likely owe
-  verification steps the DB-less ones do not — that is part of what Step 10 has to
-  settle.
+- **`deploy.py` — and it does NOT block this system's bring-up.** ⚠️ The bullet
+  here previously read as a Step-10 blocker; it is not one. That script is the
+  **redeploy** tool ("the bring-up runbook stands the system up the FIRST time…
+  none of that repeats"), it is pinned to system #1, and **procurement went live
+  without it** — with the plain `docker compose … up -d` above, exactly as this
+  README prescribes. Parameterizing it (vs copying per profile) is a real
+  deferred decision, but it falls due at this system's **first redeploy**, not at
+  its bring-up.
+- 🔴 **A fleet-specific in-app disclosure (ADR-0037 D2.4)** — that typed case text
+  is persisted, and for how long. **RULED (Cray, typed, 2026-08-14): fleet gets
+  its own**, not a widening of the shared D6 prompt-log banner. Binding **before
+  this system is reachable** (D2 obligations bind before reachability), and owned
+  by its own PLAN. ⚠️ The existing published banner is **not** it: ADR-0037 D3
+  refuses to widen D6, the two 90-day numbers are an independent coincidence the
+  test suite actively guards against conflating, and that banner's *"read only by
+  the operator"* clause is **false for case text on this profile** — Tab H shows
+  visitor-opened cases to other visitors.
