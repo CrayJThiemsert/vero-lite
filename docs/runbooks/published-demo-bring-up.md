@@ -569,6 +569,66 @@ inside a worktree for exactly this reason.
 
 ## 9. Bring it up, then hand over to Step 11
 
+### 🔴 9.0 If the system carries a database, apply the schema FIRST
+
+_[Added s232. RULED (Cray, typed, 2026-08-14): an operator step, made
+un-skippable-in-silence rather than enforced by compose.]_
+
+**Applies to any published system whose own `docker-compose.yml` declares a
+`postgres` service.** A system without one is DB-less and has no schema to apply —
+skip straight to §9.1.
+
+⚠️ **Decide that by reading the system's compose file, not from memory — and note
+that this runbook deliberately does NOT list which systems those are.** A file here
+enumerating the published systems is the shadow ingress map ADR-0036 D2 puts in the
+portal repo, and `test_ac5_no_file_outside_a_profile_lists_two_system_labels` fails
+the build over it. _[Learned the hard way s232: the first draft of this section
+named three systems in one helpful sentence and reddened exactly that guard.]_
+
+⚠️ **Why this comes before `up -d` and not after.** Nothing downstream will tell you
+it was missed. On an empty database the app **boots, passes its healthcheck, and the
+tunnel opens** — `/health` is a pure liveness probe that never touches Postgres, and
+`cloudflared` gates only on `service_healthy`. The system is reachable and looks
+correct. **The first thing that fails is a visitor typing a case.**
+
+```bash
+docker compose -f deploy/published/<system>/docker-compose.yml up -d postgres
+```
+
+```bash
+docker compose -f deploy/published/<system>/docker-compose.yml run --rm app alembic upgrade head
+```
+
+**Then confirm, and record the output in the go log** — this line is the evidence
+that the step happened, and it is the only thing that distinguishes a migrated
+system from an unmigrated one from the outside:
+
+```bash
+docker compose -f deploy/published/<system>/docker-compose.yml run --rm app alembic current
+```
+
+Expect the current head (`0025` at the time of writing — read `alembic/versions/`
+for today's, do **not** trust this number after a schema change).
+
+**Why `compose run` rather than a bare `docker run`.** It joins the project network,
+inherits `env_file` and the interpolated `DATABASE_URL`, and honours
+`depends_on: postgres: service_healthy` — all of which a bare `docker run` makes you
+rebuild by hand. ⚠️ `docker run --env-file published.env … alembic upgrade head`
+**does not work**: `published.env` carries no `DATABASE_URL` (compose composes it),
+`--env-file` performs no `${VAR}` interpolation, and the container would not be on
+the project network. It fails pointing at `localhost` inside itself.
+
+The image is built to do this — `alembic/` and `alembic.ini` ship in it precisely so
+that *"one image, different commands"* holds (PLAN-0095 SD-2, Cray-ruled). This is
+the same invocation `docs/runbooks/run-oct-demo.md` §1 already documents and that was
+measured live in session 177.
+
+✅ **If it is skipped anyway, the boot log now says so** in as many words, at ERROR,
+naming this command — `services/api/main.py::_is_schema_not_applied`. That is the
+backstop, not the plan: read the `alembic current` output rather than relying on it.
+
+### 9.1 Start the system
+
 ```bash
 docker compose -f deploy/published/oct-energy/docker-compose.yml up -d
 ```
