@@ -104,3 +104,20 @@ tools/probes/
 # Assume it is PII (CLAUDE.md §8 PDPA) and keep it structurally uncommittable —
 # the ignore rule is the guard, not the discipline of whoever runs .
 var/
+
+# Raw benchmark dumps (PLAN-0104 Step 7 and any successor run under .claude/).
+# UNTRACKED-BUT-PRESENT is the hazard, not the content: this repo is PUBLIC, the
+# directory sits inside a tree people `git add -A` from, and nothing in history
+# protects a file that has never been committed. Same FILE CLASS as
+# `.claude/launch.json` above — an un-ignored, un-reviewed artifact one careless
+# stage away from a public commit.
+#
+# Not hypothetical: a malformed shell command in session 231 staged all 78 files
+# in one go. It was caught and unstaged, but only because someone happened to be
+# reading `git status` at that moment. The ignore rule is the guard; whoever
+# remembers is not.
+#
+# This entry is also the durable HOME for the warning that until now lived only
+# in a STATUS Active-TODO row (the R2 carve-out, session 231). The fact is now a
+# mechanism, so that row can be trimmed on its normal schedule.
+.claude/benchmark-results/
