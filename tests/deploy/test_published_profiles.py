@@ -813,3 +813,57 @@ def test_every_documented_operator_path_resolves() -> None:
         "regex has stopped matching and this guard would pass vacuously"
     )
     assert not broken, "documented operator paths that do not exist:\n" + "\n".join(broken)
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0105 Step 5 / AC-8 — the retention sweep is armed on exactly one profile
+# --------------------------------------------------------------------------- #
+
+#: The one profile PLAN-0105 arms the retention sweep on. A set rather than a
+#: string, the ``_DB_GRANTED`` shape (`:406`) and for the same reason: arming a
+#: second system must be a visible, deliberate edit HERE, because this flag
+#: DELETES data. Fleet is the only published system with a database, and the only
+#: one whose visitors can write something that persists.
+_RETENTION_ARMED = {"oct-fleet-maintenance"}
+
+#: What pydantic-settings reads as True for a bool field. Spelled out rather than
+#: compared against the literal ``"true"``: a profile pinning ``=1`` or ``=yes``
+#: would arm the sweep for real while a string comparison called it disarmed, and
+#: this guard would then certify a DB-less system as safe while it deleted on a
+#: timer.
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+
+
+def _flag_is_on(value: str | None) -> bool:
+    return value is not None and value.strip().lower() in _TRUTHY
+
+
+@pytest.mark.parametrize("profile", _profiles(), ids=_profile_ids())
+def test_only_the_armed_profile_enables_case_retention(profile: Path) -> None:
+    """Both directions, and they fail in opposite ways.
+
+    ARMED but off: the RoPA promises a 90-day retention control that never runs.
+    The promise is false while every status line stays green — the worse of the
+    two, because a compliance claim nobody can watch fail is not a claim.
+
+    NOT armed but on: a DB-less system starts a sweep that can only error, and a
+    pilot deployment would delete an operator's real cases on an engine default.
+
+    The negative side asserts "not truthy" rather than "absent". An explicit
+    ``CASE_RETENTION_ENABLED=false`` is a legitimate and louder way to write the
+    same posture, and a guard that reddened against a correct file is a guard
+    somebody deletes the first time it gets in the way.
+    """
+    value = _read_env_file(profile).get("CASE_RETENTION_ENABLED")
+    if profile.name in _RETENTION_ARMED:
+        assert _flag_is_on(value), (
+            f"{profile.name} is the retention-armed profile but its published.env "
+            f"reads CASE_RETENTION_ENABLED={value!r}. The sweep would never run, and "
+            "the RoPA's 90-day promise would name a control that does not fire."
+        )
+    else:
+        assert not _flag_is_on(value), (
+            f"{profile.name} has no database and is not retention-armed, but its "
+            f"published.env reads CASE_RETENTION_ENABLED={value!r}. Arming a second "
+            "system is a deliberate edit to _RETENTION_ARMED, never a copied env line."
+        )
