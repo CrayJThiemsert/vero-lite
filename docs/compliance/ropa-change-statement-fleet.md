@@ -33,7 +33,8 @@ evaporates.
 The published demo stops being a DB-less system. **Fleet's published system adds
 a visitor-writable surface (Tab I) whose free text persists to a Postgres
 database** — a new processing activity, in a new storage location, with its own
-retention question and its own DSR path.
+retention question (**answered s231 and enforced in code** — §3.1) and its own
+DSR path (**still open**).
 
 ## 2. What the current RoPA says that is now incomplete
 
@@ -72,8 +73,47 @@ becomes **incomplete** the moment fleet publishes.
 | **Volume** | `oct-fleet-maintenance-pgdata` — a **named** volume, so rows survive a container replace |
 | **Reachability** | fleet's own Docker network only; **no published port**; only fleet's `app` can reach it |
 | **Tenant** | `TENANT_ID=demo` — stamped on persisted rows (ADR-0035 D7) |
-| **Retention** | 🔴 **no number exists yet — the gap only the controller can close** |
+| **Retention** | ✅ **90 days after `opened_at`** — a shipped control, not an intention. Mechanism in §3.1 |
 | **DSR path** | 🔴 **undefined for case rows**; the existing path searches the prompt log |
+
+### 3.1 The retention control, as built — input for §6, not §6's text
+
+_[Added s232. This cell read *"no number exists yet — the gap only the controller
+can close"* until PLAN-0105 shipped (s231, PRs #1162–#1167). Classified
+`superseded by new info`: it was true when this statement was written at s224 and
+was answered by a build, not corrected as a mistake. The number itself is
+**Cray's ruling** (PLAN-0105 LOCKED-1, typed 2026-08-14), taken before the build
+— what changed here is that it is now enforced.]_
+
+What the controller can now state, and what still has to be decided:
+
+| | |
+|---|---|
+| **Number** | 90 days, measured from `opened_at` |
+| **Enforced by** | an in-app periodic task shipped inside the image (`services/api/case_retention_task.py`), **not** a host scheduler — LOCKED-3, because a policy whose enforcement depends on a scheduler nobody installed is a promise rather than a control, and a host scheduler does not survive a redeploy |
+| **Armed where** | fleet's published profile only (`CASE_RETENTION_ENABLED=true`). Default-**OFF** in the engine, so no dev box, CI run or pilot deployment acquires row deletion by inheritance |
+| **What is deleted** | the case row, its six FK children, and the case's entire upload directory (photos **and** quote attachments) |
+| **Anchor** | `opened_at`, written once at creation and never updated — not file mtime, which a volume remount would silently reset |
+
+🔴 **Two facts §6's *argument* has to carry, not just its scope.** §2 flags that
+fleet invalidates the premise licensing the current erasure promise; these are the
+two the mechanism itself forces into the open:
+
+1. **`repair_case_run_link` rows are deliberately RETAINED** past the case's
+   deletion (PLAN-0105 SD-4, ruled (a)). They carry no visitor free text and are a
+   governance-decision record, but the result is a **dangling `case_id` pointer by
+   design** — SD-3 states that as intended, not as a defect. A §6 that promises
+   unqualified erasure of "everything relating to the case" would be false.
+2. **The 90 does not inherit from the prompt log's 90.** ADR-0035 D6's regime is
+   defined per LLM request and does not reach case text (§4(a)). The code enforces
+   that independence structurally — the module is guarded against importing
+   `prompt_log` — so a future change to either number must not be described as
+   moving both.
+
+⚠️ **Still open, and unchanged by this build:** the **DSR path** (row above), whose
+blocking half is requester identification — personas add no visitor identity
+(§4(b)), so *"prove you own case X"* has no in-repo answer today — and §5.3's
+recorder free text. Neither is a retention question.
 
 ## 4. Two scope facts, so the update stays exact
 
@@ -189,9 +229,12 @@ record citing it by path"*. Four things it must cover:
 
 1. the **new processing activity** (visitor-typed case free text + photos);
 2. its **storage location** (fleet's Postgres, named in §3);
-3. its **retention number**;
+3. its **retention number** — ✅ supplied as of s231, with the two argument-level
+   facts it drags with it: **§3.1**;
 4. its **DSR path** — and, per §5, an honest statement of what can and cannot be
-   promised where the audit chain is involved.
+   promised where the audit chain is involved. 🔴 **The one item of the four with
+   no engineering input to draw on**, and its blocker is identification rather
+   than mechanism (§3.1's closing note).
 
 Sections most likely affected: **§3** (categories of personal data), **§6**
 (retention/erasure — and per §2, its *argument*, not only its scope), **§8** (DSR
