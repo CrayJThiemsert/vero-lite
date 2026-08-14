@@ -74,7 +74,8 @@ becomes **incomplete** the moment fleet publishes.
 | **Reachability** | fleet's own Docker network only; **no published port**; only fleet's `app` can reach it |
 | **Tenant** | `TENANT_ID=demo` — stamped on persisted rows (ADR-0035 D7) |
 | **Retention** | ✅ **90 days after `opened_at`** — a shipped control, not an intention. Mechanism in §3.1 |
-| **DSR path** | 🔴 **undefined for case rows**; the existing path searches the prompt log |
+| **DSR path** | 🟡 **posture RULED (a) text-by-reference**, erasure mechanism shipped — but the **stated path is still owed**, blocked on requester identification, not on mechanism. See §3.2 |
+| **Who can read it** | 🔴 **anyone, unauthenticated.** RULED INTENDED (Cray, typed, 2026-08-14). See §4(c) |
 
 ### 3.1 The retention control, as built — input for §6, not §6's text
 
@@ -110,12 +111,44 @@ two the mechanism itself forces into the open:
    `prompt_log` — so a future change to either number must not be described as
    moving both.
 
-⚠️ **Still open, and unchanged by this build:** the **DSR path** (row above), whose
-blocking half is requester identification — personas add no visitor identity
-(§4(b)), so *"prove you own case X"* has no in-repo answer today — and §5.3's
-recorder free text. Neither is a retention question.
+⚠️ **Unchanged by this build:** the **DSR path** (row above), whose blocking half
+is requester identification — personas add no visitor identity (§4(b)), so
+*"prove you own case X"* has no in-repo answer today — and §5.3's recorder free
+text. Neither is a retention question. _[s232: both have since been **ruled** —
+the DSR posture in §3.2, the recorder text in §5.3 — which is a different thing
+from being built. The identification blocker below survives both rulings
+untouched.]_
 
-## 4. Two scope facts, so the update stays exact
+### 3.2 The DSR posture — RULED, and what it does and does not settle
+
+_[Added s232, after Cray's typed rulings of 2026-08-14. ADR-0037 D4 / OQ-2 had
+been the reason this document could not answer §6 fully; it is now ruled and the
+ADR carries the stamp.]_
+
+✅ **ADR-0037 D4 / OQ-2 = (a) text-by-reference (Cray, typed, 2026-08-14).** The
+audit chain holds the case **id**; the erasable Postgres row holds the text.
+Erasing the row erases the visitor's text and leaves the chain intact with a
+dangling-by-design reference.
+
+**What this makes true, and is why §6's erasure argument can be written at all:**
+the case-text answer is the **same shape** as the prompt log's, not a structurally
+harder one. ⚠️ **This reverses the framing a controller may be carrying from the
+s220-era statement and PLAN-0103 SD-1**, both of which described it as
+*"structurally different from the prompt log's"* — that was written before the
+D2.7 measurement and is superseded, not merely softened. Erasure is a **mechanism,
+not an intention**: `delete_case(session, case_id, *, photo_root)` exists in
+`services/db/repair_case_retention.py`.
+
+🔴 **What the ruling does NOT settle — the DSR path is still owed, and the blocker
+is not the mechanism.** It is **requester identification**, which has no in-repo
+answer: `repair_case.opened_by` is a `person_id`-shaped string carrying **no
+foreign key**, and the personas add no visitor identity (§4(b)). A request can be
+matched to case rows **only by content**. The stated path must say so plainly
+rather than imply a lookup that does not exist.
+
+## 4. Three scope facts, so the update stays exact
+
+_[Was "Two" until s232, when (c) was measured and ruled.]_
 
 **(a) ADR-0035 D6 does not reach this.** D6 is the *prompt-log* regime, defined
 per request *to a published LLM route*. Case text falls outside it. D6's
@@ -129,6 +162,30 @@ to the audit trail: the three persona `person_id`s are synthetic shared
 identities and the Access gate email stays vendor-side. So the new activity is
 **the case free text**, not the persona mechanism. Do not widen the entry to
 cover personas.
+
+**(c) 🔴 Case text is readable by ANYONE who reaches the system, and that is
+RULED INTENDED.** _[Added s232 — measured by Code while reviewing PLAN-0106, then
+ruled by Cray, typed, 2026-08-14: *"ตั้งใจ — demo สังเคราะห์ ทุกอย่างเห็นได้."*]_
+
+`GET /api/cases` (`services/api/routers/cases.py:248-278`) takes a session only —
+**no authentication dependency** — applies **no tenant or owner filter**, and
+returns each row's `description`. `^/api/cases$` is on this system's ingress
+allowlist, and cloudflared matches **path, not method**, so the entry admitting
+Tab I's `POST` admits this `GET` too. **One unauthenticated request lists every
+visitor's typed free text.** The Access gate in front of the system is the only
+thing narrowing the audience, and it admits any allowlisted address without
+distinguishing between visitors.
+
+**Why the RoPA needs this, and why it is not merely an in-app disclosure
+matter:** it determines the entry's **recipients**. A visitor's free text is
+disclosed to every other person who reaches the system — not only to the
+operator. An entry written as though the operator were the sole reader would be
+**inaccurate**, and §6's disclosure sentence has to match.
+
+⚠️ **The ruling rests on a premise, and the premise is the thing to watch:** it is
+legitimate *because the data is synthetic and the principals are demo personas*.
+The day any real case text enters this surface the ruling is stale — not the word
+"intended", but the assumption underneath it.
 
 ---
 
@@ -178,7 +235,7 @@ CI, which provisions Postgres.
 erasure target, the chain holds a `case_id` reference, and that is evidenced by a
 test that fails the day it stops being true.
 
-### 5.3 The input the measurement surfaced — **this still needs the controller's judgement**
+### 5.3 The input the measurement surfaced — ✅ **RULED (i), 2026-08-14; the wording is still the controller's**
 
 The same allowlist that proves the visitor's text is absent proves something
 else, which the s220 statement could not have known:
@@ -210,6 +267,23 @@ plausibly needs **its own line**, and the decision is the controller's:
 record — it is the reason a gate was relaxed. The question is only whether the
 RoPA describes it.
 
+✅ **RULED (Cray, typed, 2026-08-14, s232): option (i) — the second one. It gets
+its own RoPA line, stating plainly that it cannot be erased.** The
+out-of-scope-by-explicit-declaration alternative above is **not** taken; both
+options are preserved as the record of what was weighed. ADR-0037 D4's amendment
+note had already established that this holds *under any D4 ruling*, so it is
+independent of §3.2's (a).
+
+**What that means for the writing:** the line names a **different data-subject
+class** — a named internal principal, with `recorded_by` beside the text — and it
+states the chain's non-erasability **plainly**, rather than sheltering behind the
+case row's erasability. ⚠️ The two must not be blended into one sentence: the
+visitor's text **is** erasable and the recorder's **is not**, and a §6 that
+averages them is false in both directions.
+
+Per D2.1's authorship boundary the line's **text** is Cray's. This ruling fixes
+what the line must say plainly — not how it says it.
+
 ### 5.4 The residual hole, already ruled
 
 One gap the two oracles do **not** close: a **middle-slice** carrier — text with
@@ -225,22 +299,47 @@ Recorded so the RoPA is written knowing it, not so it is re-litigated.
 ## 6. What the update has to contain to satisfy AC-11
 
 AC-11's evidence is *"the updated RoPA on `main` **and** fleet's Step-10 go
-record citing it by path"*. Four things it must cover:
+record citing it by path"*. **Six** things it must cover — _[was four until s232;
+items 5 and 6 were added when Cray's rulings of 2026-08-14 made them explicit]_:
 
 1. the **new processing activity** (visitor-typed case free text + photos);
 2. its **storage location** (fleet's Postgres, named in §3);
 3. its **retention number** — ✅ supplied as of s231, with the two argument-level
    facts it drags with it: **§3.1**;
 4. its **DSR path** — and, per §5, an honest statement of what can and cannot be
-   promised where the audit chain is involved. 🔴 **The one item of the four with
-   no engineering input to draw on**, and its blocker is identification rather
-   than mechanism (§3.1's closing note).
+   promised where the audit chain is involved. 🟡 **Posture RULED (a)** and the
+   erasure mechanism is shipped (**§3.2**), so the *argument* is now writable;
+   what is still owed is the **stated path**, blocked on requester identification
+   rather than on mechanism;
+5. 🆕 its **recipients** — case text is readable by anyone who reaches the system,
+   **RULED INTENDED** (**§4(c)**). An entry implying the operator is the sole
+   reader would be inaccurate;
+6. 🆕 the **recorder's free text**, on **its own line, stated plainly as
+   non-erasable** — RULED (i) (**§5.3**). ⚠️ Must not be blended with item 4's
+   visitor text: one is erasable and the other is not.
 
 Sections most likely affected: **§3** (categories of personal data), **§6**
 (retention/erasure — and per §2, its *argument*, not only its scope), **§8** (DSR
 mechanism). §5 (residency) is unchanged — the database is on the same host as
-everything else. §4 (recipients) is unchanged. See also §8 below for three
-staleness items unrelated to fleet.
+everything else. 🔴 **§4 (recipients) is NO LONGER unchanged** _[corrected s232 —
+this line read "§4 (recipients) is unchanged", which ruling (c) made false: the
+new activity discloses visitor free text to every person who reaches the system,
+which is a recipients change and belongs in that section]_. See also §8 below for
+three staleness items unrelated to fleet.
+
+### 6.1 Binding before bring-up, but NOT RoPA content — do not fold it in here
+
+⚠️ **ADR-0037 D2.4 — the in-app disclosure** that typed case text is persisted and
+for how long. **RULED (Cray, typed, 2026-08-14): fleet gets its own**, not a
+widening of the shared D6 prompt-log banner. It is owned by
+**PLAN-0106** (`docs/plans/0106-fleet-case-persistence-disclosure.md`), and its
+wording is Cray-reviewed there, in that PLAN's SD-1 — **not here, and not in the
+RoPA**.
+
+It is listed in this document only so the bring-up gate is not missed: D2's
+obligations are *"all binding before the system is reachable"*, so D2.4 gates
+fleet's bring-up **alongside** AC-11's RoPA rather than being part of it. Two
+separate artifacts, two separate gates.
 
 ## 7. What is NOT owed here
 
