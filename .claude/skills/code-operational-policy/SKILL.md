@@ -99,6 +99,15 @@ the AC claims to protect — comments, formatting, and dead code do not. If such
 a test is constructible, the AC's oracle is vacuous: fix the test before
 closing. Same family as the non-vacuity probe — you must SEE the RED.
 
+⚠️ **And then READ it.** Seeing the RED proves the guard is live; it does not
+prove the failure names what broke. Two guards in consecutive PRs reddened
+correctly and illegibly — one crashed on `RuntimeError: no running event loop`
+before reaching its own assertion, the other printed
+`{'repair_case...e_task_event'}` on **both** sides of a truncated set comparison.
+A guard whose RED nobody can act on is deleted by the next person who trips it.
+The two smells, the fix, and why the fix must carry its reason in the docstring:
+[`Lesson #0043`](../../../docs/lessons/0043-a-probes-red-must-name-what-broke.md).
+
 ## Plan-first for costly / host-state / irreversible / multi-step work
 
 For a task that is **host-state** (warm/run a model on MS-S1, touch global

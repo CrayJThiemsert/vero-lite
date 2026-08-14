@@ -108,6 +108,10 @@ When a module's green is about to be trusted:
    applied inside a test rather than to a measurement.)
 5. **Restore from a snapshot outside git**, and verify `git diff` is empty after
    — a probe left in place is a behaviour change nobody decided.
+6. **Read the RED before recording it as evidence.** This list gets you a probe
+   that CAN break the assertion; it does not get you a failure anyone can act
+   on. Two guards passed every step above and still produced an unreadable RED —
+   [[0043-a-probes-red-must-name-what-broke]] is the step after this one.
 
 ## 5. Scope
 
