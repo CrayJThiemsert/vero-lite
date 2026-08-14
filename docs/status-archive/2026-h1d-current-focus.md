@@ -254,3 +254,59 @@ the cut, not by memory.
 > 6. **AC-11's RoPA** (Cray's, as data controller) gates **fleet's** bring-up,
 > the last Step 10. **AC-10 stays deliberately NOT ticked** — three typed §8
 > gos are on record, fleet's is outstanding.
+
+---
+
+### Session 227 Current-Focus block (rotated 2026-08-14, session 231)
+
+> **Session 227, 2026-08-13 (head_commit `fa8a61c` → `75243b0`) — two PRs
+> merged (#1148, #1149), 0 open, and PLAN-0104 went from ONE shipped Step to
+> SIX. What is left in it is the one claim no fixture can settle.**
+>
+> ✅ **Steps 2+3+4 SHIPPED as ONE PR (#1148)** — the carrier, the validator
+> relaxation and the run-corpus execution, deliberately inseparable. **AC-5 is a
+> hard merge dependency, not a preference:** no commit may exist where
+> `count`+`group_by` validates while `run_query.py`'s `_count` still collapses
+> groups to a total — that intermediate state answers *"how many runs per week?"*
+> with a single **silently wrong** number, which is strictly worse than the
+> honest refusal it replaces. `AggregateResult.property` is now `str | None`
+> under a **construction-enforced** invariant (*None iff `count`*), so a
+> grounding receipt can never name a property the figure was not computed over.
+>
+> ✅ **Steps 5+6 SHIPPED (#1149)** — gold case **nl-13** (`group-count`;
+> per-asset **5/3/3/2 = 13**, hand-verified against `synthetic.py`), a
+> **tolerance-free exact** `groups` scorer, and the prompt's blanket *"never
+> list/count"* rule inverted. Gates: **4045 passed / 8 skipped** (4028 at s226
+> close), `mypy --strict services/` clean over 134 files, ruff + format clean
+> **judged on the HEAD tree**, not the working dir.
+>
+> 🔴 **The strongest thing added this session is a test that grades the gold
+> against the ENGINE.** nl-13's numbers are not restated in a test beside them:
+> the real engine runs the real adapter and the **real scorer** grades the
+> **real gold case**, so a drift on *either* side reddens. That is exactly the
+> s226 defect — a gold token nothing ever compared against a real result stayed
+> wrong for 168 sessions while scoring green — and this **closes** it for this
+> case rather than merely avoiding a repeat.
+>
+> ✅ **SD-2 (a)'s one marked claim is RESOLVED, and the answer was "no API
+> change".** `RunQueryAnswer` carries `aggregate_value` under `extra="forbid"`
+> and has **no groups field** — and needs none: the per-group figures reach the
+> user through the phrased answer plus the `structured_query` receipt, exactly
+> as the ontology path's grouped numbers already do. **Scope was NOT widened.**
+>
+> 🔴 **Found while executing, deliberately NOT fixed — RULED (Cray, typed,
+> s227): record it as a TODO.** `_count`'s week branch applies only the
+> `started_week` filter, so a `procedure_id`/`status` filter alongside it is
+> **silently dropped** (`week_rollup` carries no such dimension). Reachable
+> **today** via a filter, so PLAN-0104 neither introduced nor repaired it; a
+> comment now names it at the site. Its own Active TODO row below.
+>
+> ⚠️ **Step 7 is ALL that remains, and it needs its OWN typed §8 go, asked for
+> at that step BY NAME — not inherited from the SD rulings and not implied by
+> merging #1149. None has been given, and MS-S1 was untouched all session.**
+>
+> **Carried forward from the s226 block (rotated this reconcile to
+> `docs/status-archive/2026-h1d-current-focus.md`) because both outlive it:**
+> the refusal had **three independent enforcers**, which is why the *"≈ one PR +
+> tests"* price was wrong twice; and **a guard that reads its own copy of the
+> answer cannot fail**.
