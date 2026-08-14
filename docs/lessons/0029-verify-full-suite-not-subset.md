@@ -101,6 +101,27 @@ Two operational consequences:
   which is precisely the accumulation AC-5 exists to prevent. Per-system facts
   belong in `docs/logs/`, which is already exempt.
 
+## Addendum (rehomed session 228, 2026-08-14) — the rule is evaluated PER ACTION, not as a standing verdict
+
+**RULED (Cray, typed, session 223):** the obligation above — *run the full
+`tests/` before pushing* — **stays BINDING**, but it is judged **per action**:
+against the commit(s) being pushed **at evaluation time**. Earlier pushes that
+went out without full-suite coverage are **residual gaps, not a standing FAIL**.
+
+**Rationale, and the part worth generalising: a criterion that no future work can
+turn green is defective, not strict.** Scored cumulatively, this rule would brand
+every later session FAILED for a gap it cannot reach back and close — so the
+score stops measuring the behaviour it exists to drive, and the rational response
+becomes ignoring it. Per-action scoring keeps it actionable on every push.
+
+⚠️ **Rehoming note.** This ruling lived in a gitignored `goal.json` that was later
+deleted, leaving a `docs/STATUS.md` Recent-Decisions row carrying an explicit
+**R2 carve-out** (*"do NOT trim this row without rehoming it first"*) as its only
+tracked home — an unbounded obligation on a section R2 re-prunes every reconcile.
+It is rehomed here, where the obligation it qualifies already lives, so the STATUS
+row can shrink to a pointer like any other. The carve-out is discharged, not
+waived.
+
 Related: CLAUDE.md §6 (verification is hygiene) + §7 (all commits via PR);
 [[0026-interpret-before-run-pre-commit-outcome-meaning]] (green-against-the-wrong-thing);
 [[0028-omit-when-none-evolving-hash-chained-log]] (sibling from the same ADR-016 S2
