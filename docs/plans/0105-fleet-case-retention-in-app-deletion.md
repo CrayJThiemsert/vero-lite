@@ -6,6 +6,20 @@
 **Related ADRs:** ADR-0035 (published-demo posture; D6 prompt-log regime — explicitly NOT inherited, see LOCKED-1), ADR-0037 (fleet compliance direction; D2.1/D4)
 **Related PLANs:** PLAN-0096 (case capture), PLAN-0100 (published demo), PLAN-0103 (AC-11 — this PLAN is a *precondition* of its closure, see §Ordering)
 
+> **Rulings round (2026-08-14, post-merge `0ea641b` / PR #1160, same drafter):**
+> Cray ruled all four SD slots (typed, 2026-08-14), adopting each
+> recommendation: SD-1 → (b) ordered app-level child deletes + the AC-5 guard;
+> SD-2 → (a) files first, then rows; SD-3 → no status exemption AND the
+> dangling `case_id` pointer stated as intended design; SD-4 → (a) run-link
+> rows deliberately retained. This round stamps the verdicts into the SD slots,
+> collapses Step 1's dual variant to the ruled (b) shape, fixes AC-2/AC-3/AC-4
+> and every conditional phrasing to the ruled outcomes, and records Step 0 as
+> satisfied. Every recommendation's reasoning is preserved verbatim as the
+> auditable record of *why*. The eleven ACs stand — none added, removed, or
+> renumbered; `Status:` stays Draft until Complete. Author≠reviewer separation:
+> **INTACT** (drafter = `plan-drafter`; review = Code — PR #1160's review
+> verified four load-bearing claims on disk, all held; ratification = Cray).
+
 ## Context — what exists and what does not
 
 The furthest solved point of retention in this repo is **file** retention:
@@ -137,8 +151,9 @@ refresh after any deletion, under the same fail-soft contract the router uses.
 Ship a periodic, in-application retention task for fleet's published system that
 deletes visitor-opened repair-case data — the `repair_case` row, its six
 FK-child rows, and the per-case upload directory on disk — 90 days after
-`opened_at`, with the seventh (no-FK) table and every future `case_id`-bearing
-table explicitly classified rather than silently orphaned; enabled only on the
+`opened_at`, with the seventh (no-FK) table deliberately retained as a decision
+record (SD-4 ruling) and every future `case_id`-bearing table explicitly
+classified rather than silently orphaned; enabled only on the
 fleet published profile (default OFF everywhere), fail-soft (retention failing
 never takes the demo down), and evidenced by a scenario test that drives a real
 case through the real route, really ages it, really sweeps it, and inspects the
@@ -160,23 +175,28 @@ Postgres on port 5442).
   of the prompt log's (`docs/runbooks/published-demo-operations.md:60` cites the
   89/91-day boundary in `tests/api/test_prompt_log.py`): an 89-day case
   survives, a 91-day case is deleted, asserted against real Postgres rows.
-- [ ] **AC-2 — the six FK children are handled per the SD-1 ruling.** After a
-  sweep, zero rows reference the expired case in each of
+- [ ] **AC-2 — the six FK children are deleted by ordered application-level
+  deletes (SD-1 ruling: (b) — no CASCADE, no migration).** After a sweep, zero
+  rows reference the expired case in each of
   `repair_case_order_number`, `repair_case_closeout`, `repair_case_task_event`,
   `repair_case_quote`, `repair_case_justification`, and
   `repair_case_accepted_quote` — asserted **per table by name** against the real
   DB, not via a rowcount aggregate that could pass with one table forgotten.
   Evidence: the Step-6 aftermath assertions, RED-proven by the Step-6 probe.
-- [ ] **AC-3 — the seventh table's fate is explicit, per the SD-4 ruling.** The
-  scenario aftermath asserts `repair_case_run_link` rows for the deleted case
-  are in the SD-4-ruled state (retained-by-design or deleted), **by name**, with
-  the ruling cited in the assertion's comment. Absence of any assertion about
+- [ ] **AC-3 — the seventh table is deliberately RETAINED (SD-4 ruling), and
+  the retention is asserted positively.** The scenario aftermath asserts
+  `repair_case_run_link` rows for the deleted case are **still present and
+  unchanged** — retained-by-design — **by name**, with SD-4's ruling cited in
+  the assertion's comment. "Retained" must be a positive presence assertion,
+  never the mere absence of a delete: an absent assertion is indistinguishable
+  from a forgotten table. Absence of any assertion about
   `repair_case_run_link` is a review-rejectable defect — its silent-orphan
   behaviour is the reason this PLAN's deletion design exists.
-- [ ] **AC-4 — photo bytes are deleted per the SD-2 ruling, and partial failure
-  is safe.** After a sweep, `photo_root()/<case_id>/` is gone (photos AND quote
-  attachments). Under an injected disk-removal failure, the SD-2-ruled ordering
-  guarantees the case **row survives the sweep pass** and is retried next pass —
+- [ ] **AC-4 — photo bytes are deleted files-FIRST, then rows (SD-2 ruling:
+  (a)), and partial failure is safe.** After a sweep, `photo_root()/<case_id>/`
+  is gone (photos AND quote attachments). Under an injected disk-removal
+  failure, the files-first ordering guarantees the case **row survives the
+  sweep pass** and is retried next pass —
   the "unreachable AND undeleted" state (row gone, file stranded) is
   unconstructible. Evidence: the scenario's disk assertion plus a
   fault-injection test that makes directory removal raise and asserts the row
@@ -227,7 +247,7 @@ Postgres on port 5442).
   past the cutoff (an `UPDATE` of `opened_at` — aging the *data's timeline*, not
   stubbing the seam), then swept **via the same callable the periodic task
   invokes** — and the aftermath inspected, not assumed: row gone, six child
-  tables empty for that case (per-table), run-link in its SD-4 state, per-case
+  tables empty for that case (per-table), run-link rows still present (SD-4: retained), per-case
   disk directory gone, the in-memory `case_projection` no longer serving the
   case, and a fresh control case + its files fully intact. No mock on either
   side of the sweep→DB or sweep→disk seam. Evidence: the test green **executed**
@@ -257,9 +277,13 @@ Postgres on port 5442).
   default-OFF precisely so a pilot's cases are never deleted by an engine
   default; a pilot retention regime is that engagement's decision.
 
-## Surfaced decisions — Cray's slots. Recommendations only; no Step assumes an answer.
+## Surfaced decisions — RULED (Cray, typed, 2026-08-14). The recommendations below are preserved verbatim as the auditable record of *why*; the stamps carry the verdicts.
 
 ### SD-1 — cascade or ordered delete?
+
+🔴 **RULED (Cray, typed, 2026-08-14): (b) — ordered application-level child
+deletes in dependency order, plus the AC-5 completeness guard. No migration;
+the loud fail-closed DELETE posture is preserved.**
 
 **(a) `ondelete="CASCADE"` on the six FKs.** Real costs, priced honestly: an
 alembic migration — feasible here, the family already has hand-written ones
@@ -288,9 +312,13 @@ worlds).
 **Recommendation: (b).** With AC-5 in place, (b)'s only structural weakness is
 guarded by construction, while (a) still needs most of the same application code
 *plus* a migration *plus* a permanent global weakening of the accidental-delete
-posture. (Not decided here; Step 1 carries both variants.)
+posture. (Recommendation adopted by the ruling above; Step 1 now carries the
+ruled (b) shape, with (a) kept as a recorded alternative.)
 
 ### SD-2 — the photo bytes: deletion order and partial-failure semantics
+
+🔴 **RULED (Cray, typed, 2026-08-14): (a) — files first, then rows, one unit
+of work per expired case.**
 
 The hazard, stated plainly: if the **row** goes first and the file unlink then
 fails, the bytes are **unreachable AND undeleted** — no DSR search can find
@@ -318,7 +346,12 @@ published surface text-only.
 
 ### SD-3 — is a still-OPEN case deleted at 90 days? And the audit chain's pointer?
 
-Two sub-questions, one recommendation each — **neither ruled here**:
+🔴 **RULED (Cray, typed, 2026-08-14): no status exemption — age governs,
+status does not — AND the audit chain's dangling `case_id` pointer is stated
+as the intended design.**
+
+Two sub-questions, one recommendation each — both ruled above; the reasoning
+stands as the record:
 
 **Status exemption: recommend NO exemption — age governs, status does not.**
 This is measured, not assumed: `CASE_STATUS_CLOSED` is defined
@@ -331,6 +364,14 @@ vacuous on exactly its motivating surface. Alternatives priced: exempt-OPEN
 (vacuous, above); auto-close-then-delete after a grace period (invents workflow
 state no partner asked for, and the auto-close event would be a synthetic fact
 in an evidence-bearing system).
+
+_Review-round corroboration (Code's PR #1160 review; re-verified on disk at
+fold-in, 2026-08-14): stronger than stated above — the literal `"closed"` is
+never assigned to any status anywhere in `services/` (its only other
+occurrences are the unrelated ontology closed-model flag), `CASE_STATUSES`
+(`repair_case.py:44`) is itself unreferenced (nothing even validates against
+it), and the API layer's only `.status =` write is PM import-row status
+(`services/api/routers/pm.py:255`), not case status._
 
 **The audit chain's dangling pointer: recommend stating it as the intended
 design, because it is measured, not hoped.** The chain holds `case_id` while
@@ -347,6 +388,9 @@ retention to run participation — priced as: it re-couples the two things the
 s222 measurement deliberately separated).
 
 ### SD-4 — the seventh table's fate (drafter-added slot; same discipline)
+
+🔴 **RULED (Cray, typed, 2026-08-14): (a) — `repair_case_run_link` rows are
+deliberately RETAINED.**
 
 The run-link is outside both SD-1 options by construction — no FK, so neither
 CASCADE nor FK-ordered deletion touches it. Its fate needs its own ruling:
@@ -368,22 +412,31 @@ because those counts matter.
 cost of erasing governance-decision history that carries no personal visitor
 data — the one category the erasure argument does *not* require deleting.
 
-Whichever way Cray rules, AC-3 and AC-5(ii) force the choice to be **written
-down** in the sweep's no-FK policy set and asserted in the scenario aftermath.
+The ruling is **written down** in the sweep's no-FK policy set (Step 1:
+`repair_case_run_link` → RETAIN) and **positively asserted** in the scenario
+aftermath (AC-3, AC-5(ii)): retained is asserted as presence, never left
+unasserted — an absent assertion is indistinguishable from a forgotten table,
+the exact failure this slot exists to prevent.
 
 ## Steps
 
 > Execution notes binding all steps: feature branch + PR (CLAUDE.md §7); every
 > guard's non-vacuity probe is **run from a `/tmp` copy of the mutated file, the
 > RED is seen and recorded in the PR evidence, and the original restored** —
-> a probe whose RED was not witnessed proves nothing. No step assumes an SD
-> answer: Step 0 collects the rulings first.
+> a probe whose RED was not witnessed proves nothing. All four SD rulings were
+> collected before any build step (Step 0 — satisfied 2026-08-14); each step
+> below names the ruling it consumes.
 
-### Step 0: Collect the four SD rulings
+### Step 0: Collect the four SD rulings — ✅ SATISFIED 2026-08-14
 
 Present SD-1..SD-4 to Cray; record the typed rulings in this file (a one-line
 `RULED (Cray, typed, date):` under each SD). Steps 1–6 name which ruling they
 consume. **Stop condition:** no ruling, no Step 1.
+
+_Satisfied: all four rulings collected and stamped (Cray, typed, 2026-08-14 —
+see the Surfaced-decisions section; rulings round, post-PR #1160). The stop
+condition was honoured — no build step preceded the rulings. The step is kept,
+not deleted: its record is the evidence the gate was._
 
 ### Step 1: The sweep module — `services/db/repair_case_retention.py`
 
@@ -391,15 +444,17 @@ consume. **Stop condition:** no ruling, no Step 1.
   from `prompt_log`.
 - Three **declared, module-level** classification sets (AC-5 reads these):
   `FK_CHILD_TABLES` (the six), `NO_FK_REFERENCERS` (`repair_case_run_link` →
-  the SD-4-ruled policy), and the root table.
+  **RETAIN**, per SD-4's ruling), and the root table.
 - `sweep(session, *, now, photo_root) -> RetentionReport`: select expired
-  `case_id`s by `opened_at`; per case, one unit of work in the SD-2-ruled
-  order; children handled per the SD-1 ruling — **variant (b):** explicit
-  deletes in dependency order (children before parent; `repair_case_order_number`
-  and `repair_case_closeout` before `repair_case`, etc.); **variant (a):** an
-  alembic migration `00XX` adds `ondelete="CASCADE"` to the six FKs (hand-written
-  — autogenerate untrusted here) and the sweep deletes the parent row only —
-  disk + run-link policy + projection refresh remain in code under both.
+  `case_id`s by `opened_at`; per case, one unit of work in SD-2's ruled order —
+  **files first, then rows**; children handled per SD-1's ruled shape (b):
+  **explicit deletes in dependency order** (children before parent; all six
+  FK-child tables before `repair_case`; the row deletes in one transaction).
+  _Recorded alternative, no longer executable: SD-1 (a) — `ondelete="CASCADE"`
+  via a hand-written alembic migration (autogenerate untrusted here) — was
+  rejected by the ruling; its honest pricing stands in SD-1's record. Disk +
+  run-link policy + projection refresh would have remained in code under
+  either option._
 - Never raises out of a case: per-case failures land in the report and the log,
   retried next pass (`rotate()` contract). Tenant-agnostic by design (age
   governs; the published box is single-tenant `TENANT_ID=demo`).
@@ -461,8 +516,8 @@ RED; set it in energy's → RED; restore.
 `tests/api/test_visitor_case_to_monitor_scenario.py` for the case→run drive:
 real route in (case + photo + quote attachment), real run (so run-link rows
 exist), real `UPDATE` aging, sweep via the **task's own callable**, then the
-full aftermath per AC-10 — per-table child checks, run-link per SD-4, disk gone,
-projection refreshed, control case intact. DB-backed; skips honestly when
+full aftermath per AC-10 — per-table child checks, run-link rows asserted
+present (SD-4: retained), disk gone, projection refreshed, control case intact. DB-backed; skips honestly when
 Postgres is unreachable and **counts only when executed**.
 **Non-vacuity probe:** from a `/tmp` copy of the sweep module, sever the disk-
 removal call → the disk-aftermath assertion RED (and only it — the probe's
@@ -474,8 +529,8 @@ child-table delete → that table's AC-2 assertion RED; restore.
 Full offline gate at CI scope (full `tests/`, `mypy --strict services/`, bare
 `ruff check .`, format), PR, merge. Closeout note to Cray: the mechanism PLAN-0103
 AC-11's retention cell will describe now exists — naming module paths, the
-constant, the schedule, and the SD rulings as ratified — **as input for the RoPA,
-not as RoPA text** (LOCKED-4/-5). Then `git mv` to `docs/plans/done/`.
+constant, the schedule, and the four SD rulings (Cray, typed, 2026-08-14) — **as
+input for the RoPA, not as RoPA text** (LOCKED-4/-5). Then `git mv` to `docs/plans/done/`.
 
 ## Host-state statement (CLAUDE.md §8)
 
@@ -505,7 +560,11 @@ Step-10 go cites it. PLAN-0103 is not edited by this PLAN.
 ---
 
 *Drafted by the in-harness `plan-drafter` subagent (ADR-013 D1 phased authority)
-from a Cray-ratified dispatch, 2026-08-14. Author≠reviewer (ADR-012 D4.3):
+from a Cray-ratified dispatch, 2026-08-14. Rulings round folded in place the
+same day by the same subagent (see the provenance note at top): four SD verdicts
+stamped, Step 1 collapsed to the ruled shape, AC-2/AC-3/AC-4 fixed to the ruled
+outcomes, Step 0 recorded satisfied — every recommendation's reasoning preserved
+as the record. Author≠reviewer (ADR-012 D4.3):
 drafter = plan-drafter; independent review = Code + Cray at PR merge; separation
 intact. Every `file:line` claim re-verified on disk at drafting time against
 `main` = `1d7903c`. AI-assisted; no `Co-Authored-By` per CLAUDE.md §7.*
