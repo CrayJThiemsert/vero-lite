@@ -132,6 +132,7 @@ def validate_run_query(query: StructuredQuery) -> list[str]:
             "exposes aggregate primitives only. Use 'count' or an aggregate "
             "(max/min/avg/sum) over duration_ms_total or net_benefit_thb."
         )
+    errors.extend(_validate_week_dimension(query))
     for index, flt in enumerate(query.filters):
         if flt.op != "eq":
             errors.append(
@@ -153,6 +154,58 @@ def _wanted(filters: list[QueryFilter], prop: str) -> str | None:
         if flt.property == prop:
             return flt.value
     return None
+
+
+#: Dimensions ``week_rollup`` does not publish, so ``_count``'s week branch cannot
+#: honour them. Kept beside the guard that refuses them, not inside it, so the set
+#: is greppable from the branch it protects.
+_WEEK_ROLLUP_BLIND_TO = ("procedure_id", "status")
+
+
+def _validate_week_dimension(query: StructuredQuery) -> list[str]:
+    """Refuse a weekly query that also filters on a dimension the week rollup lacks.
+
+    ``_count``'s week branch is served by ``week_rollup``, which buckets by ISO week
+    and NOTHING else. A ``procedure_id``/``status`` filter alongside it therefore
+    could not be applied, and the branch used to drop it in silence — answering
+    *"how many runs of procedure X in week W?"* with the count of ALL runs in week W.
+    A silently wrong number is strictly worse than a refusal, so this refuses.
+
+    🔴 The trigger keys on the FILTER as well as ``group_by``: the branch fires on
+    ``group_by == "started_week"`` **or** a bare ``started_week`` filter with no
+    ``group_by`` at all, so a guard testing only ``group_by`` would leave the defect
+    reachable by the very shape that made it reachable before PLAN-0104 existed.
+
+    Deliberately NOT widened: ``group_by`` on another dimension with a
+    ``procedure_id``/``status`` filter routes to ``run_status_rollup``, which DOES
+    carry both — that path is correct and must keep validating clean.
+
+    Disposition (a), RULED (Cray, typed, s228): refuse here rather than give the
+    rollup the missing dimension. The message is corrective because it feeds the
+    validate-and-retry loop, exactly like the ``list`` rejection above.
+    """
+    # ⚠️ This condition must stay BYTE-FOR-BYTE equivalent to the branch test in
+    # ``_count`` — including the ``is not None``, which truthiness does NOT match:
+    # a filter carrying an empty value makes ``_wanted`` return ``""``, which is
+    # falsy but not None, so a truthiness guard would stay silent while the branch
+    # it protects fires. The gap would be invisible in every test that uses a
+    # realistic week value.
+    week_branch = (
+        query.group_by == "started_week" or _wanted(query.filters, "started_week") is not None
+    )
+    if not week_branch:
+        return []
+    blind = [prop for prop in _WEEK_ROLLUP_BLIND_TO if _wanted(query.filters, prop) is not None]
+    if not blind:
+        return []
+    return [
+        f"a weekly query cannot also filter on {' and '.join(repr(p) for p in blind)}: the "
+        "run corpus serves the ISO-week view from a rollup bucketed by week and nothing "
+        "else, so that filter could not be applied and would be silently ignored. Ask for "
+        "either the weekly figures WITHOUT that filter, or the per-procedure/status "
+        "figures without the week dimension (drop 'started_week' from group_by and "
+        "filters)."
+    ]
 
 
 def _keep(filters: list[QueryFilter], procedure_id: str, status: str) -> bool:
@@ -197,11 +250,16 @@ async def _count(session: Any, query: StructuredQuery) -> RunQueryResult:
         weeks = await run_analytics.week_rollup(session)
         wanted = _wanted(query.filters, "started_week")
         week_rows = [w for w in weeks if wanted is None or w.period == wanted]
-        # PRE-EXISTING GAP, deliberately not widened here: this branch applies the
-        # started_week filter only — a procedure_id/status filter alongside it is
-        # dropped, because week_rollup carries no such dimension. Reachable today
-        # via a started_week FILTER, so PLAN-0104 neither introduces nor fixes it;
-        # surfaced to Cray rather than repaired silently (out of this PLAN's scope).
+        # 🔴 THIS BRANCH IS SAFE ONLY BECAUSE THE VALIDATOR REFUSES THE COMBINATION.
+        # It applies the started_week filter and NOTHING else — week_rollup publishes
+        # no procedure_id/status dimension — so a query carrying one of those filters
+        # would have it dropped in silence, answering "how many runs of procedure X in
+        # week W?" with the count of ALL runs in week W. That combination is now
+        # rejected up front by _validate_week_dimension (disposition (a), RULED s228),
+        # which is why no filtering is attempted here. Deleting or weakening that guard
+        # RESTORES the silent wrong answer at this line — the coupling is pinned by
+        # test_the_week_branch_is_guarded_not_filtering in tests/services/engine/
+        # test_run_query.py, which fails if the refusal stops firing.
         week_groups: dict[str, float] = (
             {w.period: float(w.run_count) for w in week_rows}
             if query.group_by == "started_week"
