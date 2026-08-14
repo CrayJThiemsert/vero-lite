@@ -1,6 +1,6 @@
 ---
 name: code-operational-policy
-description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, the dispatch-quality discipline (Frontier + oracle-scoped accelerator + REJECT-if blocks, the 4-move follow-up vocabulary, the pre-close counterexample step), and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Use when deciding worktree isolation, handing off a transcript, authoring a Cowork / plan-drafter / subagent dispatch, following up on a subagent's partial return, closing an acceptance criterion, OR planning a host-state run / live benchmark / multi-step verification. Other tiers do not need this.
+description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, the dispatch-quality discipline (Frontier + oracle-scoped accelerator + REJECT-if blocks, the 4-move follow-up vocabulary, the pre-close counterexample step), and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Use when deciding worktree isolation, handing off a transcript, authoring a Cowork / plan-drafter / subagent dispatch, following up on a subagent's partial return, closing an acceptance criterion, judging a ruff/lint gate, interpreting test failures in a Windows worktree, OR planning a host-state run / live benchmark / multi-step verification. Other tiers do not need this.
 ---
 
 # Tier 2 (Code) operational policy
@@ -21,6 +21,14 @@ Default policy per Lesson #3:
 
 Apply the [Lesson #3 prevention checklist](../../../docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist)
 before any worktree-on session.
+
+⚠️ **A Windows worktree has a non-zero environmental-RED floor** — `pytest
+tests/` there fails a handful of tests for pure environment reasons, and the
+count **drifts upward as new tests land** (it went 6 → 7 without anyone being
+wrong). Never carry a remembered count forward; attribute REDs **by cause**,
+and use a **WSL-native** checkout when you need a true CI-scope gate. Method +
+the current cause list:
+[Lesson #0042](../../../docs/lessons/0042-a-remembered-baseline-is-not-evidence.md).
 
 ## Transcript handoff
 
@@ -121,6 +129,34 @@ host-state runs and false reads):
    evidence artifact with the **Read tool** (never piped `cat`/`wc` — it silently
    misreports; verify-relayed / verify-pin lessons). Judge against step 2's
    criteria and report misses honestly: out-of-scope/known vs regression.
+
+### Judge a lint gate on the tracked tree, not on your checkout
+
+`ruff` is a **gate**, so the thing under judgement must be the tree CI will see.
+Your checkout is not that tree. Extract HEAD and run the gate inside it:
+
+```bash
+rm -rf /tmp/gatetree && mkdir -p /tmp/gatetree
+git archive HEAD | tar -x -C /tmp/gatetree
+cd /tmp/gatetree && ruff check .
+```
+
+Two independent reasons a bare `ruff check .` in your checkout misreports —
+**both measured in the main checkout at `71b8f6b`, session 230**, where it
+found 2 errors while the extracted HEAD tree (1027 files) was `All checks
+passed!`:
+
+- **Untracked files get linted.** `.claude/benchmark-results/` is untracked but
+  present, and contributed an `S108` that **is not in the repo**.
+- **Uncommitted work gets linted — including someone else's.** The second error
+  (`E501`) came from an in-flight edit belonging to a *concurrent session* on
+  another branch. Neither error was attributable to HEAD, and neither would
+  appear in CI.
+
+⚠️ **You cannot fix this by naming paths instead.** `ruff check <paths>`
+*bypasses* `exclude`, so narrowing the argument silently changes which rules
+apply and diverges from CI, which runs a bare `ruff check .`. Extracting the
+tree is what makes a bare, `exclude`-faithful invocation possible.
 
 ### Use the Axis-B `/goal` loop for verification tasks
 
