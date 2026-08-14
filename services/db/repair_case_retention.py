@@ -171,6 +171,58 @@ async def _refresh_projection(session: AsyncSession) -> None:
         case_projection.record_unavailable(str(exc))
 
 
+async def delete_case(
+    session: AsyncSession,
+    case_id: str,
+    *,
+    photo_root: Path,
+) -> None:
+    """Erase ONE named case completely — uploads, then its six FK children, then the row.
+
+    The per-case unit of work, callable on its own. :func:`sweep` selects its
+    work set by AGE and can express nothing else; a DSR-on-request path needs
+    the opposite — one named case, whatever its age — and this is the seam it
+    calls. PLAN-0105's Out of Scope claimed that factoring already existed; until
+    s232 it did not (the unit was inline in :func:`sweep`'s loop and reachable
+    from nowhere), which that PLAN now records as `was an error`.
+
+    **The ordering is load-bearing twice.** Files before rows (SD-2, ruled (a)):
+    a row deleted first would leave bytes unreachable AND undeleted, because the
+    sweep finds expired cases *by row*. Then, within the rows, children before
+    the parent **and** ``repair_case_accepted_quote`` before the
+    ``repair_case_quote`` it holds a composite FK to — see
+    :data:`_FK_CHILD_MODELS`, where that edge and the production failure it
+    caused are recorded.
+
+    **Leaves the session CLEAN on failure** (Cray, typed, s232): a partial
+    deletion is rolled back here and the exception re-raised. The alternative —
+    propagating and letting the caller clean up — makes the extraction true in
+    letter while leaving the exact trap it was meant to remove: a DSR caller
+    holding a session in a failed transaction it never knew it had to reset.
+    :func:`sweep` relies on this and no longer rolls back itself.
+
+    **Does NOT refresh the projection.** A batch caller refreshes once per pass
+    rather than once per case, so the refresh belongs to the caller (see
+    :func:`sweep`). ⚠️ A DSR path deleting a single case must call
+    :func:`_refresh_projection` itself, or ``case_projection`` keeps serving the
+    erased case from RAM — a retention leak in memory that no DB assertion sees.
+    """
+    try:
+        # Files FIRST (SD-2 ruling (a)) — see the module docstring.
+        _remove_case_directory(photo_root, case_id)
+        for model in _FK_CHILD_MODELS:
+            # Table-level rather than ORM-level so one loop covers all six:
+            # the models share no common base declaring ``case_id``, and the
+            # column name is identical across them (verified per model).
+            table = cast(sa.Table, model.__table__)
+            await session.execute(sa.delete(table).where(table.c.case_id == case_id))
+        await session.execute(sa.delete(RepairCase).where(RepairCase.case_id == case_id))
+        await session.commit()
+    except Exception:
+        await session.rollback()
+        raise
+
+
 async def sweep(
     session: AsyncSession,
     *,
@@ -179,9 +231,11 @@ async def sweep(
 ) -> RetentionReport:
     """Delete every case older than :data:`CASE_RETENTION_DAYS`, files first.
 
-    One unit of work per expired case: its upload directory, then its six FK
-    children, then the row — committed per case so a failure on one case cannot
-    roll back the cases already deleted. Run-link rows are left standing
+    One :func:`delete_case` per expired case, committed per case so a failure on
+    one cannot roll back the cases already deleted. This function owns only the
+    AGE selection, the per-case error accounting, and the single projection
+    refresh; the erasure itself — and its ordering, its files-first rule and its
+    rollback — belongs to :func:`delete_case`. Run-link rows are left standing
     (:data:`NO_FK_REFERENCERS`).
     """
     moment = now or datetime.now(UTC)
@@ -199,20 +253,12 @@ async def sweep(
     failed: list[str] = []
     for case_id in expired:
         try:
-            # Files FIRST (SD-2 ruling (a)) — see the module docstring.
-            _remove_case_directory(photo_root, case_id)
-            for model in _FK_CHILD_MODELS:
-                # Table-level rather than ORM-level so one loop covers all six:
-                # the models share no common base declaring ``case_id``, and the
-                # column name is identical across them (verified per model).
-                table = cast(sa.Table, model.__table__)
-                await session.execute(sa.delete(table).where(table.c.case_id == case_id))
-            await session.execute(sa.delete(RepairCase).where(RepairCase.case_id == case_id))
-            await session.commit()
+            await delete_case(session, case_id, photo_root=photo_root)
         except Exception:
             # Never raises out of a case: the next case still gets its turn, and
-            # this one is retried on the next pass.
-            await session.rollback()
+            # this one is retried on the next pass. No rollback here — the unit
+            # rolls back its own partial work (Cray, typed s232), so the session
+            # handed to the NEXT iteration is already clean.
             logger.exception("case retention: case %s could not be deleted", case_id)
             failed.append(case_id)
             continue
