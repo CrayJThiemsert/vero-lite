@@ -67,18 +67,37 @@ CASE_RETENTION_DAYS = 90
 #: bare parent delete raises ForeignKeyViolation rather than cascading. That
 #: loud failure is a safety property PLAN-0105 SD-1 (ruled (b)) deliberately
 #: keeps: a stray delete from some future code path still fails closed.
+#:
+#: 🔴 **The order is not cosmetic, and child-to-parent is not the only edge.**
+#: ``repair_case_accepted_quote`` holds a composite FK to ``repair_case_quote``
+#: (``tenant_id, case_id, quote_id``) as well as one to the root, so the accepted
+#: quote MUST be deleted before the quote it points at. Deleting the quote first
+#: raises ``ForeignKeyViolation`` on any case that ever accepted one — which is
+#: every case that reached a gate. Found by the Step-6 scenario test on a real
+#: intake; the Step-1 unit test could not see it, because it inserted a task event
+#: and no quote pack. The child-to-child edges are asserted against the live
+#: metadata by ``test_the_declared_order_respects_every_child_to_child_dependency``,
+#: so a seventh child arriving with its own inter-child FK reddens rather than
+#: waiting ninety days to raise in production.
 _FK_CHILD_MODELS = (
     RepairCaseOrderNumber,
     RepairCaseCloseout,
     RepairCaseTaskEvent,
-    RepairCaseQuote,
     RepairCaseJustification,
     RepairCaseAcceptedQuote,
+    RepairCaseQuote,
 )
+
+#: The same six as an ORDERED tuple. Exported separately from the set below
+#: because the two are checked against different things: membership against the
+#: FKs pointing at the root, and ORDER against the FKs pointing between children.
+#: A frozenset cannot carry the second property, and the day that mattered it
+#: failed in production-shaped data rather than in a guard.
+FK_CHILD_DELETION_ORDER: tuple[str, ...] = tuple(m.__tablename__ for m in _FK_CHILD_MODELS)
 
 #: Table names of the above — the declared list AC-5's completeness guard reads
 #: and asserts EQUAL to the FKs the live metadata actually declares.
-FK_CHILD_TABLES: frozenset[str] = frozenset(m.__tablename__ for m in _FK_CHILD_MODELS)
+FK_CHILD_TABLES: frozenset[str] = frozenset(FK_CHILD_DELETION_ORDER)
 
 #: Tables referencing ``case_id`` with **no ForeignKey at all**, each with an
 #: explicit policy. ``repair_case_run_link`` dropped its FK on purpose (s191 —
