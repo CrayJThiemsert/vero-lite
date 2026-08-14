@@ -125,6 +125,140 @@ def test_a_valid_query_produces_no_errors() -> None:
     assert rq.validate_run_query(query) == []
 
 
+@pytest.mark.parametrize(
+    ("group_by", "blind_filter"),
+    [
+        (None, "procedure_id"),
+        (None, "status"),
+        ("started_week", "procedure_id"),
+        ("started_week", "status"),
+    ],
+)
+def test_a_weekly_query_carrying_a_dimension_the_rollup_lacks_is_refused(
+    group_by: str | None, blind_filter: str
+) -> None:
+    """The four shapes where ``_count``'s week branch would DROP a filter in silence.
+
+    Two of them reach the branch through a bare ``started_week`` FILTER with no
+    ``group_by`` at all — the shape that made the defect reachable before PLAN-0104
+    existed — which is why the guard cannot key on ``group_by`` alone.
+    """
+    filters = [] if group_by else [QueryFilter(property="started_week", op="eq", value="2026-W01")]
+    filters.append(QueryFilter(property=blind_filter, op="eq", value="whatever"))
+    query = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE, operation="count", group_by=group_by, filters=filters
+    )
+    errors = rq.validate_run_query(query)
+    assert errors, f"group_by={group_by!r} + {blind_filter} filter must be refused, not answered"
+    joined = " ".join(errors)
+    assert blind_filter in joined
+    # Correctable, like the `list` rejection: it must say what to ask for instead.
+    assert "without" in joined
+
+
+@pytest.mark.parametrize(
+    ("group_by", "filters"),
+    [
+        (None, [("started_week", "2026-W01")]),
+        ("started_week", []),
+        ("started_week", [("started_week", "2026-W01")]),
+        (None, [("procedure_id", "p1")]),
+        (None, [("status", "completed")]),
+        ("status", [("procedure_id", "p1")]),
+    ],
+)
+def test_the_week_guard_does_not_over_refuse(
+    group_by: str | None, filters: list[tuple[str, str]]
+) -> None:
+    """Non-vacuity in the other direction — the expensive half to get wrong.
+
+    Every shape here is served correctly today and must keep validating clean. The
+    last one is the one a careless guard breaks: ``group_by='status'`` with a
+    ``procedure_id`` filter routes to ``run_status_rollup``, which carries BOTH
+    dimensions, so refusing it would trade a silent wrong answer for a wrong refusal.
+    """
+    query = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="count",
+        group_by=group_by,
+        filters=[QueryFilter(property=p, op="eq", value=v) for p, v in filters],
+    )
+    assert rq.validate_run_query(query) == []
+
+
+def test_the_week_branch_is_guarded_not_filtering() -> None:
+    """Pins the coupling between the defect site and the fix, which are far apart.
+
+    ``_count``'s week branch (``run_query.py``, the ``week_rollup`` path) applies the
+    week filter and nothing else; it is correct ONLY because this refusal stops the
+    dropped-filter shapes from reaching it. Deleting the guard restores a silently
+    wrong answer at a line that itself looks unchanged, so the guarantee is asserted
+    here rather than left to a comment.
+    """
+    reaches_the_branch = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="count",
+        filters=[
+            QueryFilter(property="started_week", op="eq", value="2026-W01"),
+            QueryFilter(property="procedure_id", op="eq", value="p1"),
+        ],
+    )
+    assert rq.validate_run_query(reaches_the_branch), (
+        "the week branch is unguarded: this query would reach week_rollup, which "
+        "publishes no procedure_id dimension, and its filter would be silently dropped"
+    )
+
+
+def test_the_week_guard_is_scoped_to_count_and_does_not_speak_for_the_aggregate_path() -> None:
+    """Pins the guard's operation scope — and RECORDS the adjacent defect it excludes.
+
+    ``execute_run_query`` routes only ``count`` to ``_count``, and the refusal message
+    explains itself in terms of ``week_rollup``, which no other operation touches. So
+    an aggregate carrying the same filter shape is NOT refused here.
+
+    🔴 This is a scope assertion, **not** an endorsement of the aggregate path's
+    behaviour. ``_aggregate_duration`` / ``_aggregate_benefit`` ignore a
+    ``started_week`` filter entirely — they filter on procedure/status only — so an
+    aggregate carrying one silently answers across ALL weeks. That is the same defect
+    class as the one this guard closes and strictly larger, at a different site, and
+    outside what was ruled. If a future change repairs or refuses it, this test SHOULD
+    fail: read this docstring, then move the boundary deliberately.
+    """
+    aggregate = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="avg",
+        aggregate_property="duration_ms_total",
+        filters=[
+            QueryFilter(property="started_week", op="eq", value="2026-W01"),
+            QueryFilter(property="procedure_id", op="eq", value="p1"),
+        ],
+    )
+    assert rq._validate_week_dimension(aggregate) == []
+
+
+def test_an_empty_week_value_still_reaches_the_branch_and_so_must_still_be_refused() -> None:
+    """The guard tests ``is not None``, not truthiness — and the difference is a hole.
+
+    ``_count``'s branch fires on ``_wanted(...) is not None``. An empty filter value
+    makes ``_wanted`` return ``""``: falsy, but NOT None. A guard written with a
+    truthiness test would therefore stay silent on exactly the shape that still
+    reaches the dropping branch, and no test using a realistic week string like
+    ``"2026-W01"`` would ever notice. This pins the two conditions together.
+    """
+    query = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="count",
+        filters=[
+            QueryFilter(property="started_week", op="eq", value=""),
+            QueryFilter(property="procedure_id", op="eq", value="p1"),
+        ],
+    )
+    assert rq.validate_run_query(query), (
+        "an empty started_week value is falsy but not None, so it still reaches "
+        "_count's week branch — the guard must not miss it"
+    )
+
+
 # --- property (2): execute is deterministic and LLM-free ---------------------
 
 
@@ -245,6 +379,48 @@ async def test_ungrouped_count_over_the_run_corpus_carries_no_aggregate(seeded: 
     assert result.aggregate is None
     expected_text = f"{seeded.corpus.run_count} run(s) match that question."
     assert rq.fallback_run_answer(query, result) == expected_text
+
+
+async def test_the_refused_weekly_combination_would_have_answered_the_whole_week(
+    seeded: _Seeded,
+) -> None:
+    """Scenario: the harm the refusal prevents, demonstrated on the real corpus.
+
+    Drives the real ``week_rollup`` SQL over seeded Postgres into the real ``_count``,
+    with nothing stubbed. Two halves, and the second is what gives the first teeth:
+
+    1. ``validate_run_query`` REFUSES *"how many runs of procedure X in week W?"*.
+    2. Executed anyway — bypassing the validator exactly as a future edit deleting
+       the guard would — ``_count`` returns the count of **every** run in that week,
+       not procedure X's. The number is wrong, grounded-looking, and silent.
+
+    The corpus seeds all runs into a single ISO week, so the wrong answer is the
+    full corpus while the right one is one procedure's share. The assertion that
+    those two differ is what stops this test from passing vacuously.
+    """
+    procedure = "emergency_sourcing"
+    week = next(iter(seeded.corpus.week_counts))
+    week_total = seeded.corpus.week_counts[week]
+    procedure_total = seeded.corpus.procedure_counts[procedure]
+    assert week_total != procedure_total, (
+        "corpus makes this test vacuous: the week total and the procedure total "
+        "coincide, so a dropped filter would be invisible"
+    )
+
+    dangerous = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="count",
+        filters=[
+            QueryFilter(property="started_week", op="eq", value=week),
+            QueryFilter(property="procedure_id", op="eq", value=procedure),
+        ],
+    )
+    assert rq.validate_run_query(dangerous), "the combination must be refused before execution"
+
+    # The teeth: what the refusal is protecting the caller from.
+    executed = await rq._count(seeded.session, dangerous)
+    assert executed.count == week_total
+    assert executed.count != procedure_total
 
 
 # --- property (3): empty result short-circuits honestly ----------------------
