@@ -112,6 +112,36 @@ attributing to them.
   info` vs `was an error`. Check whether the delta is explained by something
   that *landed after* the earlier measurement before concluding anyone erred.
 
+## 5. Getting a WSL-native gate when you are stuck in a worktree
+
+The advice above is circular if you are already *in* a Windows worktree. You do
+not have to move the work — clone into WSL-native space and run the gate there:
+
+```bash
+git clone --no-hardlinks /home/crayj/work/vero-lite /tmp/guardverify
+cd /tmp/guardverify && git checkout <base-sha>
+cp <your changed files> /tmp/guardverify/<same paths>
+git add -A          # the enumeration guards read `git ls-files`
+<worktree>/.venv/bin/python -m pytest tests/ -q
+```
+
+Notes from doing this (session 230):
+
+- **`git clone` from a local path only reads the source.** It is safe even when
+  the main checkout is on another branch with a concurrent session's
+  uncommitted work — which was the case here.
+- **`git add -A` is load-bearing, not tidiness.** The two enumeration guards
+  read `git ls-files`; an unstaged new file is invisible to them, and the guard
+  passes *vacuously* over a set that does not contain your change.
+- **The clone has no `.env`** (gitignored, so not cloned), so DB-backed tests
+  **skip** rather than run: 399 of them here. The clone run is therefore not a
+  superset of the worktree run — the two are **complementary**. Check the
+  arithmetic closes (`4045 + 9 + 7 = 4061 = 3662 + 399`) before claiming
+  everything was covered.
+- Reusing the worktree's `.venv/bin/python` avoids building a second
+  environment, and avoids `uv` mutating a venv from the wrong context
+  (Lesson #3 §A3).
+
 ## Related
 
 - **Lesson #3** (`0003-code-tab-worktree-lifecycle-traps.md`) — the worktree
