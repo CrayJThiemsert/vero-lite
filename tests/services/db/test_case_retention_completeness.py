@@ -33,6 +33,7 @@ import sqlalchemy as sa
 import tests.db_support  # noqa: F401
 from services.db.base import Base
 from services.db.repair_case_retention import (
+    FK_CHILD_DELETION_ORDER,
     FK_CHILD_TABLES,
     NO_FK_REFERENCERS,
     ROOT_TABLE,
@@ -165,3 +166,56 @@ def test_the_guard_would_catch_an_eighth_table_of_either_shape() -> None:
     assert _tables_with_a_case_id_column(silent_shaped) - classified == {
         "scratch_case_note"
     }, "the forwards walk is what catches it"
+
+
+def _child_to_child_edges(metadata: sa.MetaData) -> set[tuple[str, str]]:
+    """``(source, target)`` FK edges BETWEEN children — the ones that fix the order.
+
+    Deliberately excludes edges to the root: every child points there, and those
+    edges say only "children before the parent", which the sweep satisfies by
+    construction. The interesting edges are the ones nobody expects.
+    """
+    family = set(FK_CHILD_TABLES)
+    return {
+        (t.name, fk.target_fullname.split(".")[0])
+        for t in metadata.tables.values()
+        if t.name in family
+        for fk in t.foreign_keys
+        if fk.target_fullname.split(".")[0] in family and fk.target_fullname.split(".")[0] != t.name
+    }
+
+
+def test_the_declared_order_respects_every_child_to_child_dependency() -> None:
+    """AC-5's missing half, added after the Step-6 scenario test caught it live.
+
+    AC-5 as written checks MEMBERSHIP — that the declared children are exactly the
+    tables holding an FK to the root. It says nothing about ORDER, and order is a
+    separate correctness property with its own failure: `repair_case_accepted_quote`
+    carries a composite FK to `repair_case_quote`, so deleting the quote first
+    raises ForeignKeyViolation on every case that ever accepted one.
+
+    That defect shipped in Step 1 and survived Step 4, because the Step-1 unit test
+    inserted a task event and no quote pack — a suite can only exercise the shapes
+    it builds. It failed in the Step-6 scenario on the first realistic case, which
+    is CLAUDE.md §8's rule doing exactly what its own text describes.
+
+    Guarded here rather than left to the next scenario: a seventh child arriving
+    with its own inter-child FK would otherwise wait for a case of that shape to
+    expire — up to ninety days after the code shipped, in the one deployment where
+    nobody is watching a test run.
+    """
+    position = {table: i for i, table in enumerate(FK_CHILD_DELETION_ORDER)}
+    edges = _child_to_child_edges(Base.metadata)
+    assert edges, (
+        "no child-to-child FK edges found at all — either the family changed shape "
+        "or this walk has stopped matching, and the guard would pass vacuously. One "
+        "edge is known to exist: repair_case_accepted_quote -> repair_case_quote"
+    )
+    for source, target in sorted(edges):
+        assert position[source] < position[target], (
+            f"{source} holds an FK to {target}, so it must be deleted FIRST, but the "
+            f"declared order puts it at index {position[source]} and {target} at "
+            f"{position[target]}. Reorder _FK_CHILD_MODELS in "
+            "services/db/repair_case_retention.py — a case carrying both rows would "
+            "raise ForeignKeyViolation mid-sweep and never be deleted."
+        )
