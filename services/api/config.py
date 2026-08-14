@@ -410,6 +410,19 @@ class Settings(BaseSettings):
             "default so no non-demo startup writes to the DB."
         ),
     )
+    case_retention_enabled: bool = Field(
+        default=False,
+        description=(
+            "When True (env CASE_RETENTION_ENABLED) AND the active vertical is "
+            "fleet_maintenance, sweep visitor-opened repair cases older than "
+            "CASE_RETENTION_DAYS at startup and every CASE_RETENTION_SWEEP_HOURS "
+            "thereafter (PLAN-0105 LOCKED-3: an in-app task, never a host "
+            "scheduler). Off by default because this DELETES data: no dev, CI, or "
+            "pilot deployment may lose an operator's cases to an engine default — "
+            "only fleet's published profile opts in, where the 90-day promise is "
+            "the RoPA's."
+        ),
+    )
     oct_recovery_value: float = Field(
         default=58.0,
         description=(

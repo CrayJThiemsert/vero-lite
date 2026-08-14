@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
+from services.api.case_retention_task import start_case_retention, stop_case_retention
 from services.api.config import settings
 from services.api.demo_personas import resolve_demo_personas
 from services.api.models.health import HealthResponse
@@ -513,7 +514,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         describe_arm_state(),
         describe_line_arm_state(),
     )
+    # PLAN-0105 Step 3 — the visitor-case retention sweep. Both gates (the vertical
+    # and the flag) live INSIDE ``start_case_retention``, so these two statements are
+    # unconditional and ``lifespan`` gains NO branch: it sits exactly at the C901
+    # ceiling, the same constraint ``_seed_fleet_operate_demo`` above is shaped by.
+    # Returns None — and stops cleanly on None — wherever retention does not apply.
+    _retention = start_case_retention(vertical)
     yield
+    await stop_case_retention(_retention)
 
 
 app = FastAPI(
