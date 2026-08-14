@@ -334,6 +334,12 @@ def _is_environment_absent(exc: Exception) -> bool:
         catching ``OSError`` alone will miss them.
       * ``sqlalchemy.exc.ProgrammingError`` is also a ``SQLAlchemyError`` but usually
         means "schema not migrated" — environmental or defect? Your call.
+        ✅ **ANSWERED (Cray, typed, 2026-08-14, s232): NEITHER — its own third
+        class**, handled ahead of this function by :func:`_is_schema_not_applied`
+        and reported with the command that fixes it. ⚠️ That answer discharges
+        exactly this bullet and **no other**: every remaining item below is still
+        open, and this stub still absorbs everything else as environmental, so the
+        defect arm stays inert until the rest of the policy is written.
       * ``NameError`` (incl. ``UnboundLocalError``), ``AttributeError``, ``TypeError``
         are the family that must return ``False`` — that is the regression this exists
         to make loud.
@@ -343,6 +349,34 @@ def _is_environment_absent(exc: Exception) -> bool:
     return True
 
 
+#: PostgreSQL SQLSTATE ``undefined_table``. Matched on the CODE, never the message:
+#: the message is driver- and locale-dependent, the code is fixed by the standard.
+_SQLSTATE_UNDEFINED_TABLE = "42P01"
+
+
+def _is_schema_not_applied(exc: Exception) -> bool:
+    """Is this "the database is reachable but its schema was never migrated"?
+
+    The THIRD cause, and until PLAN-0103 Step 10 it had no arm of its own — it fell
+    into :func:`_is_environment_absent`'s catch-all and reported as an absent
+    database, which is the one description that makes an operator stop looking.
+
+    Why it earns its own arm (measured, session 232). A published system on an empty
+    Postgres **boots, passes its healthcheck and opens its tunnel**: ``/health`` is a
+    pure liveness probe that never touches the database, and ``cloudflared`` gates
+    only on ``service_healthy``. The system is therefore reachable and looks correct,
+    and the first thing that fails is a **visitor** typing a case. Nothing between
+    ``up -d`` and that visitor says the step was skipped.
+
+    ``asyncpg`` raises ``UndefinedTableError`` wrapped by SQLAlchemy, so the code is
+    read off ``exc.orig`` first and ``exc`` second rather than by importing the driver.
+    """
+    for candidate in (getattr(exc, "orig", None), exc):
+        if getattr(candidate, "sqlstate", None) == _SQLSTATE_UNDEFINED_TABLE:
+            return True
+    return False
+
+
 def _absorb_boot_load_failure(
     record_unavailable: Callable[[str], None],
     exc: Exception,
@@ -350,12 +384,30 @@ def _absorb_boot_load_failure(
     what: str,
     degraded: str,
 ) -> None:
-    """Log + record a boot-time projection load failure, telling the two causes apart.
+    """Log + record a boot-time projection load failure, telling the causes apart.
 
-    Fail-soft either way, never with the same message. An absent database is expected,
-    so it warns and says what the operator now sees instead; a programming error keeps
-    the process alive while making itself impossible to mistake for one.
+    Fail-soft in every arm, never with the same message. An absent database is
+    expected, so it warns and says what the operator now sees instead; a programming
+    error keeps the process alive while making itself impossible to mistake for one;
+    an unmigrated schema names itself and the command that fixes it.
+
+    ⚠️ The schema arm is checked FIRST and deliberately: an unmigrated schema is also
+    "environmental" in the loose sense, so the catch-all below would swallow it and
+    report an absent database — the misdescription this arm exists to prevent.
     """
+    if _is_schema_not_applied(exc):
+        record_unavailable(f"SCHEMA NOT APPLIED: {exc}")
+        _boot_logger.error(
+            "%s NOT loaded — the database is REACHABLE but its SCHEMA IS NOT APPLIED "
+            "(%s). ⚠️ This process will keep serving and will report HEALTHY, so the "
+            "tunnel opens on a system whose visitor case path FAILS on the first "
+            "write. Fix before anyone visits: `docker compose -f "
+            "deploy/published/<system>/docker-compose.yml run --rm app alembic "
+            "upgrade head`, then confirm with `... run --rm app alembic current`.",
+            what,
+            exc,
+        )
+        return
     if _is_environment_absent(exc):
         record_unavailable(str(exc))
         _boot_logger.warning("%s NOT loaded (%s) — %s", what, exc, degraded)

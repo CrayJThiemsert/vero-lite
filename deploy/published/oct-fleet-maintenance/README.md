@@ -157,23 +157,39 @@ which on a public surface asks a visitor for a key they do not have.
 docker compose -f deploy/published/oct-fleet-maintenance/docker-compose.yml up -d
 ```
 
-🔴 **Open bring-up question, not answered by this profile: how does the database
-get its schema?** The compose starts an empty Postgres, and nothing in this file
-runs migrations. Whether that is an `alembic upgrade head` step, an init container,
-or something else is **Step 10's** to settle against a deployment that has actually
-run — it is deliberately not invented here. Do not assume `up -d` alone yields a
-working system.
+### 🔴 The schema does NOT come with `up -d` — apply it first
 
-_[Input added s232 — narrowing the question, not answering it. **The image already
-carries the tooling and the intended command**: `Dockerfile:21-25` copies
-`alembic/` and `alembic.ini` in specifically so that *"`docker run <image> alembic
-upgrade head` is the pilot/production migration step (PLAN-0095 SD-2)"*, while the
-default `CMD` never reads them. So the open part is **when and by what** that
-command is invoked — a one-shot run before `app` starts, a compose service, or an
-operator step in the runbook — not whether the mechanism exists. ⚠️ This is the
-single largest delta from procurement's bring-up, which had no database at all, so
-there is **no precedent to copy** for this step and it is the likeliest place for a
-first live run to stop.]_
+_[✅ **ANSWERED s232.** This section was an open question deferred to Step 10.
+RULED (Cray, typed, 2026-08-14): an **operator step**, with the skip made
+**legible** rather than prevented by compose. Full procedure and the reasoning:
+`docs/runbooks/published-demo-bring-up.md` §9.0 — read that, not a restatement.]_
+
+```bash
+docker compose -f deploy/published/oct-fleet-maintenance/docker-compose.yml up -d postgres
+docker compose -f deploy/published/oct-fleet-maintenance/docker-compose.yml run --rm app alembic upgrade head
+docker compose -f deploy/published/oct-fleet-maintenance/docker-compose.yml run --rm app alembic current
+```
+
+The third line is **evidence, not decoration** — its output goes in the go log,
+and it is the only thing that distinguishes a migrated system from an unmigrated
+one from outside.
+
+⚠️ **Why the order matters, and why nothing downstream catches a miss.** On an
+empty database this system **boots, passes its healthcheck, and opens its
+tunnel** — `/health` is pure liveness and never touches Postgres, and
+`cloudflared` gates only on `service_healthy`. It is reachable and looks correct.
+**The first thing that fails is a visitor typing a case on Tab I**, which is this
+system's whole point.
+
+✅ **If the step is skipped, the boot log now says so at ERROR and names this
+command** (`services/api/main.py::_is_schema_not_applied`, s232). That is a
+backstop, not the plan — read the `alembic current` output.
+
+_(Why not a compose `migrate` service that makes it un-skippable? Considered and
+not taken: `depends_on: service_completed_successfully` appears nowhere in this
+repo, and a gated one-shot host run is the wrong moment to debut an unmeasured
+compose feature. The rejected option is recorded here so it is not re-proposed
+without new information.)_
 
 ## Verifying the allowlist without an account
 
