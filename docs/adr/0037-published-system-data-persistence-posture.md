@@ -48,6 +48,26 @@ direction, cited by the RoPA's own lineage hook), CLAUDE.md §1 (precedence),
 > Cray's ruling, which this amendment does not make. Author≠reviewer
 > separation: **INTACT** (drafter authored; Code R2 + Cray review at PR).
 
+> **Amendment pass 2026-08-14, session 232 (drafted in-harness by
+> `plan-drafter` from a Code dispatch; `Status:` unchanged — this pass stamps
+> three typed Cray rulings at their sites and closes the open questions they
+> answer; it re-argues nothing and rewrites nothing).** The rulings, recorded
+> inline where each belongs: **(i)** D4 = **(a) text-by-reference** — RULED
+> (stamp under D4's amendment note), together with the companion ruling the
+> amendment note called for: the **recorder's free text gets its own RoPA
+> line, stated plainly as non-erasable** (option (i)); OQ-2 closes against
+> that stamp. **(ii)** D2.4 = **(ก)** — fleet gets its **own** in-app
+> disclosure, owned by **PLAN-0106**; never a widening of ADR-0035 D6's
+> banner (D3 stands). **(iii)** OQ-1 closes **retroactively**: its 90-day
+> ruling landed as PLAN-0105 LOCKED-1 and shipped, but this file's text was
+> never amended to say so — the note at OQ-1 closes that drift and points at
+> where the ruling actually lives. D2.3 additionally carries a status note
+> (what ruling (a) makes true on disk; what is still owed and whose it is).
+> Every pre-existing recommendation and amendment note is preserved verbatim
+> as the auditable record of *why* the rulings read the way they do.
+> Author≠reviewer separation: **INTACT** (drafter authored; Code R2 + Cray
+> review at PR).
+
 ## Context
 
 ### The question, and why it is an ADR
@@ -159,11 +179,37 @@ artifacts**, not visitors:
 2. **A named retention number per visitor-writable dataset** (OQ-1).
 3. **A stated DSR path per dataset** — for case-linked data, per D4's ruling
    (OQ-2).
+   _[Status note, 2026-08-14 — D4 is RULED (a) (Cray, typed, s232; stamp at
+   D4). What (a) makes true on disk: the case-text DSR answer is the **same
+   shape** as the prompt log's — the text lives in an erasable Postgres row
+   outside the chain, and the per-case deletion unit exists
+   (`services/db/repair_case_retention.py::delete_case`, s232), so erasure
+   is a mechanism, not an intention. What is still owed, and whose: **(1)**
+   the RoPA's **stated** path is Cray's to write (D2.1's authorship
+   boundary — no PLAN or drafter authors it); **(2)** requester
+   identification remains genuinely **undesigned** — `repair_case.opened_by`
+   is a `person_id`-shaped string with no FK
+   (`services/db/repair_case.py:66-70`) and the personas add no visitor
+   identity (F6) — so a DSR request can be matched to case rows only by
+   content, and the stated path must say so plainly; **(3)** the recorder's
+   free text takes **its own RoPA line, stated plainly as non-erasable** —
+   ruling (i), recorded at D4's stamp.]_
 4. **In-app disclosure on the granted system**: the published UI must disclose
    that typed case text is persisted, and for how long — the same load-bearing
    in-app capture principle ADR-0035 D6 established for the prompt-log notice
    (`0035:619-629`), applied to the new dataset. Wording is Cray-reviewed
    against ADR-0032 D5's vocabulary rules; mechanics belong to the owning PLAN.
+   _[RULED (ก) — Cray, typed, 2026-08-14, s232: fleet gets its **own**
+   in-app disclosure, owned by **PLAN-0106**
+   (`docs/plans/0106-fleet-case-persistence-disclosure.md`) — **not** a
+   widening of the existing D6 prompt-log banner, whose shared text stays
+   untouched (D3's refusal stands; the banner's regime remains exactly the
+   prompt-log one it says it is). Wording remains Cray-reviewed against
+   ADR-0032 D5 per this obligation's own text; PLAN-0106 carries the
+   mechanics, the candidate wording as a surfaced decision, and the guard +
+   scenario tests. Binding before fleet is reachable — this obligation
+   gates fleet's bring-up beside PLAN-0103 AC-11's RoPA (the D2 header's
+   "all binding before the system is reachable").]_
 5. **Isolation:** the DB service lives inside that system's own compose
    project, on that system's own Docker network, reachable by no other system —
    an application of ADR-0035's acceptance shape and ADR-0036 D5's binding
@@ -265,6 +311,35 @@ promise to make, and it cannot be made before the measurement exists.
 > measurement shows text currently enters the chain") did **not** fire; there
 > is nothing for an interim posture to bridge.
 
+> **RULED (a) — Cray, typed, 2026-08-14, session 232.** The header's
+> deliberate reservation is discharged, in the direction recommended:
+> **text-by-reference** is the posture. The chain holds the case **id**; the
+> erasable case row (fleet's Postgres, outside the chain) holds the text;
+> erasing the row leaves a dangling-by-design reference and an intact chain.
+> The recommendation and the amendment note above are preserved verbatim as
+> the record of why. What already satisfies (a) on disk, so nothing new is
+> owed for the posture itself: the D2.7 guard
+> (`tests/api/test_visitor_case_to_monitor_scenario.py` — bracketing
+> sentinels + the per-action payload-key allowlist) is the standing tripwire
+> that keeps text out of the chain, and the per-case deletion unit exists —
+> `delete_case(session, case_id, *, photo_root)` in
+> `services/db/repair_case_retention.py` (extracted s232; rolls back its own
+> partial work and re-raises; deliberately does not refresh the projection).
+>
+> **Ruled with it (Cray, typed, same session) — the recorder's free text,
+> option (i):** the internal-principal free text that is in the chain **by
+> design** (`WaiverInvocation.justification` and the ratification `note`,
+> typed by a **named internal principal** — `recorded_by` sits beside it)
+> gets **its own RoPA line, stated plainly as non-erasable**. This
+> discharges the amendment note's clause above ("needs its own RoPA line
+> under any D4 ruling"): it is personal data about a different data-subject
+> class from the visitor, and its line states the chain's non-erasability
+> plainly rather than sheltering behind the case row's erasability. Per
+> D2.1's authorship boundary the line's **text** is Cray's, as controller —
+> this ruling fixes what the line must say plainly, not its wording. The
+> ruling is an input to D2.3's stated-DSR-path obligation and is
+> cross-referenced there.
+
 ## Consequences
 
 ### Positive
@@ -305,12 +380,31 @@ promise to make, and it cannot be made before the measurement exists.
   for the whole demo surface is one number a visitor-facing disclosure and a
   one-person DSR practice can actually honor. Alternative: shorter (cases are
   demo ephemera), at the cost of a second number to explain everywhere.
+  _[Closed 2026-08-14 — ruled **90 days**, but not here and not on this
+  file's timeline: the ruling landed as **PLAN-0105 LOCKED-1** (Cray, typed)
+  and is SHIPPED — `services/db/repair_case_retention.py`
+  (`CASE_RETENTION_DAYS = 90`) + `services/api/case_retention_task.py`,
+  armed fleet-only via `CASE_RETENTION_ENABLED=true` in
+  `deploy/published/oct-fleet-maintenance/published.env`. One caution the
+  pointer must carry: the match with D6's 90 is an **independent
+  coincidence**, not an inheritance — LOCKED-1 says so and the code guards
+  it (`tests/services/db/test_case_retention.py::
+  test_ac9_the_module_does_not_inherit_the_prompt_log_regime` reddens if the
+  retention module imports anything named `prompt_log`). This note exists
+  because the ruling had existed since PLAN-0105 while this OQ's text still
+  read open — a drift caught and closed s232; the reasoning is not restated
+  here, it lives with the ruling.]_
 - **OQ-2 — the case-data DSR answer (Cray, after D2.7's measurement):** D4's
   slot — recommendation (a) text-by-reference as target; (c) only as measured
   necessity; (b) never as end state.
   _[Unblocked 2026-08-11: the D2.7 measurement exists (discharge note at
   D2.7; per-option implications at D4's amendment note). The ruling remains
   Cray's and is not made here.]_
+  _[Closed 2026-08-14 — RULED **(a) text-by-reference** (Cray, typed, s232).
+  The stamp, what already satisfies it on disk, and the companion
+  recorder-free-text ruling (option (i) — its own RoPA line, plainly
+  non-erasable) all live at D4's ruling block; D2.3's status note states
+  what remains owed on the stated-path side.]_
 - **OQ-3 — RoPA structuring (Cray, as controller):** new section in the demo
   instance vs a sibling per-dataset instance (F5: the template supports either;
   no template change). Recommendation: a new section in the existing instance —
