@@ -370,6 +370,20 @@ Postgres on port 5442).
   ruling on identification/verification of the requester. The sweep's per-case
   deletion unit is factored so a future DSR path can call it for one named case,
   but building that path is not this PLAN.
+  _[Corrected s232, **`was an error`** — false on disk from the moment Step 1
+  shipped, not overtaken by events. There was no callable per-case unit: the
+  work was **inline in `sweep`'s loop body** and reachable from nowhere else,
+  and `sweep` accepts no case identifier at all — it selects its work set by
+  age. The claim was written as though the extraction had happened. **It has
+  now:** `delete_case(session, case_id, *, photo_root)` exists in
+  `services/db/repair_case_retention.py`, and this sentence is true of the tree
+  as of s232 rather than being quietly deleted. ⚠️ **The unit rolls back its own
+  partial work and re-raises** (Cray, typed, s232) so a DSR caller never
+  inherits a session in a failed transaction — but it deliberately does **not**
+  refresh the projection, which stays the caller's job. What is still genuinely
+  undecided is unchanged and is the harder half: **requester identification has
+  no in-repo answer**, because personas add no visitor identity (§4(b) of the
+  change statement) — so "prove you own case X" is not merely unbuilt.]_
 - ❌ **Fleet's live bring-up or any redeploy.** PLAN-0103 Step 10's gated go.
   Nothing here touches the host (see §Host-state).
 - ❌ **Any change to the prompt-log regime** (ADR-0035 D6) or to energy's /
@@ -733,6 +747,13 @@ authorship boundary is the point — the RoPA's words are Cray's.
   Out of Scope). The per-case deletion unit is factored so a future DSR path
   can call it for one named case; building that path needs its own ruling on
   requester identification.
+  _[Corrected s232, **`was an error`** — see the fuller note in §Out of Scope.
+  The factoring was asserted twice and existed in neither place; `delete_case`
+  was extracted in s232 to make both sentences true rather than to delete them.
+  🔴 **The lesson is not the missing function, it is that a closeout restated a
+  build claim nobody read the code to check** — the same shape as this PLAN's
+  own AC-2 correction, caught by the same means (reading the module) one session
+  later.]_
 - **Fleet's live bring-up still needs its own typed §8 go** (PLAN-0103
   Step 10). Nothing in this PLAN touched the host; the armed flag changes what
   the next bring-up ships, not what runs today.

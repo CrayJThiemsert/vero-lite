@@ -219,6 +219,111 @@ async def test_ac4_a_failed_unlink_leaves_the_row_and_the_next_pass_finishes_the
     assert remaining == []
 
 
+async def test_delete_case_erases_one_named_case_and_leaves_its_neighbour_standing(
+    db_engine: AsyncEngine, tmp_path: Path
+) -> None:
+    """The DSR shape ``sweep`` cannot express: one NAMED case, whatever its age.
+
+    ``sweep`` selects its work set from ``opened_at`` and can say nothing else,
+    so this is the seam a DSR-on-request path calls. Both halves are asserted:
+    a unit that erased the whole table would satisfy "the named case is gone"
+    just as happily, and the neighbour is deliberately YOUNGER than the cutoff —
+    an age-driven deletion would have spared it for the wrong reason, so it is
+    also the case a leaked age filter would visibly fail to touch.
+    """
+    photo_root = tmp_path / "photos"
+    (photo_root / "case-named").mkdir(parents=True)
+    (photo_root / "case-named" / "photo-abc.jpg").write_bytes(b"jpeg-bytes")
+
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        session.add_all(
+            [
+                _case("case-named", age_days=1),
+                _case("case-neighbour", age_days=1),
+            ]
+        )
+        await session.flush()
+        session.add(
+            RepairCaseTaskEvent(
+                event_id="evt-1",
+                case_id="case-named",
+                item_key="arrange_tow",
+                status="done",
+                actor="req-mechanic-tom",
+                at=_NOW - timedelta(days=1),
+            )
+        )
+        await session.commit()
+
+    async with maker() as session:
+        await repair_case_retention.delete_case(session, "case-named", photo_root=photo_root)
+
+    async with maker() as session:
+        survivors = sorted((await session.execute(sa.select(RepairCase.case_id))).scalars())
+        orphans = list(
+            (
+                await session.execute(
+                    sa.select(RepairCaseTaskEvent.event_id).where(
+                        RepairCaseTaskEvent.case_id == "case-named"
+                    )
+                )
+            ).scalars()
+        )
+    assert survivors == ["case-neighbour"], "a DSR erasure must not reach past the named case"
+    assert orphans == [], "the named case's FK children go with it"
+    assert not (photo_root / "case-named").exists(), "and so does its upload directory"
+
+
+async def test_delete_case_leaves_the_session_usable_after_a_failure(
+    db_engine: AsyncEngine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """RULED (Cray, typed, s232): the deletion unit rolls back its OWN partial work.
+
+    The failure is injected by emptying ``_FK_CHILD_MODELS`` so the root delete
+    hits a live ForeignKeyViolation — a real DB-level abort AFTER a statement has
+    run, which is the only shape that actually dirties the session. Injecting at
+    ``rmtree`` instead would raise before any SQL and this test would pass
+    against a unit that never rolled back at all: green by construction, proving
+    nothing.
+
+    Asserted by USING the session rather than inspecting it. A session left
+    inside a failed transaction raises on its next statement, so a query that
+    SUCCEEDS is the proof — and it survives any refactor of how the rollback is
+    spelled. The caller (``sweep`` today, a DSR path tomorrow) never has to know
+    it inherited a mess.
+    """
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        session.add(_case("case-x", age_days=1))
+        await session.flush()
+        session.add(
+            RepairCaseTaskEvent(
+                event_id="evt-x",
+                case_id="case-x",
+                item_key="arrange_tow",
+                status="done",
+                actor="req-mechanic-tom",
+                at=_NOW - timedelta(days=1),
+            )
+        )
+        await session.commit()
+
+    monkeypatch.setattr(repair_case_retention, "_FK_CHILD_MODELS", ())
+
+    async with maker() as session:
+        with pytest.raises(Exception):  # noqa: B017 — the driver's FK error, not our type
+            await repair_case_retention.delete_case(session, "case-x", photo_root=tmp_path)
+
+        # No rollback of our own: if delete_case did not clean up, this raises.
+        survivors = list((await session.execute(sa.select(RepairCase.case_id))).scalars())
+
+    assert survivors == ["case-x"], (
+        "the failed deletion must leave the row intact AND the session usable — "
+        "a raise here instead means delete_case propagated without rolling back"
+    )
+
+
 def test_ac9_the_module_does_not_inherit_the_prompt_log_regime() -> None:
     """LOCKED-1's independence, enforced structurally rather than by comment.
 
