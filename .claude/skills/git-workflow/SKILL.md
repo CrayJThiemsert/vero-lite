@@ -82,6 +82,13 @@ git -c core.hooksPath=/home/crayj/work/vero-lite/.git/hooks commit -F /tmp/msg.t
 - **`gh` needs `GIT_DIR` exported too.**
 - **Push through WSL** — Windows git dies on the network leg (stale CA bundle).
 
+**If it aborts with `` Unable to create '…/index.lock': File exists ``** inside
+pre-commit's `git write-tree`: **verify `HEAD` first — the commit did not
+land — then simply retry.** Measured session 230: identical command, first
+attempt aborted, second committed with every hook green. **Never delete the
+lock file** to "fix" it; confirm via `git log` that no commit happened and let
+the retry take a fresh lock.
+
 ⚠️ **Do not reach for Lesson #3's fallbacks here.** Its trap A3 has the *same*
 `pre-commit not found` symptom but a different cause (a stale POSIX-path hook
 vs a Windows-layout venv) and a different fix (inline `PATH=`). And its Branch-4
