@@ -180,10 +180,29 @@ def _validate_week_dimension(query: StructuredQuery) -> list[str]:
     ``procedure_id``/``status`` filter routes to ``run_status_rollup``, which DOES
     carry both — that path is correct and must keep validating clean.
 
+    SCOPED TO ``count``, deliberately, because that is the only operation
+    ``execute_run_query`` routes to ``_count`` — and the message below describes
+    ``week_rollup``, which no other path uses. Leaving it unscoped produced an
+    incoherent boundary: ``avg`` + week + procedure would be REFUSED while
+    ``avg`` + week alone answered silently, and the refusal would have explained
+    itself in terms of a rollup that operation never touches.
+
+    🔴 ADJACENT, UNREPAIRED, and outside this ruling — recorded so the scope above
+    is read as deliberate rather than as an oversight: the aggregate paths
+    (``_aggregate_duration`` / ``_aggregate_benefit``) ignore a ``started_week``
+    filter ENTIRELY — they filter on procedure/status only — so an aggregate
+    carrying one silently answers across ALL weeks. ``started_week`` is in
+    ``DIMENSIONS`` and in the published descriptor, so the model can and will emit
+    it there. That is the same defect CLASS as this one and strictly larger (the
+    week filter itself vanishes), but it is a different site and was not what was
+    ruled on; widening this guard to cover it silently would be scope creep.
+
     Disposition (a), RULED (Cray, typed, s228): refuse here rather than give the
     rollup the missing dimension. The message is corrective because it feeds the
     validate-and-retry loop, exactly like the ``list`` rejection above.
     """
+    if query.operation != "count":
+        return []
     # ⚠️ This condition must stay BYTE-FOR-BYTE equivalent to the branch test in
     # ``_count`` — including the ``is not None``, which truthiness does NOT match:
     # a filter carrying an empty value makes ``_wanted`` return ``""``, which is

@@ -209,6 +209,33 @@ def test_the_week_branch_is_guarded_not_filtering() -> None:
     )
 
 
+def test_the_week_guard_is_scoped_to_count_and_does_not_speak_for_the_aggregate_path() -> None:
+    """Pins the guard's operation scope — and RECORDS the adjacent defect it excludes.
+
+    ``execute_run_query`` routes only ``count`` to ``_count``, and the refusal message
+    explains itself in terms of ``week_rollup``, which no other operation touches. So
+    an aggregate carrying the same filter shape is NOT refused here.
+
+    🔴 This is a scope assertion, **not** an endorsement of the aggregate path's
+    behaviour. ``_aggregate_duration`` / ``_aggregate_benefit`` ignore a
+    ``started_week`` filter entirely — they filter on procedure/status only — so an
+    aggregate carrying one silently answers across ALL weeks. That is the same defect
+    class as the one this guard closes and strictly larger, at a different site, and
+    outside what was ruled. If a future change repairs or refuses it, this test SHOULD
+    fail: read this docstring, then move the boundary deliberately.
+    """
+    aggregate = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="avg",
+        aggregate_property="duration_ms_total",
+        filters=[
+            QueryFilter(property="started_week", op="eq", value="2026-W01"),
+            QueryFilter(property="procedure_id", op="eq", value="p1"),
+        ],
+    )
+    assert rq._validate_week_dimension(aggregate) == []
+
+
 def test_an_empty_week_value_still_reaches_the_branch_and_so_must_still_be_refused() -> None:
     """The guard tests ``is not None``, not truthiness — and the difference is a hole.
 
