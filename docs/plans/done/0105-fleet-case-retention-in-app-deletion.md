@@ -1,6 +1,6 @@
 # PLAN-0105: Fleet repair-case retention — in-app periodic deletion of visitor-opened case data at 90 days
 
-**Status:** Draft
+**Status:** Complete (2026-08-14)
 **Owner:** Claude Code
 **Created:** 2026-08-14
 **Related ADRs:** ADR-0035 (published-demo posture; D6 prompt-log regime — explicitly NOT inherited, see LOCKED-1), ADR-0037 (fleet compliance direction; D2.1/D4)
@@ -19,6 +19,22 @@
 > renumbered; `Status:` stays Draft until Complete. Author≠reviewer separation:
 > **INTACT** (drafter = `plan-drafter`; review = Code — PR #1160's review
 > verified four load-bearing claims on disk, all held; ratification = Cray).
+
+> **Closeout round (2026-08-14, post-merge `6f7c547` / PR #1166, same drafter —
+> the PLAN-0103 precedent):** All six build steps shipped and merged
+> (PRs #1162–#1166, per-step record under Step 7). Every AC is ticked below
+> against its named evidence, each item verified by Code on `main` = `6f7c547`;
+> the closure stamps under the ACs cite the tests and probes by name. This round
+> also records the one defect the build surfaced — Step 6's deletion-order
+> ForeignKeyViolation, stamped under AC-2 and classified **`was an error`**
+> (§6 verify-loop hygiene: wrong on disk from the moment Step 1 shipped, not
+> overtaken by events) — plus Step 5's executed-as-corrected deviation
+> (`published.env`, not compose) and the honest scope of probe P14. Step 7
+> carries the closeout note to Cray: **input for the RoPA, never RoPA text**
+> (LOCKED-4/-5). `Status:` → Complete. Author≠reviewer separation: **INTACT**
+> (drafter = `plan-drafter`, the same subagent as both earlier rounds;
+> independent review of this closeout diff = Code at the PR; ratification =
+> Cray).
 
 ## Context — what exists and what does not
 
@@ -168,14 +184,18 @@ unreachable** — a **skip is never satisfaction**; each DB-backed AC below clos
 only on a run where the test *executed* (CI provisions Postgres; locally, dev
 Postgres on port 5442).
 
-- [ ] **AC-1 — the sweep exists and is age-correct.**
+- [x] **AC-1 — the sweep exists and is age-correct.**
   `services/db/repair_case_retention.py` deletes cases with
   `opened_at < now − CASE_RETENTION_DAYS`, anchored to `opened_at` (write-once,
   restore-proof — see Context). Evidence: a DB-backed boundary test in the shape
   of the prompt log's (`docs/runbooks/published-demo-operations.md:60` cites the
   89/91-day boundary in `tests/api/test_prompt_log.py`): an 89-day case
   survives, a 91-day case is deleted, asserted against real Postgres rows.
-- [ ] **AC-2 — the six FK children are deleted by ordered application-level
+  _✅ Closed (2026-08-14, verified by Code on `main` = `6f7c547`):
+  `tests/services/db/test_case_retention.py::test_ac1_the_boundary_is_the_cutoff_not_a_neighbourhood`
+  — 89-day case survives, 91-day case deleted, against real Postgres. Probe P2
+  (drop the `opened_at < cutoff` filter) seen RED with `assert 2 == 1`._
+- [x] **AC-2 — the six FK children are deleted by ordered application-level
   deletes (SD-1 ruling: (b) — no CASCADE, no migration).** After a sweep, zero
   rows reference the expired case in each of
   `repair_case_order_number`, `repair_case_closeout`, `repair_case_task_event`,
@@ -183,7 +203,33 @@ Postgres on port 5442).
   `repair_case_accepted_quote` — asserted **per table by name** against the real
   DB, not via a rowcount aggregate that could pass with one table forgotten.
   Evidence: the Step-6 aftermath assertions, RED-proven by the Step-6 probe.
-- [ ] **AC-3 — the seventh table is deliberately RETAINED (SD-4 ruling), and
+  _✅ Closed (2026-08-14): the six children asserted per table BY NAME by
+  `tests/api/test_case_retention_scenario.py`'s `_CHILD_TABLES` loop, plus
+  `tests/services/db/test_case_retention.py::test_the_fk_children_go_and_the_run_link_is_deliberately_left_standing`.
+  Closed **with the correction below** — this AC's evidence is the part of the
+  record that changed most between Step 1 and merge._
+  _🔴 **Correction (found by Step 6; classified `was an error` — §6 verify-loop
+  hygiene: it was wrong on disk from the moment Step 1 shipped, not overtaken by
+  events).** `repair_case_accepted_quote` holds a **composite FK to
+  `repair_case_quote`** (`tenant_id, case_id, quote_id`) in addition to its FK
+  to the root. Step 1's declared order deleted the quote FIRST, so the sweep
+  raised `ForeignKeyViolation` on any case that had ever accepted a quote —
+  every case that reached a gate. The fail-soft caught it, so the case was
+  reported failed and retried forever: **retention would silently never complete
+  on real data while every unit test stayed green.** Neither existing guard
+  could see it: Step 1's unit test inserted a task event and no quote pack, and
+  AC-5 as written checks MEMBERSHIP, not ORDER. The Step-6 scenario failed on
+  the first realistic case. Fixed by reordering `_FK_CHILD_MODELS` — measured,
+  not guessed: a walk over every FK edge in the family found exactly ONE
+  child-to-child dependency. Guarded by
+  `test_the_declared_order_respects_every_child_to_child_dependency`, which
+  walks the child-to-child edges off the live metadata;
+  `FK_CHILD_DELETION_ORDER` is exported as an ordered tuple beside the frozenset
+  because a set cannot carry the property being checked. Probe P12 reddens BOTH
+  the order guard and the scenario from one mutation. The order guard is an
+  **addition beyond AC-5's wording**, not something that AC always demanded —
+  see AC-5's stamp and Step 7's record (probe P14's honest scope)._
+- [x] **AC-3 — the seventh table is deliberately RETAINED (SD-4 ruling), and
   the retention is asserted positively.** The scenario aftermath asserts
   `repair_case_run_link` rows for the deleted case are **still present and
   unchanged** — retained-by-design — **by name**, with SD-4's ruling cited in
@@ -192,7 +238,12 @@ Postgres on port 5442).
   from a forgotten table. Absence of any assertion about
   `repair_case_run_link` is a review-rejectable defect — its silent-orphan
   behaviour is the reason this PLAN's deletion design exists.
-- [ ] **AC-4 — photo bytes are deleted files-FIRST, then rows (SD-2 ruling:
+  _✅ Closed (2026-08-14): the run-link asserted as POSITIVE PRESENCE by name in
+  both modules — the scenario's aftermath section ("asserted as PRESENCE (SD-4
+  ruled (a))") and the Step-1 unit test — with SD-4 cited at the assertion.
+  Probe P3 (add `RepairCaseRunLink` to the delete loop) seen RED with
+  `assert [] == ['link-1']`._
+- [x] **AC-4 — photo bytes are deleted files-FIRST, then rows (SD-2 ruling:
   (a)), and partial failure is safe.** After a sweep, `photo_root()/<case_id>/`
   is gone (photos AND quote attachments). Under an injected disk-removal
   failure, the files-first ordering guarantees the case **row survives the
@@ -201,7 +252,11 @@ Postgres on port 5442).
   unconstructible. Evidence: the scenario's disk assertion plus a
   fault-injection test that makes directory removal raise and asserts the row
   remains and a subsequent sweep completes the deletion.
-- [ ] **AC-5 — the eighth table cannot be silent.** A completeness guard test
+  _✅ Closed (2026-08-14): the scenario's disk assertion plus
+  `tests/services/db/test_case_retention.py::test_ac4_a_failed_unlink_leaves_the_row_and_the_next_pass_finishes_the_job`
+  (fault injected at the OS boundary below the seam). Probe P13 (sever the disk
+  removal) seen RED at "the case's upload directory must be gone"._
+- [x] **AC-5 — the eighth table cannot be silent.** A completeness guard test
   walks the live SQLAlchemy metadata and asserts: (i) the set of tables holding
   an FK to `repair_case.case_id` **equals** the sweep's declared FK-child list;
   (ii) every mapped table with a column named `case_id` is classified in exactly
@@ -209,7 +264,16 @@ Postgres on port 5442).
   an explicit per-table policy), or `repair_case` itself. A new `case_id`-bearing
   table reddens this test until a human classifies it. Evidence: the guard test
   green on `main`, and its Step-4 non-vacuity probe seen RED.
-- [ ] **AC-6 — the task is periodic, in-app, and boot-anchored.** A task started
+  _✅ Closed (2026-08-14): `tests/services/db/test_case_retention_completeness.py`
+  (landed under the suite's mirror of `services/db/`, not the `tests/db/` path
+  Step 4 wrote — see Step 4's note), six tests: the not-vacuous floor, AC-5(i)
+  equality, AC-5(ii) exactly-once with the three sets pairwise disjoint, the
+  non-empty-policy check, the both-shapes eighth-table detector demonstration,
+  and the Step-6 order guard (an ADDITION beyond this AC's wording — see AC-2's
+  correction). Probes P7 (drop a declared FK child) and P8 (drop the run link
+  from `NO_FK_REFERENCERS`) both seen RED. Measured before writing: of 21 mapped
+  tables exactly 8 carry a `case_id` column, and no exemption was needed._
+- [x] **AC-6 — the task is periodic, in-app, and boot-anchored.** A task started
   from `lifespan` runs one sweep at startup and then on a fixed interval (24 h),
   so retention follows every redeploy with no host scheduler (LOCKED-3) and a
   box that restarts more often than the interval still enforces. The sweep
@@ -217,12 +281,22 @@ Postgres on port 5442).
   `prompt_log.py:59-78`): per-case failures are logged and retried next pass.
   Evidence: a lifecycle test asserting start/stop and the boot sweep; the
   fail-soft test of AC-4.
-- [ ] **AC-7 — C901 is respected, not fought.** `lifespan` gains **no branch**:
+  _✅ Closed (2026-08-14): `tests/api/test_case_retention_task.py` — the boot
+  sweep observed via an Event (not a sleep), and the loop surviving a raising
+  sweep; stop cancels cleanly, and stop on a disarmed start is a no-op. Probe P5
+  (narrow `except Exception` to `except ValueError`) seen RED._
+- [x] **AC-7 — C901 is respected, not fought.** `lifespan` gains **no branch**:
   the task is started/stopped via helper(s) called unconditionally, with both
   gates (vertical + flag) inside the helper — the `_seed_fleet_operate_demo`
   shape (`main.py:245`, `:269`, `:457`). Evidence: `ruff check .` clean (C901
   included) over the touched files, plus the call-site diff in review.
-- [ ] **AC-8 — inert by construction off fleet.** With the flag unset (the
+  _✅ Closed (2026-08-14):
+  `tests/api/test_case_retention_task.py::test_ac7_lifespan_gained_no_branch_for_retention`
+  parses `lifespan`'s own source and requires both calls at statement level;
+  `lifespan` gained exactly two unconditional statements (start before `yield`,
+  stop after). Probe P6 (wrap the start call in an `if`) seen RED. `ruff check .`
+  clean per AC-11._
+- [x] **AC-8 — inert by construction off fleet.** With the flag unset (the
   default) or the vertical ≠ `fleet_maintenance`, the helper returns before
   creating any task — dev, CI, energy, procurement, and pilot deployments are
   untouched unless a profile opts in. The fleet published profile sets the flag;
@@ -230,14 +304,28 @@ Postgres on port 5442).
   `test_published_profiles.py:406-420`) asserts fleet's compose sets it and the
   DB-less profiles do not. Evidence: the gating unit tests (both directions) +
   the deploy guard, RED-proven per Step 5's probe.
-- [ ] **AC-9 — the 90 is structurally independent of ADR-0035 D6 (LOCKED-1).**
+  _✅ Closed (2026-08-14): inert by construction — both gates inside the helper,
+  asserted for energy AND procurement (`test_ac8_*` in
+  `tests/api/test_case_retention_task.py`), plus the deploy guard
+  `test_published_profiles.py::test_only_the_armed_profile_enables_case_retention`.
+  The flag landed in fleet's **`published.env`**, not compose — the AC's
+  substance (the fleet published profile sets it, both directions guarded) is
+  satisfied; "compose" was the PLAN's guess at the profile's mechanism — see
+  Step 5's executed-as-corrected note. Probes P4 (remove the vertical gate),
+  P9 (flip fleet to false), P10 (arm energy), P11 (arm energy with `=1`) all
+  seen RED._
+- [x] **AC-9 — the 90 is structurally independent of ADR-0035 D6 (LOCKED-1).**
   `repair_case_retention.py` defines its **own** `CASE_RETENTION_DAYS = 90` with
   a comment citing LOCKED-1 (independent decision, coincidental number), and a
   guard test asserts the module does **not** import from
   `services.engine.llm.prompt_log` — so a future D6 change cannot silently
   change case retention, and vice versa. Evidence: the guard test + the comment
   in review.
-- [ ] **AC-10 — the scenario test (CLAUDE.md §8 — binding).** A DB-backed
+  _✅ Closed (2026-08-14):
+  `tests/services/db/test_case_retention.py::test_ac9_the_module_does_not_inherit_the_prompt_log_regime`
+  walks the module's REAL import table out of its source. Probe P1 seen RED with
+  `assert not ['services.engine.llm.prompt_log']`._
+- [x] **AC-10 — the scenario test (CLAUDE.md §8 — binding).** A DB-backed
   scenario drives the **real producer into the real consumer on realistic
   simulated data**: a case opened through the real `POST /api/cases` route with
   typed Thai/English free text, a real photo upload and a real quote attachment
@@ -252,10 +340,25 @@ Postgres on port 5442).
   case, and a fresh control case + its files fully intact. No mock on either
   side of the sweep→DB or sweep→disk seam. Evidence: the test green **executed**
   (not skipped) in CI, RED-proven per Step 6's probe.
-- [ ] **AC-11 — full gates.** Full `tests/` green (dispatch-recorded baseline on
+  _✅ Closed (2026-08-14): `tests/api/test_case_retention_scenario.py`, three
+  tests. 🔴 **Executed, not skipped — measured, not assumed**: a `-v` run of the
+  scenario module plus Step 1's module reports **7 PASSED / 0 SKIPPED**. Real
+  routes in (case + photo + three quotes with attachments + accepted quote +
+  justification + task flip), a real run driven to a RESOLVED gate so run-link
+  rows exist, real `UPDATE` aging, swept through `_sweep_once` — the task's own
+  callable — and the aftermath inspected per table, on disk, and in the
+  projection, with a control case intact. RED-proven per probes P12/P13; probe
+  P14's honest scope recorded under Step 7._
+- [x] **AC-11 — full gates.** Full `tests/` green (dispatch-recorded baseline on
   `main` = `1d7903c`: 4067 passed / 8 skipped — re-verify at execution),
   `mypy --strict services/` clean, `ruff check .` + format clean. Evidence: the
   PR's CI run + the pre-PR offline gate at CI scope.
+  _✅ Closed (2026-08-14, verified by Code on `main` = `6f7c547`): full `tests/`
+  **4091 passed / 8 skipped** (drift from the 4067 baseline re-verified, not
+  assumed — the growth is this PLAN's own added tests); `mypy --strict
+  services/` clean over **136** source files; `ruff check .` + `ruff format
+  --check` clean on the **extracted HEAD tree** (`git archive HEAD`, 628 files)
+  rather than the local checkout._
 
 ## Out of Scope
 
@@ -502,6 +605,11 @@ mapped class with a `case_id` column in the test's own module — the measured
 G2-style trick of embedding the fixture in the test module) → guard RED until
 classified; restore.
 
+_As landed (PR #1164): the guard lives at
+`tests/services/db/test_case_retention_completeness.py` — the suite's mirror of
+`services/db/`, not the `tests/db/` path written above. Same guard, same probes;
+plus the Step-6 order guard added beside it (see AC-2's correction)._
+
 ### Step 5: Arm the fleet published profile (repo files only)
 
 Set the env flag in `deploy/published/oct-fleet-maintenance/`'s compose; extend
@@ -509,6 +617,17 @@ Set the env flag in `deploy/published/oct-fleet-maintenance/`'s compose; extend
 (fleet sets it; energy + procurement do not — the `_DB_GRANTED` pattern `:406-420`).
 **Non-vacuity probe:** from a `/tmp` copy, unset the flag in fleet's compose →
 RED; set it in energy's → RED; restore.
+
+_**Executed as corrected** (PR #1165): the flag landed in fleet's
+**`published.env`** (`CASE_RETENTION_ENABLED=true`), not the compose file —
+`published.env` is where every non-secret setting lives as `KEY=value`
+(the sibling `OCT_DEMO_SEED_OPERATE` included), while the compose
+`environment:` block carries only bare pass-throughs for secrets. "Compose" was
+this step's guess at the profile's mechanism, written before the profile was
+read; the deviation discharges the drafter's own residual gap 2 ("fleet's
+compose was not read"). The both-directions guard landed as
+`test_only_the_armed_profile_enables_case_retention`; probes P9–P11 seen RED
+per AC-8's stamp._
 
 ### Step 6: The scenario test (AC-10 — CLAUDE.md §8)
 
@@ -524,13 +643,99 @@ removal call → the disk-aftermath assertion RED (and only it — the probe's
 mutation names the exact output it changes); restore. Second probe: sever one
 child-table delete → that table's AC-2 assertion RED; restore.
 
-### Step 7: Gates + closeout
+### Step 7: Gates + closeout — ✅ SATISFIED 2026-08-14
 
 Full offline gate at CI scope (full `tests/`, `mypy --strict services/`, bare
 `ruff check .`, format), PR, merge. Closeout note to Cray: the mechanism PLAN-0103
 AC-11's retention cell will describe now exists — naming module paths, the
 constant, the schedule, and the four SD rulings (Cray, typed, 2026-08-14) — **as
 input for the RoPA, not as RoPA text** (LOCKED-4/-5). Then `git mv` to `docs/plans/done/`.
+
+_Satisfied (2026-08-14): all six build steps shipped and merged; every AC ticked
+above against its named evidence, verified by Code on `main` = `6f7c547`; gate
+numbers per AC-11's stamp. The `git mv` to `docs/plans/done/` is Code's move
+after this closeout round merges (`git add` before the move — a `git mv` of a
+modified file drops the edit)._
+
+#### What shipped, by step (all merged; final `main` = `6f7c547`)
+
+| Step | PR | Landed |
+|---|---|---|
+| 1 | #1162 (`11a031c`) | `services/db/repair_case_retention.py` + `tests/services/db/test_case_retention.py` |
+| 2+3 | #1163 (`7ebd7d7`) | `services/api/case_retention_task.py`, `settings.case_retention_enabled`, two unconditional statements in `lifespan`, `tests/api/test_case_retention_task.py` |
+| 4 | #1164 (merge `311cd44`) | `tests/services/db/test_case_retention_completeness.py` |
+| 5 | #1165 (merge `61e18ef`) | `CASE_RETENTION_ENABLED=true` in fleet's `published.env` + the both-directions deploy guard |
+| 6 | #1166 (merge `6f7c547`) | `tests/api/test_case_retention_scenario.py`, the deletion-order fix (AC-2's correction), and the order guard |
+
+#### What the record carries beyond the ticks
+
+- **The defect Step 6 found** — the deletion-order `ForeignKeyViolation` on
+  `repair_case_accepted_quote`'s composite FK, classified **`was an error`**:
+  full record under AC-2's correction note. The build's one defect, caught
+  exactly where the design said it would be — by the scenario on the first
+  realistic case, after every unit test stayed green.
+- **Step 5's deviation** — flag in `published.env`, not compose; executed as
+  corrected: record under Step 5.
+- **Probe P14, recorded honestly (no overclaim).** Skipping one child-table
+  delete reddens the scenario at the REPORT assertion, not at that table's
+  per-table assertion: with FKs and no CASCADE, a skipped child makes the
+  PARENT delete fail, so silent partial deletion is impossible. The per-table
+  assertions are therefore documentation plus the check that would become
+  primary if SD-1 were ever re-ruled to (a) — P14 proved the report-level
+  failure, not per-table reddening.
+
+#### Closeout note to Cray — input for the RoPA, never RoPA text (LOCKED-4/-5)
+
+The mechanism PLAN-0103 AC-11's retention cell will describe now exists. What
+follows names it so Cray can describe the control without reading code; the
+authorship boundary is the point — the RoPA's words are Cray's.
+
+- **Where the control lives:** `services/db/repair_case_retention.py` (the
+  sweep — selection, ordered deletion, disk removal, report) and
+  `services/api/case_retention_task.py` (the periodic task that runs it).
+- **The number:** `CASE_RETENTION_DAYS = 90` — the module's own constant,
+  **independent of ADR-0035 D6** (LOCKED-1: coincidental number, separate
+  decision). The independence is structural, not narrative: AC-9's guard
+  reddens if the retention module ever imports from the prompt-log module.
+- **The schedule:** one sweep at application boot, then every
+  `CASE_RETENTION_SWEEP_HOURS = 24` hours, inside the application process — no
+  cron, no Task Scheduler, nothing installed on the host. The control ships
+  with the image and follows every redeploy (LOCKED-3).
+- **What a sweep deletes**, for every case older than 90 days from `opened_at`:
+  the `repair_case` row; its six FK-child rows (`repair_case_order_number`,
+  `repair_case_closeout`, `repair_case_task_event`, `repair_case_quote`,
+  `repair_case_justification`, `repair_case_accepted_quote`); and the per-case
+  upload directory on disk — photos AND quote attachments. Files first, rows
+  after (SD-2): a partial failure leaves a discoverable row retried next pass,
+  never a stranded unreachable file.
+- **What is deliberately RETAINED:** `repair_case_run_link` (SD-4) —
+  governance-decision records carrying no visitor free text (`case_id` as
+  pointer; the erasable text lived in the row now deleted). Deleting them would
+  erase KPI/export history the erasure argument does not require; a deleted
+  case's link degrades the export exactly the already-measured way (s191:
+  "a missing referent degrades the export rather than the gate").
+- **The arming:** `CASE_RETENTION_ENABLED`, default `False` everywhere — dev,
+  CI, energy, procurement, and pilot deployments untouched; `true` only in
+  fleet's published profile (`deploy/published/oct-fleet-maintenance/published.env`),
+  guarded both directions by a deploy test.
+- **The four SD rulings, as ratified (Cray, typed, 2026-08-14):** SD-1 → (b)
+  ordered application-level child deletes plus the completeness guard; SD-2 →
+  (a) files first, then rows; SD-3 → no status exemption (age governs, status
+  does not) and the audit chain's dangling `case_id` pointer stated as intended
+  design; SD-4 → (a) run-link rows deliberately retained.
+
+**What this closeout does NOT close:**
+
+- **PLAN-0103 AC-11 remains Cray's.** The RoPA (retention cell included) is
+  Cray's artifact in the controller's voice; this note is its input, nothing
+  more (LOCKED-4/-5).
+- **The DSR-on-request path is still undefined for case rows** (this PLAN's
+  Out of Scope). The per-case deletion unit is factored so a future DSR path
+  can call it for one named case; building that path needs its own ruling on
+  requester identification.
+- **Fleet's live bring-up still needs its own typed §8 go** (PLAN-0103
+  Step 10). Nothing in this PLAN touched the host; the armed flag changes what
+  the next bring-up ships, not what runs today.
 
 ## Host-state statement (CLAUDE.md §8)
 
@@ -557,6 +762,12 @@ Step-10 go cites it. PLAN-0103 is not edited by this PLAN.
 - Offline gate at CI scope before the PR; baseline drift from
   4067 passed / 8 skipped re-verified at execution time, not assumed.
 
+_Satisfied (2026-08-14): all three lines held — every AC closed on executed
+evidence (AC-10's stamp records 7 PASSED / 0 SKIPPED for the DB-backed
+modules), probes P1–P13 RED-witnessed with P14's scope recorded honestly
+(Step 7), and the gate re-verified at 4091 passed / 8 skipped on
+`main` = `6f7c547` (AC-11's stamp)._
+
 ---
 
 *Drafted by the in-harness `plan-drafter` subagent (ADR-013 D1 phased authority)
@@ -568,3 +779,14 @@ as the record. Author≠reviewer (ADR-012 D4.3):
 drafter = plan-drafter; independent review = Code + Cray at PR merge; separation
 intact. Every `file:line` claim re-verified on disk at drafting time against
 `main` = `1d7903c`. AI-assisted; no `Co-Authored-By` per CLAUDE.md §7.*
+
+*Closeout round written 2026-08-14 by the same subagent (the PLAN-0103
+same-drafter precedent), from a Code-verified evidence dispatch on
+`main` = `6f7c547`: all eleven ACs ticked with named evidence, the AC-2
+correction recorded (`was an error`), Step 4's landed path and Step 5's
+executed-as-corrected deviation stamped, Step 7 recorded with the closeout note
+(input for the RoPA, never RoPA text — LOCKED-4/-5), `Status:` set Complete.
+Test names, constants, the armed flag, the lifespan wiring, and the sweep
+callable re-verified on disk at this round's drafting time. Author≠reviewer
+(ADR-012 D4.3): drafter = plan-drafter; independent review of this diff = Code
+at the PR; ratification = Cray; separation intact.*
