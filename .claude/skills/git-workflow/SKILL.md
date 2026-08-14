@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, and recover a corrupted PR body. Use whenever committing, pushing, or creating/editing a PR, issue, or release. Encodes Lessons #4/#10/#11.
+description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, recover a corrupted PR body, and commit from a Windows-created (UNC-gitdir) worktree where plain `wsl bash -lc "git …"` fails outright. Use whenever committing, pushing, or creating/editing a PR, issue, or release — and whenever a commit fails with `fatal: not a git repository: //wsl.localhost/...` or `` `pre-commit` not found ``. Encodes Lessons #4/#10/#11.
 ---
 
 # Git workflow mechanics (vero-lite)
@@ -49,13 +49,61 @@ and silently corrupt the submitted markdown body (Lesson #11).
 *Why:* a chained command denied as a whole creates rework; auto-mode's classifier
 guards direct push to the default branch unconditionally (Lesson #10).
 
-## Toolchain note
+## Toolchain note — which git, and from where
 
-Run git via `wsl bash -lc` — the Bash tool's default Git-for-Windows ships a
-stale CA bundle. (See the project memory on the WSL git toolchain.)
+**Default: run git via `wsl bash -lc`.** The Bash tool's default
+Git-for-Windows ships a stale CA bundle, so anything touching the network
+(`push`, `fetch`) dies there. (See the project memory on the WSL git toolchain.)
+
+⚠️ **That default assumes a WSL-native gitdir, and is wrong in a
+Windows-created worktree** — see the next section before committing from one.
+
+## Committing from a Windows-created worktree
+
+A worktree created from the Code tab registers its `gitdir` as a UNC path
+(`//wsl.localhost/ubuntu-24.04/...`). Both obvious routes then fail:
+
+| Route | Failure |
+|---|---|
+| `wsl bash -lc "git commit …"` | `fatal: not a git repository: //wsl.localhost/...` — POSIX git collapses the leading `//` (Lesson #2 / #3 family A2) |
+| Windows git (Bash tool default) | the hook fires — `hooksPath` resolves — then aborts `` `pre-commit` not found ``: `pre-commit`/`uv` are not on Windows' PATH |
+
+**Fix — point WSL git at the *same* hooks via a POSIX-resolvable path:**
+
+```bash
+export GIT_DIR=/home/crayj/work/vero-lite/.git/worktrees/<name>
+export GIT_WORK_TREE=/home/crayj/work/vero-lite/.claude/worktrees/<name>
+git -c core.hooksPath=/home/crayj/work/vero-lite/.git/hooks commit -F /tmp/msg.txt
+```
+
+- ✅ **This is not a `--no-verify` bypass.** Hooks run normally —
+  `detect-secrets` and the repo guards all fire. `--no-verify` stays forbidden
+  (CLAUDE.md §8); this recipe exists so you never need it.
+- **`gh` needs `GIT_DIR` exported too.**
+- **Push through WSL** — Windows git dies on the network leg (stale CA bundle).
+
+**If it aborts with `` Unable to create '…/index.lock': File exists ``** inside
+pre-commit's `git write-tree`: **verify `HEAD` first — the commit did not
+land — then simply retry.** Measured session 230: identical command, first
+attempt aborted, second committed with every hook green. **Never delete the
+lock file** to "fix" it; confirm via `git log` that no commit happened and let
+the retry take a fresh lock.
+
+⚠️ **Do not reach for Lesson #3's fallbacks here.** Its trap A3 has the *same*
+`pre-commit not found` symptom but a different cause (a stale POSIX-path hook
+vs a Windows-layout venv) and a different fix (inline `PATH=`). And its Branch-4
+fallback `cd`s to `/home/crayj/work/vero-lite` — **the main checkout, not your
+worktree** — so it commits the wrong tree if you are in one. Worse, that
+checkout is often held by a concurrent session with uncommitted work.
+
+*Measured session 229 (2026-08-14) committing PRs #1153/#1154 from
+`.claude/worktrees/`; re-confirmed session 230.*
 
 ## References
 
-- `CLAUDE.md` §7 (binding rules)
+- `CLAUDE.md` §7 (binding rules), §8 (`--no-verify` prohibition)
 - Lessons #4 (commit-message backtick mangling), #10 (classifier blocks direct
   push to `main`), #11 (`gh pr` body-file backtick trap)
+- Lessons #2 / #3 (UNC-gitdir binding + worktree lifecycle traps) — the cause
+  behind the Windows-created-worktree section, and the two look-alike fixes it
+  warns you off
