@@ -61,6 +61,33 @@ These are **separate files** that do not synchronise. The word "global" in `--gl
 
 **Already documented in Lesson #2 Misdiagnosis section.** See Lesson #2 for the worked diagnostic, the three-things-look-wrong-but-only-one-is-real framing, and the cross-environment access options (`git worktree repair` etc.).
 
+#### 🔴 `prunable` is a false report — never `git worktree prune` from WSL
+
+The `prunable` flag above is not a fact about the worktree; it is WSL git
+reporting that it could not follow the UNC pointer. It is applied to **live
+worktrees in active use**.
+
+**Measured (session 229, 2026-08-14; re-measured session 230):** `git worktree
+list` from WSL flagged **5 of 5** registered worktrees `prunable` — including
+the one the running session was working in at that moment. A `git worktree
+prune` would have unregistered all five on the strength of a predicate that was
+wrong every single time.
+
+**Rule:** remove a worktree **from Windows**, one at a time, by explicit path:
+
+```bash
+git worktree remove <path>      # from Windows, one at a time
+```
+
+The hazard is the *bulk verb driven by the predicate you have just disproved* —
+`prune` trusts `prunable`. The explicit-path form cannot mis-target, and if the
+path is genuinely live git refuses it rather than guessing.
+
+**Committing from such a worktree** is its own trap with its own recipe — see
+the `git-workflow` skill's "Committing from a Windows-created worktree". Do not
+substitute A3's `PATH=` fix or Branch 4 below: both address different causes,
+and Branch 4 silently targets the **main checkout** instead of your worktree.
+
 ### A3: Stale pre-commit hook with hard-coded POSIX paths
 
 **Symptom:** `git commit` fails with:
@@ -382,6 +409,7 @@ preserve literal `$` and avoid Windows-side expansion.
 ## Anti-patterns (do NOT use)
 
 - ❌ **`git commit --no-verify`** — bypasses pre-commit. CLAUDE.md §8 forbids. Real fix is the inline PATH override (A3).
+- ❌ **`git worktree prune` from WSL** — WSL flags *every* UNC worktree `prunable`, live ones included (measured 5/5, sessions 229/230). The flag is a path-resolution artifact, not truth. Use `git worktree remove <path>` from Windows, one at a time. See A2.
 - ❌ **`rm -rf` to clean up worktree leftover** — destructive, masks ownership root cause. Use `wsl -u root -- rm -rf` only after `git worktree remove` succeeded.
 - ❌ **`uv run pre-commit install` from Code tab to "fix" hook PATH** — overwrites main repo's hook with a Windows path, breaking WSL native git.
 - ❌ **`uv run` / `uv sync` / `uv pip` from the wrong shell context** — DESTRUCTIVE, not merely failing: mutates `.venv` (deletes binaries, leaves dangling symlinks). See §A3 "uv from wrong context is DESTRUCTIVE" subsection for detail + recovery.
@@ -445,4 +473,6 @@ input.
 - **Lesson #1** Trap 11 — `uv run` for project-local tools; the root mechanism behind A3 hook failure
 - **Runbook** `claude-code-setup.md` — first-time setup including `safe.directory '*'` precondition
 - **Runbook** `claude-code-chat-handoff.md` — the file-based handoff mechanism this lesson references for worked-example detail
+- **Lesson #0042** (`0042-a-remembered-baseline-is-not-evidence.md`) — the environmental-RED floor a worktree run carries, why its *count* drifts, and the cause list to attribute against
+- **Skill** `git-workflow` — "Committing from a Windows-created worktree": the `GIT_DIR`/`GIT_WORK_TREE`/`core.hooksPath` recipe for the case where both A3's fix and Branch 4 are wrong
 - **CLAUDE.md** §6 (Working Patterns), §8 (Constraints — `--no-verify` prohibition)
