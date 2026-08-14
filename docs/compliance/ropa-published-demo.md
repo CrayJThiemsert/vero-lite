@@ -16,9 +16,27 @@
 > named recipient/processor** (ADR-0035 D6). Read every slot below with that swap in mind
 > — it changes who owes the duty, not just who is named.
 
-**Status:** populated, offline. The deployment it describes does not exist until
-PLAN-0100 Phase 3/5 land; this record is written **before** exposure, not after, which is
-the point of writing it at all.
+**Status:** populated. **The deployment it describes is now live** — two published systems
+are reachable, brought up one at a time, each under its own typed §8 go. This record was
+nevertheless written **before** exposure, not after, which is the point of writing it at
+all.
+
+_[Corrected 2026-08-14, `superseded by new info` — true when written, overtaken by events:
+this line read *"populated, offline. The deployment it describes does not exist until
+PLAN-0100 Phase 3/5 land."* PLAN-0100 is `Complete — 2026-08-08 (session 216)` with all 13
+ACs closed, and the second system's bring-up is recorded at
+[`docs/logs/2026-08-11-plan0103-step10-procurement-bring-up.md`](../logs/2026-08-11-plan0103-step10-procurement-bring-up.md).
+⚠️ **A third system — fleet — is NOT live**, and its bring-up is gated on PLAN-0103 AC-11:
+it introduces a visitor-writable surface whose free text persists to its own database, and
+that needs RoPA coverage **before** it is reachable. Cray ruled (typed, 2026-08-14) that
+the coverage takes its **own per-dataset instance** rather than an extension of this file,
+so this record's scope is unchanged by it — the dataset here remains what visitors type
+into the LLM routes. 🔴 **Systems are deliberately not enumerated by label anywhere in this
+file:** ADR-0036 D2 places the cross-system map outside this repo, and a committed
+vero-lite file naming two or more system labels is a shadow ingress map — guard-enforced
+by `tests/deploy/test_published_profiles.py::test_ac5_no_file_outside_a_profile_lists_two_system_labels`,
+which reddened against the first draft of this very correction. Do not "helpfully" add the
+labels back.]_
 
 ---
 
@@ -118,14 +136,29 @@ the point of writing it at all.
 
 | Control | State |
 |---|---|
-| Deny-by-default route allowlist at the edge proxy | **owed** — PLAN-0100 Step 8 |
-| No published `ports:` on any service | **owed** — Step 8 |
+| Deny-by-default route allowlist at the edge proxy | **built** — per system in `deploy/published/*/cloudflared/config.yml`; set-equality + both-ends anchoring guarded per profile |
+| No published `ports:` on any service | **built** — all three profiles; guarded per profile by `test_ac3_no_service_publishes_a_host_port` |
 | `API_AUTH_ENABLED=true`; state-changing routes keyed | **built** |
 | Per-IP rate cap on LLM routes (10/min, burst 20) | **owed** — Step 8, proxy config |
 | Global in-flight LLM cap (1, fast-fail) | **built** — PLAN-0100 Step 6 |
 | Prompt log closed field set + rotation | **built** — Step 7 |
 | Persistent in-app D6 notice | **built** — PLAN-0100 Step 5 (published profile only; not dismissable) |
 | Access logging over the prompt log itself | **gap** — nobody logs Cray reading it |
+
+_[Two rows corrected 2026-08-14, `superseded by new info` — both read **owed** when this
+file was written; PLAN-0100 Step 8 has since shipped and both controls are on disk with
+per-profile guards (`tests/deploy/test_published_profiles.py`:
+`test_the_allow_set_equals_this_systems_expected_table`,
+`test_every_pattern_is_anchored_at_both_ends`,
+`test_ac3_no_service_publishes_a_host_port` — each parametrized over every discovered
+profile, so a fourth system cannot arrive silently uncovered).
+⚠️ **The per-IP rate-cap row is deliberately left UNCHANGED, and its state is genuinely
+unknown rather than owed:** no rate-limit directive appears in any committed
+`cloudflared/config.yml` (verified 2026-08-14), but ADR-0036 D2 makes the Cloudflare
+dashboard the home for ingress configuration — so *"absent from the repo"* is not
+*"not configured"*. Settling that row needs a dashboard check, not a repo grep, and
+writing it either way from repo evidence alone would be a claim this file cannot support.
+The **gap** row below is unaffected by this correction and remains accurate.]_
 
 > **Lineage hook.** The last row is an honest gap, not an oversight: with a single reader
 > who is also the controller, a read-access log would have no independent auditor. Named
