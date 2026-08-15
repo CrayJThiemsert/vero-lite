@@ -107,6 +107,39 @@
 
   /* ---- the panels ---- */
 
+  // A month with no rows renders THIS instead of four ฿0 tiles.
+  //
+  // 🔴 Four zeroes is not a neutral display, it is a misleading one: "Repair spend
+  // fully traceable 0%" and "Spend that escaped governance ฿0" read as findings about
+  // a fleet, when the truth is that nothing has been filed yet. The KPI's own reader
+  // already refuses to score an empty month — `traceability_pct` returns None rather
+  // than 100.0, with the comment that reporting a perfect score for a month nobody
+  // looked at would put the best number the KPI can produce on the worst-observed
+  // months. This is that same honesty carried to the surface a human actually reads.
+  //
+  // Reads only `row_count`, which the cover already declares — the UI-contract test
+  // asserts set equality over the fields this view touches, so a new field here would
+  // have to ship with its own response change.
+  function renderEmptyMonth() {
+    return card(
+      'No repair spend filed to this month — yet',
+      'this is the honest state of an empty month, not a score of zero',
+      [
+        h('div', null,
+          'ยังไม่มีใบแจ้งซ่อมที่ผ่านการอนุมัติและคีย์ใบกำกับในเดือนนี้ ' +
+          'ตัวเลขจะปรากฏเมื่อมีการอนุมัติและบันทึกใบกำกับภาษี'),
+        h('div', { class: 'faint' },
+          'A repair reaches this report when it has been approved through a governed ' +
+          'run. Its ฿ column fills when the invoice is keyed against it — approval and ' +
+          'invoice are separate events, so a repair can sit here authorised with the ' +
+          'money column still blank.'),
+        h('div', { class: 'faint' },
+          'The percentage is deliberately left unscored rather than shown as 0% or ' +
+          '100%: a month with no spend has no traceability to report.')
+      ]
+    );
+  }
+
   function renderKpis(cover) {
     const traceable = cover.traceability_pct;
     const empty = traceable === null || traceable === undefined;
@@ -225,8 +258,15 @@
     body.appendChild(title);
     body.appendChild(subtitle);
     body.appendChild(nav);
-    body.appendChild(renderKpis(cover));
-    body.appendChild(renderBreakdown(cover));
+    if (Number(cover.row_count) === 0) {
+      // The empty month replaces the KPI grid rather than sitting above it: leaving
+      // four ฿0 tiles on screen beside an explanation of why they are meaningless
+      // would still let a reader take the numbers at face value.
+      body.appendChild(renderEmptyMonth());
+    } else {
+      body.appendChild(renderKpis(cover));
+      body.appendChild(renderBreakdown(cover));
+    }
     body.appendChild(renderExceptions(cover));
   }
 
