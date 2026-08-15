@@ -10,10 +10,26 @@
 > statement; it authors none of the text."* The same author boundary this PLAN
 > holds against portal-repo files.
 >
-> **Target:** [`ropa-published-demo.md`](ropa-published-demo.md) (9 sections), or
-> a sibling per-dataset instance — the structuring call is Cray's. The template
+> **Target — ✅ RULED and DELIVERED; this line no longer describes an open
+> choice.** Cray ruled (typed, **2026-08-14**) that the coverage takes **its own
+> sibling per-dataset instance**, not a new section in
+> [`ropa-published-demo.md`](ropa-published-demo.md). It was written and
+> **adopted 2026-08-15**:
+> [`ropa-fleet-cases.md`](ropa-fleet-cases.md). The template
 > ([`../conventions/partner-ropa-lite.md`](../conventions/partner-ropa-lite.md))
-> is per-dataset by construction and needs no change either way.
+> is per-dataset by construction and needed no change.
+>
+> 🔴 **Corrected s233, `was an error` — this line read *"the structuring call is
+> Cray's"* for a full session AFTER that call had been made.** It is corrected
+> here rather than deleted because the staleness had a measured cost: **§2 below
+> is still written in an "edit the existing RoPA" frame** (*"What the current
+> RoPA says that is now incomplete"*, *"worth quoting to yourself while
+> editing"*), and a reader following this document in good faith would put the
+> controller's record **in the wrong file**. ⚠️ **Read §2 as an analysis of what
+> the NEW instance had to cover — not as an instruction to edit the old one.**
+> The same stale framing survives at `docs/adr/0037-*.md:409` (OQ-3, whose
+> recommendation was overruled); correcting that one is G1-gated and is routed
+> separately.
 
 **Status:** open obligation. AC-11 makes the updated RoPA a **precondition of
 fleet's bring-up** (ADR-0037 D2.1) — a Step-10 **stop condition**, not a

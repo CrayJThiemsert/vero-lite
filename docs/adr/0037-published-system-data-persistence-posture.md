@@ -68,6 +68,28 @@ direction, cited by the RoPA's own lineage hook), CLAUDE.md §1 (precedence),
 > Author≠reviewer separation: **INTACT** (drafter authored; Code R2 + Cray
 > review at PR).
 
+> **Amendment pass 2026-08-15, session 233 (drafted in-harness by
+> `plan-drafter` from a Code dispatch; `Status:` unchanged — this pass closes
+> one ruled-but-still-open question, records the measured cost of the gap,
+> and presents one authorship fork WITHOUT resolving it).** Two items, inline
+> where each belongs: **(i)** OQ-3 closes — RULED **a sibling per-dataset
+> instance** (Cray, typed, 2026-08-14; recorded at
+> `docs/compliance/ropa-published-demo.md:29-33`), the opposite of this
+> file's recommendation, which is preserved verbatim and shown as
+> **overruled**. Delivered and **adopted**:
+> `docs/compliance/ropa-fleet-cases.md` (2026-08-15, s233; on `main` at
+> `2d9056c`). The closure note carries the measured downstream cost of the
+> day this OQ spent open *after* it had been ruled — that cost is the reason
+> the closure matters, not bookkeeping. **(ii)** D2.1's authorship boundary
+> (*"no PLAN or drafter authors its text"*) is contradicted on disk by the
+> delivered first instance, whose own header records that **Code drafted it
+> at Cray's explicit request** (`ropa-fleet-cases.md:8-16`). The note at
+> D2.1 states the departure, presents both repair options — amend the
+> boundary vs record a one-time instance-scoped waiver — and **leaves the
+> choice as an explicit unresolved slot for Cray; this amendment rules
+> nothing.** Author≠reviewer separation: **INTACT** (drafter authored; Code
+> R2 + Cray review at PR).
+
 ## Context
 
 ### The question, and why it is an ADR
@@ -176,6 +198,55 @@ artifacts**, not visitors:
    record; no PLAN or drafter authors its text.** PLAN-0103 AC-11 is this
    obligation's first instance. Structuring (new section vs sibling instance)
    is Cray's call — the template itself needs no change (F5).
+   _[First instance DELIVERED — with a departure on the record and an
+   **unresolved decision slot for Cray** — 2026-08-15, s233. The substantive
+   obligation is delivered: coverage exists **before** fleet is reachable —
+   `docs/compliance/ropa-fleet-cases.md`, written and adopted 2026-08-15 (on
+   `main`, `2d9056c`), a sibling per-dataset instance per OQ-3's ruling
+   (closure note there), carrying dataset, storage location, retention and
+   DSR path. The structuring clause above ("Cray's call") is thereby
+   discharged. **The departure:** this obligation reserves the record's text
+   to Cray as controller — *"no PLAN or drafter authors its text"* (above;
+   restated in D2.3's status note, clause (1), and in D4's ruling block).
+   What actually happened, per the delivered file's own header
+   (`ropa-fleet-cases.md:8-16`): **Cray explicitly asked Code to write it
+   (2026-08-15); Code drafted the full instance; Cray then ruled all five
+   open promise slots** — §6's 30-day figure, the audit-chain disclosure,
+   §7's backup and database-access posture, §8's three sub-promises (named
+   here as *slots* only; the rulings are Cray's and live stamped in the RoPA,
+   not restated) — **and adopted the result.** The file states the departure
+   in its own header rather than hiding it, and itself says this ADR "still
+   needs an amendment or an explicitly recorded waiver" to match how it was
+   produced. A reader comparing D2.1 to that file today sees a **real
+   contradiction, not a misreading**: the file says Code drafted it; this
+   line says no drafter may. This note makes the contradiction owned rather
+   than silent — it does not resolve it. **Why the boundary exists**, so the
+   fork is judged on its purpose and not its inconvenience: a RoPA is the
+   controller's promise to data subjects, and the hazard D2.1 guards against
+   is *authorship without ownership* — promise text nobody with the legal
+   duty actually stands behind. The live question is whether "a drafter
+   produces text; the controller rules every promise-bearing slot and adopts
+   explicitly" satisfies that intent or defeats it. **The fork, for Cray —
+   deliberately NOT ruled here:**
+   **(i) Amend D2.1** to permit a drafted instance **provided** the
+   controller rules every promise-bearing slot and adopts explicitly. For:
+   it matches how the delivered instance was actually produced, and it is
+   the shape every other governance artifact here already takes — drafter
+   authors, Cray ratifies (ADR-009 D1). Against: it is enforceable only if
+   "promise-bearing slot" is identifiable ex ante — without a line stating
+   which sections bear promises (in the template's terms: §6
+   retention/erasure, §7 controls, §8 DSR — versus factual inventory) the
+   safeguard is unenforceable; whether D2.1 should carry that line is a
+   sub-slot, surfaced with this fork and equally not decided here.
+   **(ii) Keep D2.1 intact; record a one-time, instance-scoped waiver** for
+   `ropa-fleet-cases.md`. For: the boundary survives undiluted for every
+   future granted dataset, and the departure stays visible as the exception
+   it was. Against: the next granted dataset hits the same wall and re-runs
+   the same negotiation, and the rule stays one the practice has already
+   departed from once — with this waiver as precedent-shaped evidence.
+   Whichever way Cray rules, the ruling lands here as a further amendment
+   and the artifact stays honest. Until then **D2.1 as written still
+   governs, and this note is the interim honest state.**]_
 2. **A named retention number per visitor-writable dataset** (OQ-1).
 3. **A stated DSR path per dataset** — for case-linked data, per D4's ruling
    (OQ-2).
@@ -410,6 +481,46 @@ promise to make, and it cannot be made before the measurement exists.
   no template change). Recommendation: a new section in the existing instance —
   one demo, one document, easier to keep whole — but this is the controller's
   file and the controller's call.
+  _[Closed 2026-08-15 (s233) — RULED the **opposite** of the recommendation
+  above: **a sibling per-dataset instance** (Cray, typed, 2026-08-14;
+  recorded at `docs/compliance/ropa-published-demo.md:29-33`). The
+  recommendation ("a new section in the existing instance") is preserved
+  verbatim above and is **overruled**, not erased — the record is more
+  useful showing that this ADR recommended one-demo-one-document, the
+  controller chose otherwise, and the controller's call governs precisely
+  because F5 established the template supports either and this is the
+  controller's file, which is what this OQ's own closing clause said.
+  Delivered: **`docs/compliance/ropa-fleet-cases.md`**, written and
+  **adopted** 2026-08-15 (on `main`, `2d9056c`); its sibling structure and
+  the ruling behind it are restated in its own header
+  (`ropa-fleet-cases.md:27-31`). **The measured cost of the gap between
+  ruling and closure — recorded because it is the reason this closure
+  matters:** the ruling was typed 2026-08-14, but this OQ stayed open with
+  its recommendation intact, so the governing record kept *actively
+  recommending the overruled option* to everyone downstream. Three
+  artifacts inherited it and, into s233, still described the structuring as
+  the controller's **open** choice: PLAN-0103's AC-11 clause (as it then
+  read), the change statement's target line
+  (`docs/compliance/ropa-change-statement-fleet.md:14`, as it then read),
+  and this line itself. Worse, the change statement's entire §2 is framed
+  as *edit the existing RoPA* (*"What the current RoPA says that is now
+  incomplete"*, *"worth quoting to yourself while editing"* — `:55` ff.) —
+  a reader following the governing documents in good faith would have
+  written the controller's record **into the wrong file**, and in s233
+  nearly did. The two ungated pointers were corrected by Code in s233
+  (PLAN-0103 `:548-555`; the change statement `:13-32`, which records its
+  own correction as `was an error` and points back at this line as "routed
+  separately"); this file's copy was G1-gated and closes with this note —
+  the last of the three. The generalizable failure, stated for the record:
+  **an OQ left open after it has been ruled does not merely go stale — it
+  keeps actively recommending the overruled option.** **Surfaced with this
+  closure — raised, not decided (for Cray):** whether to adopt a general
+  rule, *an OQ that has been ruled is closed in the ADR in the same change
+  that records the ruling*, and whether such a rule belongs in an ADR or in
+  a lesson. Evidence this is recurring and not a one-off: OQ-1's closure
+  note above records the same species of drift (ruled in PLAN-0105, this
+  file still read open until s232), and this OQ repeated it within two
+  days.]_
 
 ## Alternatives Considered
 
@@ -470,6 +581,14 @@ promise to make, and it cannot be made before the measurement exists.
 - `tests/api/test_visitor_case_to_monitor_scenario.py` — the D2.7 measurement
   and its standing guard (amendment pass 2026-08-11; PRs #1124/#1125;
   blind-spot acceptance Cray-typed s222, recorded in the module)
+- `docs/compliance/ropa-fleet-cases.md` — D2.1's first delivered instance
+  (sibling per OQ-3's ruling; adopted 2026-08-15, on `main` at `2d9056c`) —
+  header records the authorship departure D2.1's note presents (`:8-16`) and
+  the sibling ruling (`:27-31`)
+- `docs/compliance/ropa-change-statement-fleet.md` — `:13-32` (corrected
+  target note + the measured wrong-file cost OQ-3's closure records) · §2's
+  edit-the-existing-RoPA framing (`:55` ff.), read per its own warning as
+  analysis, not instruction
 
 **Ratification ask (Cray):** D1's grant test ((a) story-required vs (b)
 stated-grounds), the D2 obligation ladder, D3's bound-don't-amend posture, and
