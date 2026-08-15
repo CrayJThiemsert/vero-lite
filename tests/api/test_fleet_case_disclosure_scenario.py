@@ -32,8 +32,40 @@ from httpx import AsyncClient
 from services.api.config import settings
 
 _PROFILES = Path("deploy/published")
+
+#: The system under test. ONE label is a reference; a second would make this file
+#: a registry, which `test_ac5_no_file_outside_a_profile_lists_two_system_labels`
+#: fails the build over (ADR-0036 D2 puts the cross-system map in the portal repo).
+#: So the counter-example below is DISCOVERED, never named.
 _FLEET = "oct-fleet-maintenance"
-_PROCUREMENT = "oct-procurement"
+
+
+def _a_published_system_without_the_case_surface() -> str:
+    """A real published profile that does NOT publish Tab I — found, not named.
+
+    🔴 Two reasons this is discovery rather than a constant, and the second is the
+    one that bit:
+
+    1. It stays correct when a fourth system arrives. A named counter-example
+       silently stops testing anything the day that system starts publishing Tab I.
+    2. Naming it would put a **second** system label in this file, which is exactly
+       the shadow-ingress-map shape ADR-0036 D2 forbids. Measured s232: the first
+       draft of this module named both and reddened the AC-5 guard **in CI but not
+       locally** — that guard scans COMMITTED files, and an untracked new file is
+       invisible to it, so a pre-commit run cannot see its own violation.
+    """
+    for profile in sorted(p for p in _PROFILES.iterdir() if p.is_dir()):
+        if not (profile / "published.env").exists():
+            continue
+        env = _committed_env(profile.name)
+        if env.get("UI_PROFILE") != "published":
+            continue
+        if "I" not in env["UI_PUBLISHED_VIEWS"].split(","):
+            return profile.name
+    raise AssertionError(
+        "no published profile lacks Tab I — the absence half of AC-4 has no "
+        "real system to assert against and would be vacuous"
+    )
 
 
 def _committed_env(system: str) -> dict[str, str]:
@@ -77,11 +109,9 @@ async def test_the_committed_fleet_profile_still_publishes_the_case_surface() ->
         "fleet's committed profile no longer publishes Tab I — the case-persistence "
         "disclosure has nothing to disclose, and this whole module needs revisiting"
     )
-    procurement = _committed_env(_PROCUREMENT)
-    assert "I" not in procurement["UI_PUBLISHED_VIEWS"].split(","), (
-        "procurement's committed profile now publishes Tab I — it is DB-less, so "
-        "either that is a mistake or the absence half of AC-4 no longer holds"
-    )
+    # Raises with its own message if no such system exists — the absence half of
+    # AC-4 would then be asserting against nothing.
+    _a_published_system_without_the_case_surface()
 
 
 async def test_fleet_serves_a_document_whose_declared_state_turns_the_gate_on(
@@ -146,16 +176,19 @@ async def test_the_served_assets_carry_the_disclosure_gated_on_that_state(
     )
 
 
-@pytest.mark.parametrize("system", [_PROCUREMENT])
 async def test_a_published_system_without_the_case_surface_turns_the_gate_off(
-    client: AsyncClient, monkeypatch: pytest.MonkeyPatch, system: str
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """AC-4 absence — and it is a real published system, not a synthetic config.
+    """AC-4 absence — driven by a REAL published system, discovered from the profiles.
 
-    Procurement is published, live, and DB-less. Telling its visitors their case
-    text is stored for 90 days would be false, and the failure would be invisible:
-    a plausible sentence on a system that has no such dataset.
+    The counter-example is a live, published, DB-less system. Telling its visitors
+    their case text is stored for 90 days would be false, and the failure would be
+    invisible: a plausible sentence on a system that has no such dataset.
+
+    Which system it is comes from the filesystem, not from a constant here — see
+    `_a_published_system_without_the_case_surface` for the two reasons.
     """
+    system = _a_published_system_without_the_case_surface()
     _apply(monkeypatch, _committed_env(system))
 
     index = await client.get("/")
