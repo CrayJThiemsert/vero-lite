@@ -23,8 +23,10 @@ from typing import Any
 
 import pytest
 
+from services.engine import demo_events
 from services.engine.procedures.rule_gate import RuleGateError, evaluate_compliance
 from services.engine.procedures.spec import ComplianceGate, load_procedures
+from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.sourcing import (
     MIN_DISTINCT_VENDORS,
     PASSING_BASES,
@@ -149,6 +151,28 @@ async def fleet_factory(monkeypatch: pytest.MonkeyPatch):
     discover_and_register()
     await register_fleet_maintenance_procedure_executors()
     return registry.get_procedure_executors(_VERTICAL)
+
+
+@pytest.fixture(autouse=True)
+def _fixture_only_stream():
+    """Measure the SHIPPED FIXTURE, not whatever cases a shared database happens to hold.
+
+    🔴 Added s233 after a full-suite-only RED that no isolated run reproduced. The
+    assertions below pin the demo's two breach rows **by equality**, but the rows come
+    through ``case_projection``, a process-wide singleton that overlays live cases read
+    from the test database. Any earlier test that seeds an OPEN case with an accepted
+    quote therefore adds a third breach row here, and this module reddens for a reason
+    that has nothing to do with sourcing.
+
+    Resetting is the honest fix rather than loosening the equality: this module's
+    subject IS the fixture's own evidence, so depending on ambient database state was a
+    latent defect that a real case was always going to expose.
+    """
+    case_projection.reset()
+    demo_events.reset(_VERTICAL)
+    yield
+    case_projection.reset()
+    demo_events.reset(_VERTICAL)
 
 
 async def _run(factory, run_id: str):

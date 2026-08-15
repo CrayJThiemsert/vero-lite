@@ -274,10 +274,25 @@ async def _seed_fleet_operate_demo(vertical: str) -> None:
     from verticals.fleet_maintenance.operate_seed import (
         DEMO_RUN_ID,
         seed_repair_gate_waiting_human_run,
+        seed_settled_history_case,
     )
 
     try:
         async with async_session() as session:
+            # 🔴 BEFORE the run's early-return, not after it, and this was measured the
+            # hard way: placed below the `load_run` skip, the settled case is seeded on
+            # a virgin database and NEVER on any subsequent boot — so a deployment that
+            # already had the demo run (i.e. every restart, and every system upgraded
+            # rather than rebuilt) would keep a permanently ฿0 month-end tab while the
+            # boot log cheerfully said "skip". It carries its own idempotency, so
+            # running it first costs one indexed lookup.
+            #
+            # It must also complete BEFORE the live round fires: the settled case is
+            # closed out and CLOSED at the end, which is what keeps it from riding
+            # along as a second undecided proposal in front of the visitor.
+            if await seed_settled_history_case(session):
+                _boot_logger.info("fleet operate-demo seed: settled history case seeded")
+
             if await load_run(session, DEMO_RUN_ID) is not None:
                 _boot_logger.info(
                     "fleet operate-demo seed: run %r already present — skip", DEMO_RUN_ID
