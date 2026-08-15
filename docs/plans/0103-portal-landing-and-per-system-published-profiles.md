@@ -542,11 +542,23 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
 - [ ] **AC-11 — the RoPA reflects fleet's posture BEFORE fleet is reachable
   (appended 2026-08-10, amendment round; precondition of Step 10's fleet
   bring-up, not a follow-up).** Before the fleet system's go: the
-  published-demo RoPA (`docs/compliance/ropa-published-demo.md` — or a
-  sibling per-dataset instance, Cray's structuring call) covers the LOCKED-1
-  consequence: the new processing activity (visitor-typed case free text),
-  its storage location (fleet's Postgres), its retention number, and its DSR
-  path. 🔴 **Authorship boundary: the RoPA is Cray's artifact, in Cray's
+  RoPA covers the LOCKED-1 consequence: the new processing activity
+  (visitor-typed case free text), its storage location (fleet's Postgres), its
+  retention number, and its DSR path.
+  ✅ **RESOLVED and DELIVERED s233 — this AC's target is no longer an open
+  choice.** Cray ruled (typed, 2026-08-14) that the coverage takes a **sibling
+  per-dataset instance**, and it was written and **adopted 2026-08-15**:
+  **`docs/compliance/ropa-fleet-cases.md`** (on `main`, `2d9056c`), carrying all
+  six required inputs plus five typed promise rulings. _[Corrected s233: this
+  clause read *"`docs/compliance/ropa-published-demo.md` — or a sibling
+  per-dataset instance, Cray's structuring call"* for a full session after that
+  call had been made. It is corrected rather than deleted because the staleness
+  had a measured cost — it pointed the writer at the wrong file.]_
+  ⚠️ **AC-11 stays `[ ]` even so, and the remaining half is NOT this repo's to
+  write:** its evidence is *"the updated RoPA on `main` **and** fleet's Step-10
+  go record citing it **by path**"*. The RoPA half is now done; the **go record
+  does not exist yet**, and cannot until Cray gives fleet's typed §8 go. Same
+  shape as PLAN-0106's AC-7. 🔴 **Authorship boundary: the RoPA is Cray's artifact, in Cray's
   controller voice — this PLAN gates on it and supplies the change statement
   (SD-1's consequence clause); it authors none of the text** (mirroring the
   portal-repo file boundary). The change statement is tracked at
