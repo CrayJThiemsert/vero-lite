@@ -146,6 +146,42 @@ foreign key**, and the personas add no visitor identity (§4(b)). A request can 
 matched to case rows **only by content**. The stated path must say so plainly
 rather than imply a lookup that does not exist.
 
+#### 3.2.1 Requester identification, MEASURED s233 — stronger than "no foreign key"
+
+_[Engineering input only. Fold into §6 item 4 when writing the record; the stated
+path's wording stays the controller's per ADR-0037 D2.1.]_
+
+The "no FK" framing understates the position, and a controller writing from it
+might still imagine `opened_by` as a weak-but-real handle on a person. **It is not
+a person identifier on this deployment at all.** Measured on disk at `396ccdf`:
+
+- `services/api/routers/cases.py:206` resolves it as
+  `opened_by = auth.person_id or (req.opened_by or "").strip() or "unattributed"`,
+  and the docstring (`:191-194`) states the ordering is deliberate — **the
+  server-resolved principal wins whenever authn is on**, so a client cannot claim
+  to be someone else.
+- Fleet ships `API_AUTH_ENABLED=true`, so `auth.person_id` always wins. It is the
+  subject of the bearer key, resolved as `sha256(raw key) → person_id`
+  (`services/api/auth.py:79`).
+- Those raw keys are `UI_DEMO_PERSONA_KEYS`, **served to the browser by ruling**
+  (Cray, typed, s224), and they map to the **three authored principals** in
+  `verticals/fleet_maintenance/procedures.yaml:103-109` —
+  `req-mechanic-tom`, `appr-fleet-manager-wirat`, `appr-owner`.
+
+🔴 **Therefore every visitor who opens a case writes one of three shared, publicly
+served persona ids.** Many distinct real people collapse onto the same value, and
+the value identifies **which demo role was clicked**, not who clicked it. So
+`opened_by` cannot distinguish one data subject from another **even in principle**
+— it is not a degraded lookup, it is not a lookup.
+
+✅ **What this settles for the stated path:** content really is the only
+discriminator, and the reason is now positive and citable rather than an absence.
+⚠️ It also means a DSR request naming a persona (*"delete the cases I opened as
+ต้อม"*) selects **every visitor's** cases under that persona — so a path phrased
+around `opened_by` would be actively wrong, not merely unhelpful.
+
+_(`unattributed` is the fallback only when authn is off — not fleet's posture.)_
+
 ## 4. Three scope facts, so the update stays exact
 
 _[Was "Two" until s232, when (c) was measured and ruled.]_
@@ -308,9 +344,16 @@ items 5 and 6 were added when Cray's rulings of 2026-08-14 made them explicit]_:
    facts it drags with it: **§3.1**;
 4. its **DSR path** — and, per §5, an honest statement of what can and cannot be
    promised where the audit chain is involved. 🟡 **Posture RULED (a)** and the
-   erasure mechanism is shipped (**§3.2**), so the *argument* is now writable;
-   what is still owed is the **stated path**, blocked on requester identification
-   rather than on mechanism;
+   erasure mechanism is shipped (**§3.2**), so the *argument* is now writable.
+   ✅ **s233 — the last engineering input is now supplied too (§3.2.1):**
+   requester identification is not a weak handle but **no handle at all** —
+   `opened_by` records which of three **shared, publicly served** demo personas
+   was clicked, so it cannot distinguish one data subject from another even in
+   principle. **Content is the only discriminator, and the reason is now positive
+   and citable.** ⚠️ A path phrased around `opened_by` would be **actively wrong**
+   — it would select every visitor's cases under that persona. **Nothing
+   engineering-side is now missing from any of the six items; what remains is the
+   controller's wording** (ADR-0037 D2.1);
 5. 🆕 its **recipients** — case text is readable by anyone who reaches the system,
    **RULED INTENDED** (**§4(c)**). An entry implying the operator is the sole
    reader would be inaccurate;
