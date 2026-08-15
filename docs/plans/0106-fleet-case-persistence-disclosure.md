@@ -116,14 +116,28 @@ its hard boundary:
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 — the disclosure exists as its own element on fleet's published
+> ✅ **AC-1..AC-6 CLOSED s233** against fresh on-disk evidence — the per-AC
+> citations are in §"Closure evidence (AC-1..AC-6)" below, and each was read from
+> the tree at `5425822`, never from a restatement.
+>
+> 🔴 **AC-7 stays `[ ]` and this PLAN stays `Status: Draft` — RULED (Cray, typed,
+> 2026-08-15, s233).** AC-7's stated evidence is *"the PLAN-0103 Step-10 fleet go
+> record"*, **a document that does not yet exist and cannot until fleet's RoPA is
+> authored**. Ticking it today would assert closure with no artifact behind it —
+> the exact defect s228 recorded when STATUS claimed seven ACs closed while every
+> checkbox was still `[ ]` on disk. ⚠️ **The ordering half of AC-7 is already
+> true** (this PLAN merged to `main` at `5425822`, before any go), so what remains
+> is only the citation clause, which the go record discharges. **This PLAN closes
+> 7/7 and archives together with fleet's bring-up, not before.**
+
+- [x] **AC-1 — the disclosure exists as its own element on fleet's published
   surface.** A case-persistence disclosure renders on the published fleet
   system, as a **separate element** from the D6 banner (its own node / its
   own asset location per SD-2's ruling), **non-dismissable** (the same
   load-bearing in-app capture principle D6 established — a close button
   turns a required disclosure into an optional one). Evidence: the asset
   diff + the AC-2 guard test, which fails if the element is absent.
-- [ ] **AC-2 — every obligation element is pinned individually, against the
+- [x] **AC-2 — every obligation element is pinned individually, against the
   real asset.** A guard test in the `tests/api/test_ui_profile.py`
   `_D6_NOTICE_ELEMENTS` shape (`:60-68`): a **new** obligation→substring
   mapping (never appended to `_D6_NOTICE_ELEMENTS`), asserted per-element
@@ -138,20 +152,20 @@ its hard boundary:
   timeline**, not only the operator; (5) the synthetic-demo restatement at
   the point of capture. Falsifiable: dropping any one element, or rewording
   away its operative words, reddens that element's assertion by name.
-- [ ] **AC-3 — the D6 banner's shared text is byte-identical.** The
+- [x] **AC-3 — the D6 banner's shared text is byte-identical.** The
   implementation makes **zero** edits to the D6 notice strings
   (`app.js:164-173`): all seven `_D6_NOTICE_ELEMENTS` pins stay green, and
   the PR diff shows no change inside the D6 notice block. (The pins alone
   cannot catch an *addition* inside the block, so the diff is named
   evidence, not decoration.)
-- [ ] **AC-4 — the disclosure is absent where it would be false.** On the
+- [x] **AC-4 — the disclosure is absent where it would be false.** On the
   dev profile, and on a published system that does not grant case
   persistence (procurement's ruled tab set is `G,F` — no Tab I, no
   database), the disclosure does **not** render — energy and procurement
   are DB-less, and telling their visitors "your case is stored for 90
   days" would be false. Evidence: asymmetry assertions in the AC-5
   scenario test (both directions asserted, presence and absence).
-- [ ] **AC-5 — scenario test (CLAUDE.md §8 — binding, never skipped).** A
+- [x] **AC-5 — scenario test (CLAUDE.md §8 — binding, never skipped).** A
   test that drives the **real producer into the real consumer on realistic
   data**: boot the real FastAPI app configured as the published fleet
   system — profile/vertical/tab values **parsed from the committed
@@ -166,7 +180,7 @@ its hard boundary:
   browser's JS execution itself has no CI oracle in this repo; the
   served-bytes + gate-condition shape is the established D6/AC-8 bar, and
   Step 4 adds the one-time visual check.)
-- [ ] **AC-6 — cache-bust bumped on every touched asset.** Each asset file
+- [x] **AC-6 — cache-bust bumped on every touched asset.** Each asset file
   the implementation touches gets its `?v=cNN` bumped in
   `services/api/static/index.html` (`:51-73`) — the counter is
   **per-file**, not a build number (currently e.g. `app.js?v=c49`,
@@ -177,6 +191,32 @@ its hard boundary:
   go record cites this PLAN by number alongside AC-11's RoPA. Evidence: the
   PLAN-0103 Step-10 fleet go record (authored there, not here — the
   bring-up itself is out of scope below; this AC binds only the sequence).
+
+## Closure evidence (AC-1..AC-6)
+
+Read from the tree at `5425822` in s233, after the implementation merged. Each
+row is a fresh on-disk read, not a restatement of the build session's claims.
+
+| AC | Evidence read | Result |
+|---|---|---|
+| **AC-1** | `services/api/static/assets/app.js:195` and `view-case.js:343` each append a **own** `div` — `class: 'case-persist-notice'` / `'case-notice'`, both `role: 'note'`. Neither element carries a close/dismiss control. | ✅ separate elements, non-dismissable |
+| **AC-2** | `tests/api/test_ui_profile.py:292` defines **`_FLEET_CASE_NOTICE_ELEMENTS`, a SEPARATE mapping** (its `:277` comment states it is never appended to `_D6_NOTICE_ELEMENTS`), and the assertions at `:338`/`:345` resolve the element first via `_fleet_block(_VIEW_CASE_JS, "case-notice")` / `_fleet_block(_APP_JS, "case-persist-notice")` before matching substrings. | ✅ obligation-keyed **and element-scoped** — which is SD-1 sub-q (1)'s stated consequence: a document-wide search would pass on the D6 banner alone |
+| **AC-3** | `git show 6937573 -- services/api/static/assets/app.js` piped through a deletion count returns **0** — the diff is purely additive, so the D6 notice block is byte-identical. `:393` documents why the seven existing D6 pins cannot catch an *addition*, and `:401` asserts the fleet substrings' **absence** from that block directly. | ✅ D6 untouched, and asserted by absence rather than inferred |
+| **AC-4** | `tests/api/test_fleet_case_disclosure_scenario.py:179` drives a published system **without** the case surface (procurement's committed `G,F`) and `:206` drives the dev default; both assert the disclosure is absent. | ✅ both directions asserted |
+| **AC-5** | The same module reads the committed profile from disk — `:58` guards `published.env` existence, `:72`/`:80` parse `_PROFILES / system / "published.env"` — so the realistic values are **parsed, not retyped**, and drift in the committed pins reddens it. | ✅ real producer → real consumer, no stub at the seam |
+| **AC-6** | `services/api/static/index.html` — `theme.css?v=c50` (`:28`), `view-case.js?v=c45` (`:71`), `app.js?v=c50` (`:73`), i.e. exactly the three edited assets. ⚠️ The counter is **per-file**; the differing numbers are correct, not a mistake. | ✅ bumped on every touched asset |
+
+**Gate state at closure:** full `tests/` **4107 passed / 8 skipped** ·
+`mypy --strict services/` clean over 136 files · `ruff check .` +
+`ruff format --check .` clean over 630 files. The test count is unchanged from
+the merge of #1179, as it should be — s233 added no tests, it read evidence.
+
+⚠️ **What this evidence does NOT cover, stated so nobody reads more into it than
+it carries:** every check above reads **served bytes and gate conditions**. This
+repo has **no JS runtime in CI**, so nothing here proves the element *renders*,
+let alone that it reads *as a notice* — the gap Step 4's one-time visual pass
+exists to cover, and the gap that caught a missing stylesheet after eleven green
+tests. See [`docs/lessons/0044-*`](../lessons/0044-a-committed-file-guard-is-blind-to-the-new-file.md).
 
 ## Out of Scope
 
