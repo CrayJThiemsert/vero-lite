@@ -152,6 +152,32 @@ body { overflow: hidden; }
 }
 .d6-notice b { color: var(--tx-0); }
 
+/* PLAN-0106 — the fleet case-persistence line, rendered BESIDE the D6 notice.
+   Deliberately styled to match rather than to stand out: the two are adjacent
+   disclosures about different datasets, and a visually louder second banner would
+   read as an alert about the first. Found by Step 4's visual pass — unstyled it
+   painted as stray text on the page background, legible but not recognisable AS a
+   disclosure, which is the whole job of the element. */
+.case-persist-notice {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  font-size: 11.5px; line-height: 1.45;
+  color: var(--tx-1); background: var(--bg-2);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+/* The Tab-I point-of-capture notice (PLAN-0106 SD-2's load-bearing half). Inside
+   the form column rather than the chrome, so it takes a card shape instead of the
+   full-bleed banner one — it is read as part of the act of typing. */
+.case-notice {
+  margin: 10px 0 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  background: var(--bg-2); color: var(--tx-1);
+  font-size: 12px; line-height: 1.5;
+}
+.case-notice b { color: var(--tx-0); }
+
 /* ---- header ---- */
 .header {
   height: var(--header-h); flex: 0 0 auto;

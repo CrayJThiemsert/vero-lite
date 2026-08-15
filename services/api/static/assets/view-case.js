@@ -313,16 +313,49 @@
       msg
     ]);
 
-    container.appendChild(h('div', { class: 'case-wrap' }, [
+    // ---- D2.4 case-persistence disclosure, AT THE POINT OF CAPTURE ----
+    // PLAN-0106 (ADR-0037 D2.4). SD-2 ruled BOTH surfaces and made THIS one
+    // load-bearing: it sits between the heading and the first input, so it is
+    // read by the person about to type rather than by whoever scrolled past a
+    // banner. Published profile only — on the dev console every claim below is
+    // false, and AC-4 asserts its absence there.
+    //
+    // 🔴 This is NOT the D6 banner and must never be folded into it. ADR-0037 D3
+    // refuses to widen D6, which is the prompt-log regime; this covers the CASE
+    // dataset, whose reader set is far wider. The two 90-day numbers are an
+    // INDEPENDENT coincidence by ruling (PLAN-0105 LOCKED-1) and the code guards
+    // that independence — one merged sentence would fuse in prose exactly what
+    // the tests keep apart.
+    //
+    // The synthetic line is RESTATED here deliberately (SD-1 sub-question 1,
+    // Cray typed s232), duplicating the persistent banner's lead. That is the
+    // accepted cost of the point-of-capture principle: the banner may be
+    // scrolled away or banner-blind by minute 1, and this is the riskiest input
+    // on the whole published surface.
+    const wrapKids = [
       h('div', { class: 'case-head' }, [
         h('h2', null, 'เปิดเคสซ่อม'),
         h('p', { class: 'case-sub' },
           'บันทึกตั้งแต่นาทีแรก — เลือกรถอย่างเดียวก็พอ ที่เหลือใส่ทีหลังได้')
-      ]),
+      ])
+    ];
+    if (O.isPublished()) {
+      wrapKids.push(h('div', { class: 'case-notice', role: 'note' }, [
+        h('b', null, 'ข้อมูลสาธิตเป็นข้อมูลสังเคราะห์ — กรุณาอย่ากรอกข้อมูลส่วนบุคคลจริง'),
+        ' ',
+        h('span', null,
+          'ข้อความและรูปถ่ายที่กรอกในใบแจ้งซ่อมจะถูกบันทึกในฐานข้อมูลของระบบนี้ ' +
+          'และถูกลบภายใน 90 วัน — ข้อความในใบแจ้งซ่อม ผู้เข้าชมทุกคนของระบบนี้อ่านได้ ' +
+          'ไม่ใช่เฉพาะผู้ดูแลระบบ')
+      ]));
+    }
+    wrapKids.push(
       form,
       h('div', { class: 'case-head' }, [h('h3', null, 'เคสล่าสุด')]),
       list
-    ]));
+    );
+
+    container.appendChild(h('div', { class: 'case-wrap' }, wrapKids));
 
     state.trucks = await loadTrucks();
     clear(truck);

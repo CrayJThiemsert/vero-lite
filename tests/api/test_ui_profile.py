@@ -270,6 +270,144 @@ def test_the_d6_notice_is_not_dismissable() -> None:
         ), f"the D6 notice block contains {control!r} — it must be persistent"
 
 
+# --------------------------------------------------------------------------- #
+# PLAN-0106 — the fleet case-persistence disclosure (ADR-0037 D2.4)
+# --------------------------------------------------------------------------- #
+
+#: 🔴 A SEPARATE mapping, never appended to ``_D6_NOTICE_ELEMENTS``. The two
+#: notices govern different datasets under different regimes: D6 is the
+#: prompt-log regime ADR-0037 D3 explicitly refuses to widen, and the two 90-day
+#: numbers are an INDEPENDENT coincidence by ruling (PLAN-0105 LOCKED-1), guarded
+#: in code by ``test_ac9_the_module_does_not_inherit_the_prompt_log_regime``.
+#: Merging the mappings would fuse in the test suite exactly what the rest of the
+#: repo keeps apart.
+#:
+#: Same discipline as D6's (s208 R2): each substring pins **the words a reword
+#: would take**, never a token that survives the obligation being dropped. So
+#: "90 วัน" alone is not enough — "ถูกลบภายใน 90 วัน" pins the *deletion*, which
+#: is the obligation; a reword to "เก็บไว้ 90 วัน" drops it and must redden.
+#:
+#: Thai, because fleet's published surface is Thai-first and this text is read by
+#: the visitor who is about to type. The repo pins Thai strings elsewhere.
+_FLEET_CASE_NOTICE_ELEMENTS = {
+    "what is stored (case text AND photos)": "ข้อความและรูปถ่ายที่กรอกในใบแจ้งซ่อม",
+    "where (this system's database)": "บันทึกในฐานข้อมูลของระบบนี้",
+    "for how long (DELETED within 90 days)": "ถูกลบภายใน 90 วัน",
+    "who reads it (every visitor of this system)": "ผู้เข้าชมทุกคนของระบบนี้อ่านได้",
+    "and explicitly NOT operator-only": "ไม่ใช่เฉพาะผู้ดูแลระบบ",
+    "the synthetic restatement at the point of capture": "ข้อมูลสาธิตเป็นข้อมูลสังเคราะห์",
+    "enter no real personal data": "อย่ากรอกข้อมูลส่วนบุคคลจริง",
+}
+
+#: The persistent half of SD-2's ruled asymmetry — shorter, and aimed at the
+#: visitor who READS case text on Tabs H/J without ever opening Tab I.
+_FLEET_PERSISTENT_LINE_ELEMENTS = {
+    "what is stored, and where": "ถูกเก็บในฐานข้อมูลของระบบนี้",
+    "for how long (DELETED within 90 days)": "ลบภายใน 90 วัน",
+    "who reads it (every visitor)": "ผู้เข้าชมทุกคนของระบบนี้อ่านข้อความนั้นได้",
+}
+
+#: Spelled from ``_STATIC`` rather than ``_ASSETS``: that constant is defined
+#: further down this module, and importing it here would depend on definition
+#: order in a file that is edited from both ends.
+_VIEW_CASE_JS = _STATIC / "assets/view-case.js"
+
+
+def _fleet_block(path: Path, marker: str) -> str:
+    """The disclosure element's source, comments stripped, bounded at its close.
+
+    Anchored on the element's own class name rather than on a line number, and
+    bounded rather than searching the whole file — a whole-file search would pass
+    on a string that had drifted outside the element it is supposed to pin.
+    """
+    source = strip_js_comments(path.read_text(encoding="utf-8"))
+    assert marker in source, f"{marker!r} is absent from {path} — the disclosure element is gone"
+    start = source.index(marker)
+    end = source.index("]));", start)
+    return source[start:end]
+
+
+def test_the_fleet_case_notice_carries_every_obligation() -> None:
+    """AC-2 — each D2.4 obligation pinned individually against the real asset.
+
+    Obligation-keyed so a failure names WHAT went missing. The realistic failure
+    is not deletion of the element but a reword that quietly drops one clause —
+    most likely the reader-set sentence, which reads like an awkward admission
+    rather than an obligation and is exactly the one a copy pass would smooth away.
+    """
+    block = _fleet_block(_VIEW_CASE_JS, "case-notice")
+    missing = [name for name, text in _FLEET_CASE_NOTICE_ELEMENTS.items() if text not in block]
+    assert not missing, f"the fleet case notice is missing these obligations: {missing}"
+
+
+def test_the_fleet_persistent_line_carries_its_obligations() -> None:
+    """AC-2 — SD-2's second surface, pinned the same way."""
+    block = _fleet_block(_APP_JS, "case-persist-notice")
+    missing = [name for name, text in _FLEET_PERSISTENT_LINE_ELEMENTS.items() if text not in block]
+    assert not missing, f"the fleet persistent line is missing these obligations: {missing}"
+
+
+def test_the_fleet_case_notice_is_published_gated() -> None:
+    """AC-4 — absent on the dev console, where every claim it makes is false.
+
+    Asserts the guard sits between the element and the nearest preceding brace, so
+    the element cannot drift out of the conditional while the marker stays present.
+    """
+    source = strip_js_comments(_VIEW_CASE_JS.read_text(encoding="utf-8"))
+    marker = source.index("case-notice")
+    window = source[max(0, marker - 200) : marker]
+    assert "O.isPublished()" in window, (
+        "the fleet case notice must be guarded by O.isPublished() — unguarded it "
+        "would tell a dev-console user their text is stored and world-readable"
+    )
+
+
+def test_the_fleet_persistent_line_is_gated_on_the_declared_view_set() -> None:
+    """AC-4 — and on a published system WITHOUT the case surface.
+
+    The gate is "Tab I is in the server-declared view set", not a vertical name:
+    procurement is published and DB-less (ruled tab set ``G,F``), so the claim is
+    false there. Pinning the mechanism rather than the vertical is what keeps this
+    true for the fourth system nobody has built yet.
+    """
+    source = strip_js_comments(_APP_JS.read_text(encoding="utf-8"))
+    marker = source.index("case-persist-notice")
+    window = source[max(0, marker - 300) : marker]
+    assert "uiProfile === 'published'" in window, "the persistent line must be published-gated"
+    assert "'I'" in window, (
+        "the persistent line must gate on Tab I being DECLARED, not on a vertical "
+        "name — the claim is true exactly where the case-writing surface is published"
+    )
+
+
+def test_the_fleet_case_notice_is_not_dismissable() -> None:
+    """AC-1 — same reasoning D6 records: a close button makes it optional."""
+    block = _fleet_block(_VIEW_CASE_JS, "case-notice")
+    for control in ("onClick", "dismiss", "close", "hidden"):
+        assert control not in block, f"the fleet case notice contains {control!r}"
+
+
+def test_ac3_the_fleet_disclosure_stayed_out_of_the_d6_block() -> None:
+    """AC-3 — the shared D6 string is byte-identical; nothing was added inside it.
+
+    🔴 The seven ``_D6_NOTICE_ELEMENTS`` pins cannot catch an ADDITION to that
+    block, only a removal — so the one failure this AC exists to prevent (folding
+    the case disclosure into the shared banner, which ADR-0037 D3 refuses) would
+    pass every other check in this module. This asserts the absence directly.
+    """
+    d6 = _notice_block()
+    intruders = [
+        name
+        for name, text in {**_FLEET_CASE_NOTICE_ELEMENTS, **_FLEET_PERSISTENT_LINE_ELEMENTS}.items()
+        if text in d6
+    ]
+    assert not intruders, (
+        f"case-dataset text leaked into the D6 banner block: {intruders} — D6 is the "
+        "prompt-log regime and ADR-0037 D3 refuses to widen it; SD-3 ruled (a), "
+        "correct by SCOPING in a separate element"
+    )
+
+
 def test_the_dev_profile_renders_no_notice() -> None:
     """AC-9's absence half: the guard is an equality against 'published'.
 

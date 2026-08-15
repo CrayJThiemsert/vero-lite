@@ -172,6 +172,33 @@
       ]));
     }
 
+    // ---- D2.4 case-persistence line, BESIDE the D6 notice (PLAN-0106) ----
+    // 🔴 BESIDE, never INSIDE. SD-3 ruled (a): correct by SCOPING in a new element,
+    // leaving D6's shared string byte-identical — it is TRUE of the prompt log on
+    // every system, and editing it to fix one profile reopens what ADR-0037 D3
+    // refused. AC-3 pins that the block above is untouched.
+    //
+    // Why a second element at all, when Tab I already carries the load-bearing
+    // notice: case text is READ on Tabs H and J by visitors who never open Tab I,
+    // and this persistent region is where a reading visitor's expectations are set.
+    // The D6 sentence directly above says "read only by the operator" — true of the
+    // prompt log, false of case text — so on THIS profile the correction has to sit
+    // where that sentence is read.
+    //
+    // Gated on SERVER-DECLARED state, never a browser guess and never a vertical
+    // name: the disclosure is true exactly where the system publishes the
+    // case-WRITING surface, so the gate is "Tab I is in the declared view set".
+    // On dev this is unreachable (not published); on a published system without
+    // Tab I — procurement's ruled G,F — there is no case dataset and the claim
+    // would be false.
+    if (O.State.uiProfile === 'published' && Object.prototype.hasOwnProperty.call(VIEWS, 'I')) {
+      app.appendChild(h('div', { class: 'case-persist-notice', role: 'note' }, [
+        h('span', null,
+          'ข้อความและรูปในใบแจ้งซ่อมถูกเก็บในฐานข้อมูลของระบบนี้ ลบภายใน 90 วัน ' +
+          'และผู้เข้าชมทุกคนของระบบนี้อ่านข้อความนั้นได้')
+      ]));
+    }
+
     // ---- header ----
     const header = h('div', { class: 'header' });
     header.appendChild(h('div', { class: 'brand' }, [
