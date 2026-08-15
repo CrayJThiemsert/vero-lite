@@ -254,7 +254,58 @@ this file stays `Draft` until Cray marks it Complete, and archival to
 
 ## Surfaced decisions
 
-### SD-1 — the exact user-facing wording (Cray; reviewed against ADR-0032 D5)
+### SD-1 — the exact user-facing wording — ✅ RULED in part (Cray, typed, 2026-08-15, s232)
+
+> **RULING — the visibility clause: BROADEN it.** The drafted candidate said the
+> text *"appears on the Monitor timeline"*. That is **narrower than the measured
+> exposure** and was corrected before the ruling: `GET /api/cases` is
+> unauthenticated, unfiltered, and returns every row's `description`, so the
+> exposure is **not surface-bound at all** and a visitor who simply avoids the
+> Monitor tab would draw a false conclusion from the original phrasing.
+>
+> Ruled wording for that clause:
+>
+> **TH** — ข้อความและรูปถ่ายที่กรอกในใบแจ้งซ่อมจะถูกบันทึกในฐานข้อมูลของระบบนี้
+> และถูกลบภายใน 90 วัน — ข้อความในใบแจ้งซ่อม **ผู้เข้าชมทุกคนของระบบนี้อ่านได้
+> ไม่ใช่เฉพาะผู้ดูแลระบบ**
+>
+> **EN** — Case text and photos you enter are stored in this system's database
+> and deleted within 90 days. Case text **can be read by anyone who can reach
+> this system — not only the operator.**
+>
+> ⚠️ Note the second-order benefit the ruling takes: the broadened sentence is
+> also **shorter and needs no product vocabulary** — a visitor does not have to
+> know what "the Monitor timeline" is for it to be true and actionable.
+>
+> **RULED on sub-question (2): do NOT mention the case id's chain residue** in
+> the visitor-facing notice. It is an opaque UUID that means nothing to a
+> visitor, and the residue's home is the **RoPA's** register — where PLAN-0105
+> SD-3 already states the dangling pointer as intended design.
+
+> **RULED on sub-question (1) (Cray, typed, 2026-08-15, s232): YES — restate the
+> synthetic-demo line at the point of capture.** Tab I's notice carries its own
+> "demo data is synthetic — do not enter real personal data" lead rather than
+> relying on the persistent banner's copy of it.
+>
+> ⚠️ **This deliberately accepts a duplicated sentence on one screen.** The
+> duplication is the cost of the point-of-capture principle ADR-0035 D6
+> established: the banner may be scrolled out of view or banner-blind by minute
+> 1, and Tab I is the riskiest input on the whole published surface. A reader who
+> later finds the repetition untidy is looking at a **ruled trade-off**, not an
+> oversight.
+>
+> 🔴 **Consequence for AC-2's guard:** the synthetic lead will appear in **two**
+> elements. The guard must therefore assert the fleet element's own substrings
+> **scoped to that element**, never by searching the whole document — a
+> document-wide search would pass on the D6 banner alone and go vacuous the day
+> the fleet element is dropped.
+
+✅ **SD-1 is now fully ruled. Step 0 is discharged; implementation is unblocked.**
+
+---
+
+*The material below is preserved verbatim as the auditable record of why the
+ruling reads the way it does. It is NOT re-arguable.*
 
 **Not settled here.** The candidates below exist so the ruling has something
 concrete to strike at; every clause states what it asserts and why it is
@@ -296,7 +347,22 @@ wording Cray-reviewed by construction, and the disclosure is the
 controller's promise to a data subject — ADR-0032 D5 vocabulary compliance
 (plain, no over-claim) is a review criterion, not a drafter's self-grade.
 
-### SD-2 — placement: persistent banner, Tab-I-scoped notice, or both
+### SD-2 — placement — ✅ RULED (Cray, typed, 2026-08-15, s232)
+
+> **RULING: BOTH, asymmetrically — the recommendation as drafted.** The
+> **Tab-I point-of-capture notice is the load-bearing disclosure**, plus **one
+> fleet-only persistent line beside (never inside) the D6 banner**.
+>
+> The asymmetry is the substance, not a hedge: the person who **types** must be
+> told at the moment of typing, and the person who **reads** — a visitor who
+> never opens Tab I — must be told where their expectations are set. One surface
+> cannot reach both.
+>
+> ⚠️ **"beside, never inside"** is load-bearing and pairs with SD-3(ก): the D6
+> banner's shared string is not edited, so the fleet line must be its own
+> element. AC-1 and the D6-byte-identical tripwire both key on that.
+
+*Recommendation as drafted, preserved verbatim:*
 
 **Recommendation: both, asymmetrically** — the **Tab-I point-of-capture
 notice is the load-bearing disclosure** (D6's own principle: the in-app
@@ -314,7 +380,28 @@ this sets where the controller's promise is made and is inseparable from
 SD-3's repair choice; the options have different honesty surfaces, not
 different costs.
 
-### SD-3 — the D6 banner's "read only by the operator" clause on fleet's profile
+### SD-3 — the D6 banner's false clause — ✅ RULED (Cray, typed, 2026-08-15, s232)
+
+> **RULING: (a) — correct by SCOPING in the new fleet-only element.** The shared
+> D6 string is **not edited**. The fleet disclosure states plainly that case text
+> is readable by anyone reaching the system (SD-1's ruled clause), so the
+> combined surface reads: *prompt-log text → operator-only (D6 banner) · case
+> text → readable by any visitor (fleet notice)*.
+>
+> **What this ruling accepts, stated plainly rather than left implicit:** the D6
+> sentence *"what you type is … read only by the operator"* stays on fleet's
+> screen, and on its own it remains misleading about case text. The ruling holds
+> that an **adjacent, explicitly scoped** correction is enough — the two notices
+> do not contradict once each names what it governs. ⚠️ If a future reader finds
+> them contradictory **in practice** (a real visitor misreading them), that is
+> new information and reopens this slot; it is not a re-argument of it.
+>
+> Option (b) — amending ADR-0035's D6 text — was rejected as recommended: the
+> sentence is TRUE on the DB-less systems and true of the prompt log everywhere,
+> and editing a shared string to fix one profile reopens exactly what ADR-0037 D3
+> refused, at a governance cost this discharge does not need.
+
+*Options as drafted, preserved verbatim:*
 
 The clause is **factually false for case text on fleet** (measured — reason
 3 above) regardless of how D2.4 is discharged. Options: **(a — recommended)
