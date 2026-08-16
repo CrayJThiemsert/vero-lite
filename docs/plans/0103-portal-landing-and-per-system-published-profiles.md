@@ -517,7 +517,7 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   dashboard-configuration work, not a future repo bootstrap. The CTA's exact
   wording — SD-7's one open sub-item — was typed by Cray and is committed
   verbatim in all three card files, per the same log.]_
-- [ ] **AC-10 — measured before multiplied, gated before touched.** MS-S1
+- [x] **AC-10 — measured before multiplied, gated before touched.** MS-S1
   headroom is **measured and recorded** (numbers, method, date — Step 9)
   **before** any second system is brought up; every bring-up and the
   measurement session itself each have their own explicit Cray go (§8 —
@@ -539,7 +539,27 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   the measurement was any good, not merely that it was taken. Outstanding,
   and exactly why the box stays empty: fleet's bring-up has not happened,
   requires its own typed go, and is gated on AC-11's RoPA (still `[ ]`).]_
-- [ ] **AC-11 — the RoPA reflects fleet's posture BEFORE fleet is reachable
+  ✅ **CLOSED 2026-08-16 (s234) — the per-bring-up obligation is now
+  discharged for every system in this PLAN's scope.** `deploy/published/`
+  holds exactly three systems and all three are live; there is no fourth
+  bring-up this AC is still waiting on. Fleet's own typed §8 go (Cray,
+  2026-08-16) and its full execution record are at
+  `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` — cited by path,
+  not restated. Do-no-harm held against a baseline captured **before** the
+  first host-state action: neither live sibling's container was restarted
+  (`Up 5 days` / `Up 4 days` on both sides of the bring-up), and every
+  co-tenant stack stayed `exited`.
+  ⚠️ **One honest qualifier on the first clause, recorded rather than
+  smoothed over.** The three-system measurement came in at **≈1.33 GiB**
+  against Step 9's **≈0.95 GiB** projection. The overrun is not the third
+  system — it is that Step 9 modelled containers **at boot**: the two
+  siblings measured 208.9 / 85.4 MiB when cold and 637.6 / 530.8 MiB at
+  steady state, while fleet's two-minute-old app sat at 88.8 MiB. The
+  numbers, method and date were recorded as this AC requires; the method
+  **under-models by roughly 3–6× per app container** and a fourth system
+  should be projected against steady-state figures, not cold ones. At 4.3%
+  of available memory this changes no decision today.]_
+- [x] **AC-11 — the RoPA reflects fleet's posture BEFORE fleet is reachable
   (appended 2026-08-10, amendment round; precondition of Step 10's fleet
   bring-up, not a follow-up).** Before the fleet system's go: the
   RoPA covers the LOCKED-1 consequence: the new processing activity
@@ -571,6 +591,20 @@ seam under test; guards get a non-vacuity probe (plant the violation from a
   bring-up without both is a Step-10 **stop condition**, not a warning.
   (Rulings fold-in: AC-11 is the first instance of the standing obligation
   ADR-0037 D2.1 proposes.)
+  ✅ **CLOSED 2026-08-16 (s234) — both halves now exist and the ordering the
+  AC exists to enforce held.** The RoPA half:
+  `docs/compliance/ropa-fleet-cases.md`, adopted 2026-08-15, on `main` at
+  `610369f`. The go-record half:
+  `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`, whose "The go"
+  section cites that RoPA **by path**, as this AC requires. **The RoPA
+  preceded reachability by a day** — its own Status block says so in the
+  present tense (*"The system it describes is NOT live; that is the point of
+  adopting it now"*), which is the ordering evidence rather than a claim
+  about it. ⚠️ The **authorship** departure this AC's artifact carries —
+  drafted by Code at Cray's request, against D2.1's reservation to the
+  controller — is disclosed on the RoPA itself and remains open as ADR-0037
+  **SD-1**; closing this AC records that the artifact exists and gated the
+  bring-up, and settles nothing about who may write the next one.
 
 ## Out of Scope
 
