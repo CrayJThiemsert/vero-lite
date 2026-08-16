@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-15T13:20:58+07:00
-session: 233
-current_batch: "s232 fleet bring-up push — ELEVEN PRs MERGED (#1170–#1179), 0 open. Grounding REFUTED the inherited \"one artifact left\" framing: 14 gates walked, five closed by rulings, then PLAN-0106 built (D2.4 discharged), Cloudflare proven and host secrets staged. ONE gate left. [Reconciled s233 — s232 closed before updating STATUS for #1178/#1179.]"
+last_updated: 2026-08-16T09:20:41+07:00
+session: 234
+current_batch: "s233–234 — fleet's last gate closed and then fleet WENT LIVE. s233 wrote and adopted AC-11's RoPA, cleared ADR-0037's OQ-3/D2.1 debts and made Tab J show real money (7 PRs, #1180–#1187). s234 executed PLAN-0103 Step 10 under Cray's typed §8 go: oct-fleet-maintenance is published system #3. PLAN-0103 COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED."
 current_actor: code
-blocked_on: "NOTHING blocks repo work. Fleet's bring-up now gates on ONE artifact — PLAN-0103 AC-11's RoPA instance (Cray's, as controller). The typed §8 go was given verbally but cannot be validly RECORDED until the RoPA exists to cite by path."
-next_action: "Cray's — author fleet's RoPA (last gate; inputs complete), and mark PLAN-0106 Complete so Code can tick its ACs and archive it."
-head_commit: 5425822
-recent_commits: [5425822, d09a77c, 6937573, 205ba4b, e4ebd51, efaa05a, 4653988, 8b2fc14, ec4ac0f, 334d797]
+blocked_on: "NOTHING blocks repo work and nothing blocks fleet — it is serving. The one governance question still open is ADR-0037 SD-1 (the D2.1 authorship fork); until it is ruled, D2.1 as written still governs."
+next_action: "Cray's — rule ADR-0037 SD-1 (§5.2 of the s233 handoff; the only surfaced decision with downstream consequences). Code-side: PR-B, the STATUS rehoming pass."
+head_commit: c66247c
+recent_commits: [c66247c, 8d48818, 3b9a084, a956951, ebf8543, e9cc984, 9b51553, 65fd58c, 2d9056c, 610369f]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,65 @@ recent_commits: [5425822, d09a77c, 6937573, 205ba4b, e4ebd51, efaa05a, 4653988, 
 ---
 
 ## Current Focus
+
+> **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `c66247c`) — NINE
+> PRs merged (#1180–#1188), 0 open. Fleet's last gate closed, and then fleet
+> WENT LIVE. `oct-fleet-maintenance` is published system #3; PLAN-0103 is
+> COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
+>
+> ✅ **AC-11's RoPA was written and ADOPTED** (`docs/compliance/ropa-fleet-cases.md`,
+> #1184) — the artifact the whole chain waited on. 🔴 **Its authorship is a
+> DEPARTURE from ADR-0037 D2.1, disclosed ON the artifact rather than left
+> silent:** Code drafted at Cray's request, Cray ruled every promise slot and
+> adopted. **ADR-0037 SD-1 — the D2.1 authorship fork — is the one open
+> governance question, and until it is ruled D2.1 as written still governs.**
+>
+> 🔴 **s233's load-bearing work was VERIFICATION, not construction — seven
+> inherited claims were checked and REFUTED**, including ADR-0037's OQ-3, which
+> had been *ruled* 2026-08-14 while its recorded Recommendation was still the
+> **OVERRULED** option. Three downstream artifacts inherited it and it nearly
+> sent the RoPA into the wrong file. _[Closed #1185. The general rule — a ruled
+> OQ closes in the same change that records the ruling — is proposed as SD-2 and
+> is UNRULED.]_
+>
+> ✅ **Tab J shows real money — ฿33,705, not a structural ฿0** (#1187), with an
+> honest empty state. ⚠️ Seeding onto the demo's flagship truck **displaced** its
+> ฿48,000 axle breach (the query projects the latest event **per truck**) —
+> silent demo damage caught only by the full suite.
+>
+> ✅ **s234 executed Step 10 under Cray's typed §8 go**, and the pre-flight found
+> **two steps every prose summary of that sequence had omitted.** 🔴 **The image
+> was not on the host** — this profile's compose declares `build:` with no
+> `image:`, so `up -d` would have tried to build on the deploy host, which fails
+> outright there; built on the dev box and shipped, id identical on both
+> machines. ✅ **The host checkout was deliberately NOT pulled** — the `deploy/`
+> diff across those eight commits is **empty**, and the pull is the only step
+> that writes into a directory two *running* systems read from.
+>
+> 🔴 **The keyed `/whoami` = 200 control, which neither prior system could
+> produce** (energy is keyless; procurement does not admit the route), recorded
+> as a **differential**: keyless 401, correct key 200, **wrong key 401**. The
+> third reading is what makes the second mean anything — a `200` alone is
+> equally explained by "auth is off" — and it settles the crossed-pair hazard
+> empirically instead of trusting that boot would have refused.
+>
+> 🔴 **Two documentation claims were MEASURED FALSE and corrected in the same
+> PR** — a backslashed Windows path is stripped through `ssh`→PowerShell and
+> fails as *"file not found"* against an intact checkout, and *"302 proves a
+> **working** origin"* is an overclaim that s232's own evidence refutes. **Both
+> now live in the runbooks they misled;** the reasoning is in the closeout
+> record, not restated here. ⚠️ **Step 9's headroom projection is exceeded
+> (≈1.33 GiB vs ≈0.95) because it models containers at boot** — see the
+> PLAN-0103 Active TODO, which owns that residual.
+>
+> ⚠️ **Verified via the API from INSIDE the container, not by driving the UI
+> through Access** — Access blocks automation, so the rendered tab set on the
+> live domain is unverified from Code's side. Do-no-harm held: neither sibling
+> restarted (`Up 5 days` / `Up 4 days` on both sides of the bring-up).
+>
+> **Gates: 4113 passed / 8 skipped**, `mypy --strict services/` clean over 136
+> files, ruff + format clean over 631. Full record:
+> `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
 
 > **Session 232, 2026-08-15 (head_commit `b2fe45e` → `5425822`) — ELEVEN PRs
 > MERGED (#1170–#1179), 0 open. A next-work ranking became a fleet bring-up
@@ -169,45 +228,8 @@ recent_commits: [5425822, d09a77c, 6937573, 205ba4b, e4ebd51, efaa05a, 4653988, 
 > [`docs/lessons/0042-a-remembered-baseline-is-not-evidence.md`](lessons/0042-a-remembered-baseline-is-not-evidence.md)
 > holds the per-cause table and the named tests.
 
-> **Session 228, 2026-08-13 (head_commit `75243b0` → `ad2804d`) — one PR
-> merged (#1151), 0 open. PLAN-0104 Step 7 ran under Cray's typed §8 go, AC-7
-> CLOSED, and the PLAN is COMPLETE 8/8 and ARCHIVED. The headline number is the
-> least interesting thing in it.**
->
-> ✅ **All four pre-committed reads PASS, on the FIRST pass** — nl-13 emitted
-> `count` WITH `group_by: "asset_id"` (no retry) and scored `correct` under the
-> tolerance-free `groups` scorer, groups relabelled to display names.
-> **Read the evidence, never a restatement:**
-> `benchmarks/nl_query_feasibility/RESULTS.md` §"Addendum — PLAN-0104 Step 7
-> live evidence run".
->
-> 🔴 **Citing 12/13 as an improvement over `11/12` is a DEFECT.** The prior
-> figure is **RETIRED as non-comparable, not overwritten**, on two
-> independently sufficient grounds: the shared system prompt changed in #1149,
-> and the gold set grew 12 → 13. ⚠️ **The obvious citation is a TRAP** — the
-> `11/12` in that file's arm-comparison table is **text-to-SQL**; the prior
-> **engine-A** figure is AC-9's, in its own addendum. They coincidentally share
-> a number.
->
-> ✅ **The lone miss (nl-06) was re-run once per clause 3, failed again, and was
-> investigated BEFORE merge — verdict: NOT a PLAN-0104 regression.** #1149's
-> diff changes only the OPERATION sentence (FILTERS is **byte-identical**); the
-> class is the catalogued simple-list filter-omission variance; and **the victim
-> MOVED** — AC-9's miss was nl-01, `correct` here. Model-swap and prompt-tuning
-> are both already PROVEN NEGATIVE on this axis. ⚠️ **The one alternative a
-> single sweep cannot refute to zero is RECORDED:** that the lengthened
-> OPERATION sentence dilutes attention to FILTERS. **Reopen condition, stated in
-> place:** a sweep showing filter-omission **concentrating**, not **moving**.
->
-> 🔴 **Bookkeeping, `was an error`:** STATUS asserted "AC-1..AC-6 and AC-8 are
-> CLOSED" while **every AC checkbox was still `[ ]` on disk**; all eight are now
-> ticked. ⚠️ **`c80df02` corrected the other direction — the Step 7 dumps are
-> UNTRACKED, not gitignored**, so the raw per-case evidence survives **nowhere
-> in history** and is **not protected from an accidental commit**.
->
-> **Gates: 4045 passed / 8 skipped**, `mypy --strict services/` clean over 134
-> files, ruff + format clean **on the HEAD tree**; `merge_tree_identical=YES`
-> between tested `c80df02` and merge `ad2804d` (first parent `33dfc26`).
+_[The session-228 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
+this reconcile, keeping the window at four.]_
 
 ## Prior focus (archived)
 
@@ -226,16 +248,19 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
+| 2026-08-16 | **s234 — PLAN-0103 Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3.** PLAN-0103 **COMPLETE 11/11** and PLAN-0106 **COMPLETE 7/7**, both marked Complete by Cray (typed) and ARCHIVED. 🔴 **The pre-flight found two steps every prose summary of the sequence had omitted** — the image was not on the host, and the host pull was correctly skippable (`deploy/` diff empty). 🔴 **Two documentation claims MEASURED FALSE:** a backslashed Windows path is stripped through `ssh`→PowerShell and fails as "file not found"; and *"302 proves a working origin"* is an overclaim refuted by s232's own evidence. | `c66247c` / [#1188](https://github.com/CrayJThiemsert/vero-lite/pull/1188) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
+| 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled seven times (RoPA adopted · DSR 30 days · audit-chain residue = disclose BOTH halves · backups NONE, deliberate · DB access ssh-only · Cloudflare vendor deletion filed · recorder free text on its own line). 🔴 **ADR-0037 OQ-3 had been RULED 2026-08-14 while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it — it nearly sent the RoPA into the wrong file. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / [#1185](https://github.com/CrayJThiemsert/vero-lite/pull/1185) / [#1187](https://github.com/CrayJThiemsert/vero-lite/pull/1187) / `docs/compliance/ropa-fleet-cases.md` |
+| 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
 | 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every case that had accepted a quote, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1166](https://github.com/CrayJThiemsert/vero-lite/pull/1166) / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
 | 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
 | 2026-08-13 | **s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go; AC-7 CLOSED, PLAN COMPLETE 8/8 and ARCHIVED.** 🔴 **The fresh 12/13 RETIRES the prior figure as non-comparable — it does NOT beat it** (prompt changed in #1149; gold grew 12 → 13), and the obvious citation is a trap: that file's arm-comparison `11/12` is **text-to-SQL**, not engine-A's. nl-06's miss was re-run, failed again, investigated — **not a regression; the victim moved**. | `ad2804d` (head_commit) / [#1151](https://github.com/CrayJThiemsert/vero-lite/pull/1151) / `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum |
 | 2026-08-13 | **s227 — PLAN-0104 Steps 2+3+4 as ONE PR (#1148) and Steps 5+6 (#1149); Steps 1–6 COMPLETE.** 🔴 **AC-5 is a hard merge dependency, not a preference:** no commit may exist where `count`+`group_by` validates while `_count` still collapses groups — that state answers with a **silently wrong** number, worse than the refusal it replaces. | `75243b0` / [#1148](https://github.com/CrayJThiemsert/vero-lite/pull/1148) / [#1149](https://github.com/CrayJThiemsert/vero-lite/pull/1149) / `docs/plans/done/0104-*.md` |
 | 2026-08-13 | **s226 — PLAN-0104 DRAFTED, its three SD slots RULED (Cray, typed), Step 1 SHIPPED.** 🔴 The `count`+`group_by` refusal had **three independent enforcers**, so no single edit changed behaviour and the circulating *"≈ one PR + tests"* price was wrong. 🔴 The gold guard was **VACUOUS** — it restated the numbers instead of reading `SQL_EXPECT`, so two wrong tokens scored `wrong` every run, silently. | `fa8a61c` / [#1144](https://github.com/CrayJThiemsert/vero-lite/pull/1144) / [#1145](https://github.com/CrayJThiemsert/vero-lite/pull/1145) / `docs/plans/done/0104-*.md` |
-| 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed. **Both fixed, not ticked over.** ⚠️ AC-10 + AC-11 stay OPEN. | `b229fcd` / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/0103-*.md` |
-| 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)**, narrative copy in the Act card's place, Step 6 builds it; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE** — the Act card renders on **no** published profile, suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
-| 2026-08-12 | **s223 — the MS-S1 secrets-ACL exposure is CLOSED and PROVEN, under two typed §8 gos.** RULED (Cray, typed): tighten as a **ladder A → C**, canary procurement only, recreate `oct-energy` for real, and **MOVE** the leftover backup into the tightened directory. 🔴 **A same-volume move keeps the OLD ACL — measured.** Each rung believed only on a force-recreate; verifier seen RED→GREEN. | `b4cb860` (head_commit) / [#1132](https://github.com/CrayJThiemsert/vero-lite/pull/1132) / [#1133](https://github.com/CrayJThiemsert/vero-lite/pull/1133) / `docs/logs/2026-08-12-ms-s1-secrets-acl-tightening.md` |
-| 2026-08-12 | **s223 — RULED (Cray, typed): J4 ("run the full `tests/` before pushing") stays BINDING but is evaluated PER ACTION** — against the commit(s) being pushed at evaluation time; earlier uncovered pushes are residual gaps, not a standing FAIL. Rationale: **a criterion no future work can turn green is defective, not strict.** ✅ **R2 carve-out DISCHARGED s228** — rehomed to the lesson, so this row is now a pointer like any other. | `docs/lessons/0029-verify-full-suite-not-subset.md` §Addendum (rehomed s228) |
+| 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed. **Both fixed, not ticked over.** ⚠️ AC-10 + AC-11 stay OPEN. | `b229fcd` / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/done/0103-*.md` |
+| 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)**, narrative copy in the Act card's place, Step 6 builds it; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE** — the Act card renders on **no** published profile, suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
+
+_[Two session-223 rows rotated to `docs/status-archive/2026-h1-status.md` this
+reconcile, holding the table at ten.]_
 
 ## In-Flight Discussions
 
@@ -251,7 +276,7 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
-- [ ] **PLAN-0106 — fleet's OWN in-app case-persistence disclosure (ADR-0037 D2.4). Steps 1–4 SHIPPED s232 (#1178, #1179); **D2.4 is DISCHARGED** and it is no longer a fleet gate.** ⚠️ **`Status: Draft`, AC-1..AC-6 `[x]`, AC-7 `[ ]` — RULED (Cray, typed, s233).** AC-7's evidence is fleet's Step-10 **go record, which does not yet exist**; the PLAN closes 7/7 and archives **with fleet's bring-up, not before**. **Read the PLAN, never a restatement:** `docs/plans/0106-fleet-case-persistence-disclosure.md` (§Closure evidence · §Surfaced decisions). _[Trimmed s233 per R2 s141.]_
+- [x] **PLAN-0106 — fleet's own in-app case-persistence disclosure (ADR-0037 D2.4): COMPLETE 7/7, marked Complete by Cray (typed) and ARCHIVED s234.** AC-7's ordering clause closed on fleet's Step-10 go record, which cites this PLAN by number. **No live residual.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0106-fleet-case-persistence-disclosure.md` (§Closure evidence · §Surfaced decisions).
 - [x] **PLAN-0105 — fleet's 90-day in-app case retention: COMPLETE 11/11, ARCHIVED s231.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md` (§Surfaced decisions for SD-1..SD-4; the child-to-child FK ordering defect and its guard). ✅ s232 corrected its false "is factored" claim by EXTRACTING `delete_case()` (#1171); failure semantics RULED **(b)**. ⚠️ **What `Complete` does NOT mean:** AC-11's RoPA is still Cray's, and the **DSR-on-request path stays undefined — requester identification in particular is genuinely undesigned**; `delete_case()` is the mechanism half only. _[Trimmed s233 per R2 s141.]_
 - [x] **PLAN-0104 — `count` WITH `group_by`: COMPLETE 8/8, ARCHIVED s228; discharges PLAN-0100 D-4.** **Read the archived PLAN and the evidence, never a restatement:** `docs/plans/done/0104-nl-query-count-with-group-by.md` · `benchmarks/nl_query_feasibility/RESULTS.md` §"Addendum — PLAN-0104 Step 7 live evidence run". 🔴 **Do not re-derive: the 12/13 does NOT beat the prior `11/12` — that figure is RETIRED as non-comparable** (prompt changed, gold grew 12→13), and the engine-A prior is in its own AC-9 addendum, not the arm-comparison table. ⚠️ **Live:** the Step 7 dumps under `.claude/benchmark-results/` are **untracked and NOT gitignored** — no copy in history, nothing stopping an accidental commit. _[Trimmed s233 per R2 s141.]_
 - [x] **`_count`'s week silent-drop — CLOSED s228, RULED (a), SHIPPED [#1156](https://github.com/CrayJThiemsert/vero-lite/pull/1156).** The guard and its named set `_WEEK_ROLLUP_BLIND_TO` live in `services/engine/run_query.py` — **read the code, never a restatement.** 🔴 **Do not re-derive:** the guard keys on the **FILTER** as well as `group_by` (a bare `started_week` filter reaches the branch), and because the set is named, **(b) would SHRINK it, not delete the guard** — (a) is the honest floor, not a stopgap. ⚠️ **(b) is still the better ANSWER, unscheduled** — no gold case asks for it today. _[Trimmed s233 per R2 s141.]_
@@ -259,7 +284,7 @@ than restated: the Active TODO owns that status.]_
 - [ ] **🆕 A FOURTH silent drop in the NL engine — found s232, MEASURED at `5425822`, UNRULED, and recorded here because NO other artifact carries it** (grep across `docs/ services/ tests/` returned zero hits before this row). Same family as the third, **different axis: what vanishes is `group_by` itself, not a filter.** `_validate_query` **permits** `group_by` on aggregate ops — its guard is `query.group_by and query.operation not in _AGGREGATE_OPS and query.operation != "count"` (`services/engine/nl_query.py:571`) — and `_run_query_schema` binds the enum to `DIMENSIONS` (`run_query.py:420`), so the model **does** emit it. But **both** aggregate paths construct `AggregateResult(...)` with **no `groups` argument** (`run_query.py:330` duration, `:364` benefit) and `groups` defaults to `{}`. 🔴 **The count path at `:248` DOES pass `groups=groups`** — so the omission is a two-site gap in an otherwise-correct design, not a missing feature. **Effect:** *"average duration per procedure"* validates, executes, and silently returns **one ungrouped number**. ⚠️ **No test covers it**, which is why it survived PLAN-0104's whole build. Same two dispositions as the third drop, neither ruled: **(a) refuse it, or (b) make it group.**
 - [ ] **🆕 `deploy.py` builds from a compose file that NO LONGER EXISTS — found s232, MEASURED, UNFIXED. NOT a fleet blocker; it breaks the next ENERGY redeploy.** `build_and_ship` sets `compose_file = repo_root / "deploy" / "published" / "docker-compose.yml"` (`deploy/published/deploy.py:242`), and that path was removed when PLAN-0103 Step 4 moved every compose into per-profile directories — `ls` confirms it is absent at `5425822`. ⚠️ **The same module's OTHER references were migrated correctly** (`_HOST_COMPOSE` and `_HOST_READ_PATHS` both name `oct-energy/docker-compose.yml`), so this is one straggler, not a systemic miss — which is exactly why reading the neighbours would not have caught it. 🔴 **No test guards it:** `tests/deploy/test_deploy.py` pins `_PROJECT`, the container names and `_HOST_READ_PATHS`, but **not** this path. Fix is a one-line repoint **plus** the guard that would have caught it; neither is scheduled.
 - [ ] **`nl-03`'s `SQL_EXPECT` is UNDER-SPECIFIED — RULED (Cray, typed, s226): RECORD it, do NOT change the token now.** Its list omits `event-reading-08`, which `gold.yaml` lists among nl-03's three expected ids. 🔴 **This is a DIFFERENT defect class from the nl-02/nl-05 tokens Step 1 repaired, and keeping the distinction is the point of the row:** `score_sql` matches a **subset**, so nl-03's present tokens are **correct** and the case still scores `correct` — **the oracle is WEAKER than it should be, not WRONG**, where nl-02/nl-05 were factually wrong and therefore scored `wrong` on every run. ⚠️ **Adding the token would make the benchmark STRICTER:** a model whose SQL filters by unit would flip nl-03 from `correct` to `wrong`, which **changes what the measured numbers mean and breaks comparability with earlier runs**. That makes it a **measurement decision, not a typo fix** — which is why it is recorded rather than patched. On the same basis, noted and deliberately not acted on: **`score_sql` matches tokens as SUBSTRINGS**, so an expected `"1"` would match a result of `"21"`.
-- [ ] **PLAN-0103 — vero-lite's side of the multi-vertical portal. `Status: Draft`; AC-1..AC-9 CLOSED, only AC-10 + AC-11 remain `[ ]`.** 🔴 **One live gate: AC-11's RoPA instance — Cray's as controller, and the LAST thing standing between fleet and its bring-up.** The typed §8 go is a *consequence* of it, not a separate gate: AC-11 requires the go record to cite the RoPA **by path**. ✅ The other four s232 gates are closed — PLAN-0106 (#1179), the two Cloudflare artifacts and four host secrets (evidence: `docs/logs/2026-08-15-fleet-cloudflare-artifacts-and-secrets-staging.md`, marked RECONSTRUCTED). ⚠️ **Requester identification for the DSR path is genuinely undesigned** — `repair_case.opened_by` has no FK, so a request matches rows only by content. **Read the PLAN, never a restatement:** `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions · §Steps). _[Trimmed s233 per R2 s141 (pointer rule). The per-Step narrative, the no-portal-repo ruling and the SD slots are in the PLAN; `deploy.py` is NOT a blocker per `deploy/published/oct-fleet-maintenance/README.md:247-253`; the s225 G1/G2 correction is in `docs/status-archive/2026-h1-status.md:1250` and `2026-h1d-current-focus.md:140-142`. 🔴 That correction previously cited `CLAUDE.md` §6 as stating **G2 fires only when a numbered artifact does not yet exist** and **G1 is scoped to `Status: Accepted`** — §6 does NOT say either; it stops at the gates being scoped to `docs/adr/` + `docs/plans/`. Re-pointed to the archive, which does hold it.]_
+- [x] **PLAN-0103 — vero-lite's side of the multi-vertical portal: COMPLETE 11/11, marked Complete by Cray (typed) and ARCHIVED s234.** AC-10 + AC-11 both closed by fleet's bring-up as published system #3; `deploy/published/` holds exactly three systems and all three are live. **Read the archived PLAN, never a restatement:** `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions · §Steps); closeout record `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. **Two live residuals outlive the PLAN and are recorded here because nothing else carries them:** (1) ⚠️ **Requester identification for the DSR path is genuinely undesigned** — `repair_case.opened_by` has no FK, so a request matches rows only by content. (2) ⚠️ **Step 9's headroom projection method under-models by ~3–6× per app container** — it measures containers at boot, and a fourth system must be projected against steady-state figures instead. _[Trimmed s234: the s225 G1/G2 correction, the no-portal-repo ruling and the per-Step narrative stay in the archived PLAN and in `docs/status-archive/`.]_
 - [x] **Fleet's Operate-tab seed flag — CLOSED s232 ([#1170](https://github.com/CrayJThiemsert/vero-lite/pull/1170)):** `OCT_DEMO_SEED_OPERATE` flipped `false`→`true`, so Tab H no longer opens empty on bring-up. The flag and its corrected comment live in `deploy/published/oct-fleet-maintenance/published.env`; the four README corrections in that profile's `README.md` (#1173). 🔴 **The durable shape — three artifacts described one fact and only `main.py`'s was right, because it was edited alongside the code; prose has no consumer, and ruff, mypy and 4093 tests stayed silent eleven sessions.** _[Trimmed s233 per R2 s141.]_
 - [ ] **🆕 The apex domain leaks in ONE archived file — found s231 by repo-wide grep; UNRULED and not urgent.** The only carrier is `docs/plans/done/0100-exposure-published-demo-surface.md` (5 places), matching the s222 correction recorded in ADR-0036. ⚠️ **Outside the existing guard's reach:** `test_no_unknown_domain_appears_in_the_deploy_docs` scans `deploy/published/` and the published-demo runbooks, **not `docs/plans/`**. Three options, none ruled: scrub the file, widen the guard, or accept it knowingly. 🔴 **RE-PRICED s232 — "widen the guard" is NOT a one-file flip.** MEASURED: widening it to `docs/plans/` reddens **FOUR** files, not one — the archived PLAN-0100 **plus** three other archived plans carrying unrelated third-party domains (`docs/plans/done/0013-*`, `done/0014-*`, `done/0033-*`). So the option is **a flip PLUS three deliberate allowlist additions**, which that constant's own comment calls an act needing intent. **Reference BY PATH ONLY — the domain is not named here.**
 - [ ] **The ฿ realized-vs-projected join — RECORDED ON ITS MEASURED BASIS, because the version circulating in session notes is PARTLY FALSE and it was ranked #1 next work on the strength of the false part.** ✅ **True:** the realized side already carries `total_thb` and `run_id` on the **same** `ExportRow` (`services/db/repair_spend_export.py`, linked via `RepairCaseRunLink`), so **no migration is needed**. 🔴 **False as circulated:** that `benefit_rollup` in `services/db/run_analytics.py` "already extracts `net_benefit_thb` by `run_id`". It does **not** — it aggregates by currency × procedure × facet-kind × day and touches `run_id` only inside a `count(distinct …)`, so it yields **no per-run figure at all**. **Therefore the join needs a NEW per-run aggregation, not a reuse of `benefit_rollup`'s output**; the `GROUP BY run_id` pattern to copy is the per-run SUM inner subquery in that same module. ✅ **RE-PRICED s226 — MEASURED, not estimated: ~150–250 lines across 6–7 files, ONE PR.** The circulating **"~40 lines by reusing `benefit_rollup`" framing was CHECKED and is WRONG**. 🔴 **Three constraints the old framing missed, all TEST-PINNED:** (a) `run_analytics.py`'s **SD-8(a) discipline FORBIDS O(runs) result shapes**, pinned by `tests/services/db/test_run_analytics.py` with statement capture — so **"per-run rows on screen" is a design decision, not a mechanical add**; (b) `tests/api/test_export_cover_ui_contract.py` asserts **set equality** against an **empty** `_UNREAD_COVER_FIELDS`, so a new `ExportCoverResponse` field **must ship with its `view-export.js` tile in the SAME PR** or CI reddens; (c) **`/insights/impact` is ABSENT from fleet's Cloudflare allowlist**, so the figure **must ride the existing cover response**. 🔴 **CORRECTED s232, `was an error`: this row called `/insights/impact` "the only existing consumer of the projected side" and it is NOT.** MEASURED — `_aggregate_benefit` (`services/engine/run_query.py:334`, consuming `run_analytics.benefit_rollup` at `:343`, dispatched at `:380`) is a **second** consumer, and it **IS reachable on fleet** via the allowlisted `^/query$`. Constraint (c)'s *conclusion* survives — the figure still rides the cover response — but the premise under it was false, and a reader pricing this work from the old sentence would mis-scope the blast radius. ⚠️ **Also corrected: "SD-8(a) is test-pinned by statement capture" holds only for the ELEVEN primitives hard-coded at `tests/services/db/test_run_analytics.py:253-268`, and only when Postgres is reachable** — a *new* O(runs) reader would **not** automatically redden CI. Pattern to copy: the per-run `GROUP BY` in `run_duration_totals` (`run_analytics.py:448`), **not** `benefit_rollup` (`:521`). Lands on **Tab J**, which fleet publishes.
