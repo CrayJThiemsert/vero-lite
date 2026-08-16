@@ -211,3 +211,52 @@ async def test_a_bundled_font_is_served_with_a_font_content_type(
         f"today only because no X-Content-Type-Options: nosniff header is set; "
         f"adding that ordinary hardening step would break every bundled font."
     )
+
+
+def test_case_wrap_declares_the_scroll_contract() -> None:
+    """Tab I's root must fill its view AND scroll, or its content is silently CLIPPED.
+
+    ``.view`` is ``position: absolute; inset: 0; overflow: hidden`` (theme.css), so a
+    content-sized root does not overflow the page — it is cut off with no scrollbar,
+    no error, and no visible sign that anything is missing. The page just ends.
+
+    🔴 **This shipped to the live fleet system and a human found it, not a test.**
+    Measured in the browser before the fix: ``.case-wrap`` stood **919px** tall inside
+    a **614px** view, so **305px was unreachable** and the last case row sat **265px**
+    below the fold. Every other view was measured in the same pass and none clipped —
+    A/C/F/H fill the box and scroll internally, and J's ``.hero-view`` already declares
+    exactly the two properties asserted here.
+
+    ⚠️ **This guard exists because CI has no JS runtime and therefore no oracle that
+    can see a clip.** It reads the stylesheet itself rather than restating the
+    expected values, so deleting either declaration reddens it; it cannot, however,
+    prove the *rendered* result. A layout change that keeps both properties but
+    reintroduces clipping some other way needs a browser, not this test.
+    """
+    css = (ASSETS / "views.css").read_text(encoding="utf-8")
+
+    match = re.search(r"^\.case-wrap\s*\{([^}]*)\}", css, re.MULTILINE)
+    assert match, (
+        "no `.case-wrap { … }` rule found in views.css. Tab I's root class was "
+        "renamed or the rule was deleted — this guard is now blind, which is worse "
+        "than the defect it was written for. Re-point it at the new root class."
+    )
+
+    block = match.group(1)
+    missing = [
+        declaration
+        for declaration, pattern in (
+            ("height: 100%", r"height\s*:\s*100%"),
+            ("overflow-y: auto", r"overflow-y\s*:\s*(auto|scroll)"),
+        )
+        if not re.search(pattern, block)
+    ]
+    assert not missing, (
+        f"`.case-wrap` is missing {missing} — its declarations are: "
+        f"{' '.join(block.split())!r}. Without BOTH, the rule is content-sized inside "
+        f"a `position: absolute; inset: 0; overflow: hidden` parent, so everything "
+        f"past the fold on Tab I becomes unreachable: no scrollbar, no error, the "
+        f"page simply ends. Measured cost when this last happened: 305px clipped, "
+        f"the last case row 265px below the view. Copy the contract from "
+        f"`.hero-view` in hero.css, which is the same pattern already working on Tab J."
+    )
