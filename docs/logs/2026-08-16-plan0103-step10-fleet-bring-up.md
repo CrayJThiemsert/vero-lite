@@ -307,4 +307,69 @@ account — not by anything observable from outside the gate.
 - Runbook: [`docs/runbooks/published-demo-bring-up.md`](../runbooks/published-demo-bring-up.md) (corrected in the same PR).
 - Sibling record: [`2026-08-11-plan0103-step10-procurement-bring-up.md`](2026-08-11-plan0103-step10-procurement-bring-up.md) — system #2, the shape this file follows.
 
+---
+
+## Addendum — the first redeploy, same day (2026-08-16)
+
+**Event type:** host-state change on MS-S1, under a second explicit typed §8 go
+(**Cray, typed: *"redeploy fleet หลัง CI ผ่าน"***). Recorded here rather than in a new
+file because it is the same system on the same day, and the bring-up record above is
+what a reader will already have open.
+
+**Why:** Cray drove the live surface through Access — which also **closes the scope
+limit this record states above**, that the rendered tab set had not been verified from
+Code's side. All six tabs render, and Tab J showed **฿33,705** on the live system,
+matching what was measured in the container. **And it found a defect no test could
+see.**
+
+🔴 **Tab I clipped 305px of itself.** `.view` is `position: absolute; inset: 0;
+overflow: hidden`, so `.case-wrap` — content-sized at **919px** inside a **614px**
+view — was cut off with no scrollbar and no error. The last case row sat **265px**
+below the fold. All six tabs were measured in the same pass and Tab I was the only one
+affected. Fixed by giving it the contract `.hero-view` (Tab J) already uses, merged as
+[#1190](https://github.com/CrayJThiemsert/vero-lite/pull/1190) at `28bc043`.
+
+### What ran, and what it was judged against
+
+Pass/fail fixed before the run, as with the bring-up.
+
+| Step | Result |
+|---|---|
+| build at `28bc043` | new id **`sha256:f15acc13…a6cde7`**, **different** from the deployed `ecab5052…92631b0` — which is the read that proves the build was not a whole-cache no-op |
+| rollback point | `docker tag … :prev` **before** the load; `:prev` now holds `ecab5052…` |
+| ship + verify | host `:latest` id **equals** the dev-box id |
+| `up -d` | 🔴 **only `app` was Recreated.** `cloudflared` and `postgres` both stayed `Up 8 hours` — the tunnel never re-registered and `pgdata` was never at risk |
+| boot log | `run 'run-fleet-operate-demo' already present — skip`, and **no** `settled history case seeded` line — the two seeds' idempotency, proven on real data rather than read off a docstring |
+| **the fix is live** | the served `/assets/views.css` carries `height: 100%; overflow-y: auto` in `.case-wrap`, and `/` references `views.css?v=c44` |
+| unchanged behaviour | `/health` 200 · 3 personas · views `A,C,F,H,I,J` · keyless `/whoami` **401** · keyed **200** (`req-mechanic-tom`) · **2** runs, not 4 |
+| audit chain | `intact: true`, `rows_verified: 4`, and `head_hash` **`5cc39bec…f826f` byte-identical to the pre-redeploy reading** |
+| do-no-harm | only `oct-fleet-maintenance-app` reset. `oct-energy-app` `Up 5 days`, `oct-procurement-app` `Up 4 days`, both connectors `Up 4 days` — all unchanged against a baseline captured **before** the first host action |
+| edge | still `302` with `www-authenticate: Cloudflare-Access` |
+
+**The identical `head_hash` is the stronger claim, and it is why it is recorded
+separately from `intact: true`.** A tamper-evident chain moves its head on every
+write, so a head that did not move proves **nothing was written** during the
+redeploy. `rows_verified: 4` alone cannot say that — the same count can cover
+different content.
+
+### 🔴 One finding that removes a standing worry
+
+**`index.html` is served with `cache-control: no-store`** (measured on the running
+container). So a viewer's browser cannot serve a stale document, an ordinary reload
+picks up the new `?v=` references, and **no hard reload or edge purge is needed for a
+static-asset change**. This narrows — it does not close — the PLAN-0100 residual that
+*"nothing in the pipeline purges the edge"*: that residual still stands for anything
+reached by a URL that does **not** change, fonts being the named case.
+
+### ⚠️ What this redeploy does not establish
+
+The rendered result on the live domain was **not** re-verified from Code's side after
+the redeploy — Access blocks automation, and the checks above read the served bytes,
+not a rendered layout. The guard that ships with the fix has the same limit and says
+so: a layout change that keeps both declarations but reintroduces clipping some other
+way needs a browser. **CI still has no JS runtime, which is the gap that let this
+defect ship in the first place.**
+
+---
+
 AI-assisted (Claude Code, session 234); no `Co-Authored-By` per CLAUDE.md §7.
