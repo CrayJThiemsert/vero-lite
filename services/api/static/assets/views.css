@@ -680,7 +680,22 @@ select.pv-edit { height: 26px; cursor: pointer; }
    fighting the layout while a driver waits) and 48px touch targets. It reads as a
    form, not a console: no hover states, nothing that needs a cursor.
    ============================================================ */
-.case-wrap { max-width: 560px; margin: 0 auto; padding: 16px 14px 40px; }
+/* 🔴 `height: 100%` + `overflow-y: auto` are LOAD-BEARING, not cosmetic.
+   `.view` is `position: absolute; inset: 0; overflow: hidden` (theme.css), so a
+   content-sized root does not scroll — it is CLIPPED, silently. Measured on the
+   live fleet system before this fix: `.case-wrap` stood 919px tall inside a 614px
+   view, so 305px was unreachable and the last case row sat 265px below the fold
+   with no way to reach it. Nothing errored; the page simply ended.
+
+   This is the same contract `.hero-view` (hero.css) already uses, chosen over the
+   `.view-inner` fill-the-box pattern that A/C/F/H use because this view is one
+   linear column, not a pane layout. The `max-width` + `margin: 0 auto` above are
+   unchanged, exactly as `.hero-view` combines them.
+
+   ⚠️ CI has no JS runtime, so no test can observe the clip. The guard that pins
+   these two declarations reads THIS file:
+   `tests/api/test_static_ui.py::test_case_wrap_declares_the_scroll_contract`. */
+.case-wrap { max-width: 560px; margin: 0 auto; padding: 16px 14px 40px; height: 100%; overflow-y: auto; }
 .case-head h2 { margin: 4px 0 2px; font-size: 20px; }
 .case-head h3 { margin: 24px 0 8px; font-size: 15px; opacity: .8; }
 .case-sub { margin: 0 0 14px; font-size: 13px; opacity: .7; line-height: 1.5; }
