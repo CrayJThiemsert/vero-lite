@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-16T09:20:41+07:00
+last_updated: 2026-08-16T21:40:00+07:00
 session: 234
-current_batch: "s233–234 — fleet's last gate closed and then fleet WENT LIVE. s233 wrote and adopted AC-11's RoPA, cleared ADR-0037's OQ-3/D2.1 debts and made Tab J show real money (7 PRs, #1180–#1187). s234 executed PLAN-0103 Step 10 under Cray's typed §8 go: oct-fleet-maintenance is published system #3. PLAN-0103 COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED."
+current_batch: "s233–234 — fleet's last gate closed, fleet WENT LIVE, a human drove it, and it broke in a way CI structurally cannot see. s233 adopted AC-11's RoPA, cleared ADR-0037's OQ-3/D2.1 debts and made Tab J show real money. s234 executed PLAN-0103 Step 10 under Cray's typed §8 go (published system #3), archived PLAN-0103 11/11 + PLAN-0106 7/7, then fixed Tab I — which clipped 305px of itself — and REDEPLOYED under a second typed go. TWELVE PRs, #1180–#1191."
 current_actor: code
-blocked_on: "NOTHING blocks repo work and nothing blocks fleet — it is serving. The one governance question still open is ADR-0037 SD-1 (the D2.1 authorship fork); until it is ruled, D2.1 as written still governs."
-next_action: "Cray's — rule ADR-0037 SD-1 (§5.2 of the s233 handoff; the only surfaced decision with downstream consequences). Code-side: PR-B, the STATUS rehoming pass."
-head_commit: c66247c
-recent_commits: [c66247c, 8d48818, 3b9a084, a956951, ebf8543, e9cc984, 9b51553, 65fd58c, 2d9056c, 610369f]
+blocked_on: "NOTHING blocks repo work and nothing blocks fleet — it is serving the fixed build. The one governance question still open is ADR-0037 SD-1 (the D2.1 authorship fork); until it is ruled, D2.1 as written still governs."
+next_action: "Cray's — rule ADR-0037 SD-1 (the only surfaced decision with downstream consequences, open across three sessions). Code-side: PR-B, the STATUS rehoming pass."
+head_commit: 027986e
+recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 8d48818, 3b9a084, a956951]
 ---
 
 # vero-lite — Project Status
@@ -18,10 +18,11 @@ recent_commits: [c66247c, 8d48818, 3b9a084, a956951, ebf8543, e9cc984, 9b51553, 
 
 ## Current Focus
 
-> **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `c66247c`) — NINE
-> PRs merged (#1180–#1188), 0 open. Fleet's last gate closed, and then fleet
-> WENT LIVE. `oct-fleet-maintenance` is published system #3; PLAN-0103 is
-> COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
+> **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `027986e`) — TWELVE
+> PRs merged (#1180–#1191), 0 open. Fleet's last gate closed, fleet WENT LIVE, a
+> human drove it, and it broke in a way CI structurally cannot see.
+> `oct-fleet-maintenance` is published system #3 and is now serving the FIXED
+> build; PLAN-0103 is COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
 >
 > ✅ **AC-11's RoPA was written and ADOPTED** (`docs/compliance/ropa-fleet-cases.md`,
 > #1184) — the artifact the whole chain waited on. 🔴 **Its authorship is a
@@ -68,13 +69,33 @@ recent_commits: [c66247c, 8d48818, 3b9a084, a956951, ebf8543, e9cc984, 9b51553, 
 > (≈1.33 GiB vs ≈0.95) because it models containers at boot** — see the
 > PLAN-0103 Active TODO, which owns that residual.
 >
-> ⚠️ **Verified via the API from INSIDE the container, not by driving the UI
-> through Access** — Access blocks automation, so the rendered tab set on the
-> live domain is unverified from Code's side. Do-no-harm held: neither sibling
-> restarted (`Up 5 days` / `Up 4 days` on both sides of the bring-up).
+> Do-no-harm held on both host actions, against baselines captured **before** the
+> first one: `oct-energy-app` and `oct-procurement-app` never restarted.
 >
-> **Gates: 4113 passed / 8 skipped**, `mypy --strict services/` clean over 136
-> files, ruff + format clean over 631. Full record:
+> 🔴 **Then Cray drove the live surface through Access, and that is the session's
+> lesson.** It CLOSED the scope limit Code had recorded (the rendered tab set was
+> unverified — Access blocks automation): all six tabs render, Tab J shows
+> **฿33,705** live. **And it found a defect 4,113 green tests could not** — Tab I's
+> root stood **919px inside a 614px `overflow: hidden` view**, so **305px was
+> unreachable** with no scrollbar and no error. All six tabs were geometry-measured
+> and Tab I was the only one; a grep-based reading that Tab J shared it was
+> **refuted by the measurement**. Fixed by copying Tab J's contract (#1190),
+> guarded by a stylesheet-reading test, shipped live under a second typed §8 go.
+> **CI has no JS runtime — that is the gap, not a missing test; own Active TODO.**
+>
+> ✅ **Redeploy, measured:** the new image id **differs** from the deployed one
+> (proving the build was not a whole-cache no-op) · **only `app` recreated**, so
+> the tunnel never re-registered · the boot log shows the run seed skipped **and no
+> settled-history line** — both seeds' idempotency proven on real data · the audit
+> chain's `head_hash` came back **byte-identical**, which proves nothing was
+> written, a claim `intact: true` alone cannot make. ⚠️ `index.html` is served
+> `cache-control: no-store`, so a static-asset change needs no hard reload or edge
+> purge — that **narrows** PLAN-0100's "nothing purges the edge" residual without
+> closing it (fonts still stand).
+>
+> **Gates: 4114 passed / 8 skipped** (4113 + the new guard), `mypy --strict
+> services/` clean over 136 files, ruff + format clean over 631. Full record —
+> bring-up **and** redeploy addendum:
 > `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
 
 > **Session 232, 2026-08-15 (head_commit `b2fe45e` → `5425822`) — ELEVEN PRs
@@ -248,7 +269,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-08-16 | **s234 — PLAN-0103 Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3.** PLAN-0103 **COMPLETE 11/11** and PLAN-0106 **COMPLETE 7/7**, both marked Complete by Cray (typed) and ARCHIVED. 🔴 **The pre-flight found two steps every prose summary of the sequence had omitted** — the image was not on the host, and the host pull was correctly skippable (`deploy/` diff empty). 🔴 **Two documentation claims MEASURED FALSE:** a backslashed Windows path is stripped through `ssh`→PowerShell and fails as "file not found"; and *"302 proves a working origin"* is an overclaim refuted by s232's own evidence. | `c66247c` / [#1188](https://github.com/CrayJThiemsert/vero-lite/pull/1188) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
+| 2026-08-16 | **s234 — PLAN-0103 Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3.** PLAN-0103 **COMPLETE 11/11** and PLAN-0106 **COMPLETE 7/7**, both marked Complete by Cray (typed) and ARCHIVED. 🔴 **The pre-flight found two steps every prose summary of the sequence had omitted** — the image was not on the host, and the host pull was correctly skippable (`deploy/` diff empty). 🔴 **Two documentation claims MEASURED FALSE:** a backslashed Windows path is stripped through `ssh`→PowerShell and fails as "file not found"; and *"302 proves a working origin"* is an overclaim refuted by s232's own evidence. 🔴 **Cray then drove the live surface and found Tab I clipping 305px of itself — a defect 4,113 green tests could not see, because CI has no JS runtime.** Fixed, guarded by a stylesheet-reading test, and REDEPLOYED under a second typed §8 go; only `app` was recreated and the audit chain's `head_hash` came back byte-identical. | `027986e` / [#1188](https://github.com/CrayJThiemsert/vero-lite/pull/1188) / [#1190](https://github.com/CrayJThiemsert/vero-lite/pull/1190) / [#1191](https://github.com/CrayJThiemsert/vero-lite/pull/1191) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
 | 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled seven times (RoPA adopted · DSR 30 days · audit-chain residue = disclose BOTH halves · backups NONE, deliberate · DB access ssh-only · Cloudflare vendor deletion filed · recorder free text on its own line). 🔴 **ADR-0037 OQ-3 had been RULED 2026-08-14 while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it — it nearly sent the RoPA into the wrong file. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / [#1185](https://github.com/CrayJThiemsert/vero-lite/pull/1185) / [#1187](https://github.com/CrayJThiemsert/vero-lite/pull/1187) / `docs/compliance/ropa-fleet-cases.md` |
 | 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
 | 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every case that had accepted a quote, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1166](https://github.com/CrayJThiemsert/vero-lite/pull/1166) / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
@@ -294,6 +315,7 @@ reconcile, holding the table at ten.]_
 - [ ] **Landing-layer PLAN — CLOSED s226 as SUPERSEDED. NOT work to do; this row exists so nobody schedules it again.** PLAN-0103 Step 8 consumed the repo-side half (AC-9 ticked), and ADR-0036 D1/D2 place the landing surface, ingress map and Access policies **outside this repo** — a vero-lite file enumerating published systems is guard-rejected as a *shadow ingress map* (`tests/deploy/test_published_profiles.py`). Cray ruled s221 (typed): **no portal repo.** 🔴 **The remainder is CRAY'S DASHBOARD WORK — nothing for Code, no dispatch owed.** _[Trimmed s233 per R2 s141; measurement narrative in `docs/status-archive/`.]_
 - [ ] **PLAN-0100's residuals outlive the PLAN** (COMPLETE 13/13 and ARCHIVED s216; the demo is LIVE, REDEPLOYABLE and DRIVEN). **Read the archived PLAN, never a restatement:** `docs/plans/done/0100-exposure-published-demo-surface.md` (§"Step 11 closure verdict"; §"Defects the live run found" for D-1..D-5, incl. the *transient* D-5 Safe-Browsing flag on the Access login callback, cause UNDETERMINED; §Instrument failures). _[s222: the completion narrative is dropped per R2's ratified Active-TODO rule — `[x]` items older than the session window go, git history + the archived PLAN hold them. Only the live residuals stay.]_ **Live, and recorded ONLY here:** (1) ✅ **D-4 is FULLY DISCHARGED — RULED s217 (Cray, typed): option (a), teach the engine; delivered as PLAN-0104, COMPLETE 8/8 and ARCHIVED s228 (#1145, #1148, #1149, #1151).** The engine executes `count` WITH `group_by` end-to-end, and AC-7's live evidence closed s228 — **nothing in D-4 is outstanding.** _[Corrected s226 IN PLACE, `superseded by new info`: this item read "nothing built, no PLAN drafted, still the largest ungated Code item" and carried the seam analysis inline. A PLAN now owns both, so the analysis is not kept in two divergent copies — it lives in the PLAN and, in summary, in the PLAN-0104 Active TODO above. The demand this item existed to make — **"re-price before scheduling; '≈ one PR + tests' rested on the four-seam count"** — is **DISCHARGED**: drafting re-priced it, and the answer is that the refusal has **three independent enforcers**, so no single edit changes behaviour. The s225 measurement it carried (`group_by` touched at **eight or more** sites, the decisive omitted one being the system prompt) is rotated to `docs/status-archive/2026-h1-status.md`.]_ **Read `docs/plans/done/0104-nl-query-count-with-group-by.md`, never a restatement.** (2) **No cache-purge step or versioned font URLs** in the redeploy runbook — nothing in the pipeline purges the edge and `?v=cNN` does not reach fonts; a purge needs a Cloudflare API token = a new secret + host-state. (3) **`published.env` pins no `OLLAMA_KEEP_ALIVE`**, so the published surface silently inherits the code default of 30m.
 - [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it dies at the next context reset. 🔴 **BLOCKING GAP, measured s226 — the SERIES is banked here, but the METHOD is banked NOWHERE AT ALL:** no numerator, no denominator, no window is recorded anywhere in the repo. **A tripwire built today therefore emits a number that CANNOT be compared to those three.** One decision slot must be filled **before any build**: pin the metric definition (numerator / denominator / window), and rule whether the three banked figures are **reproducible under it** or must be **declared unrecoverable**.
+- [ ] **🆕 CI has NO JS RUNTIME — s234 measured the cost. UNSCHEDULED, not a commitment.** Tab I clipped **305px** of itself on the **live** system while **4,113 tests were green**; a human found it. **No oracle here can see a clip.** 🔴 **The guard shipped with the fix does NOT close this and says so in its own docstring** — `test_case_wrap_declares_the_scroll_contract` reads the stylesheet, so it catches a deletion and **cannot catch a re-clip by other means**. Same family as the row below: an oracle gap, not a missing test (cf. s232's *"the visual pass found what eleven green tests could not"*). Closing it is a JS-runtime-in-CI project — nothing drafted. Evidence: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` §Addendum.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet. 🔴 **SCOPING BLOCKER, measured s226 and RE-MEASURED s232 — scenario tests cannot be machine-scoped today, by marker OR by filename:** `pyproject.toml` still defines exactly **two** pytest markers, `slow` and `host_state`, so there is **no `scenario` marker**; and `tests/api/test_fleet_pilot_scenarios.py` is **plural** where every sibling is singular `_scenario.py`. ⚠️ **The count in this row was STALE and is corrected — trust the measurement, not the remembered number:** s226 recorded "eight sibling files"; the tree at `5425822` holds **13 files / 63 test functions** (12 singular + the 1 plural), spanning `tests/api/`, `tests/services/db/` and `tests/services/engine/` — **not `tests/api/` alone**. 🔴 **CI runs bare `pytest -q` with no `-m`, so `CLAUDE.md` §8's binding scenario-test rule is enforced by NOTHING mechanical today** — it holds only because each PLAN's ACs restate it. ✅ **XS prerequisite, worth doing on its own and independent of the CI job: add a `scenario` marker and normalise that filename** — **rename blast radius is ZERO** (repo-wide grep finds one hit, this row's predecessor). The CI job itself stays effort **L**, with three unresolved design questions — what **marks** a scenario test, what **enumerates** a seam, which **mutation engine**.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; nothing blocking remains.** **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. (A5 stays **parked** — no real Wialon export exists yet.) _[s226: the per-answer ledger A1–A7 is ROTATED to `docs/status-archive/2026-h1-status.md`; `docs/plans/done/0096-fleet-flow-completion-phase1.md` holds the detail.]_
 - [ ] **The AT-2 extraction — only the F-FACTORY half remains, owned by PLAN-0076 T1.** The criterion-vocabulary half SHIPPED as PLAN-0087 (ARCHIVED, #840/#841); SD-1 = (a) keeps the procedure-aware `ExecutorFactory` half with PLAN-0076 T1, guard `test_at2_extraction_obligation_is_owned` ARMED. Full detail: `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` + `docs/plans/0076-*.md` §A.
