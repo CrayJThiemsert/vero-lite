@@ -120,7 +120,15 @@ its hard boundary:
 > citations are in §"Closure evidence (AC-1..AC-6)" below, and each was read from
 > the tree at `5425822`, never from a restatement.
 >
-> 🔴 **AC-7 stays `[ ]` and this PLAN stays `Status: Draft` — RULED (Cray, typed,
+> ✅ **AC-7 CLOSED 2026-08-16 (s234) — 7/7.** The document its evidence named now
+> exists: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`, written from
+> fleet's bring-up under Cray's typed §8 go, citing this PLAN by number. The s233
+> ruling below is preserved rather than deleted — it was right when made, and it is
+> **superseded by new information** (the artifact arrived), not corrected as an
+> error.
+>
+> _[s233 ruling, as recorded then:]_ 🔴 **AC-7 stays `[ ]` and this PLAN stays
+> `Status: Draft` — RULED (Cray, typed,
 > 2026-08-15, s233).** AC-7's stated evidence is *"the PLAN-0103 Step-10 fleet go
 > record"*, **a document that does not yet exist and cannot until fleet's RoPA is
 > authored**. Ticking it today would assert closure with no artifact behind it —
@@ -129,6 +137,10 @@ its hard boundary:
 > true** (this PLAN merged to `main` at `5425822`, before any go), so what remains
 > is only the citation clause, which the go record discharges. **This PLAN closes
 > 7/7 and archives together with fleet's bring-up, not before.**
+>
+> ⚠️ **`Status:` stays `Draft` — that flip is Cray's, not Code's.** All seven ACs
+> are now closed on evidence; marking the PLAN **Complete** is the controller's
+> call, and the `git mv` to `docs/plans/done/` follows it rather than preceding it.
 
 - [x] **AC-1 — the disclosure exists as its own element on fleet's published
   surface.** A case-persistence disclosure renders on the published fleet
@@ -186,11 +198,19 @@ its hard boundary:
   **per-file**, not a build number (currently e.g. `app.js?v=c49`,
   `view-case.js?v=c44`); differing numbers across files are normal.
   Evidence: the index.html diff touching exactly the edited assets.
-- [ ] **AC-7 — the ordering holds.** This PLAN is merged to `main` (wording
+- [x] **AC-7 — the ordering holds.** This PLAN is merged to `main` (wording
   Cray-ruled, tests green) **before** fleet's Step-10 bring-up go, and that
   go record cites this PLAN by number alongside AC-11's RoPA. Evidence: the
   PLAN-0103 Step-10 fleet go record (authored there, not here — the
   bring-up itself is out of scope below; this AC binds only the sequence).
+  ✅ **CLOSED 2026-08-16 (s234).** Both clauses, in the order the AC names
+  them: this PLAN merged to `main` at `5425822` on **2026-08-15**; fleet's
+  typed §8 go was given on **2026-08-16**; and the go record —
+  `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` — cites this PLAN
+  by number in its "The go" section, alongside
+  `docs/compliance/ropa-fleet-cases.md` by path for AC-11. The disclosure
+  this PLAN shipped was therefore on the surface **before** any visitor could
+  reach it, which is the whole content of the ordering claim. 7/7.
 
 ## Closure evidence (AC-1..AC-6)
 

@@ -629,6 +629,22 @@ backstop, not the plan: read the `alembic current` output rather than relying on
 
 ### 9.1 Start the system
 
+🔴 **The image must already be on the host — §7, and this step is easy to skip.**
+_[Added 2026-08-16, measured on a third bring-up.]_ A published compose declares
+`build:` with **no `image:`**, and `docker compose up` builds only when the image is
+missing — so on a first bring-up it will try to build **on the deploy host**, which
+§7 documents as failing outright (the credential helper cannot run without an
+interactive desktop session). Confirm first, and note that a `<system>-app` image is
+named after its compose project, so another system's image does not satisfy it:
+
+```bash
+ssh <host> docker images --no-trunc <system>-app
+```
+
+Empty output means go back to §7 and ship it. Every prose summary of this sequence
+that has been written so far — *"go record → schema step → `up -d`"* — omits this
+step; §7 has it, the summaries do not, and the summaries are what people follow.
+
 ```bash
 docker compose -f deploy/published/oct-energy/docker-compose.yml up -d
 ```
@@ -659,9 +675,19 @@ Recorded so the next person can tell "working" from "started but wrong" without 
   `{"status":"ok",…}` — the app answers on its own network even while the public edge
   answers `302`.
 
-**Then re-run the §6 verification.** With the tunnel now live, `302` on every path proves
-Access is in front of a *working* origin; a `200` would mean the gate is not applied and the
-demo is open. Probe several paths, not one — and drive the loop from a **script file**, or a
+**Then re-run the §6 verification.** A `200` on any path would mean the gate is not applied
+and the demo is open — that is the read worth taking, and it is a no-regression read.
+
+⚠️ **It does NOT prove the origin works, and this sentence used to claim that it did.**
+_[Corrected 2026-08-16.]_ Access intercepts before the request is routed to the tunnel, so
+its `302` is **origin-independent**: a `302` on every path has been measured against a
+system with no container and no connector running at all. For the same reason the edge
+cannot tell an **admitted** route from a **refused** one — the policy gates the hostname and
+its Path is empty, so an excluded path answers `302` exactly like an admitted one. Origin
+health is proven from **inside** the container; the allowlist is proven by the offline
+`ingress rule` check. Neither is observable from outside the gate.
+
+Probe several paths, not one — and drive the loop from a **script file**, or a
 variable that fails to expand will silently send every request to `/` and you will conclude
 you tested seven things when you tested one.
 

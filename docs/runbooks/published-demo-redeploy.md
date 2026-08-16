@@ -221,14 +221,29 @@ deciding what to build, and the connector declares that variable
 required-with-no-default, so a bare `build app` exits 1 without ever building.
 
 Remote half — the tar goes in on **stdin**, so there is no staging path to create
-and no Windows path in any command:
+and no Windows path in the transfer:
+
+🔴 **Write every host path with FORWARD slashes.** _[Corrected 2026-08-16, measured:
+this block previously used backslashes.]_ Driven from WSL, a backslashed path is
+handed through `bash -lc` → `ssh` → the host's **PowerShell**, and **every backslash
+is stripped on the way**. What survives is a *relative* path resolved against the SSH
+home directory, and the failure names a plausible-looking absolute path:
+
+```
+open C:\Users\…\projectsvero-litedeploypublishedoct-…-docker-compose.yml:
+The system cannot find the file specified.
+```
+
+So it reads as *"the file is missing"* and sends you checking the host checkout, which
+is intact. Docker on Windows accepts forward slashes, and they cross every shell layer
+unchanged. Same family as Lesson #0007, one layer further out.
 
 ```bash
 ssh <host> docker tag oct-energy-app:latest oct-energy-app:prev
 ssh <host> docker load < /tmp/app.tar
 ssh <host> docker image inspect oct-energy-app:latest
-ssh <host> git -C C:\projects\vero-lite pull --ff-only
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d
+ssh <host> git -C C:/projects/vero-lite pull --ff-only
+ssh <host> docker compose -f C:/projects/vero-lite/deploy/published/oct-energy/docker-compose.yml -p oct-energy up -d
 ssh <host> docker inspect oct-energy-app
 ```
 
@@ -239,7 +254,7 @@ the second proves the deploy took effect.
 If `cloudflared/config.yml` changed in that pull, add:
 
 ```bash
-ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml -p oct-energy up -d --force-recreate cloudflared
+ssh <host> docker compose -f C:/projects/vero-lite/deploy/published/oct-energy/docker-compose.yml -p oct-energy up -d --force-recreate cloudflared
 ```
 
 ---
