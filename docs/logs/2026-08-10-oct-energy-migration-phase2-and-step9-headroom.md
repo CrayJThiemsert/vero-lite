@@ -111,7 +111,7 @@ Diagnosis came from probing the host — `Get-CimInstance Win32_Process` returns
 ## Reference
 
 - Procedure: `deploy/published/oct-energy/README.md` §"Migration — if this system is already running as `vero-published`"; stop condition `docs/runbooks/published-demo-redeploy.md` §0b (which this run clears — it now returns empty).
-- PLAN: `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` — Step 9, Step 10, AC-10.
+- PLAN: `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` — Step 9, Step 10, AC-10.
 - ADRs: ADR-0036 D6.3 (headroom before multiplying) + OQ-2 (aggregate LLM posture, still open); ADR-0035 D1(3) (the domain is not this repo's property), D6 (prompt-log retention).
 - Pre-committed read: `.claude/state/goal.json` (session 221, C1 + J1–J7).
 - Operator-grade detail: `.claude/handoffs/session-221/` (gitignored).

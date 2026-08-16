@@ -169,7 +169,7 @@ login path that does not exist.
 
 ## Reference
 
-- PLAN: `docs/plans/0103-portal-landing-and-per-system-published-profiles.md` §Step 10, AC-10.
+- PLAN: `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` §Step 10, AC-10.
 - ADRs: ADR-0035 D1(3) + OQ-6 (domain naming, open) · ADR-0036 D2 (vertical-as-system,
   the two-artifact price) · ADR-0037 (DB posture — not engaged, procurement is DB-less).
 - Runbook: `docs/runbooks/published-demo-bring-up.md` (corrected in the same PR).

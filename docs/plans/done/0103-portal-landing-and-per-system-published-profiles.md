@@ -1,6 +1,10 @@
 # PLAN-0103: The multi-vertical demo portal — vero-lite's side: per-system published profiles + the landing/framing content spec
 
-**Status:** Draft
+**Status:** Complete — 2026-08-16 (session 234). All 11 ACs closed. The last two
+were AC-10 and AC-11, both discharged by fleet's bring-up as published system #3
+under Cray's typed §8 go; `deploy/published/` holds exactly three systems and all
+three are live. Closeout record:
+`docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
 **Owner:** Claude Code (execution) · Cray (SD rulings, every §8 go, all copy/tone calls)
 **Created:** 2026-08-09
 **Related ADRs:** ADR-0036 (D6 names this PLAN — its scope list is binding here),

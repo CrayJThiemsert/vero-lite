@@ -295,8 +295,8 @@ account — not by anything observable from outside the gate.
 
 ## Reference
 
-- PLAN: [`docs/plans/0103-portal-landing-and-per-system-published-profiles.md`](../plans/0103-portal-landing-and-per-system-published-profiles.md) §Step 10, AC-10, AC-11.
-- PLAN: [`docs/plans/0106-fleet-case-persistence-disclosure.md`](../plans/0106-fleet-case-persistence-disclosure.md) AC-7 — this record is its cited evidence.
+- PLAN: [`docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md`](../plans/done/0103-portal-landing-and-per-system-published-profiles.md) §Step 10, AC-10, AC-11.
+- PLAN: [`docs/plans/done/0106-fleet-case-persistence-disclosure.md`](../plans/done/0106-fleet-case-persistence-disclosure.md) AC-7 — this record is its cited evidence.
 - RoPA: [`docs/compliance/ropa-fleet-cases.md`](../compliance/ropa-fleet-cases.md) — AC-11's artifact, cited by path in "The go" above.
 - ADRs: ADR-0035 D1(3) + OQ-6 (domain naming, open) · ADR-0036 D2 (the two-artifact price) ·
   ADR-0037 (this system's DB posture — engaged, unlike procurement's bring-up).

@@ -75,7 +75,7 @@ event that has been ruled out, and that is worth folding in.
 
 ## Reference
 
-- PLAN: `docs/plans/0103-portal-landing-and-per-system-published-profiles.md`
+- PLAN: `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md`
   §Step 8 (8b), AC-9's second clause, Step 1's branch, SD-2 / SD-6 / SD-7 / SD-8,
   LOCKED-2/3/4.
 - ADRs: ADR-0036 D1/D2/D4/D6 (portal boundary, vertical-as-system, the

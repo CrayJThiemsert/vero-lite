@@ -310,3 +310,47 @@ the cut, not by memory.
 > the refusal had **three independent enforcers**, which is why the *"≈ one PR +
 > tests"* price was wrong twice; and **a guard that reads its own copy of the
 > answer cannot fail**.
+
+<!-- Rotated 2026-08-16 (session 234) from docs/STATUS.md Current Focus to keep
+     the window at four blocks. Target is the NEWEST 2026-h1*-current-focus.md
+     chain file; Recent-Decisions rows archive to the unlettered base instead. -->
+
+> **Session 228, 2026-08-13 (head_commit `75243b0` → `ad2804d`) — one PR
+> merged (#1151), 0 open. PLAN-0104 Step 7 ran under Cray's typed §8 go, AC-7
+> CLOSED, and the PLAN is COMPLETE 8/8 and ARCHIVED. The headline number is the
+> least interesting thing in it.**
+>
+> ✅ **All four pre-committed reads PASS, on the FIRST pass** — nl-13 emitted
+> `count` WITH `group_by: "asset_id"` (no retry) and scored `correct` under the
+> tolerance-free `groups` scorer, groups relabelled to display names.
+> **Read the evidence, never a restatement:**
+> `benchmarks/nl_query_feasibility/RESULTS.md` §"Addendum — PLAN-0104 Step 7
+> live evidence run".
+>
+> 🔴 **Citing 12/13 as an improvement over `11/12` is a DEFECT.** The prior
+> figure is **RETIRED as non-comparable, not overwritten**, on two
+> independently sufficient grounds: the shared system prompt changed in #1149,
+> and the gold set grew 12 → 13. ⚠️ **The obvious citation is a TRAP** — the
+> `11/12` in that file's arm-comparison table is **text-to-SQL**; the prior
+> **engine-A** figure is AC-9's, in its own addendum. They coincidentally share
+> a number.
+>
+> ✅ **The lone miss (nl-06) was re-run once per clause 3, failed again, and was
+> investigated BEFORE merge — verdict: NOT a PLAN-0104 regression.** #1149's
+> diff changes only the OPERATION sentence (FILTERS is **byte-identical**); the
+> class is the catalogued simple-list filter-omission variance; and **the victim
+> MOVED** — AC-9's miss was nl-01, `correct` here. Model-swap and prompt-tuning
+> are both already PROVEN NEGATIVE on this axis. ⚠️ **The one alternative a
+> single sweep cannot refute to zero is RECORDED:** that the lengthened
+> OPERATION sentence dilutes attention to FILTERS. **Reopen condition, stated in
+> place:** a sweep showing filter-omission **concentrating**, not **moving**.
+>
+> 🔴 **Bookkeeping, `was an error`:** STATUS asserted "AC-1..AC-6 and AC-8 are
+> CLOSED" while **every AC checkbox was still `[ ]` on disk**; all eight are now
+> ticked. ⚠️ **`c80df02` corrected the other direction — the Step 7 dumps are
+> UNTRACKED, not gitignored**, so the raw per-case evidence survives **nowhere
+> in history** and is **not protected from an accidental commit**.
+>
+> **Gates: 4045 passed / 8 skipped**, `mypy --strict services/` clean over 134
+> files, ruff + format clean **on the HEAD tree**; `merge_tree_identical=YES`
+> between tested `c80df02` and merge `ad2804d` (first parent `33dfc26`).

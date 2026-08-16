@@ -1,6 +1,9 @@
 # PLAN-0106: Fleet's own in-app case-persistence disclosure (ADR-0037 D2.4, ruled ก)
 
-**Status:** Draft
+**Status:** Complete — 2026-08-16 (session 234). All 7 ACs closed. AC-7's ordering
+clause was the last, discharged when fleet's Step-10 go record cited this PLAN by
+number: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. The disclosure
+this PLAN shipped was on the surface before any visitor could reach it.
 **Owner:** both — Cray rules SD-1..SD-3 and reviews wording; Claude Code implements
 **Created:** 2026-08-14 (session 232)
 **Related ADRs:** ADR-0037 (D2.4 — the obligation this PLAN discharges; D4
@@ -138,9 +141,10 @@ its hard boundary:
 > is only the citation clause, which the go record discharges. **This PLAN closes
 > 7/7 and archives together with fleet's bring-up, not before.**
 >
-> ⚠️ **`Status:` stays `Draft` — that flip is Cray's, not Code's.** All seven ACs
-> are now closed on evidence; marking the PLAN **Complete** is the controller's
-> call, and the `git mv` to `docs/plans/done/` follows it rather than preceding it.
+> ✅ **Marked `Complete` by Cray (typed, 2026-08-16, s234)** and archived in the
+> same change. The flip was deliberately withheld from Code until that ruling —
+> all seven ACs were closed on evidence a step earlier, and the PLAN still sat at
+> `Draft` for exactly as long as it took the controller to say so.
 
 - [x] **AC-1 — the disclosure exists as its own element on fleet's published
   surface.** A case-persistence disclosure renders on the published fleet

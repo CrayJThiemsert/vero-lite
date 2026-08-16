@@ -391,7 +391,7 @@ three staleness items unrelated to fleet.
 ⚠️ **ADR-0037 D2.4 — the in-app disclosure** that typed case text is persisted and
 for how long. **RULED (Cray, typed, 2026-08-14): fleet gets its own**, not a
 widening of the shared D6 prompt-log banner. It is owned by
-**PLAN-0106** (`docs/plans/0106-fleet-case-persistence-disclosure.md`), and its
+**PLAN-0106** (`docs/plans/done/0106-fleet-case-persistence-disclosure.md`), and its
 wording is Cray-reviewed there, in that PLAN's SD-1 — **not here, and not in the
 RoPA**.
 
