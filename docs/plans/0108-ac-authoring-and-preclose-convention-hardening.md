@@ -75,15 +75,45 @@ reads the artifact — never its own constant); wording-quality claims are
   `docs/plans/0000-template.md`'s Acceptance Criteria section (today the bare
   `- [ ] ...` at `:12-14`) states the authoring rule: every AC declares
   `check` (command + timeout given) / `judge` (artifact + pass/fail read
-  named) / `evidence` (explicitly not a gate) — **plus `measure` if and as the
-  companion ADR ratifies it, incorporated verbatim from the ADR, not decided
-  here** — and the Verification section (today `:25-27`) additionally
+  named) / `evidence` (explicitly not a gate) / **`measure`** — and the
+  Verification section (today `:25-27`) additionally
   prompts the coverage question: "if every criterion passes, does the goal
   hold? Name what is NOT covered." A guard test
   `tests/tools/test_plan_template_contract.py` reads the template file and
   asserts the bucket tokens and the coverage prompt are present (token-light
   on purpose — presence is checkable; quality is AC-2/AC-3's judge work).
   Command: `uv run --no-sync pytest tests/tools/test_plan_template_contract.py -q`.
+  > **`measure` is RATIFIED, no longer conditional** (ADR-0038 D3, Accepted
+  > 2026-08-17): a `measure` AC closes against a committed measurement artifact
+  > in **`docs/logs/`** carrying metric/value/units, a re-runnable procedure,
+  > the against-SHA, who/when, a pass predicate fixed before the number was
+  > taken, a **per-instance** positive control, and — required by the same
+  > ruling — the **list of paths the measurement covers**. Port the field list
+  > verbatim from the ADR; this PLAN does not re-derive it.
+- [ ] **AC-5 [check] — the template carries the staleness-guard obligation.**
+  *(This is ADR-0038 OQ-5, resolved here — see the note below for why the owner
+  is the template rather than a build task.)* The template's `measure` section
+  states: *a `measure` AC must name its covered paths, and if the staleness
+  guard does not yet exist, building it is in scope for the PLAN writing the
+  first `measure` AC.* The AC-1 guard test additionally asserts this sentence's
+  tokens are present. Command: the same
+  `uv run --no-sync pytest tests/tools/test_plan_template_contract.py -q`.
+  > **Why the obligation lives in the template and not in a build task now.**
+  > ADR-0038 ratifies the staleness guard as **required** — nothing reads the
+  > against-SHA field, so a real measurement can be re-cited against a tree it
+  > was never taken on. But **zero `measure` artifacts exist today**, and
+  > PLAN-0107 has none (14 `[check]`, 1 `[evidence]`, 0 `[measure]`; it LOCKS
+  > the bucket out of scope). A guard built now would walk an empty set and
+  > pass — the null-glob shape, and precisely **class C1**, which this ADR
+  > promoted to binding hours earlier. Building it before it can redden would
+  > be the ADR violating itself.
+  >
+  > So the obligation attaches where its trigger fires. Per ADR-0038's own
+  > load-bearing finding — knowledge survives by **re-presentation, not
+  > location** — the template is the surface a `measure` criterion is born on,
+  > and therefore the only place the obligation is guaranteed to be read at the
+  > moment it becomes actionable. A tracking-stub PLAN or a STATUS TODO would
+  > record it somewhere correct and unread, which is the C4 shape.
 - [ ] **AC-2 [judge] — the runtime-verb rule discriminates.** The template
   carries the rule: *an AC claiming a runtime verb (renders / serves / boots /
   streams / persists) whose evidence is a source-text read is mislabelled —
