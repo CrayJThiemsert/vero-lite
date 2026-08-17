@@ -416,3 +416,64 @@ and stays in STATUS. Verified by grep before the cut, not by memory.
 > Attribute by cause and let the count fall out:
 > [`docs/lessons/0042-a-remembered-baseline-is-not-evidence.md`](lessons/0042-a-remembered-baseline-is-not-evidence.md)
 > holds the per-cause table and the named tests.
+
+
+## Rotated this reconcile — session 236 (2026-08-18)
+
+Rotated out of `docs/STATUS.md` while reconciling **PR-B COMPLETE + PLAN-0107
+Phase A CLOSED 6/6** (#1201–#1204, `218a521` → `de3295a`). This is the session-231
+Current Focus block — the oldest in the window, displaced by the session-236 block.
+
+⚠️ **Carve-out checked before rotating, not assumed.** Every load-bearing fact in the
+block survives outside it, grep-verified: PLAN-0105 is archived at
+`docs/plans/done/0105-fleet-case-retention-in-app-deletion.md` (its four SD rulings
+appear 30 times there); the child-to-child FK ordering defect keeps its guard at
+`tests/services/db/test_case_retention_completeness.py`
+(`test_the_declared_order_respects_every_child_to_child_dependency`); and #1159's
+RoPA corrections live in `docs/compliance/ropa-published-demo.md`. The PLAN-0105
+**Active TODO row is deliberately NOT trimmed** and still carries the live
+DSR-on-request remainder.
+
+> **Session 231, 2026-08-14 (head_commit `9072760` → `b2fe45e`) — eight PRs
+> MERGED (#1159–#1167), 0 open. vero-lite gained its FIRST row-retention
+> control, and PLAN-0105 went from undrafted to COMPLETE 11/11 and ARCHIVED in
+> one session.**
+>
+> ✅ **What ships:** fleet's visitor-opened repair cases, their six FK children
+> and their upload directories are deleted **90 days after `opened_at`** by an
+> in-app task — the sweep (`services/db/repair_case_retention.py`), the task
+> (`services/api/case_retention_task.py`, wired into `lifespan` with **zero
+> added branches**), the eighth-table completeness guard (AC-5), fleet's
+> `CASE_RETENTION_ENABLED=true` profile flag with a both-directions deploy
+> guard, and the scenario test (AC-10). **Read the archived PLAN, never a
+> restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md`.
+>
+> 🔴 **The one finding a future reader must NOT re-derive — classified `was an
+> error`.** `repair_case_accepted_quote` holds a **composite FK to
+> `repair_case_quote`**, and Step 1's declared deletion order deleted the quote
+> **FIRST** — so the sweep raised `ForeignKeyViolation` on every case that had
+> ever accepted a quote, was caught by its own fail-soft, and **retried
+> forever**. **Retention would silently never have completed on real data while
+> every unit test stayed green.** ⚠️ **Neither existing guard could see it:**
+> Step 1's unit test inserted a task event and no quote pack, and **AC-5 checks
+> membership, not order**. Only the Step-6 scenario, on the first realistic
+> case, failed. Fixed by one measured swap (**exactly one** child-to-child edge
+> exists) and guarded by
+> `test_the_declared_order_respects_every_child_to_child_dependency`.
+>
+> ✅ **Four SD slots RULED (Cray, typed, 2026-08-14) and folded in:** SD-1 **(b)**
+> ordered app-level child deletes + the AC-5 guard (no migration; the loud
+> fail-closed DELETE posture preserved) · SD-2 **(a)** files first, then rows ·
+> SD-3 **no status exemption** — MEASURED: no code path closes a case, so an
+> OPEN exemption would exempt **every** row — **and** the chain's dangling
+> `case_id` pointer stated as intended design · SD-4 **(a)**
+> `repair_case_run_link` rows deliberately RETAINED.
+>
+> ⚠️ **What `Complete` does NOT mean.** **PLAN-0103 AC-11's RoPA is still
+> Cray's** (it now has a shipped control to describe), the **DSR-on-request path
+> for case rows is still undefined**, and **fleet's bring-up still needs its own
+> typed §8 go**.
+>
+> **Also landed:** #1159 corrected the RoPA's deployment-status line and two §7
+> controls `owed` → `built` (`docs/compliance/ropa-published-demo.md`) —
+> factual only, no controller judgment touched.

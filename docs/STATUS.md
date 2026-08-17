@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-17T21:10:00+07:00
-session: 235
-current_batch: "s235 — s234's Tab I clip generalised into law: a five-specialist audit, ADR-0038 RATIFIED (5 classes binding, 4 SDs ruled), CLAUDE.md +4 rules, PLAN-0107/0108 drafted. EIGHT PRs, #1193–#1200."
+last_updated: 2026-08-18T01:05:00+07:00
+session: 236
+current_batch: "s236 — STATUS reconciled and PR-B's carve-out rehome COMPLETE (61,736 → 48,852 B, under soft target); PLAN-0107 Phase A CLOSED 6/6 and CI gained four oracles. FOUR PRs, #1201–#1204."
 current_actor: code
-blocked_on: "NOTHING blocks repo work; main is green and carries no known defect. ADR-0037 SD-1 (the D2.1 authorship fork) stays Cray's — unruled across four sessions; until ruled, D2.1 as written governs."
-next_action: "Ratify PLAN-0107, then execute Phase A (zero-new-dependency work). Cray's: ADR-0037 SD-1. Code-side: PR-B's carve-out rehome — 11 rows, enumerated s235."
-head_commit: 218a521
-recent_commits: [218a521, 989e40a, f6cf8d3, f452e8a, 3b34b13, 6642fe7, b2327b0, c43cb3b, 364f055, f576af2]
+blocked_on: "NOTHING blocks repo work; main is green. ADR-0037 SD-1 stays Cray's — unruled across FIVE sessions. ADR-0038's three-strike counter has NO owner; lesson #0042 just fired a third time."
+next_action: "PLAN-0107 Phase B (② data reach) — nothing gates it; follow the ACs, not the stale Steps prose. Cray's: ADR-0037 SD-1, and an owner for ADR-0038's counter."
+head_commit: de3295a
+recent_commits: [de3295a, 4e3818f, 24d4df1, 77c22bf, d24849f, 3306067, 0449de0, 253440b, 29a95f6, 52121b9]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,58 @@ recent_commits: [218a521, 989e40a, f6cf8d3, f452e8a, 3b34b13, 6642fe7, b2327b0, 
 ---
 
 ## Current Focus
+
+> **Session 236, 2026-08-17→18 (head_commit `218a521` → `de3295a`) — FOUR PRs
+> MERGED (#1201–#1204), 0 open. The session that paid s235's STATUS debt in full
+> and then built the first four oracles PLAN-0107 asks for.**
+>
+> ✅ **STATUS is reconciled and PR-B is COMPLETE — 61,736 → 48,852 B, under R1's
+> 49,152 B soft target for the first time in this chain**, headroom 3,800 →
+> **16,684 B**. The rehome, not the trim, is what paid: every carve-out fact moved
+> to **the artifact whose reader needs it**, then the row collapsed to a pointer
+> (PLAN-0100's residuals → its own §Post-archival amendment, 2,202 → 480 B). Six
+> facts came out of a **gitignored** handoff into
+> `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`; nine rows out of
+> STATUS into code, tests, a benchmark module and `docs/logs/`. **Read those, never
+> a restatement.**
+>
+> ✅ **PLAN-0107 Phase A CLOSED 6/6** (#1204) — CI gained four oracles it did not
+> have: `node --check` over every shipped JS asset · an asset↔reference
+> **bijection** (chosen over a floor constant: a `≥ 20` floor over 21 files has one
+> file of headroom and its misfire remedy is editing the number) · a **per-vertical
+> lifespan boot smoke** · `mypy --strict verticals/` plus the two pre-commit hooks
+> that had only ever run on a developer's laptop. **Measured bill: `gate` 7m53s →
+> 9m7s ≈ +74 s, no new dependency.** Verified at **step level**, not job level — a
+> green job cannot distinguish a step that passed from one that was skipped.
+>
+> 🔴 **AC-3's own central claim was MEASURED FALSE in the configuration CI runs.**
+> The AC said the smoke makes §3's fail-loud contract CI-visible; corrupting each
+> spec in turn, it is **CAUGHT** for fleet_maintenance, building_materials,
+> supply_chain and procurement and **MISSED for `energy`** — the **default**
+> vertical, and the one spec-shipping factory that never calls `load_procedures`.
+> Booting only the default would have been green and blind to exactly what CI runs.
+> Fixed by booting once per spec-shipping vertical; **the `energy` residual stays
+> OPEN** in `tools/ci/boot_smoke.py`'s docstring.
+>
+> 🔴 **CI caught what no local probe structurally could.** Phase A's first run died
+> on `ModuleNotFoundError: No module named 'services'` — the runtime venv is
+> `--no-install-project` by design, and `python <file>` puts the *script's*
+> directory on `sys.path` where `python -c` put the CWD. **Every local run used the
+> dev venv, which has the project installed, so the failing state was unreachable
+> there.** A ② *reach* failure inside the PLAN that exists to close ② failures.
+> Fixed by **building** that condition locally and reproducing the error, not by
+> reasoning about it.
+>
+> 🔴 **ELEVEN inherited claims were checked and EIGHT were wrong** — including two
+> live falsehoods in STATUS itself (`deploy.py`'s "broken" compose path, fixed a day
+> earlier; *"AC-11's RoPA is still Cray's"*, adopted at s233), a guard cited at the
+> wrong file, and a scenario census stale in both figures (13/63 → **14/69**, the
+> third drift of that number). **The base rate is high enough that checking an
+> inherited claim is not optional.**
+>
+> **Gates, every PR: `pytest tests/` 4115 → 4123 passed / 8 skipped**, `mypy
+> --strict services/ verticals/` clean over **200** files, ruff + format clean over
+> 634, CI `gate` pass.
 
 > **Session 235, 2026-08-17 (head_commit `027986e` → `218a521`) — EIGHT PRs
 > MERGED (#1193–#1200), 0 open. s234's Tab I clip was asked to generalise beyond
@@ -196,51 +248,7 @@ recent_commits: [218a521, 989e40a, f6cf8d3, f452e8a, 3b34b13, 6642fe7, b2327b0, 
 > genuinely undesigned:** `repair_case.opened_by` has no foreign key and personas
 > add no visitor identity, so a request matches rows **only by content**.
 
-> **Session 231, 2026-08-14 (head_commit `9072760` → `b2fe45e`) — eight PRs
-> MERGED (#1159–#1167), 0 open. vero-lite gained its FIRST row-retention
-> control, and PLAN-0105 went from undrafted to COMPLETE 11/11 and ARCHIVED in
-> one session.**
->
-> ✅ **What ships:** fleet's visitor-opened repair cases, their six FK children
-> and their upload directories are deleted **90 days after `opened_at`** by an
-> in-app task — the sweep (`services/db/repair_case_retention.py`), the task
-> (`services/api/case_retention_task.py`, wired into `lifespan` with **zero
-> added branches**), the eighth-table completeness guard (AC-5), fleet's
-> `CASE_RETENTION_ENABLED=true` profile flag with a both-directions deploy
-> guard, and the scenario test (AC-10). **Read the archived PLAN, never a
-> restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md`.
->
-> 🔴 **The one finding a future reader must NOT re-derive — classified `was an
-> error`.** `repair_case_accepted_quote` holds a **composite FK to
-> `repair_case_quote`**, and Step 1's declared deletion order deleted the quote
-> **FIRST** — so the sweep raised `ForeignKeyViolation` on every case that had
-> ever accepted a quote, was caught by its own fail-soft, and **retried
-> forever**. **Retention would silently never have completed on real data while
-> every unit test stayed green.** ⚠️ **Neither existing guard could see it:**
-> Step 1's unit test inserted a task event and no quote pack, and **AC-5 checks
-> membership, not order**. Only the Step-6 scenario, on the first realistic
-> case, failed. Fixed by one measured swap (**exactly one** child-to-child edge
-> exists) and guarded by
-> `test_the_declared_order_respects_every_child_to_child_dependency`.
->
-> ✅ **Four SD slots RULED (Cray, typed, 2026-08-14) and folded in:** SD-1 **(b)**
-> ordered app-level child deletes + the AC-5 guard (no migration; the loud
-> fail-closed DELETE posture preserved) · SD-2 **(a)** files first, then rows ·
-> SD-3 **no status exemption** — MEASURED: no code path closes a case, so an
-> OPEN exemption would exempt **every** row — **and** the chain's dangling
-> `case_id` pointer stated as intended design · SD-4 **(a)**
-> `repair_case_run_link` rows deliberately RETAINED.
->
-> ⚠️ **What `Complete` does NOT mean.** **PLAN-0103 AC-11's RoPA is still
-> Cray's** (it now has a shipped control to describe), the **DSR-on-request path
-> for case rows is still undefined**, and **fleet's bring-up still needs its own
-> typed §8 go**.
->
-> **Also landed:** #1159 corrected the RoPA's deployment-status line and two §7
-> controls `owed` → `built` (`docs/compliance/ropa-published-demo.md`) —
-> factual only, no controller judgment touched.
-
-_[The session-229 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
+_[The session-231 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
 this reconcile, keeping the window at four.]_
 
 ## Prior focus (archived)
@@ -260,18 +268,18 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-18 | **s236 — PR-B's carve-out rehome COMPLETE (61,736 → 48,852 B, under R1's soft target) and PLAN-0107 Phase A CLOSED 6/6.** CI gained four oracles: JS syntax, asset bijection, per-vertical lifespan boot, widened mypy + two adopted hooks (**+74 s, no new dependency**). 🔴 **AC-3's own claim was MEASURED FALSE for the DEFAULT vertical** — the boot smoke misses a malformed spec on `energy`. 🔴 **Eleven inherited claims checked, EIGHT wrong.** | `de3295a` / [#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204) / `docs/plans/0107-*.md` |
 | 2026-08-17 | **s235 — ADR-0038 RATIFIED (5 classes binding, 4 SDs ruled); `CLAUDE.md` BOUND with four new rules; 8 PRs (#1193–#1200).** 🔴 **The organising law:** a defect is visible only when an INSTRUMENT reads the artifact, the DATA reaches the failing state, and someone ARMED it as a gate. 🔴 **A live `main` defect fixed** (`deploy.py`'s dead compose path). ✅ §8's scenario rule is genuinely obeyed: 17 files, 0 violations. | `218a521` / [#1197](https://github.com/CrayJThiemsert/vero-lite/pull/1197) / [#1200](https://github.com/CrayJThiemsert/vero-lite/pull/1200) / `docs/adr/0038-*.md` |
 | 2026-08-16 | **s234 — Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3;** PLAN-0103 **11/11** and PLAN-0106 **7/7**, both COMPLETE, ARCHIVED. 🔴 **Cray drove the live surface and found Tab I clipping 305px of itself — a defect 4,113 green tests could not see, because CI has no JS runtime.** Fixed, guarded, REDEPLOYED under a second typed go. Pre-flight omissions, two false doc claims and every redeploy reading are in the log. | `027986e` / [#1190](https://github.com/CrayJThiemsert/vero-lite/pull/1190) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
 | 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled **seven** times; every ruling is stamped on the RoPA itself. 🔴 **ADR-0037 OQ-3 had been RULED while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / `docs/compliance/ropa-fleet-cases.md` |
 | 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
-| 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every case that had accepted a quote, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1166](https://github.com/CrayJThiemsert/vero-lite/pull/1166) / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
+| 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every accepted-quote case, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
 | 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
 | 2026-08-13 | **s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go; AC-7 CLOSED, PLAN COMPLETE 8/8 and ARCHIVED.** 🔴 **The fresh 12/13 RETIRES the prior figure as non-comparable — it does NOT beat it** (prompt changed in #1149; gold grew 12 → 13), and the obvious citation is a trap: that file's arm-comparison `11/12` is **text-to-SQL**, not engine-A's. nl-06's miss was re-run, failed again, investigated — **not a regression; the victim moved**. | `ad2804d` (head_commit) / [#1151](https://github.com/CrayJThiemsert/vero-lite/pull/1151) / `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum |
 | 2026-08-13 | **s227 — PLAN-0104 Steps 2+3+4 as ONE PR (#1148) and Steps 5+6 (#1149); Steps 1–6 COMPLETE.** 🔴 **AC-5 is a hard merge dependency, not a preference:** no commit may exist where `count`+`group_by` validates while `_count` still collapses groups — that state answers with a **silently wrong** number, worse than the refusal it replaces. | `75243b0` / [#1148](https://github.com/CrayJThiemsert/vero-lite/pull/1148) / [#1149](https://github.com/CrayJThiemsert/vero-lite/pull/1149) / `docs/plans/done/0104-*.md` |
 | 2026-08-13 | **s226 — PLAN-0104 DRAFTED, its three SD slots RULED (Cray, typed), Step 1 SHIPPED.** 🔴 The `count`+`group_by` refusal had **three independent enforcers**, so no single edit changed behaviour and the circulating *"≈ one PR + tests"* price was wrong. 🔴 The gold guard was **VACUOUS** — it restated the numbers instead of reading `SQL_EXPECT`, so two wrong tokens scored `wrong` every run, silently. | `fa8a61c` / [#1144](https://github.com/CrayJThiemsert/vero-lite/pull/1144) / [#1145](https://github.com/CrayJThiemsert/vero-lite/pull/1145) / `docs/plans/done/0104-*.md` |
-| 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed. **Both fixed, not ticked over.** ⚠️ AC-10 + AC-11 stay OPEN. | `b229fcd` / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/done/0103-*.md` |
 
-_[The session-224 row rotated to `docs/status-archive/2026-h1-status.md` this
+_[The session-225 row rotated to `docs/status-archive/2026-h1-status.md` this
 reconcile, holding the table at ten.]_
 
 ## In-Flight Discussions
@@ -289,7 +297,7 @@ reconcile, holding the table at ten.]_
 ## Active TODOs
 
 - [ ] **🆕 The four s235 audit findings ADR-0038 did NOT absorb — REHOMED s235 out of a gitignored handoff into `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`.** The **retrieval-reliability ranking** · **"pruning never reclaims storage"** (so never argue a rotation on disk grounds) · **`docker build` in CI, rated YES and owned by no PLAN** · **the 11-class vacuity taxonomy**. 🔴 **One live obligation in there: ADR-0038's three-strike counter has NO OWNER** — three items sit at two firings and no artifact records a count. PLAN-0108 is the natural owner and does not claim it.
-- [ ] **🆕 PLAN-0107 — oracle-coverage hardening: `Draft`, UNRATIFIED, 15 ACs; NOTHING gates it.** The strong-oracle half of s235's five-specialist audit (PLAN-0108 holds the weak-oracle convention half — the split is Cray's typed S1 ruling). **Phase A is all zero-new-dependency work:** `node --check`, the asset-manifest bijection, a real `TestClient` lifespan boot, the executor-registrar map, `mypy --strict verticals/` (**measured already clean over 64 files — zero remediation**), the two CI-orphaned pre-commit hooks. AC-14 retires the inert `?v=` guard, **no separate ratification** (Cray, typed). **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md`.
+- [ ] **PLAN-0107 — oracle-coverage hardening: `Draft`, 15 ACs. ✅ PHASE A CLOSED 6/6 s236 ([#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204)); Phases B and C remain, and NOTHING gates them.** CI now runs four oracles it lacked — `node --check`, the asset↔reference bijection, a **per-vertical** lifespan boot smoke, `mypy --strict verticals/` and the two adopted pre-commit hooks (**measured +74 s, no new dependency**). ⚠️ **Executing Phase B/C: read each AC and its `Reviewer amendment` blocks as authoritative and treat the §Steps prose as narrative — three measured divergences in Phase A alone** (a retired `≥ 20` floor, a superseded asset count, `uvx` vs `uv run --no-sync`). 🔴 **Phase B is the load-bearing prerequisite:** with today's 2-case live seed nothing overflows, so any browser stage built before it is green-and-vacuous on day one. **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md` (§Phase A closing evidence · §Acceptance Criteria).
 - [ ] **🆕 PLAN-0108 — AC-authoring + pre-close convention hardening: `Draft`, UNRATIFIED.** The weak-oracle half of the same audit; its only blocker was ADR-0038, **which has landed**, so nothing gates it either. Owns ADR-0038's **OQ-5** — the staleness-guard obligation attaches to the PLAN template, not to a build task. **Read the PLAN, never a restatement:** `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md`.
 - [x] **PLAN-0106 — fleet's own in-app case-persistence disclosure (ADR-0037 D2.4): COMPLETE 7/7, marked Complete by Cray (typed) and ARCHIVED s234.** AC-7's ordering clause closed on fleet's Step-10 go record, which cites this PLAN by number. **No live residual.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0106-fleet-case-persistence-disclosure.md` (§Closure evidence · §Surfaced decisions).
 - [x] **PLAN-0105 — fleet's 90-day in-app case retention: COMPLETE 11/11, ARCHIVED s231.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md` (§Surfaced decisions SD-1..SD-4; the child-to-child FK ordering defect and its guard). ⚠️ **Live remainder — the DSR-on-request path stays undefined, requester identification in particular**; `delete_case()` is the mechanism half only. _[s235: the "AC-11's RoPA is still Cray's" clause is DROPPED as **stale, `was an error` by the time it was last edited** — the RoPA was written and ADOPTED s233 (#1184).]_
