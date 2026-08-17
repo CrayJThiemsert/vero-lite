@@ -2069,3 +2069,37 @@ begins until all five slots are filled.
 - Closeout: every AC checked with its closing artifact linked; allowlist
   PROVISIONAL status resolved (revised or confirmed); ADR amendment routed;
   PLAN → Complete → `docs/plans/done/`.
+
+---
+
+## Post-archival amendment — 2026-08-17 (session 235): the residuals that outlive this PLAN
+
+**Why this section exists.** This PLAN is COMPLETE 13/13 and archived, but three
+facts about the shipped surface outlived it and were carried **only** in
+`docs/STATUS.md`'s Active TODOs. STATUS rotates; this file does not. Per R2's
+carve-out the rehome comes first and the STATUS row becomes a pointer — the order
+is `rehome → re-point → verify → trim`, never trim first. **Every figure below was
+verified at source on 2026-08-17 against `29a95f6`, not copied from the STATUS row.**
+
+**R1 — D-4 is FULLY DISCHARGED.** Ruled s217 (Cray, typed): option **(a)**, teach
+the engine. Delivered as **PLAN-0104, COMPLETE 8/8 and ARCHIVED s228** (#1145,
+#1148, #1149, #1151); the engine executes `count` WITH `group_by` end to end and
+AC-7's live evidence closed at s228. **Nothing in D-4 is outstanding.** Read
+`docs/plans/done/0104-nl-query-count-with-group-by.md`, never a restatement.
+
+**R2 — no cache-purge step, and no versioned font URLs.** Nothing in the redeploy
+pipeline purges the edge, and the `?v=cNN` asset-busting convention does not reach
+fonts. ⚠️ **A purge step is not simply "add a step":** it needs a Cloudflare API
+token, which is **a new secret plus a host-state action**, so it carries the §8
+gate. _[NARROWED s234, not closed: `index.html` is served `cache-control: no-store`,
+so a **static-asset** change needs no hard reload and no edge purge. **Fonts still
+stand** — they are the part the no-store header does not reach.]_
+
+**R3 — the published surface pins no `OLLAMA_KEEP_ALIVE`.** Verified 2026-08-17:
+`grep -ri OLLAMA_KEEP_ALIVE deploy/published/` returns **zero** matches across all
+three profiles, so every published system silently inherits the **code default of
+30m**. Not a defect — an unstated inheritance, recorded so a future keep-alive
+change is understood to move all three systems at once.
+
+_[Rehomed from `docs/STATUS.md` at session 235 under the R2 carve-out. The STATUS
+row is now a pointer to this section.]_

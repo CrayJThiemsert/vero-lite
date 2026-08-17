@@ -609,3 +609,37 @@ whole loop-detect layer died." The settings pin (AC-4) holds both directions as
 data; the legacy-state fixture (AC-5) proves old state files cannot crash the
 surviving hooks; the full-suite gate (AC-10) runs from the main checkout to
 dodge the 5 known worktree false-REDs.
+
+---
+
+## Post-archival amendment — 2026-08-17 (session 235): the two residues that outlive this PLAN
+
+**Why this section exists.** This PLAN is COMPLETE 11/11 and archived, but two
+findings outlived it and were carried **only** in `docs/STATUS.md`'s Active TODOs —
+a surface that rotates. Rehomed here under R2's carve-out (`rehome → re-point →
+verify → trim`). Both were **re-verified at source on 2026-08-17** against
+`29a95f6` rather than copied from the STATUS row.
+
+**R1 — `observe()` is now callerless and was DELIBERATELY kept.** Verified:
+`grep -rn "observe(" .claude/hooks/` returns **exactly one** hit, the definition
+itself at `.claude/hooks/_loop_counter.py:582`. It is dead by call-graph and alive
+by choice. **Deleting it is not a one-line removal:** with no caller, `_record`'s
+`bump` collapses to a constant, which pulls a refactor into the function every
+surviving **L2 / L3 / L4** increment flows through. **Revisit only if that module
+is being reworked anyway** — not as a tidy-up.
+
+**R2 — the forwards-call-graph gap is a METHOD debt, not a code defect.** All three
+defects this PLAN's execution found share one cause: a review that walks the call
+graph only **BACKWARDS** from the marker symbol finds every site that *touches* it
+and misses every callee those sites **exclusively own**. ⚠️ **A linter cannot close
+it** — `ruff` flags a dead *import*, never a dead private function or module
+constant, so an acceptance criterion reading *"ruff + mypy clean"* passes straight
+over the gap.
+
+This debt is **owed to the next excision PLAN**, and it now has partial mechanism:
+`tools/excision_scope.py` computes the forwards half, and the `excision-scope` skill
+carries the procedure. **What remains unowned is the obligation to run it** — no
+PLAN template step requires a forwards walk before an excision AC is written.
+
+_[Rehomed from `docs/STATUS.md` at session 235 under the R2 carve-out. The STATUS
+row is now a pointer to this section.]_
