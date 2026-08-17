@@ -306,6 +306,30 @@ async def _aggregate_duration(session: Any, query: StructuredQuery) -> RunQueryR
     ``min`` is NOT recoverable — the substrate publishes no per-group minimum —
     and saying so is better than returning the smallest *group average* dressed
     up as the smallest run.
+
+    🔴 TWO SILENT DROPS LIVE HERE, both UNRULED. Recorded at the site because a
+    reader editing this function is exactly who needs them, and because
+    ``docs/STATUS.md`` — their only prior home — rotates.
+
+    1. **The ``started_week`` FILTER is ignored entirely.** ``_keep`` reads
+       ``procedure_id`` and ``status`` only, so an aggregate carrying a week
+       filter silently answers across EVERY week. Same defect class as the
+       ``count`` case ``_week_rollup_conflict`` refuses, and strictly larger:
+       what vanishes is the filter itself. Found s228.
+    2. **``group_by`` never reaches the result.** ``_validate_query`` PERMITS
+       ``group_by`` on aggregate ops (``nl_query.py`` — its guard exempts
+       ``_AGGREGATE_OPS``) and the schema binds the enum to ``DIMENSIONS``, so
+       the model does emit it. But the ``AggregateResult(...)`` constructed below
+       passes no ``groups`` argument and ``groups`` defaults to ``{}``. Effect:
+       *"average duration per procedure"* validates, executes, and silently
+       returns ONE ungrouped number. Found s232.
+
+    ⚠️ **The count path at ``_count_result`` DOES pass ``groups=groups``** — so
+    (2) is a two-site gap in an otherwise-correct design, not a missing feature.
+    **No test covers either**, which is why both survived PLAN-0104's whole build.
+    Same two dispositions for each, NEITHER ruled: **(a) refuse it, or (b) make
+    it work.** Do not widen ``_week_rollup_conflict`` to cover them — that guard
+    is deliberately scoped to ``count`` (see its docstring).
     """
     rows = [
         r
@@ -337,6 +361,12 @@ async def _aggregate_benefit(session: Any, query: StructuredQuery) -> RunQueryRe
     **Per-currency only (S7).** A bucket whose currency is not THB is excluded
     rather than converted or silently added: the substrate never produces a
     cross-currency figure and neither may this compiler.
+
+    🔴 **The same two unruled silent drops that afflict ``_aggregate_duration``
+    live here too** — the ``started_week`` filter is never read, and the
+    ``AggregateResult(...)`` below passes no ``groups``. Read that function's
+    docstring for the full statement rather than a second divergent copy; both
+    sites must be fixed together or not at all.
     """
     buckets = [
         b

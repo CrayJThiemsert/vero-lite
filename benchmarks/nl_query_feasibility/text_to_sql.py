@@ -64,6 +64,31 @@ CREATE TABLE operational_event (
 #: (SQL-result value scoring — the analogue of the engine-A gold). Honesty probe
 #: handled by HONESTY_QIDS (no ``alert`` table exists → a correct system errors
 #: or returns nothing, never fabricates).
+#:
+#: 🔴 ``nl-03`` IS DELIBERATELY UNDER-SPECIFIED. RULED (Cray, typed, s226): RECORD
+#: it, do NOT change the token. Its list holds two ids while ``gold.yaml`` lists
+#: **three** for the same question (``event-reading-08`` is omitted here).
+#:
+#: ⚠️ This is a DIFFERENT defect class from the nl-02 / nl-05 tokens PLAN-0104
+#: Step 1 repaired, and keeping the distinction is the point of this note.
+#: ``score_sql`` matches a SUBSET, so nl-03's present tokens are *correct* and the
+#: case still scores ``correct`` — **the oracle is WEAKER than it should be, not
+#: WRONG**, where nl-02/nl-05 were factually wrong and scored ``wrong`` on every
+#: run.
+#:
+#: ⚠️ Adding the third token would make the benchmark **STRICTER**: a model whose
+#: SQL filters by unit would flip nl-03 from ``correct`` to ``wrong``, which
+#: **changes what the measured numbers mean and breaks comparability with earlier
+#: runs.** That makes it a MEASUREMENT decision, not a typo fix — which is why it
+#: is recorded here rather than patched.
+#:
+#: ⚠️ On the same basis, noted and deliberately not acted on: ``score_sql``
+#: matches tokens as **SUBSTRINGS**, so an expected ``"1"`` would match a result
+#: of ``"21"``.
+#:
+#: _[Rehomed from ``docs/STATUS.md`` at session 235 under R2's carve-out: STATUS
+#: rotates, this module does not, and a reader editing these tokens is exactly who
+#: needs the ruling.]_
 SQL_EXPECT: dict[str, list[str]] = {
     "nl-01": ["asset-battery-01", "asset-battery-02"],
     "nl-02": ["13"],

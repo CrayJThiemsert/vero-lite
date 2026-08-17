@@ -516,6 +516,28 @@ def test_no_unknown_domain_appears_in_the_deploy_docs() -> None:
 
     RED when: any file under `deploy/` or a `published-demo-*` runbook names a
     registrable domain outside `_ALLOWED_DOMAINS`.
+
+    🔴 KNOWN LEAK OUTSIDE THIS GUARD'S REACH — UNRULED, not urgent, and recorded
+    here because this docstring is where the person who would widen the guard is
+    standing. Found s231 by repo-wide grep: the apex domain appears in **one**
+    archived file, `docs/plans/done/0100-exposure-published-demo-surface.md`
+    (5 places), matching the s222 correction recorded in ADR-0036. This guard
+    scans `deploy/` and the published-demo runbooks — **not `docs/plans/`** — so
+    it cannot see it.
+
+    ⚠️ **RE-PRICED s232 — "just widen the guard" is NOT a one-file flip.**
+    MEASURED: widening the scan to `docs/plans/` reddens **FOUR** files, not one
+    — the archived PLAN-0100 **plus** three other archived plans carrying
+    unrelated third-party domains (`done/0013-*`, `done/0014-*`, `done/0033-*`).
+    So the option is a scope flip **PLUS three deliberate `_ALLOWED_DOMAINS`
+    additions**, which that constant's own comment calls an act needing intent.
+
+    Three dispositions, none ruled: scrub the archived file, widen the guard and
+    pay the three additions, or accept it knowingly. **The domain itself is never
+    named in this note** — reference the carrier BY PATH only, same rule the
+    allowlist form exists to satisfy.
+
+    _[Rehomed from `docs/STATUS.md` at session 235 under R2's carve-out.]_
     """
     leaks: dict[str, set[str]] = {}
     for path in _deploy_docs():
