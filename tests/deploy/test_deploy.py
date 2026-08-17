@@ -188,6 +188,57 @@ def test_every_host_read_path_exists_and_the_compose_really_reads_it(
     ), "the ingress config is listed as host-read but is no longer bind-mounted"
 
 
+def test_every_repo_relative_path_constant_resolves_in_this_checkout(
+    deploy: ModuleType,
+) -> None:
+    """Every repo-relative path deploy.py names must exist in THIS checkout.
+
+    The guard above already stats `_HOST_READ_PATHS`, so this SHAPE was never
+    missing — the set it walks was. PLAN-0103 Step 4 moved the compose file into
+    `oct-energy/` and updated `_HOST_COMPOSE`, but the local build path was an
+    inline expression inside `build_and_ship` and therefore belonged to no
+    enumerated constant. `-f` pointed at a file deleted in dd0aab3, so Phase 1
+    would have died on the next `--execute`; the scenario suite could not see it
+    because its fake `docker` never stats the `-f` argument, and a text scan of
+    the module would not have either.
+
+    So this walks the constants themselves rather than a hand-kept list of names:
+    a path constant added later is covered the day it lands.
+    """
+    found: dict[str, str] = {}
+    for name, value in vars(deploy).items():
+        if not re.fullmatch(r"_[A-Z0-9_]+", name):
+            continue
+        for item in value if isinstance(value, tuple) else (value,):
+            if isinstance(item, str) and item.startswith("deploy/"):
+                found[f"{name} -> {item}"] = item
+
+    # Positive control (lesson #0035): a negative measurement needs one, or a
+    # rename that empties the set reads as "nothing broken".
+    assert found, (
+        "no repo-relative path constant found in deploy.py — they were renamed "
+        "out of the _UPPER_CASE convention or inlined back into their call "
+        "sites, and this guard is now walking an empty set"
+    )
+    # Structural, NOT a pinned value: a legitimate profile rename must be settled
+    # by the filesystem check below, never by editing an expected string in here.
+    # Pinning the value would also mask that check — measured while building this
+    # guard: with a wrong path the pinned assertion fired first and the stat never
+    # ran, so the probe proved the pin was live and said nothing about the oracle.
+    assert any(label.startswith("_LOCAL_COMPOSE ->") for label in found), (
+        "the local build's `-f` target is no longer a repo-relative module "
+        "constant named _LOCAL_COMPOSE. An inline path is invisible to this "
+        f"guard, which is exactly how it broke the first time (seen: {sorted(found)})"
+    )
+
+    missing = sorted(label for label, rel in found.items() if not Path(rel).is_file())
+    assert not missing, (
+        f"deploy.py names {len(missing)} repo-relative path(s) that do not exist "
+        f"in this checkout: {missing}. `docker compose -f <missing>` exits before "
+        "it does anything, so the phase fails at its very first command"
+    )
+
+
 def test_every_required_compose_variable_has_a_build_placeholder(
     deploy: ModuleType, compose_text: str
 ) -> None:
