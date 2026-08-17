@@ -206,13 +206,22 @@ reads the artifact — never its own constant); wording-quality claims are
   Alternative: leave §8 as-is and treat each gold↔engine seam as
   benchmark-specific guard work. SURFACED in both cases; this PLAN drafts no
   wording either way.
+  > **ROUTED 2026-08-17 (Cray, typed): dispatched to Cowork.** Not ruled here —
+  > it is constitutional text, which Cowork drafts and Code commits by
+  > convention (ADR-009 D1/D2). The dispatch is a gitignored working note under
+  > `.claude/handoffs/session-235/`; Cray carries it to the Cowork tab and
+  > brings the draft back. **Until it returns and is ratified, §8 as written
+  > governs** — the gold↔engine seam is closed only in its one instance, by
+  > PLAN-0107 AC-10.
 - **SD-2 — does the fixture-boundary rule also become a lesson
-  (`docs/lessons/`)?** Proposed: no — the template carries the
-  at-authoring-time rule text, the skill carries the worked how-to (ADR-0017
-  D5 routing: canonical reference vs task-triggered procedure), and a lesson
-  would be a third copy of the same sentence with no independent trigger.
-  Alternative: a short lesson pointing at both, for greppability. Cray
-  decides.
+  (`docs/lessons/`)? RULED (Cray, typed, 2026-08-17): NO.** The template carries
+  the at-authoring-time rule text, the skill carries the worked how-to
+  (ADR-0017 D5 routing: canonical reference vs task-triggered procedure). A
+  lesson would be a **third copy of the same sentence with no independent
+  trigger** — and a third copy is not neutral: it is a surface that can drift
+  out of sync with the two that fire, which is how a rule ends up with three
+  wordings and no authority. Rejected: a short lesson pointing at both, for
+  greppability.
 
 ## Steps
 

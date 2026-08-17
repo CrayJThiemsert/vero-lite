@@ -317,16 +317,27 @@ a source-text read.
   found twice`); a module-layout fix must precede it and is its own small
   chore.
 
-## Surfaced decisions (for Cray — proposed, not settled)
+## Surfaced decisions
 
-- **SD-1 (dispatch S2) — does retiring `test_ui_profile.py:725-751` need its
-  own ratification?** Proposed: **no separate ceremony** — accepting this PLAN
-  (AC-14 names the retirement in its text) plus normal PR review IS the
-  ratification, because the replacement lands in the same commit and the
-  retired guard's protective claim is demonstrated false (it passes today with
-  the protected behaviour breakable). Alternative: a one-line ratification note
-  in STATUS before the PR. Cray decides; execution defaults to the proposal
-  only after the PLAN itself is accepted.
+**This PLAN carries no open surfaced decision.**
+
+- **SD-1 (dispatch S2) — does retiring `test_ui_profile.py:725-751` need its own
+  ratification? RULED (Cray, typed, 2026-08-17): NO separate ceremony.**
+  Accepting this PLAN (AC-14 names the retirement in its text) plus normal PR
+  review IS the ratification, because the replacement lands in the same commit
+  and the retired guard's protective claim is demonstrably false — it passes
+  today with the protected behaviour breakable. Rejected: a one-line
+  ratification note in STATUS before the PR.
+  > **Why this is the right default, recorded so the next retirement does not
+  > re-open it.** The guard being retired meets the definition of **class C1**,
+  > which ADR-0038 made binding on 2026-08-17: a green from an oracle that could
+  > not have gone RED. If removing a guard already proved inert cost more
+  > ceremony than leaving it in place, the incentive would run toward
+  > accumulating guards that read as protection and are not — which is worse
+  > than no guard, because it manufactures confidence at the point the repo
+  > looks for evidence. Ceremony should scale with what a change puts at risk,
+  > and retiring a demonstrably-inert guard puts nothing at risk that the
+  > replacement does not already cover in the same commit.
 - *(Dispatch S1 — RULED: two plans, recorded above. Dispatch S3 — a convention
   question; surfaced in PLAN-0108, not here.)*
 
