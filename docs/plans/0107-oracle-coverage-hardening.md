@@ -232,7 +232,7 @@ a source-text read.
   > from **`api_db_maker`**, not a fresh `async_session()` — a second asyncpg
   > connection collides with the one the client holds (`another operation is in
   > progress`, measured on the first run).
-- [ ] **AC-8 [check] — the stub LLM stops issuing one identical judgment to
+- [x] **AC-8 [check] — the stub LLM stops issuing one identical judgment to
   every event.** `_STUB_JUDGMENT` (`tests/api/conftest.py:29-39` — one canned
   object, autouse across the `tests/api` suite via `:70`, same
   title/confidence/`affected_entities` for every event in a streamed batch, as
@@ -244,6 +244,28 @@ a source-text read.
   `uv run --no-sync pytest tests/api -q` (the whole package must stay green
   with the factory — assertions that pinned the canned constant are updated
   without stubbing either side of any seam, per CLAUDE.md §8).
+  > **Closing evidence (Code, 2026-08-18).** The stub is now `_judgment_for()`,
+  > deriving title / description / `affected_entities` from the triggering event
+  > recovered out of the rendered prompt. **`tests/api` stayed green with ZERO
+  > assertion updates — 459 passed** (the AC anticipated updating pinned
+  > assertions; measured, nothing outside `conftest.py` pinned the canned strings).
+  > New scenario `tests/api/test_recommendation_fanout_scenario.py`, 4 tests.
+  > **Witnessed RED:** restoring the OLD canned stub reddens the distinctness test
+  > with *"5 recommendations collapsed to 1 distinct title"* — so the claim "the old
+  > stub could not reveal this" is demonstrated, not asserted.
+  >
+  > 🔴 **A ② REACH finding the AC did not anticipate, measured rather than assumed.**
+  > The AC says "a streamed batch of ≥ 2 events". Counting what each vertical's
+  > synthetic stream actually trips through `_is_recommendation_trigger`:
+  > **energy 1** of 11 · **aquaculture 0** of 7 · **supply_chain 0** of 4 ·
+  > **procurement 0** (it streams nothing) · **building_materials 2** of 2 ·
+  > **fleet_maintenance 5** of 5. On energy — the obvious default — this module's
+  > distinctness assertions **passed vacuously on the first run**, and only the
+  > anti-vacuity test refused them. Energy's events are LOCKED by AC-10, so the
+  > scenario runs on **fleet_maintenance**: a vertical that already reaches the
+  > state, rather than an edit that manufactures it.
+  > ⚠️ **`aquaculture` streaming 0 triggering events is worth AC-9's attention** —
+  > AC-9 cites the aquaculture dissolved-oxygen crash as its below-direction source.
 - [ ] **AC-9 [check] — the golden-trace corpus covers the `below` direction AND
   a non-`reading` event.** *(Ruled by Cray 2026-08-17: both traces.)*
   `tests/services/engine/eval/golden_traces/` (today 3 traces, all
