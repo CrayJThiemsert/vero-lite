@@ -45,7 +45,7 @@ resolution, and the stubbed advisory prose the factory already wires (CLAUDE.md 
 from __future__ import annotations
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -53,7 +53,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.db.repair_case import (
     CASE_STATUS_CLOSED,
     CASE_STATUS_OPEN,
+    WORK_TYPE_ACCIDENT,
     WORK_TYPE_BREAKDOWN,
+    WORK_TYPE_PM,
     RepairCase,
 )
 from services.db.repair_case_closeout import (
@@ -277,6 +279,100 @@ async def seed_demo_repair_case(session: AsyncSession, *, case_id: str = DEMO_CA
     )
     await session.commit()
     return True
+
+
+#: The closed-case backlog seeded by ``seed_case_list_history``: (suffix, truck,
+#: work type, description). NINETEEN entries, which is the load-bearing number —
+#: with the two narrative cases the list holds **21**, one past the UI's own
+#: ``limit=20`` (``view-case.js``), so the truncation boundary is REACHABLE. At 20
+#: the boundary is untestable and at 19 it does not exist; PLAN-0107 AC-7 exists
+#: because no fixture reached it and the 919px overflow that shipped to a live
+#: system came from a tree nothing reproduced.
+_CASE_LIST_HISTORY: tuple[tuple[str, str, str, str], ...] = (
+    ("b01", "truck-01", WORK_TYPE_PM, "เปลี่ยนถ่ายน้ำมันเครื่องและไส้กรองตามรอบ"),
+    ("b02", "truck-03", WORK_TYPE_BREAKDOWN, "ไฟหน้าขวาไม่ติด เปลี่ยนหลอดและตรวจสายไฟ"),
+    ("b03", "truck-02", WORK_TYPE_PM, "ตรวจเช็คระยะ 20,000 กม. ครบชุด"),
+    ("b04", "truck-04", WORK_TYPE_BREAKDOWN, "ยางหลังซ้ายรั่ว ปะยางและถ่วงล้อใหม่"),
+    ("b05", "truck-01", WORK_TYPE_ACCIDENT, "เฉี่ยวเสาที่ลานจอด เคาะพ่นกันชนหน้า"),
+    ("b06", "truck-05", WORK_TYPE_PM, "เปลี่ยนผ้าเบรกหน้าและเจียจานเบรก"),
+    ("b07", "truck-03", WORK_TYPE_BREAKDOWN, "แอร์ไม่เย็น เติมน้ำยาและเปลี่ยนไส้กรองแอร์"),
+    ("b08", "truck-02", WORK_TYPE_PM, "เปลี่ยนน้ำมันเกียร์และน้ำมันเฟืองท้าย"),
+    ("b09", "truck-04", WORK_TYPE_BREAKDOWN, "แบตเตอรี่เสื่อม เปลี่ยนลูกใหม่พร้อมตรวจไดชาร์จ"),
+    ("b10", "truck-01", WORK_TYPE_PM, "ตั้งศูนย์ถ่วงล้อและสลับยาง"),
+    ("b11", "truck-05", WORK_TYPE_BREAKDOWN, "ท่อน้ำหม้อน้ำรั่ว เปลี่ยนท่อยางชุดบน"),
+    ("b12", "truck-03", WORK_TYPE_PM, "เปลี่ยนไส้กรองโซลาร์และไล่ลมระบบน้ำมัน"),
+    ("b13", "truck-02", WORK_TYPE_ACCIDENT, "กระจกมองข้างซ้ายแตก เปลี่ยนชุดใหม่"),
+    ("b14", "truck-04", WORK_TYPE_PM, "ตรวจเช็คระยะ 40,000 กม. ครบชุด"),
+    ("b15", "truck-01", WORK_TYPE_BREAKDOWN, "สตาร์ทไม่ติด เปลี่ยนไดสตาร์ทและตรวจสายกราวด์"),
+    ("b16", "truck-05", WORK_TYPE_PM, "เปลี่ยนสายพานหน้าเครื่องและลูกลอก"),
+    ("b17", "truck-03", WORK_TYPE_BREAKDOWN, "โช้คอัพหลังรั่ว เปลี่ยนคู่หลัง"),
+    ("b18", "truck-02", WORK_TYPE_PM, "ล้างหัวฉีดและเปลี่ยนหัวเทียน"),
+    ("b19", "truck-04", WORK_TYPE_BREAKDOWN, "คลัตช์ลื่น เปลี่ยนชุดคลัตช์และลูกปืนกดคลัตช์"),
+)
+
+#: Prefix for the ids above. Fixed, not random, so the seed is idempotent on a
+#: restart and a human reading the DB can tell demo backlog from visitor data.
+CASE_LIST_HISTORY_PREFIX = "case-fleet-hist-"
+
+#: Days between consecutive backlog cases. 19 x 2 puts the oldest at 40 days —
+#: "the trailing weeks", so the month-end view reads as history rather than as a
+#: burst of cases all opened on boot day.
+_CASE_LIST_HISTORY_STRIDE_DAYS = 2
+
+
+async def seed_case_list_history(session: AsyncSession) -> int:
+    """Seed the CLOSED backlog that puts the case list past the UI's own page size.
+
+    **Why this exists (PLAN-0107 AC-7, ② data reach).** The case-list UI requests
+    ``limit=20``; the server defaults to 50 and clamps at 500. Before this seed the
+    live tree held **two** cases, so *no* fixture and *no* running system ever
+    reached the truncation boundary — the ordering tiebreak, the limit clause and
+    the overflow behaviour of the list were all unexercised. The 919px clipped
+    render that shipped to a live customer-facing system came from a tree nothing
+    reproduced. Nineteen rows here make the boundary reachable: 19 + the two
+    narrative cases = **21**, one past the page.
+
+    **CLOSED, deliberately, and the rationale is the module's own** (see
+    ``seed_settled_history_case``): a closed case "leaves the event stream and never
+    competes for the truck's latest-event slot", so this backlog cannot displace the
+    demo's live breach the way an open case would. ``governed_case_facts`` selects
+    OPEN cases, so none of these is re-presented to the gate either.
+
+    **Invisible to the month-end tab, by construction rather than by luck.**
+    ``repair_spend_export`` builds its rows from cases that have a
+    ``RepairCaseRunLink`` (governed) or a ``RepairCaseCloseout`` (ungoverned). These
+    rows have neither, so they add no ungoverned spend and cannot dilute the KPI —
+    checked against that query before writing this, because the sibling failure has
+    happened here before: a seed onto the demo's flagship truck once displaced its
+    ฿48,000 axle breach, and only the full suite noticed.
+
+    Idempotent on the first id; the caller is fail-soft. Returns the number of cases
+    actually inserted (0 on a re-run).
+    """
+    first_id = f"{CASE_LIST_HISTORY_PREFIX}{_CASE_LIST_HISTORY[0][0]}"
+    if await session.get(RepairCase, first_id) is not None:
+        return 0
+
+    now = datetime.now(UTC)
+    for index, (suffix, truck_id, work_type, description) in enumerate(_CASE_LIST_HISTORY):
+        session.add(
+            RepairCase(
+                case_id=f"{CASE_LIST_HISTORY_PREFIX}{suffix}",
+                truck_id=truck_id,
+                opened_by=_REQUESTER_ID,
+                # Staggered backwards from today. The newest backlog case is still
+                # OLDER than the two narrative cases (which are stamped `now`), so
+                # the demo's own cases stay at the top of page 1 where the visitor
+                # is meant to find them.
+                opened_at=now - timedelta(days=_CASE_LIST_HISTORY_STRIDE_DAYS * (index + 1)),
+                description=description,
+                status=CASE_STATUS_CLOSED,
+                work_type=work_type,
+                photos=[],
+            )
+        )
+    await session.commit()
+    return len(_CASE_LIST_HISTORY)
 
 
 async def seed_settled_history_case(session: AsyncSession) -> bool:
