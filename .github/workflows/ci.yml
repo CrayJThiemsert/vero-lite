@@ -154,6 +154,14 @@ jobs:
         env:
           UV_PROJECT_ENVIRONMENT: /tmp/vero-runtime-venv
           DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
+          # REQUIRED, and it is not decoration. `--no-install-project` below means
+          # `services`/`verticals` are NOT in the venv's site-packages — deliberately,
+          # because this step reproduces the IMAGE's dependency set. The step this
+          # replaced got away without it: `python -c "..."` puts the CWD on sys.path,
+          # while `python tools/ci/boot_smoke.py` puts the SCRIPT's directory
+          # (tools/ci/) there instead. Dropping this line reproduces
+          # `ModuleNotFoundError: No module named 'services'` (measured, first run).
+          PYTHONPATH: .
         run: |
           uv sync --frozen --no-dev --no-install-project
           shopt -s nullglob
