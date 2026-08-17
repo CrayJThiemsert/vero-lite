@@ -69,7 +69,7 @@ a source-text read.
 
 ### Phase A — ① instruments
 
-- [ ] **AC-1 [check] — every shipped JS asset parses.** The CI `gate` job
+- [x] **AC-1 [check] — every shipped JS asset parses.** The CI `gate` job
   (`.github/workflows/ci.yml`) contains a step that enumerates
   `services/api/static/assets/*.js` **from disk at run time** (no frozen list),
   asserts the enumeration is **non-empty** (an empty glob must go RED, never
@@ -87,7 +87,7 @@ a source-text read.
   > remedy is editing the number — the guard-erosion ratchet this PLAN exists to
   > stop. The count invariant belongs in AC-2's bijection, which is strictly
   > stronger; non-empty is all AC-1 needs to close the null-glob trap.
-- [ ] **AC-2 [check] — every asset reference resolves; every asset is
+- [x] **AC-2 [check] — every asset reference resolves; every asset is
   referenced.** A new test module `tests/api/test_asset_manifest.py` parses
   `services/api/static/index.html` for all `assets/` references (21 `<script
   src>` at `index.html:51-73`, 4 CSS links at `:28-31`), strips the `?v=`
@@ -105,7 +105,7 @@ a source-text read.
   `tests/api/test_export_cover_ui_contract.py:216`,
   `tests/api/test_view_hero_fleet_ui_contract.py:209`); a rename 404s silently
   and the page half-boots (the 404 mode is pinned at `test_static_ui.py:61-64`).
-- [ ] **AC-3 [check] — CI boots the app's lifespan, not just its import.** The
+- [x] **AC-3 [check] — CI boots the app's lifespan, not just its import.** The
   runtime-closure step (`ci.yml:92-97`, today an import-only probe) is replaced
   by a boot smoke that enters `lifespan` (`services/api/main.py:460-467` —
   `discover_and_register()` across the vertical plugin trees, persona
@@ -118,7 +118,24 @@ a source-text read.
   — exits nonzero if lifespan raises. This makes the spine's fail-loud contract
   (a malformed `procedures.yaml` fails at load — CLAUDE.md §3) CI-visible for
   the first time.
-- [ ] **AC-4 [check] — the executor-registrar map is complete against disk.** A
+  > **Reviewer amendment (Code, 2026-08-17) — the fail-loud clause was MEASURED
+  > and is ACTIVE-VERTICAL DEPENDENT; the step is scoped accordingly.** Probing
+  > the smoke against a corrupted `procedures.yaml` for each spec-shipping
+  > vertical: **CAUGHT** for `fleet_maintenance`, `building_materials`,
+  > `supply_chain`, `procurement` — and ⚠️ **MISSED for `energy`, which boots
+  > green.** Cause, verified at source: `lifespan` registers only
+  > `_PROCEDURE_EXECUTOR_REGISTRARS[OCT_VERTICAL]`, and
+  > `verticals/energy/procedures_factory.py` is the **one** spec-shipping factory
+  > that never calls `load_procedures` (grep: every other one does).
+  > 🔴 **`energy` is also the DEFAULT `OCT_VERTICAL`**, so a smoke that booted
+  > only the default would have been green and blind to exactly the configuration
+  > CI runs — a claim of a runtime property with no reach, which is the class of
+  > defect this PLAN exists to close. **The CI step therefore runs the smoke once
+  > per spec-shipping vertical, enumerated from disk** (6 boots, all green at
+  > adoption). ⚠️ **The `energy` spec-parse residual stays OPEN and is recorded in
+  > `tools/ci/boot_smoke.py`'s docstring** — closing it means energy's factory
+  > loading its own spec, a behaviour change and out of scope here.
+- [x] **AC-4 [check] — the executor-registrar map is complete against disk.** A
   new test asserts every vertical directory shipping a `procedures.yaml` has an
   entry in `_PROCEDURE_EXECUTOR_REGISTRARS` (`services/api/main.py:311-318`),
   with an explicit in-test exemption dict (reason required per entry —
@@ -127,7 +144,7 @@ a source-text read.
   (`tests/services/engine/test_cli_registrars.py:20-25`) cannot see: a 7th
   vertical missing from **both** maps is set-equal and green today. Command:
   `uv run --no-sync pytest tests/services/engine/test_registrar_completeness.py -q`.
-- [ ] **AC-5 [check] — CI mypy covers the plugin trees.** `ci.yml:56` becomes
+- [x] **AC-5 [check] — CI mypy covers the plugin trees.** `ci.yml:56` becomes
   `uv run --no-sync mypy --strict services/ verticals/`. Measured: `mypy
   --strict verticals/` is already clean over 64 files, so remediation cost is
   zero; the pre-commit hook already covers this scope
@@ -135,7 +152,7 @@ a source-text read.
   Wall-clock delta: not measured. `tools/` is explicitly excluded (measured
   module-layout collision: `Source file found twice: "loop._schema" and
   "tools.loop._schema"` — a layout fix must come first, out of scope).
-- [ ] **AC-6 [check] — the two CI-orphaned pre-commit hooks run in CI.**
+- [x] **AC-6 [check] — the two CI-orphaned pre-commit hooks run in CI.**
   `detect-secrets` (`.pre-commit-config.yaml:43-48`) and the ontology
   JSON-schema check (`:50-56`) — the ontology is the semantic layer, the core
   primitive, and `ontology_schema` appears in `tests/` exactly 0 times
@@ -150,6 +167,33 @@ a source-text read.
   > `--no-sync` is required for the same reason every other CI step carries it: a
   > bare `uv run` re-syncs without the dev extra and uninstalls the tooling
   > mid-job (`ci.yml:46-48`).
+
+> **Phase A closing evidence (Code, 2026-08-18).** All six ACs are closed. The
+> four `check` ACs whose oracle is a CI step are closed by run
+> [32049063356](https://github.com/CrayJThiemsert/vero-lite/actions/runs/32049063356)
+> on [#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204), where each
+> step is recorded `success` **individually** — step 8 `JS assets parse`, step 9
+> `mypy (strict, services/ + verticals/)`, step 10 `Secret scan`, step 11
+> `Ontology schema check`, step 15 `Runtime closure BOOTS the app's lifespan, per
+> vertical`. Step-level conclusions were read rather than the job's, because a
+> green job does not distinguish a step that passed from one that was skipped.
+>
+> 🔴 **The first run of this PR FAILED, and the failure is worth keeping.** The
+> AC-3 step died with `ModuleNotFoundError: No module named 'services'`: the
+> runtime venv is built `--no-install-project` on purpose, and
+> `python tools/ci/boot_smoke.py` puts the SCRIPT's directory on `sys.path` where
+> the `python -c` probe it replaced put the CWD. **No local probe could have
+> caught it** — every local run used the dev venv, which has the project
+> installed, so the failing state was unreachable there by construction. That is
+> a ② `reach` failure inside the PLAN that exists to close ② failures. Fixed with
+> `PYTHONPATH: .` plus a comment recording the measurement, and verified by
+> BUILDING the CI condition locally (a separate `--no-install-project` venv) and
+> reproducing the error, not by reasoning about it.
+>
+> **Measured CI bill for Phase A (feeds AC-15):** the `gate` job went **7m53s →
+> 9m7s**, i.e. **≈ +74 s** for all four new oracles, against the immediately
+> preceding run on #1203. No new dependency: `node` ships on the ubuntu runner and
+> the three hook tools were already in the dev extra.
 
 ### Phase B — ② data reach
 
