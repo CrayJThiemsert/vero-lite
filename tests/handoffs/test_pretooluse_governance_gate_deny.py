@@ -304,11 +304,6 @@ def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     assert not_accepted == {
         "0000-template.md",
         "0014-WITHDRAWN.md",
-        # IN FLIGHT — landed Proposed 2026-08-17 (session 235). ⚠️ Ratifying it
-        # `Proposed → Accepted` must DELETE this line in the same edit, or G1
-        # stops guarding a ratified ADR. Second observed instance of the
-        # round-trip the docstring describes; the first was ADR-0037.
-        "0038-advisory-lesson-promotion-three-strike-rule.md",
     }
 
 

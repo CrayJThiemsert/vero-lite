@@ -1,10 +1,16 @@
 # ADR-0038: The three-strike promotion rule — when an advisory lesson class becomes binding, what "binding" takes per class, and the demotion path that keeps this from being a ratchet
 
-**Status:** Proposed
-**Date:** 2026-08-17 (session-235 census; Cray's two typed rulings the same day)
+**Status:** Accepted
+**Date:** 2026-08-17 (session-235 census; ratified the same day)
 **Deciders:** Jirachai Thiemsert (Cray) — ruled the threshold and the scope
-(typed, 2026-08-17; recorded as R1/R2 below, not re-argued). Everything else in
-this ADR is a draft position that binds only at Cray's ratification.
+(R1/R2), then ruled every surfaced decision the draft raised: SD-1 cross-class
+counting, SD-2 demotion mechanics, and SD-3 the `measure` bucket in full
+(home, positive-control granularity, evaluator wiring, and the staleness guard
+as a requirement rather than an option). All typed, all 2026-08-17. **This ADR
+carries no unruled surfaced decision** — deliberately, because the repo's own
+record shows an ADR accepted with open SDs leaves them governing by default:
+ADR-0037's SD-1 has stood unruled across three sessions, and every handoff since
+has had to restate that its D2.1 still governs in the meantime.
 **Related:** CLAUDE.md §1 (precedence — lessons are advisory, "promote to ADR if
 it must bind"; that clause is the door this ADR walks through), §4 (knowledge
 placement + the keep-`CLAUDE.md`-short instruction D2 exists to honour), §6
@@ -165,12 +171,14 @@ when it has fired **three or more distinct times**.
    session. One session can contribute several firings when several
    independent defects each satisfy the predicate (s231 contributes two to the
    #0043 watch-list entry); one defect rediscovered N times is one firing.
-4. **Cross-class counting**: deduplication is per class. One incident may
-   count once in each of several classes when it factually satisfies each
-   predicate (s205 fires C1 and C2). This is the reading the census's own
-   arithmetic uses; it is surfaced as SD-1 for explicit ratification because
-   the alternative (an incident counts in exactly one class) produces
-   different tallies and must not be left to the counter's taste.
+4. **Cross-class counting — RULED (Cray, typed, 2026-08-17; SD-1 closed):**
+   deduplication is **per class**. One incident counts once in each class whose
+   predicate it factually satisfies (s205 fires C1 and C2). The rejected
+   alternative — an incident counts in exactly one class — would have forced an
+   arbitrary assignment that understates whichever class loses the tie, and it
+   changed no promotion outcome today (C2 reaches 3 either way). This is the
+   reading the census's arithmetic already used, now ratified rather than
+   assumed.
 5. **Who counts, and when**: at lesson-write time. The writer of the lesson
    recording a class's Nth distinct incident states the running tally — with
    the incident list, not just the number — in that lesson's header, checked
@@ -355,11 +363,73 @@ rejected outright — a laundering channel is worse than the dropped-criterion
 status quo, because it manufactures false confidence at the exact point the
 repo looks for evidence.
 
-**Open ratification parameters (Cray's):** the kind's name; the artifact's
-home (a dedicated `docs/evidence/`-style location vs a plan-local evidence
-block); whether the positive control is per-procedure or per-instance; and
-the evaluator-payload wiring. PLAN-0108 consumes whichever bucket set is
-ratified (`0108:58-60`) and is not blocked on any particular answer.
+**Ratified parameters (Cray, typed, 2026-08-17; SD-3 closed).** The kind is
+named **`measure`**. The other three, and what decided them:
+
+- **Home: `docs/logs/`.** Not a new `docs/evidence/` directory, not plan-local,
+  not `.claude/evidence/`. Decided from a three-angle analysis run the same day,
+  not from taste:
+  - **`.claude/evidence/` is git-ignored** (`.gitignore:37` `*.log`) and has
+    **already silently lost nine s222 measurement logs** — it is not a home, it
+    is a hole.
+  - **A file beside a PLAN trips G2.** `docs/plans/<NNNN>-*.md` matches the
+    governance gate's deny pattern, and the one actor exempt from it
+    (`plan-drafter`) has no Bash and therefore cannot take a measurement. This
+    was already ruled around once: `docs/plans/done/0051-reason-then-structure-ab.md:148`
+    records "a RESULTS doc **NOT** a new file under `docs/plans/` citing a
+    plan# — that trips G2". A plan-local artifact also orphans on `git mv` to
+    `done/` (R8 tests *moved*, not *missing*, so it is never flagged), and an
+    Accepted ADR citing it hits a triple lock — dead pointer, `docs/adr/` R8
+    exemption, G1 blocking Code from repairing it — a shape with **eight
+    recorded casualties** (`docs/runbooks/memory-architecture.md:534`).
+  - **A new `docs/evidence/` is the R4 condition.** Both existing size guards
+    are path-pinned, so a new tier inherits neither; R4 was the one size-bearing
+    rule with no mechanism and rotted to a **measured 2.26×** its cap. The new
+    tier would also be missing from `_AC5_EXEMPT_TIERS`
+    (`tests/deploy/test_published_profiles.py`), reddening CI on its first
+    hostname-bearing record. And by this ADR's own taxonomy a fresh unscanned
+    surface is **C4-shaped** — the ADR would contradict itself on day one.
+  - **`docs/logs/` is already the ratified two-artifact evidence home**
+    (PLAN-004 v2 D6, `docs/logs/README.md`), never rotates or moves (so no dead
+    pointers, no triple lock), and its date-keyed `<YYYY-MM-DD>-<topic>.md`
+    naming **cannot** match G2's `\d{3,4}-` pattern. Its format is already 5/6
+    of the way here: `docs/logs/2026-07-05-plan0051-live-ab-results.md` carries
+    metric, units, procedure, who/when and a pre-committed read — missing only
+    the against-SHA field this ADR adds.
+  - **Volume does not decide it.** Measured: the smallest complete standalone
+    measurement record in the repo is 3,230 B, so 100 measurements ≈ 323 KB —
+    1.8% of `docs/`, tripping no guard. C5 fired four times in ~235 sessions.
+- **Positive control: per INSTANCE** (Cray, typed; the stricter of the two
+  options offered). Every measurement carries its own demonstration that the
+  procedure detects a known-bad state — not one demonstration at
+  procedure-creation. Priced from the real record: a measurement subsection
+  carrying a differential control costs ~700–1,300 B more than one without
+  (`docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`, the keyless-401 /
+  correct-key-200 / wrong-key-401 triple). ⚠️ The cost is the point and the
+  risk: at volume a per-instance control decays into copy-pasted boilerplate
+  that no longer discriminates (#0039's mechanism). A control that is identical
+  across instances is **evidence of decay, not of diligence** — the reviewer
+  check is that the known-bad state is specific to what was measured.
+- **Evaluator wiring: none needed.** A `measure` criterion names the artifact
+  path; the Read-only `goal-evaluator` opens it and judges the required fields
+  and the pass predicate. No new capability, no payload change.
+
+**The staleness guard — REQUIRED, not optional (Cray, typed, 2026-08-17).**
+The three-angle analysis found one hazard that *no* location closes: **nothing
+reads the against-SHA field**, so a real measurement can be re-cited against a
+tree it was never taken on indefinitely — D3's own named laundering mode,
+mechanically undefended. Ratified with the home, therefore: a `measure`
+artifact must additionally declare **which paths it measured**, and a guard
+computes staleness rather than trusting the field —
+`git diff --name-only <against-SHA>..HEAD -- <declared paths>`; a non-empty
+result marks the artifact **stale**, and a stale artifact is
+INSUFFICIENT-EVIDENCE, never PASS. This converts the SHA from a promise into
+an oracle, which is what C2 — an inherited premise treated as context rather
+than a claim to re-measure — requires of every field anyone inherits. Owner:
+OQ-5.
+
+PLAN-0108 consumes the ratified bucket set (`0108:58-60`) and was not blocked
+on any particular answer.
 
 ## D4 — the watch-list is standing; the census is not (one elimination)
 
@@ -406,8 +476,8 @@ first happens at once. The owed enforcement work is staged by value-per-cost:
 **Demotion — the path that keeps this from being a ratchet.** A rule that can
 only ever be added is a ratchet, and this ADR is being written because
 ratchets-that-cannot-act are the failure mode under study; a ratchet that
-cannot release is merely the same defect facing the other way. Proposed
-(SD-2, Cray's to ratify): **demotion runs on the same currency as promotion**
+cannot release is merely the same defect facing the other way. RULED
+(Cray, typed, 2026-08-17; SD-2 closed): **demotion runs on the same currency as promotion**
 — three distinct incidents in which a promoted rule or its enforcer itself
 caused measured net cost (false-fire, deadlock, legitimate work wrongly
 blocked) open a **demotion item** that must be brought to Cray, with the same
@@ -475,24 +545,56 @@ tallying at lesson-write time puts the count where the counter already is.
 
 ## Surfaced decisions (for Cray at ratification)
 
-- **SD-1 — cross-class counting.** Draft position: dedup per class; one
-  incident may fire multiple classes it factually satisfies (D1.4 — the
-  census's own arithmetic). Alternative: exactly-one-class per incident,
-  which changes C2's tally from 4 to 3 (s205 counted once). This sets every
-  future tally, so the counting text must be Cray-ratified, not
-  drafter-chosen.
-- **SD-2 — demotion mechanics.** Draft position: three cost-incidents open a
-  demotion item; demotion is a typed ruling, never automatic (D5).
-  Alternative: symmetric auto-demotion at 3 — rejected in draft for blast
-  radius, surfaced because the asymmetry is a values call, not a technical
-  one.
-- **SD-3 — D3 in its entirety** (bucket name, artifact home, positive-control
-  granularity, evaluator wiring) — proposed, never decided here.
+**All three are RULED (Cray, typed, 2026-08-17). None remains open.** They are
+kept here rather than deleted so the reasoning lineage survives — a reader
+arriving later can see what the alternative was and why it lost, which is what
+makes a decision re-openable on evidence rather than on mood.
+
+- **SD-1 — cross-class counting. RULED: dedup per class** (D1.4). One incident
+  counts in each class whose predicate it satisfies. Rejected: exactly-one-class
+  per incident, which would have forced an arbitrary assignment; it changed no
+  promotion outcome today (C2 reaches 3 either way), so the ruling governs
+  future tallies rather than this ADR's own.
+- **SD-2 — demotion mechanics. RULED: three cost-incidents OPEN a demotion
+  item; demotion is a typed Cray ruling, never automatic** (D5). Rejected:
+  symmetric auto-demotion at three. The asymmetry is deliberate and is a values
+  call, not a technical one — demotion removes protection while promotion adds
+  obligation, so an error in each direction costs differently.
+- **SD-3 — the `measure` bucket. RULED in full** (D3): the kind is `measure`;
+  the home is **`docs/logs/`**; the positive control is **per instance**; the
+  evaluator needs no new wiring; and a **staleness guard is required**, not
+  optional. The home was decided from a measured three-angle analysis —
+  retrieval archaeology, adversarial stress-test, lifecycle economics — whose
+  load-bearing findings are recorded inline in D3 rather than left as a
+  citation to a session that will not be readable later.
+
+**The finding that outranked the question itself,** recorded because it should
+govern every future artifact-placement decision here: knowledge survives across
+sessions by **re-presentation, not by location**. Every fact measured to have
+survived did so because something actively put it back in front of a reader — a
+hook that fires, a guard that runs, a classifier's own input file, an
+always-loaded rule. Every fact measured to have been lost was written somewhere
+correct and simply never re-opened; one ruling written only to a gitignored
+handoff returned **zero** hits on a repo-wide grep. `docs/logs/` alone does not
+self-surface — `docs/logs/2026-07-05-plan0051-live-ab-results.md` has no live
+citers at all, and what actually carried that result forward was private
+auto-memory. `measure` escapes that fate only because it ships two readers: the
+criterion that names the artifact (which the evaluator must open) and the
+staleness guard (which runs unasked). **A location without a reader is a
+well-organised place to lose things.**
 
 ## Open questions
 
-- **OQ-1:** D3 ratification (SD-3's parameter list). Blocks C5's full form
-  and one input to PLAN-0108's template port; blocks nothing else.
+- ~~**OQ-1:** D3 ratification (SD-3's parameter list).~~ **CLOSED 2026-08-17** —
+  ratified in full (see D3). C5's full form and PLAN-0108's template port are
+  unblocked.
+- **OQ-5 (new, from the SD-3 ruling):** owner and PLAN for the **staleness
+  guard** — the artifact's declared-paths field plus the
+  `git diff --name-only <against-SHA>..HEAD -- <paths>` check that marks a
+  `measure` artifact stale. Ratified as required, so this is owed work, not an
+  option. It is the only mechanism defending D3's named laundering mode, and
+  until it exists a `measure` artifact's freshness rests on the same-PR rule
+  alone.
 - **OQ-2:** the Cowork-drafted constitutional wording for C1's bullet, C2's
   sentence, and C4's two-clause extension (this ADR describes content and
   placement only; ADR-009 D1 governs the drafting route).
