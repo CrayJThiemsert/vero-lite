@@ -69,7 +69,7 @@ a source-text read.
 
 ### Phase A — ① instruments
 
-- [ ] **AC-1 [check] — every shipped JS asset parses.** The CI `gate` job
+- [x] **AC-1 [check] — every shipped JS asset parses.** The CI `gate` job
   (`.github/workflows/ci.yml`) contains a step that enumerates
   `services/api/static/assets/*.js` **from disk at run time** (no frozen list),
   asserts the enumeration is **non-empty** (an empty glob must go RED, never
@@ -105,7 +105,7 @@ a source-text read.
   `tests/api/test_export_cover_ui_contract.py:216`,
   `tests/api/test_view_hero_fleet_ui_contract.py:209`); a rename 404s silently
   and the page half-boots (the 404 mode is pinned at `test_static_ui.py:61-64`).
-- [ ] **AC-3 [check] — CI boots the app's lifespan, not just its import.** The
+- [x] **AC-3 [check] — CI boots the app's lifespan, not just its import.** The
   runtime-closure step (`ci.yml:92-97`, today an import-only probe) is replaced
   by a boot smoke that enters `lifespan` (`services/api/main.py:460-467` —
   `discover_and_register()` across the vertical plugin trees, persona
@@ -144,7 +144,7 @@ a source-text read.
   (`tests/services/engine/test_cli_registrars.py:20-25`) cannot see: a 7th
   vertical missing from **both** maps is set-equal and green today. Command:
   `uv run --no-sync pytest tests/services/engine/test_registrar_completeness.py -q`.
-- [ ] **AC-5 [check] — CI mypy covers the plugin trees.** `ci.yml:56` becomes
+- [x] **AC-5 [check] — CI mypy covers the plugin trees.** `ci.yml:56` becomes
   `uv run --no-sync mypy --strict services/ verticals/`. Measured: `mypy
   --strict verticals/` is already clean over 64 files, so remediation cost is
   zero; the pre-commit hook already covers this scope
@@ -152,7 +152,7 @@ a source-text read.
   Wall-clock delta: not measured. `tools/` is explicitly excluded (measured
   module-layout collision: `Source file found twice: "loop._schema" and
   "tools.loop._schema"` — a layout fix must come first, out of scope).
-- [ ] **AC-6 [check] — the two CI-orphaned pre-commit hooks run in CI.**
+- [x] **AC-6 [check] — the two CI-orphaned pre-commit hooks run in CI.**
   `detect-secrets` (`.pre-commit-config.yaml:43-48`) and the ontology
   JSON-schema check (`:50-56`) — the ontology is the semantic layer, the core
   primitive, and `ontology_schema` appears in `tests/` exactly 0 times
@@ -167,6 +167,33 @@ a source-text read.
   > `--no-sync` is required for the same reason every other CI step carries it: a
   > bare `uv run` re-syncs without the dev extra and uninstalls the tooling
   > mid-job (`ci.yml:46-48`).
+
+> **Phase A closing evidence (Code, 2026-08-18).** All six ACs are closed. The
+> four `check` ACs whose oracle is a CI step are closed by run
+> [32049063356](https://github.com/CrayJThiemsert/vero-lite/actions/runs/32049063356)
+> on [#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204), where each
+> step is recorded `success` **individually** — step 8 `JS assets parse`, step 9
+> `mypy (strict, services/ + verticals/)`, step 10 `Secret scan`, step 11
+> `Ontology schema check`, step 15 `Runtime closure BOOTS the app's lifespan, per
+> vertical`. Step-level conclusions were read rather than the job's, because a
+> green job does not distinguish a step that passed from one that was skipped.
+>
+> 🔴 **The first run of this PR FAILED, and the failure is worth keeping.** The
+> AC-3 step died with `ModuleNotFoundError: No module named 'services'`: the
+> runtime venv is built `--no-install-project` on purpose, and
+> `python tools/ci/boot_smoke.py` puts the SCRIPT's directory on `sys.path` where
+> the `python -c` probe it replaced put the CWD. **No local probe could have
+> caught it** — every local run used the dev venv, which has the project
+> installed, so the failing state was unreachable there by construction. That is
+> a ② `reach` failure inside the PLAN that exists to close ② failures. Fixed with
+> `PYTHONPATH: .` plus a comment recording the measurement, and verified by
+> BUILDING the CI condition locally (a separate `--no-install-project` venv) and
+> reproducing the error, not by reasoning about it.
+>
+> **Measured CI bill for Phase A (feeds AC-15):** the `gate` job went **7m53s →
+> 9m7s**, i.e. **≈ +74 s** for all four new oracles, against the immediately
+> preceding run on #1203. No new dependency: `node` ships on the ubuntu runner and
+> the three hook tools were already in the dev extra.
 
 ### Phase B — ② data reach
 
