@@ -75,9 +75,9 @@ reads the artifact — never its own constant); wording-quality claims are
   `docs/plans/0000-template.md`'s Acceptance Criteria section (today the bare
   `- [ ] ...` at `:12-14`) states the authoring rule: every AC declares
   `check` (command + timeout given) / `judge` (artifact + pass/fail read
-  named) / `evidence` (explicitly not a gate) — **plus the third bucket if and
-  as the companion ADR ratifies it, incorporated verbatim from the ADR, not
-  decided here** — and the Verification section (today `:25-27`) additionally
+  named) / `evidence` (explicitly not a gate) — **plus `measure` if and as the
+  companion ADR ratifies it, incorporated verbatim from the ADR, not decided
+  here** — and the Verification section (today `:25-27`) additionally
   prompts the coverage question: "if every criterion passes, does the goal
   hold? Name what is NOT covered." A guard test
   `tests/tools/test_plan_template_contract.py` reads the template file and
@@ -134,9 +134,23 @@ reads the artifact — never its own constant); wording-quality claims are
 
 - ❌ **Deciding the `measure` bucket or promoting any advisory lesson to
   binding** — the companion ADR's decisions; this PLAN consumes them after
-  ratification (LOCKED per the dispatch). If the ADR rejects the third bucket,
-  AC-1 ships the two-plus-evidence set unchanged — the dependency is on the
-  ADR *landing*, not on it landing a particular way.
+  ratification (LOCKED per the dispatch). If the ADR rejects `measure`, AC-1
+  ships the two-plus-`evidence` set unchanged — the dependency is on the ADR
+  *landing*, not on it landing a particular way.
+
+> **Reviewer amendment (Code, 2026-08-17) — provenance corrected.** The dispatch
+> that produced this PLAN described `/goal` as carrying a `check`/`judge`/`evidence`
+> split. Verified at source: `.claude/commands/goal.md:31-40` defines exactly
+> **two** kinds, `check` and `judge`; the only "evidence" occurrence (`:66`,
+> "an evidence-backed FAIL") is prose, not a kind. `evidence` is a **house PLAN-AC
+> label** for a criterion that is recorded and explicitly not a gate — real
+> practice, stated verbatim at
+> `docs/plans/done/0098-…:209-211` ("evidence recorded in the PR body, not a
+> gate") — and this PLAN keeps it on that footing. `measure` would therefore be a
+> third **`/goal` kind**, not a fourth PLAN-AC label; the earlier "third bucket"
+> wording counted the house label as if `/goal` owned it and is corrected above.
+> Caught by the ADR-0038 drafter reading `goal.md` rather than the dispatch —
+> which is the C2 class this work is about, fired by the dispatch's own author.
 - ❌ **Constitutional (`CLAUDE.md`) text** — including the §8 wording question
   (SD-1 below): flagged, never drafted here. Cowork drafts constitutional
   text by convention (ADR-009 D1); only Code commits it.
