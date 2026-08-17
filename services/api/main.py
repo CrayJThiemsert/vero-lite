@@ -273,6 +273,7 @@ async def _seed_fleet_operate_demo(vertical: str) -> None:
     from services.engine.procedures.persistence import load_run
     from verticals.fleet_maintenance.operate_seed import (
         DEMO_RUN_ID,
+        seed_case_list_history,
         seed_repair_gate_waiting_human_run,
         seed_settled_history_case,
     )
@@ -292,6 +293,16 @@ async def _seed_fleet_operate_demo(vertical: str) -> None:
             # along as a second undecided proposal in front of the visitor.
             if await seed_settled_history_case(session):
                 _boot_logger.info("fleet operate-demo seed: settled history case seeded")
+
+            # PLAN-0107 AC-7. Placed beside the settled case and BEFORE the run's
+            # early-return for the same measured reason: below the `load_run` skip it
+            # would seed on a virgin database and never on a restart, so an upgraded
+            # deployment would keep a two-case list forever. Carries its own
+            # idempotency, so running it every boot costs one indexed lookup.
+            if seeded_history := await seed_case_list_history(session):
+                _boot_logger.info(
+                    "fleet operate-demo seed: %d closed backlog case(s) seeded", seeded_history
+                )
 
             if await load_run(session, DEMO_RUN_ID) is not None:
                 _boot_logger.info(

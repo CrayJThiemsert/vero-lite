@@ -197,7 +197,7 @@ a source-text read.
 
 ### Phase B — ② data reach
 
-- [ ] **AC-7 [check] — the live seed and a fixture reach the case-list UI's own
+- [x] **AC-7 [check] — the live seed and a fixture reach the case-list UI's own
   limit.** *(Ruled by Cray 2026-08-17: the live seed itself grows.)*
   `verticals/fleet_maintenance/operate_seed.py` grows from 2 seeded cases
   (`:201,:315`) to **≥ 21 staggered cases** — timestamps spread across the
@@ -215,6 +215,23 @@ a source-text read.
   alone the server's default 50 / clamp 500 (`cases.py:252,:273`); the 919px
   state that clipped came from a tree no fixture reproduces. Command:
   `uv run --no-sync pytest tests/api/test_case_list_overflow_scenario.py -q`.
+  > **Closing evidence (Code, 2026-08-18).** `seed_case_list_history` seeds **19**
+  > CLOSED backlog cases; with the two narrative cases the list holds **21**, one
+  > past the UI's page. 6 tests, all green; suite 4123 → **4129**.
+  > **Witnessed RED, three ways, each reddening the test that claims the property
+  > and naming the cause:** removing `.limit(...)` from the real query reddens the
+  > truncation test · seeding the backlog OPEN instead of CLOSED reddens the
+  > demo-safety test · shrinking the backlog reddens the **anti-vacuity** test
+  > *first*, which is the point of having one.
+  > ⚠️ **Two things measured rather than assumed.** (1) The backlog is **invisible to
+  > the month-end tab by construction, not by luck** — `repair_spend_export` builds
+  > rows from cases carrying a `RepairCaseRunLink` or a `RepairCaseCloseout`, and
+  > these have neither; checked against that query *before* writing the seed,
+  > because a seed onto the demo's flagship truck once displaced its ฿48,000 axle
+  > breach and only the full suite noticed. (2) The scenario must take its session
+  > from **`api_db_maker`**, not a fresh `async_session()` — a second asyncpg
+  > connection collides with the one the client holds (`another operation is in
+  > progress`, measured on the first run).
 - [ ] **AC-8 [check] — the stub LLM stops issuing one identical judgment to
   every event.** `_STUB_JUDGMENT` (`tests/api/conftest.py:29-39` — one canned
   object, autouse across the `tests/api` suite via `:70`, same
