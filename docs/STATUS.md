@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-16T21:40:00+07:00
-session: 234
-current_batch: "s233–234 — fleet's last gate closed, fleet WENT LIVE, a human drove it, and it broke in a way CI structurally cannot see. s233 adopted AC-11's RoPA, cleared ADR-0037's OQ-3/D2.1 debts and made Tab J show real money. s234 executed PLAN-0103 Step 10 under Cray's typed §8 go (published system #3), archived PLAN-0103 11/11 + PLAN-0106 7/7, then fixed Tab I — which clipped 305px of itself — and REDEPLOYED under a second typed go. TWELVE PRs, #1180–#1191."
+last_updated: 2026-08-17T21:10:00+07:00
+session: 235
+current_batch: "s235 — s234's Tab I clip generalised into law: a five-specialist audit, ADR-0038 RATIFIED (5 classes binding, 4 SDs ruled), CLAUDE.md +4 rules, PLAN-0107/0108 drafted. EIGHT PRs, #1193–#1200."
 current_actor: code
-blocked_on: "NOTHING blocks repo work and nothing blocks fleet — it is serving the fixed build. The one governance question still open is ADR-0037 SD-1 (the D2.1 authorship fork); until it is ruled, D2.1 as written still governs."
-next_action: "Cray's — rule ADR-0037 SD-1 (the only surfaced decision with downstream consequences, open across three sessions). Code-side: PR-B, the STATUS rehoming pass."
-head_commit: 027986e
-recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 8d48818, 3b9a084, a956951]
+blocked_on: "NOTHING blocks repo work; main is green and carries no known defect. ADR-0037 SD-1 (the D2.1 authorship fork) stays Cray's — unruled across four sessions; until ruled, D2.1 as written governs."
+next_action: "Ratify PLAN-0107, then execute Phase A (zero-new-dependency work). Cray's: ADR-0037 SD-1. Code-side: PR-B's carve-out rehome — 11 rows, enumerated s235."
+head_commit: 218a521
+recent_commits: [218a521, 989e40a, f6cf8d3, f452e8a, 3b34b13, 6642fe7, b2327b0, c43cb3b, 364f055, f576af2]
 ---
 
 # vero-lite — Project Status
@@ -18,6 +18,58 @@ recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 
 
 ## Current Focus
 
+> **Session 235, 2026-08-17 (head_commit `027986e` → `218a521`) — EIGHT PRs
+> MERGED (#1193–#1200), 0 open. s234's Tab I clip was asked to generalise beyond
+> UI, and it did: a five-specialist audit turned one 305px defect into a measured
+> failure-class census, ADR-0038 made five classes BINDING, and `CLAUDE.md`
+> gained FOUR new rules — in one session.**
+>
+> 🔴 **The organising law the whole session turns on:** an oracle sees a defect
+> only when three independent conditions hold — **① an INSTRUMENT can read the
+> artifact · ② the test DATA can reach the failing state · ③ someone ARMED it as
+> a gate rather than as evidence.** The weakness is **not** UI-specific and is
+> **not** a missing test; it was failing silently across two of the three
+> Phase-1 OCT features.
+>
+> ✅ **ADR-0038 RATIFIED** (#1195, #1197) — the three-strike promotion rule for
+> advisory lessons, the census, D2's per-class enforcement forms, D5's demotion
+> path. **All four surfaced decisions RULED** (Cray, typed); its OQ-5 resolved to
+> the PLAN template rather than a build task (#1198). **Read the ADR, never a
+> restatement:** `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md`.
+>
+> ✅ **`CLAUDE.md` BOUND — four new rules, +314 words / +1,852 B, zero new
+> sections** (#1200): a load-bearing green is not evidence until its assertion is
+> **witnessed RED** in the direction it claims · an **expected-value set is not
+> an oracle of the system** until the system's own output is scored against it ·
+> an **inherited premise a decision rests on is a claim, not context** · **name
+> the rule's consumer, then check the home is in that consumer's input.** Per the
+> file's own convention the amendment record is the commit message
+> (`git log --follow -- CLAUDE.md`) and is not restated here.
+>
+> 🔴 **A live defect on `main` was fixed** (#1193) — `deploy.py` built against
+> `deploy/published/docker-compose.yml`, deleted three commits earlier; Phase 1
+> would have died on the next `--execute`. Path promoted to a module constant
+> plus a guard that walks the module's own path constants. ⚠️ **That guard's
+> first draft masked its own oracle** — the probe reddened on a pinned literal
+> and the filesystem stat never ran. **Seeing RED is not enough; read the RED.**
+>
+> ✅ **The control group that shaped the whole response:** `CLAUDE.md` §8's
+> scenario-test rule is **GENUINELY OBEYED — all 17 scenario/e2e files, zero
+> violations**, recorded per §6 as `confirmed — prior intact`, not a defect. This
+> repo obeys a binding *mechanical* rule almost perfectly and fails on *advisory*
+> ones — the asymmetry ADR-0038 rests on.
+>
+> ✅ **Branch protection verified LIVE, not from memory:** `strict: true`,
+> `contexts: ["gate"]`, `enforce_admins: true`. With `strict` plus a bare
+> `actions/checkout@v4` on `pull_request`, **the graded tree IS the tree that
+> lands** — so `on: push: main` is NOT worth adding, and a specialist proposal to
+> add it was retired on this evidence.
+>
+> **PLAN-0107 + PLAN-0108 drafted and split by ORACLE STRENGTH** (#1194, #1199)
+> on Cray's typed S1 ruling; both `Draft`, unratified. **Gates, eight times:**
+> `pytest tests/` **4115 passed / 8 skipped**, `mypy --strict services/` clean
+> over 136, ruff + format clean over 631, CI `gate` **pass** every time.
+
 > **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `027986e`) — TWELVE
 > PRs merged (#1180–#1191), 0 open. Fleet's last gate closed, fleet WENT LIVE, a
 > human drove it, and it broke in a way CI structurally cannot see.
@@ -25,11 +77,10 @@ recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 
 > build; PLAN-0103 is COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
 >
 > ✅ **AC-11's RoPA was written and ADOPTED** (`docs/compliance/ropa-fleet-cases.md`,
-> #1184) — the artifact the whole chain waited on. 🔴 **Its authorship is a
-> DEPARTURE from ADR-0037 D2.1, disclosed ON the artifact rather than left
-> silent:** Code drafted at Cray's request, Cray ruled every promise slot and
-> adopted. **ADR-0037 SD-1 — the D2.1 authorship fork — is the one open
-> governance question, and until it is ruled D2.1 as written still governs.**
+> #1184) — the artifact the whole chain waited on. 🔴 **Its authorship DEPARTS
+> from ADR-0037 D2.1, disclosed ON the artifact:** Code drafted at Cray's request,
+> Cray ruled every promise slot and adopted. **SD-1 stays unruled; until it is,
+> D2.1 as written governs.**
 >
 > 🔴 **s233's load-bearing work was VERIFICATION, not construction — seven
 > inherited claims were checked and REFUTED**, including ADR-0037's OQ-3, which
@@ -45,58 +96,44 @@ recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 
 > silent demo damage caught only by the full suite.
 >
 > ✅ **s234 executed Step 10 under Cray's typed §8 go**, and the pre-flight found
-> **two steps every prose summary of that sequence had omitted.** 🔴 **The image
-> was not on the host** — this profile's compose declares `build:` with no
-> `image:`, so `up -d` would have tried to build on the deploy host, which fails
-> outright there; built on the dev box and shipped, id identical on both
-> machines. ✅ **The host checkout was deliberately NOT pulled** — the `deploy/`
-> diff across those eight commits is **empty**, and the pull is the only step
-> that writes into a directory two *running* systems read from.
+> **two steps every prose summary of that sequence had omitted** — the image was
+> not on the host (`build:` with no `image:`, so `up -d` would build on the deploy
+> host and fail there), and the host checkout was deliberately **not** pulled
+> (the `deploy/` diff across those eight commits is empty).
 >
-> 🔴 **The keyed `/whoami` = 200 control, which neither prior system could
-> produce** (energy is keyless; procurement does not admit the route), recorded
-> as a **differential**: keyless 401, correct key 200, **wrong key 401**. The
-> third reading is what makes the second mean anything — a `200` alone is
-> equally explained by "auth is off" — and it settles the crossed-pair hazard
-> empirically instead of trusting that boot would have refused.
+> 🔴 **The keyed `/whoami` control was recorded as a DIFFERENTIAL** — keyless
+> 401, correct key 200, **wrong key 401**. The third reading is what makes the
+> second mean anything: a `200` alone is equally explained by "auth is off".
 >
 > 🔴 **Two documentation claims were MEASURED FALSE and corrected in the same
-> PR** — a backslashed Windows path is stripped through `ssh`→PowerShell and
-> fails as *"file not found"* against an intact checkout, and *"302 proves a
-> **working** origin"* is an overclaim that s232's own evidence refutes. **Both
-> now live in the runbooks they misled;** the reasoning is in the closeout
-> record, not restated here. ⚠️ **Step 9's headroom projection is exceeded
-> (≈1.33 GiB vs ≈0.95) because it models containers at boot** — see the
-> PLAN-0103 Active TODO, which owns that residual.
+> PR** — the backslashed Windows path stripped through `ssh`→PowerShell, and
+> *"302 proves a **working** origin"*. **Both now live in the runbooks they
+> misled.** ⚠️ **Step 9's headroom projection is exceeded (≈1.33 GiB vs ≈0.95)
+> because it models containers at boot** — the PLAN-0103 Active TODO owns that
+> residual.
 >
 > Do-no-harm held on both host actions, against baselines captured **before** the
 > first one: `oct-energy-app` and `oct-procurement-app` never restarted.
 >
 > 🔴 **Then Cray drove the live surface through Access, and that is the session's
-> lesson.** It CLOSED the scope limit Code had recorded (the rendered tab set was
-> unverified — Access blocks automation): all six tabs render, Tab J shows
-> **฿33,705** live. **And it found a defect 4,113 green tests could not** — Tab I's
-> root stood **919px inside a 614px `overflow: hidden` view**, so **305px was
-> unreachable** with no scrollbar and no error. All six tabs were geometry-measured
-> and Tab I was the only one; a grep-based reading that Tab J shared it was
-> **refuted by the measurement**. Fixed by copying Tab J's contract (#1190),
-> guarded by a stylesheet-reading test, shipped live under a second typed §8 go.
-> **CI has no JS runtime — that is the gap, not a missing test; own Active TODO.**
+> lesson.** It closed the scope limit Code had recorded (all six tabs render;
+> Tab J shows **฿33,705** live) **and found a defect 4,113 green tests could
+> not** — Tab I's root stood **919px inside a 614px `overflow: hidden` view**, so
+> **305px was unreachable** with no scrollbar and no error. Fixed by copying
+> Tab J's contract (#1190), guarded by a stylesheet-reading test, shipped live
+> under a second typed §8 go. **CI has no JS runtime — that is the gap, not a
+> missing test; own Active TODO.**
 >
-> ✅ **Redeploy, measured:** the new image id **differs** from the deployed one
-> (proving the build was not a whole-cache no-op) · **only `app` recreated**, so
-> the tunnel never re-registered · the boot log shows the run seed skipped **and no
-> settled-history line** — both seeds' idempotency proven on real data · the audit
-> chain's `head_hash` came back **byte-identical**, which proves nothing was
-> written, a claim `intact: true` alone cannot make. ⚠️ `index.html` is served
-> `cache-control: no-store`, so a static-asset change needs no hard reload or edge
-> purge — that **narrows** PLAN-0100's "nothing purges the edge" residual without
-> closing it (fonts still stand).
+> ✅ **Redeploy, measured:** the new image id **differs**, **only `app` was
+> recreated** so the tunnel never re-registered, both seeds' idempotency proven on
+> real data, and the audit chain's `head_hash` came back **byte-identical** —
+> which proves nothing was written, a claim `intact: true` alone cannot make.
+> ⚠️ `index.html` is served `cache-control: no-store`, which **narrows**
+> PLAN-0100's "nothing purges the edge" residual without closing it (fonts stand).
 >
-> **Gates: 4114 passed / 8 skipped** (4113 + the new guard), `mypy --strict
-> services/` clean over 136 files, ruff + format clean over 631. Full record —
-> bring-up **and** redeploy addendum:
-> `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
+> **Gates: 4114 passed / 8 skipped**, `mypy --strict services/` clean over 136
+> files, ruff + format clean over 631. Full record — bring-up **and** redeploy
+> addendum: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
 
 > **Session 232, 2026-08-15 (head_commit `b2fe45e` → `5425822`) — ELEVEN PRs
 > MERGED (#1170–#1179), 0 open. A next-work ranking became a fleet bring-up
@@ -203,53 +240,7 @@ recent_commits: [027986e, f682e81, 28bc043, 4b0fdda, 8477118, 00bbfd9, c66247c, 
 > controls `owed` → `built` (`docs/compliance/ropa-published-demo.md`) —
 > factual only, no controller judgment touched.
 
-> **Session 229, 2026-08-14 (head_commit `9df016e` → `ee968e5`) — one PR
-> MERGED (#1153). R8's PLAN-reference guard was structurally blind to a glob;
-> the blindspot is closed, and the one live dead pointer it had been missing
-> since s216 is repaired.**
->
-> 🔴 **The guard could not see a glob.** Its slug class admitted no `*`, so a
-> reference written as `NNNN-*.md` — **the form registries and closeout notes
-> actually use** — matched nothing, and the guard stayed silent even after the
-> PLAN had moved to `docs/plans/done/`. Present since R8 landed at s183.
->
-> **Measured cost, one live instance:** the `stream-status` skill's stream-1 row
-> went dead when PLAN-0100 was archived at **s216** and was **never reported
-> once** — including by the very commit that updated the **stream-2** row beside
-> it, for exactly this reason, one session later.
->
-> **The fix — mechanics are in the runbook's R8 section, not restated here.** Two
-> things a future reader must not re-derive: it resolves a glob through the **same
-> MOVED-not-MISSING predicate**, so ⚠️ **the rejected "path does not resolve" rule
-> (89 files flagged) is NOT reintroduced**; and it uses a flat `iterdir()` +
-> `fnmatch`, **not `Path.glob`**, which would descend into `done/` and report every
-> archived PLAN as still-live — **a fail-OPEN inversion**.
->
-> ✅ **Non-vacuity: the six new tests were seen RED against the unfixed regex
-> before the fix landed.** The widening then immediately flagged **two of the
-> change's own source comments** — the narration trap the runbook records from
-> s183, now on its **third occurrence**, fired by the very commit that widened the
-> rule.
->
-> 🔴 **A correction, classified `superseded by new info` — NOT `was an error`.**
-> The session's brief named a second live dead pointer in
-> `benchmarks/nl_query_feasibility/RESULTS.md`. Verified at the session's base: it
-> was **not dead** — PLAN-0104 was still in `docs/plans/` and `done/0104*` had
-> never existed. ⚠️ **Then the tree moved underneath the session:** #1151/#1152
-> archived the PLAN and hand-repaired that citation **by hand precisely because
-> this guard could not see the glob**. The file needed no edit.
->
-> **Gates:** guard module **23 passed**; the real tree reports **0 violations
-> across 1027 tracked files**; `mypy --strict services/` clean over 134 files;
-> ruff + format clean on the archived HEAD tree.
->
-> ⚠️ **The Windows-worktree environmental-RED floor is a DRIFTING count, not a
-> remembered number** — the s229 run measured **7**, not the 6 previously carried.
-> Attribute by cause and let the count fall out:
-> [`docs/lessons/0042-a-remembered-baseline-is-not-evidence.md`](lessons/0042-a-remembered-baseline-is-not-evidence.md)
-> holds the per-cause table and the named tests.
-
-_[The session-228 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
+_[The session-229 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
 this reconcile, keeping the window at four.]_
 
 ## Prior focus (archived)
@@ -269,8 +260,9 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-08-16 | **s234 — PLAN-0103 Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3.** PLAN-0103 **COMPLETE 11/11** and PLAN-0106 **COMPLETE 7/7**, both marked Complete by Cray (typed) and ARCHIVED. 🔴 **The pre-flight found two steps every prose summary of the sequence had omitted** — the image was not on the host, and the host pull was correctly skippable (`deploy/` diff empty). 🔴 **Two documentation claims MEASURED FALSE:** a backslashed Windows path is stripped through `ssh`→PowerShell and fails as "file not found"; and *"302 proves a working origin"* is an overclaim refuted by s232's own evidence. 🔴 **Cray then drove the live surface and found Tab I clipping 305px of itself — a defect 4,113 green tests could not see, because CI has no JS runtime.** Fixed, guarded by a stylesheet-reading test, and REDEPLOYED under a second typed §8 go; only `app` was recreated and the audit chain's `head_hash` came back byte-identical. | `027986e` / [#1188](https://github.com/CrayJThiemsert/vero-lite/pull/1188) / [#1190](https://github.com/CrayJThiemsert/vero-lite/pull/1190) / [#1191](https://github.com/CrayJThiemsert/vero-lite/pull/1191) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
-| 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled seven times (RoPA adopted · DSR 30 days · audit-chain residue = disclose BOTH halves · backups NONE, deliberate · DB access ssh-only · Cloudflare vendor deletion filed · recorder free text on its own line). 🔴 **ADR-0037 OQ-3 had been RULED 2026-08-14 while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it — it nearly sent the RoPA into the wrong file. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / [#1185](https://github.com/CrayJThiemsert/vero-lite/pull/1185) / [#1187](https://github.com/CrayJThiemsert/vero-lite/pull/1187) / `docs/compliance/ropa-fleet-cases.md` |
+| 2026-08-17 | **s235 — ADR-0038 RATIFIED (5 classes binding, 4 SDs ruled); `CLAUDE.md` BOUND with four new rules; 8 PRs (#1193–#1200).** 🔴 **The organising law:** a defect is visible only when an INSTRUMENT reads the artifact, the DATA reaches the failing state, and someone ARMED it as a gate. 🔴 **A live `main` defect fixed** (`deploy.py`'s dead compose path). ✅ §8's scenario rule is genuinely obeyed: 17 files, 0 violations. | `218a521` / [#1197](https://github.com/CrayJThiemsert/vero-lite/pull/1197) / [#1200](https://github.com/CrayJThiemsert/vero-lite/pull/1200) / `docs/adr/0038-*.md` |
+| 2026-08-16 | **s234 — Step 10 EXECUTED under Cray's typed §8 go: fleet is LIVE as published system #3;** PLAN-0103 **11/11** and PLAN-0106 **7/7**, both COMPLETE, ARCHIVED. 🔴 **Cray drove the live surface and found Tab I clipping 305px of itself — a defect 4,113 green tests could not see, because CI has no JS runtime.** Fixed, guarded, REDEPLOYED under a second typed go. Pre-flight omissions, two false doc claims and every redeploy reading are in the log. | `027986e` / [#1190](https://github.com/CrayJThiemsert/vero-lite/pull/1190) / `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` |
+| 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled **seven** times; every ruling is stamped on the RoPA itself. 🔴 **ADR-0037 OQ-3 had been RULED while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / `docs/compliance/ropa-fleet-cases.md` |
 | 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
 | 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every case that had accepted a quote, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1166](https://github.com/CrayJThiemsert/vero-lite/pull/1166) / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
 | 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
@@ -278,9 +270,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-13 | **s227 — PLAN-0104 Steps 2+3+4 as ONE PR (#1148) and Steps 5+6 (#1149); Steps 1–6 COMPLETE.** 🔴 **AC-5 is a hard merge dependency, not a preference:** no commit may exist where `count`+`group_by` validates while `_count` still collapses groups — that state answers with a **silently wrong** number, worse than the refusal it replaces. | `75243b0` / [#1148](https://github.com/CrayJThiemsert/vero-lite/pull/1148) / [#1149](https://github.com/CrayJThiemsert/vero-lite/pull/1149) / `docs/plans/done/0104-*.md` |
 | 2026-08-13 | **s226 — PLAN-0104 DRAFTED, its three SD slots RULED (Cray, typed), Step 1 SHIPPED.** 🔴 The `count`+`group_by` refusal had **three independent enforcers**, so no single edit changed behaviour and the circulating *"≈ one PR + tests"* price was wrong. 🔴 The gold guard was **VACUOUS** — it restated the numbers instead of reading `SQL_EXPECT`, so two wrong tokens scored `wrong` every run, silently. | `fa8a61c` / [#1144](https://github.com/CrayJThiemsert/vero-lite/pull/1144) / [#1145](https://github.com/CrayJThiemsert/vero-lite/pull/1145) / `docs/plans/done/0104-*.md` |
 | 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed. **Both fixed, not ticked over.** ⚠️ AC-10 + AC-11 stay OPEN. | `b229fcd` / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/done/0103-*.md` |
-| 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)**, narrative copy in the Act card's place, Step 6 builds it; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE** — the Act card renders on **no** published profile, suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
 
-_[Two session-223 rows rotated to `docs/status-archive/2026-h1-status.md` this
+_[The session-224 row rotated to `docs/status-archive/2026-h1-status.md` this
 reconcile, holding the table at ten.]_
 
 ## In-Flight Discussions
@@ -297,16 +288,18 @@ reconcile, holding the table at ten.]_
 
 ## Active TODOs
 
+- [ ] **🆕 PLAN-0107 — oracle-coverage hardening: `Draft`, UNRATIFIED, 15 ACs; NOTHING gates it.** The strong-oracle half of s235's five-specialist audit (PLAN-0108 holds the weak-oracle convention half — the split is Cray's typed S1 ruling). **Phase A is all zero-new-dependency work:** `node --check`, the asset-manifest bijection, a real `TestClient` lifespan boot, the executor-registrar map, `mypy --strict verticals/` (**measured already clean over 64 files — zero remediation**), the two CI-orphaned pre-commit hooks. AC-14 retires the inert `?v=` guard, **no separate ratification** (Cray, typed). **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md`.
+- [ ] **🆕 PLAN-0108 — AC-authoring + pre-close convention hardening: `Draft`, UNRATIFIED.** The weak-oracle half of the same audit; its only blocker was ADR-0038, **which has landed**, so nothing gates it either. Owns ADR-0038's **OQ-5** — the staleness-guard obligation attaches to the PLAN template, not to a build task. **Read the PLAN, never a restatement:** `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md`.
 - [x] **PLAN-0106 — fleet's own in-app case-persistence disclosure (ADR-0037 D2.4): COMPLETE 7/7, marked Complete by Cray (typed) and ARCHIVED s234.** AC-7's ordering clause closed on fleet's Step-10 go record, which cites this PLAN by number. **No live residual.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0106-fleet-case-persistence-disclosure.md` (§Closure evidence · §Surfaced decisions).
-- [x] **PLAN-0105 — fleet's 90-day in-app case retention: COMPLETE 11/11, ARCHIVED s231.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md` (§Surfaced decisions for SD-1..SD-4; the child-to-child FK ordering defect and its guard). ✅ s232 corrected its false "is factored" claim by EXTRACTING `delete_case()` (#1171); failure semantics RULED **(b)**. ⚠️ **What `Complete` does NOT mean:** AC-11's RoPA is still Cray's, and the **DSR-on-request path stays undefined — requester identification in particular is genuinely undesigned**; `delete_case()` is the mechanism half only. _[Trimmed s233 per R2 s141.]_
-- [x] **PLAN-0104 — `count` WITH `group_by`: COMPLETE 8/8, ARCHIVED s228; discharges PLAN-0100 D-4.** **Read the archived PLAN and the evidence, never a restatement:** `docs/plans/done/0104-nl-query-count-with-group-by.md` · `benchmarks/nl_query_feasibility/RESULTS.md` §"Addendum — PLAN-0104 Step 7 live evidence run". 🔴 **Do not re-derive: the 12/13 does NOT beat the prior `11/12` — that figure is RETIRED as non-comparable** (prompt changed, gold grew 12→13), and the engine-A prior is in its own AC-9 addendum, not the arm-comparison table. ⚠️ **Live:** the Step 7 dumps under `.claude/benchmark-results/` are **untracked and NOT gitignored** — no copy in history, nothing stopping an accidental commit. _[Trimmed s233 per R2 s141.]_
-- [x] **`_count`'s week silent-drop — CLOSED s228, RULED (a), SHIPPED [#1156](https://github.com/CrayJThiemsert/vero-lite/pull/1156).** The guard and its named set `_WEEK_ROLLUP_BLIND_TO` live in `services/engine/run_query.py` — **read the code, never a restatement.** 🔴 **Do not re-derive:** the guard keys on the **FILTER** as well as `group_by` (a bare `started_week` filter reaches the branch), and because the set is named, **(b) would SHRINK it, not delete the guard** — (a) is the honest floor, not a stopgap. ⚠️ **(b) is still the better ANSWER, unscheduled** — no gold case asks for it today. _[Trimmed s233 per R2 s141.]_
+- [x] **PLAN-0105 — fleet's 90-day in-app case retention: COMPLETE 11/11, ARCHIVED s231.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0105-fleet-case-retention-in-app-deletion.md` (§Surfaced decisions SD-1..SD-4; the child-to-child FK ordering defect and its guard). ⚠️ **Live remainder — the DSR-on-request path stays undefined, requester identification in particular**; `delete_case()` is the mechanism half only. _[s235: the "AC-11's RoPA is still Cray's" clause is DROPPED as **stale, `was an error` by the time it was last edited** — the RoPA was written and ADOPTED s233 (#1184).]_
+- [x] **PLAN-0104 — `count` WITH `group_by`: COMPLETE 8/8, ARCHIVED s228; discharges PLAN-0100 D-4.** **Read the archived PLAN and the evidence, never a restatement:** `docs/plans/done/0104-nl-query-count-with-group-by.md` · `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum — which holds the "12/13 does NOT beat 11/12, that figure is RETIRED as non-comparable" correction. ⚠️ **One live residual, recorded ONLY here:** the Step 7 dumps under `.claude/benchmark-results/` are **untracked and NOT gitignored** — no copy in history, nothing stopping an accidental commit.
+- [x] **`_count`'s week silent-drop — CLOSED s228, RULED (a), SHIPPED [#1156](https://github.com/CrayJThiemsert/vero-lite/pull/1156).** The guard and its named set `_WEEK_ROLLUP_BLIND_TO` live in `services/engine/run_query.py` — **read the code, never a restatement.** ⚠️ **Live remainder: (b) — make the filter work — is still the better ANSWER and stays unscheduled**; no gold case asks for it today, and because the set is named, (b) SHRINKS it rather than deleting the guard.
 - [ ] **🆕 A THIRD silent drop, same family, STRICTLY LARGER — found s228, UNRULED.** The aggregate paths (`_aggregate_duration` via `_keep`, and `_aggregate_benefit`) filter on **procedure/status only — neither reads `started_week`** — so an aggregate carrying that filter silently answers across **EVERY week**. 🔴 Worse than the `count` case just closed: what vanishes is **the week filter itself**. Reachable — `started_week` is in `DIMENSIONS` and in the published descriptor, so the model emits it there. Found by following through on the `goal-evaluator`'s SD-1, **not by a test; no test covers it, which is why it survived**. Not repaired in #1156 (different site, outside the ruling). **Two dispositions, NEITHER ruled:** (a) refuse it, or (b) make the filter work.
 - [ ] **🆕 A FOURTH silent drop in the NL engine — found s232, MEASURED at `5425822`, UNRULED, and recorded here because NO other artifact carries it** (grep across `docs/ services/ tests/` returned zero hits before this row). Same family as the third, **different axis: what vanishes is `group_by` itself, not a filter.** `_validate_query` **permits** `group_by` on aggregate ops — its guard is `query.group_by and query.operation not in _AGGREGATE_OPS and query.operation != "count"` (`services/engine/nl_query.py:571`) — and `_run_query_schema` binds the enum to `DIMENSIONS` (`run_query.py:420`), so the model **does** emit it. But **both** aggregate paths construct `AggregateResult(...)` with **no `groups` argument** (`run_query.py:330` duration, `:364` benefit) and `groups` defaults to `{}`. 🔴 **The count path at `:248` DOES pass `groups=groups`** — so the omission is a two-site gap in an otherwise-correct design, not a missing feature. **Effect:** *"average duration per procedure"* validates, executes, and silently returns **one ungrouped number**. ⚠️ **No test covers it**, which is why it survived PLAN-0104's whole build. Same two dispositions as the third drop, neither ruled: **(a) refuse it, or (b) make it group.**
-- [ ] **🆕 `deploy.py` builds from a compose file that NO LONGER EXISTS — found s232, MEASURED, UNFIXED. NOT a fleet blocker; it breaks the next ENERGY redeploy.** `build_and_ship` sets `compose_file = repo_root / "deploy" / "published" / "docker-compose.yml"` (`deploy/published/deploy.py:242`), and that path was removed when PLAN-0103 Step 4 moved every compose into per-profile directories — `ls` confirms it is absent at `5425822`. ⚠️ **The same module's OTHER references were migrated correctly** (`_HOST_COMPOSE` and `_HOST_READ_PATHS` both name `oct-energy/docker-compose.yml`), so this is one straggler, not a systemic miss — which is exactly why reading the neighbours would not have caught it. 🔴 **No test guards it:** `tests/deploy/test_deploy.py` pins `_PROJECT`, the container names and `_HOST_READ_PATHS`, but **not** this path. Fix is a one-line repoint **plus** the guard that would have caught it; neither is scheduled.
+- [x] **`deploy.py`'s dead compose path — FIXED s235 ([#1193](https://github.com/CrayJThiemsert/vero-lite/pull/1193)).** Found s232 and live on `main` for three commits; Phase 1 would have died on the next `--execute`. The path is now the module constant `_LOCAL_COMPOSE`, guarded by a test that walks the module's own path constants, so a future straggler reddens by construction. **Read the code and the guard, never a restatement:** `deploy/published/deploy.py` · `tests/deploy/test_deploy.py`. ⚠️ **That guard's first draft masked its own oracle** — homed in [`docs/lessons/0043-*.md`](lessons/0043-a-probes-red-must-name-what-broke.md), now binding via `CLAUDE.md` §8's witnessed-RED rule.
 - [ ] **`nl-03`'s `SQL_EXPECT` is UNDER-SPECIFIED — RULED (Cray, typed, s226): RECORD it, do NOT change the token now.** Its list omits `event-reading-08`, which `gold.yaml` lists among nl-03's three expected ids. 🔴 **This is a DIFFERENT defect class from the nl-02/nl-05 tokens Step 1 repaired, and keeping the distinction is the point of the row:** `score_sql` matches a **subset**, so nl-03's present tokens are **correct** and the case still scores `correct` — **the oracle is WEAKER than it should be, not WRONG**, where nl-02/nl-05 were factually wrong and therefore scored `wrong` on every run. ⚠️ **Adding the token would make the benchmark STRICTER:** a model whose SQL filters by unit would flip nl-03 from `correct` to `wrong`, which **changes what the measured numbers mean and breaks comparability with earlier runs**. That makes it a **measurement decision, not a typo fix** — which is why it is recorded rather than patched. On the same basis, noted and deliberately not acted on: **`score_sql` matches tokens as SUBSTRINGS**, so an expected `"1"` would match a result of `"21"`.
-- [x] **PLAN-0103 — vero-lite's side of the multi-vertical portal: COMPLETE 11/11, marked Complete by Cray (typed) and ARCHIVED s234.** AC-10 + AC-11 both closed by fleet's bring-up as published system #3; `deploy/published/` holds exactly three systems and all three are live. **Read the archived PLAN, never a restatement:** `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` (§The hard boundary · §Surfaced decisions · §Steps); closeout record `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. **Two live residuals outlive the PLAN and are recorded here because nothing else carries them:** (1) ⚠️ **Requester identification for the DSR path is genuinely undesigned** — `repair_case.opened_by` has no FK, so a request matches rows only by content. (2) ⚠️ **Step 9's headroom projection method under-models by ~3–6× per app container** — it measures containers at boot, and a fourth system must be projected against steady-state figures instead. _[Trimmed s234: the s225 G1/G2 correction, the no-portal-repo ruling and the per-Step narrative stay in the archived PLAN and in `docs/status-archive/`.]_
-- [x] **Fleet's Operate-tab seed flag — CLOSED s232 ([#1170](https://github.com/CrayJThiemsert/vero-lite/pull/1170)):** `OCT_DEMO_SEED_OPERATE` flipped `false`→`true`, so Tab H no longer opens empty on bring-up. The flag and its corrected comment live in `deploy/published/oct-fleet-maintenance/published.env`; the four README corrections in that profile's `README.md` (#1173). 🔴 **The durable shape — three artifacts described one fact and only `main.py`'s was right, because it was edited alongside the code; prose has no consumer, and ruff, mypy and 4093 tests stayed silent eleven sessions.** _[Trimmed s233 per R2 s141.]_
+- [x] **PLAN-0103 — vero-lite's side of the multi-vertical portal: COMPLETE 11/11, ARCHIVED s234;** all three published systems are live. **Read the archived PLAN and the closeout record, never a restatement:** `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` · `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. **Two live residuals outlive the PLAN and are recorded here because nothing else carries them:** (1) ⚠️ **Requester identification for the DSR path is genuinely undesigned** — `repair_case.opened_by` has no FK, so a request matches rows only by content. (2) ⚠️ **Step 9's headroom projection under-models by ~3–6× per app container** — it measures containers at boot; a fourth system must be projected against steady-state figures.
+- [x] **Fleet's Operate-tab seed flag — CLOSED s232 ([#1170](https://github.com/CrayJThiemsert/vero-lite/pull/1170)):** `OCT_DEMO_SEED_OPERATE` flipped `false`→`true`; the flag lives in `deploy/published/oct-fleet-maintenance/published.env`. 🔴 **The durable shape, recorded ONLY here — three artifacts described one fact and only `main.py`'s was right, because it was edited alongside the code; prose has no consumer, and ruff, mypy and 4093 tests stayed silent eleven sessions.**
 - [ ] **🆕 The apex domain leaks in ONE archived file — found s231 by repo-wide grep; UNRULED and not urgent.** The only carrier is `docs/plans/done/0100-exposure-published-demo-surface.md` (5 places), matching the s222 correction recorded in ADR-0036. ⚠️ **Outside the existing guard's reach:** `test_no_unknown_domain_appears_in_the_deploy_docs` scans `deploy/published/` and the published-demo runbooks, **not `docs/plans/`**. Three options, none ruled: scrub the file, widen the guard, or accept it knowingly. 🔴 **RE-PRICED s232 — "widen the guard" is NOT a one-file flip.** MEASURED: widening it to `docs/plans/` reddens **FOUR** files, not one — the archived PLAN-0100 **plus** three other archived plans carrying unrelated third-party domains (`docs/plans/done/0013-*`, `done/0014-*`, `done/0033-*`). So the option is **a flip PLUS three deliberate allowlist additions**, which that constant's own comment calls an act needing intent. **Reference BY PATH ONLY — the domain is not named here.**
 - [ ] **The ฿ realized-vs-projected join — RECORDED ON ITS MEASURED BASIS, because the version circulating in session notes is PARTLY FALSE and it was ranked #1 next work on the strength of the false part.** ✅ **True:** the realized side already carries `total_thb` and `run_id` on the **same** `ExportRow` (`services/db/repair_spend_export.py`, linked via `RepairCaseRunLink`), so **no migration is needed**. 🔴 **False as circulated:** that `benefit_rollup` in `services/db/run_analytics.py` "already extracts `net_benefit_thb` by `run_id`". It does **not** — it aggregates by currency × procedure × facet-kind × day and touches `run_id` only inside a `count(distinct …)`, so it yields **no per-run figure at all**. **Therefore the join needs a NEW per-run aggregation, not a reuse of `benefit_rollup`'s output**; the `GROUP BY run_id` pattern to copy is the per-run SUM inner subquery in that same module. ✅ **RE-PRICED s226 — MEASURED, not estimated: ~150–250 lines across 6–7 files, ONE PR.** The circulating **"~40 lines by reusing `benefit_rollup`" framing was CHECKED and is WRONG**. 🔴 **Three constraints the old framing missed, all TEST-PINNED:** (a) `run_analytics.py`'s **SD-8(a) discipline FORBIDS O(runs) result shapes**, pinned by `tests/services/db/test_run_analytics.py` with statement capture — so **"per-run rows on screen" is a design decision, not a mechanical add**; (b) `tests/api/test_export_cover_ui_contract.py` asserts **set equality** against an **empty** `_UNREAD_COVER_FIELDS`, so a new `ExportCoverResponse` field **must ship with its `view-export.js` tile in the SAME PR** or CI reddens; (c) **`/insights/impact` is ABSENT from fleet's Cloudflare allowlist**, so the figure **must ride the existing cover response**. 🔴 **CORRECTED s232, `was an error`: this row called `/insights/impact` "the only existing consumer of the projected side" and it is NOT.** MEASURED — `_aggregate_benefit` (`services/engine/run_query.py:334`, consuming `run_analytics.benefit_rollup` at `:343`, dispatched at `:380`) is a **second** consumer, and it **IS reachable on fleet** via the allowlisted `^/query$`. Constraint (c)'s *conclusion* survives — the figure still rides the cover response — but the premise under it was false, and a reader pricing this work from the old sentence would mis-scope the blast radius. ⚠️ **Also corrected: "SD-8(a) is test-pinned by statement capture" holds only for the ELEVEN primitives hard-coded at `tests/services/db/test_run_analytics.py:253-268`, and only when Postgres is reachable** — a *new* O(runs) reader would **not** automatically redden CI. Pattern to copy: the per-run `GROUP BY` in `run_duration_totals` (`run_analytics.py:448`), **not** `benefit_rollup` (`:521`). Lands on **Tab J**, which fleet publishes.
 - [ ] **Demo-key rotation cadence — CRAY'S, posture not code.** Fleet's README documents how to **generate** a persona key pair but says nothing about **when to rotate**. Measured s225: `git grep -i -e rotate -e rotation` under `deploy/published/oct-fleet-maintenance/` returns **zero** matches. The keys are served to the browser by ruling, so they are **public the moment fleet is reachable** — which makes the cadence a real posture question rather than a nicety. No code change is implied; the answer is Cray's.
@@ -315,7 +308,7 @@ reconcile, holding the table at ten.]_
 - [ ] **Landing-layer PLAN — CLOSED s226 as SUPERSEDED. NOT work to do; this row exists so nobody schedules it again.** PLAN-0103 Step 8 consumed the repo-side half (AC-9 ticked), and ADR-0036 D1/D2 place the landing surface, ingress map and Access policies **outside this repo** — a vero-lite file enumerating published systems is guard-rejected as a *shadow ingress map* (`tests/deploy/test_published_profiles.py`). Cray ruled s221 (typed): **no portal repo.** 🔴 **The remainder is CRAY'S DASHBOARD WORK — nothing for Code, no dispatch owed.** _[Trimmed s233 per R2 s141; measurement narrative in `docs/status-archive/`.]_
 - [ ] **PLAN-0100's residuals outlive the PLAN** (COMPLETE 13/13 and ARCHIVED s216; the demo is LIVE, REDEPLOYABLE and DRIVEN). **Read the archived PLAN, never a restatement:** `docs/plans/done/0100-exposure-published-demo-surface.md` (§"Step 11 closure verdict"; §"Defects the live run found" for D-1..D-5, incl. the *transient* D-5 Safe-Browsing flag on the Access login callback, cause UNDETERMINED; §Instrument failures). _[s222: the completion narrative is dropped per R2's ratified Active-TODO rule — `[x]` items older than the session window go, git history + the archived PLAN hold them. Only the live residuals stay.]_ **Live, and recorded ONLY here:** (1) ✅ **D-4 is FULLY DISCHARGED — RULED s217 (Cray, typed): option (a), teach the engine; delivered as PLAN-0104, COMPLETE 8/8 and ARCHIVED s228 (#1145, #1148, #1149, #1151).** The engine executes `count` WITH `group_by` end-to-end, and AC-7's live evidence closed s228 — **nothing in D-4 is outstanding.** _[Corrected s226 IN PLACE, `superseded by new info`: this item read "nothing built, no PLAN drafted, still the largest ungated Code item" and carried the seam analysis inline. A PLAN now owns both, so the analysis is not kept in two divergent copies — it lives in the PLAN and, in summary, in the PLAN-0104 Active TODO above. The demand this item existed to make — **"re-price before scheduling; '≈ one PR + tests' rested on the four-seam count"** — is **DISCHARGED**: drafting re-priced it, and the answer is that the refusal has **three independent enforcers**, so no single edit changes behaviour. The s225 measurement it carried (`group_by` touched at **eight or more** sites, the decisive omitted one being the system prompt) is rotated to `docs/status-archive/2026-h1-status.md`.]_ **Read `docs/plans/done/0104-nl-query-count-with-group-by.md`, never a restatement.** (2) **No cache-purge step or versioned font URLs** in the redeploy runbook — nothing in the pipeline purges the edge and `?v=cNN` does not reach fonts; a purge needs a Cloudflare API token = a new secret + host-state. (3) **`published.env` pins no `OLLAMA_KEEP_ALIVE`**, so the published surface silently inherits the code default of 30m.
 - [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it dies at the next context reset. 🔴 **BLOCKING GAP, measured s226 — the SERIES is banked here, but the METHOD is banked NOWHERE AT ALL:** no numerator, no denominator, no window is recorded anywhere in the repo. **A tripwire built today therefore emits a number that CANNOT be compared to those three.** One decision slot must be filled **before any build**: pin the metric definition (numerator / denominator / window), and rule whether the three banked figures are **reproducible under it** or must be **declared unrecoverable**.
-- [ ] **🆕 CI has NO JS RUNTIME — s234 measured the cost. UNSCHEDULED, not a commitment.** Tab I clipped **305px** of itself on the **live** system while **4,113 tests were green**; a human found it. **No oracle here can see a clip.** 🔴 **The guard shipped with the fix does NOT close this and says so in its own docstring** — `test_case_wrap_declares_the_scroll_contract` reads the stylesheet, so it catches a deletion and **cannot catch a re-clip by other means**. Same family as the row below: an oracle gap, not a missing test (cf. s232's *"the visual pass found what eleven green tests could not"*). Closing it is a JS-runtime-in-CI project — nothing drafted. Evidence: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` §Addendum.
+- [ ] **CI has NO JS RUNTIME — s234 measured the cost; NARROWED s235, NOT closed.** Tab I clipped **305px** of itself on the **live** system while **4,113 tests were green**; a human found it. **No oracle here can see a clip.** ⚠️ **PLAN-0107 AC-1 adds `node --check`, a SYNTAX gate — a clip is a LAYOUT fact, so AC-1 narrows this row and does not close it.** 🔴 **The guard shipped with the fix does not close it either, and says so in its own docstring** — `test_case_wrap_declares_the_scroll_contract` reads the stylesheet, so it catches a deletion and **cannot catch a re-clip by other means**. An oracle gap, not a missing test. Closing it is a JS-runtime-in-CI project — nothing drafted. Evidence: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md` §Addendum.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet. 🔴 **SCOPING BLOCKER, measured s226 and RE-MEASURED s232 — scenario tests cannot be machine-scoped today, by marker OR by filename:** `pyproject.toml` still defines exactly **two** pytest markers, `slow` and `host_state`, so there is **no `scenario` marker**; and `tests/api/test_fleet_pilot_scenarios.py` is **plural** where every sibling is singular `_scenario.py`. ⚠️ **The count in this row was STALE and is corrected — trust the measurement, not the remembered number:** s226 recorded "eight sibling files"; the tree at `5425822` holds **13 files / 63 test functions** (12 singular + the 1 plural), spanning `tests/api/`, `tests/services/db/` and `tests/services/engine/` — **not `tests/api/` alone**. 🔴 **CI runs bare `pytest -q` with no `-m`, so `CLAUDE.md` §8's binding scenario-test rule is enforced by NOTHING mechanical today** — it holds only because each PLAN's ACs restate it. ✅ **XS prerequisite, worth doing on its own and independent of the CI job: add a `scenario` marker and normalise that filename** — **rename blast radius is ZERO** (repo-wide grep finds one hit, this row's predecessor). The CI job itself stays effort **L**, with three unresolved design questions — what **marks** a scenario test, what **enumerates** a seam, which **mutation engine**.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; nothing blocking remains.** **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. (A5 stays **parked** — no real Wialon export exists yet.) _[s226: the per-answer ledger A1–A7 is ROTATED to `docs/status-archive/2026-h1-status.md`; `docs/plans/done/0096-fleet-flow-completion-phase1.md` holds the detail.]_
 - [ ] **The AT-2 extraction — only the F-FACTORY half remains, owned by PLAN-0076 T1.** The criterion-vocabulary half SHIPPED as PLAN-0087 (ARCHIVED, #840/#841); SD-1 = (a) keeps the procedure-aware `ExecutorFactory` half with PLAN-0076 T1, guard `test_at2_extraction_obligation_is_owned` ARMED. Full detail: `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` + `docs/plans/0076-*.md` §A.

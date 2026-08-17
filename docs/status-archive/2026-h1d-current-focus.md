@@ -354,3 +354,65 @@ the cut, not by memory.
 > **Gates: 4045 passed / 8 skipped**, `mypy --strict services/` clean over 134
 > files, ruff + format clean **on the HEAD tree**; `merge_tree_identical=YES`
 > between tested `c80df02` and merge `ad2804d` (first parent `33dfc26`).
+
+
+## Rotated this reconcile — session 235 (2026-08-17)
+
+Rotated out of `docs/STATUS.md` while reconciling **ADR-0038 RATIFIED + `CLAUDE.md`
+BOUND** (#1193–#1200, `027986e` → `218a521`). This is the session-229 Current Focus
+block — the oldest in the window, displaced by the session-235 block.
+
+⚠️ **Carve-out checked before rotating, not assumed.** The block's two load-bearing
+facts survive outside it: R8's glob-blindness fix and its six-tests-seen-RED
+non-vacuity record live in `docs/runbooks/memory-architecture.md` §R8 and in
+[#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153); the
+Windows-worktree environmental-RED **drifting count** lives in
+`docs/lessons/0042-a-remembered-baseline-is-not-evidence.md`, which the block
+itself cites. The session-229 **Recent Decisions row is deliberately NOT trimmed**
+and stays in STATUS. Verified by grep before the cut, not by memory.
+
+> **Session 229, 2026-08-14 (head_commit `9df016e` → `ee968e5`) — one PR
+> MERGED (#1153). R8's PLAN-reference guard was structurally blind to a glob;
+> the blindspot is closed, and the one live dead pointer it had been missing
+> since s216 is repaired.**
+>
+> 🔴 **The guard could not see a glob.** Its slug class admitted no `*`, so a
+> reference written as `NNNN-*.md` — **the form registries and closeout notes
+> actually use** — matched nothing, and the guard stayed silent even after the
+> PLAN had moved to `docs/plans/done/`. Present since R8 landed at s183.
+>
+> **Measured cost, one live instance:** the `stream-status` skill's stream-1 row
+> went dead when PLAN-0100 was archived at **s216** and was **never reported
+> once** — including by the very commit that updated the **stream-2** row beside
+> it, for exactly this reason, one session later.
+>
+> **The fix — mechanics are in the runbook's R8 section, not restated here.** Two
+> things a future reader must not re-derive: it resolves a glob through the **same
+> MOVED-not-MISSING predicate**, so ⚠️ **the rejected "path does not resolve" rule
+> (89 files flagged) is NOT reintroduced**; and it uses a flat `iterdir()` +
+> `fnmatch`, **not `Path.glob`**, which would descend into `done/` and report every
+> archived PLAN as still-live — **a fail-OPEN inversion**.
+>
+> ✅ **Non-vacuity: the six new tests were seen RED against the unfixed regex
+> before the fix landed.** The widening then immediately flagged **two of the
+> change's own source comments** — the narration trap the runbook records from
+> s183, now on its **third occurrence**, fired by the very commit that widened the
+> rule.
+>
+> 🔴 **A correction, classified `superseded by new info` — NOT `was an error`.**
+> The session's brief named a second live dead pointer in
+> `benchmarks/nl_query_feasibility/RESULTS.md`. Verified at the session's base: it
+> was **not dead** — PLAN-0104 was still in `docs/plans/` and `done/0104*` had
+> never existed. ⚠️ **Then the tree moved underneath the session:** #1151/#1152
+> archived the PLAN and hand-repaired that citation **by hand precisely because
+> this guard could not see the glob**. The file needed no edit.
+>
+> **Gates:** guard module **23 passed**; the real tree reports **0 violations
+> across 1027 tracked files**; `mypy --strict services/` clean over 134 files;
+> ruff + format clean on the archived HEAD tree.
+>
+> ⚠️ **The Windows-worktree environmental-RED floor is a DRIFTING count, not a
+> remembered number** — the s229 run measured **7**, not the 6 previously carried.
+> Attribute by cause and let the count fall out:
+> [`docs/lessons/0042-a-remembered-baseline-is-not-evidence.md`](lessons/0042-a-remembered-baseline-is-not-evidence.md)
+> holds the per-cause table and the named tests.

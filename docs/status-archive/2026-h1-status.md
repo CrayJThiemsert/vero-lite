@@ -1330,3 +1330,11 @@ ten-row window while adding the session-229 row. Moved byte-exact, never retyped
      2026-h1*-current-focus.md. -->
 | 2026-08-12 | **s223 — RULED (Cray, typed): J4 ("run the full `tests/` before pushing") stays BINDING but is evaluated PER ACTION** — against the commit(s) being pushed at evaluation time; earlier uncovered pushes are residual gaps, not a standing FAIL. Rationale: **a criterion no future work can turn green is defective, not strict.** ✅ **R2 carve-out DISCHARGED s228** — rehomed to the lesson, so this row is now a pointer like any other. | `docs/lessons/0029-verify-full-suite-not-subset.md` §Addendum (rehomed s228) |
 | 2026-08-12 | **s223 — the MS-S1 secrets-ACL exposure is CLOSED and PROVEN, under two typed §8 gos.** RULED (Cray, typed): tighten as a **ladder A → C**, canary procurement only, recreate `oct-energy` for real, and **MOVE** the leftover backup into the tightened directory. 🔴 **A same-volume move keeps the OLD ACL — measured.** Each rung believed only on a force-recreate; verifier seen RED→GREEN. | `b4cb860` (head_commit) / [#1132](https://github.com/CrayJThiemsert/vero-lite/pull/1132) / [#1133](https://github.com/CrayJThiemsert/vero-lite/pull/1133) / `docs/logs/2026-08-12-ms-s1-secrets-acl-tightening.md` |
+
+<!-- Rotated 2026-08-17 (session 235) from docs/STATUS.md Recent Decisions to
+     hold the table at ten rows. Target is this UNLETTERED BASE file: RD rows
+     archive here, Current-Focus blocks archive to the newest
+     2026-h1*-current-focus.md. Carve-out checked before the cut, not assumed:
+     the row's substance is in docs/plans/done/0103-*.md (SD-8, 7 hits) and its
+     Act-card premise correction (9 hits) — verified by grep, not by memory. -->
+| 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)**, narrative copy in the Act card's place, Step 6 builds it; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE** — the Act card renders on **no** published profile, suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
