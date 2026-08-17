@@ -528,6 +528,43 @@ async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
     produced or representable (S7). The period is a ``date_trunc`` **day** bucket,
     and the result is ordered in Python by the bucket labels — never by the raw
     wall clock (S4 / AC-3).
+
+    🔴 **DO NOT reuse this for the ฿ realized-vs-projected join.** A framing that
+    circulated for several sessions said this primitive "already extracts
+    ``net_benefit_thb`` by ``run_id``". **It does not** — it groups by currency x
+    procedure x facet-kind x day and touches ``run_id`` only inside a
+    ``count(distinct ...)``, so it yields **no per-run figure at all**. The join
+    needs a **NEW per-run aggregation**; the pattern to copy is the per-run
+    ``GROUP BY`` inner subquery in ``run_duration_totals`` above, not this.
+
+    Three constraints on that work, all TEST-PINNED, measured s226 and corrected
+    s232 (re-priced honestly: ~150-250 lines across 6-7 files, ONE PR — the
+    circulating "~40 lines by reusing benefit_rollup" figure was checked and is
+    WRONG):
+
+    (a) **SD-8(a) forbids O(runs) result shapes**, pinned by
+        ``tests/services/db/test_run_analytics.py::test_aggregation_is_pushed_to_sql_not_python``
+        with statement capture. ⚠️ That pin holds only for the **eleven
+        primitives hard-coded in its own tuple**, and only when Postgres is
+        reachable — a *new* O(runs) reader would **not** automatically redden CI.
+        So "per-run rows on screen" is a design decision, not a mechanical add.
+    (b) ``tests/api/test_export_cover_ui_contract.py`` asserts **set equality**
+        against an **empty** ``_UNREAD_COVER_FIELDS``, so a new
+        ``ExportCoverResponse`` field **must ship with its ``view-export.js``
+        tile in the SAME PR** or CI reddens.
+    (c) ``/insights/impact`` is **ABSENT from fleet's Cloudflare allowlist**, so
+        the figure must ride the existing cover response. _[Corrected s232,
+        ``was an error``: the older note called that route "the only existing
+        consumer of the projected side". It is not — ``_aggregate_benefit`` in
+        ``services/engine/run_query.py`` consumes this function and **is**
+        reachable on fleet via the allowlisted ``^/query$``. The conclusion
+        survives; the premise under it was false.]_
+
+    ✅ **No migration is needed:** the realized side already carries ``total_thb``
+    and ``run_id`` on the **same** ``ExportRow`` (``services/db/repair_spend_export.py``,
+    linked via ``RepairCaseRunLink``). Lands on Tab J, which fleet publishes.
+
+    _[Rehomed from ``docs/STATUS.md`` at session 235 under R2's carve-out.]_
     """
     elem = _trace_elements()
     net_text = elem.c.value["detail"]["net_benefit_thb"].astext
