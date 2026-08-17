@@ -88,6 +88,19 @@ from typing import Any
 _HOST_CHECKOUT = r"C:\projects\vero-lite"
 _HOST_COMPOSE = r"C:\projects\vero-lite\deploy\published\oct-energy\docker-compose.yml"
 
+#: The same compose file as `_HOST_COMPOSE`, addressed from THIS checkout for the
+#: local build. It is a module constant rather than an expression at its use site
+#: because the drift guards can only enumerate module constants, and that is
+#: exactly how it broke: PLAN-0103 Step 4 moved this file into `oct-energy/` and
+#: updated `_HOST_COMPOSE` above, but not the local path, which was composed
+#: inline inside `build_and_ship` as
+#: `repo_root / "deploy" / "published" / "docker-compose.yml"`. That left `-f`
+#: pointing at a file deleted three commits earlier, so Phase 1 would have died on
+#: the next `--execute` — and nothing could see it: the scenario suite's fake
+#: `docker` never stats its `-f` argument, and an inline expression is invisible to
+#: the path guard that already stats `_HOST_READ_PATHS`.
+_LOCAL_COMPOSE = "deploy/published/oct-energy/docker-compose.yml"
+
 #: Names that MUST agree with `docker-compose.yml`. They are literals here
 #: because this script is stdlib-only by design (an operator runs it outside the
 #: venv, exactly like `verify_tunnel_credentials.py`), so there is no YAML parser
@@ -239,7 +252,7 @@ def _remote_image_id(run: Runner, host: str, tag: str) -> str:
 def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
     """Build here, save, copy, load there. Returns the local image id."""
     print("\n== 1. build on this machine ==")
-    compose_file = str(repo_root / "deploy" / "published" / "docker-compose.yml")
+    compose_file = str(repo_root / _LOCAL_COMPOSE)
     # compose interpolates the WHOLE file before deciding what to build, and the
     # cloudflared service declares CLOUDFLARED_CREDENTIALS_FILE required — so a
     # build fails without it even though building the app touches neither the
