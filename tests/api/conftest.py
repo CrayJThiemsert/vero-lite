@@ -8,6 +8,7 @@ per-test NullPool engine and skips when Postgres is unreachable.
 """
 
 import json
+import re
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
@@ -26,6 +27,10 @@ from verticals.energy.handlers import register_energy_handlers
 
 # --- offline LLM (PLAN-0006 Step 6) ---------------------------------------
 
+#: The judgment the stub emits when it cannot recover the triggering event from the
+#: prompt — a caller that passes no event, or a prompt shape that changed. Kept
+#: identical to the pre-PLAN-0107 constant so that path is a true fallback and not a
+#: second behaviour to reason about.
 _STUB_JUDGMENT = json.dumps(
     {
         "title": "LLM assessment: thermal excursion on the battery asset",
@@ -38,12 +43,96 @@ _STUB_JUDGMENT = json.dumps(
     }
 )
 
+#: ``format_event`` renders the event as ``key: value`` lines inside the untrusted
+#: block, so the stub can recover the fields a real model would have read. Anchored
+#: to line starts so a value containing ``asset_id:`` cannot forge a field.
+_EVENT_FIELD = re.compile(
+    r"^(event_id|asset_id|truck_id|measured_kind|measured_value|unit): (.+)$", re.MULTILINE
+)
+
+#: The entity a vertical's events are ABOUT, keyed by the id field the event carries.
+#: ``resolve_affected_entities`` resolves the emitted ref against the vertical's
+#: declared object universe, so the object_type has to be that vertical's real one —
+#: energy's ``Asset`` and fleet's ``Truck`` are different types, and emitting the
+#: wrong one falls the whole record back to the deterministic path, silently changing
+#: what every API test exercises.
+_ENTITY_BY_ID_FIELD: tuple[tuple[str, str], ...] = (
+    ("asset_id", "Asset"),
+    ("truck_id", "Truck"),
+)
+
+
+def _triggering_event(messages: list[dict[str, str]]) -> dict[str, str]:
+    """Recover the triggering event's fields from the rendered prompt.
+
+    Returns ``{}`` when no user turn carries an ``event_id`` — the caller then
+    falls back to the canned judgment.
+    """
+    for message in messages:
+        if message.get("role") != "user":
+            continue
+        fields = dict(_EVENT_FIELD.findall(message.get("content", "")))
+        if "event_id" in fields:
+            return fields
+    return {}
+
+
+def _judgment_for(messages: list[dict[str, str]]) -> str:
+    """A judgment DERIVED from the triggering event (PLAN-0107 AC-8).
+
+    🔴 **Why this is a factory and not a constant.** The previous stub returned ONE
+    canned object for every event in a streamed batch — same title, same confidence,
+    same ``affected_entities`` — as its own docstring admitted. That makes a whole
+    class of defect invisible: a recommend fan-out that maps every event to the FIRST
+    event's judgment, or drops the event→judgment correspondence entirely, produces
+    byte-identical output under the old stub and cannot be reddened by any assertion
+    written against it. The judgments agreed with each other by construction.
+
+    ``affected_entities`` carries the event's OWN ``asset_id`` rather than a fixed
+    one, which matters twice over: it is what makes the per-event mapping assertable,
+    and the id must be real because ``resolve_affected_entities`` resolves it against
+    the declared object universe — a fabricated key would fall the record back to the
+    deterministic path and quietly change what every API test exercises.
+    """
+    fields = _triggering_event(messages)
+    if not fields:
+        return _STUB_JUDGMENT
+    event_id = fields["event_id"]
+    entity_type, entity_key = "Asset", "asset-energy-01"
+    for id_field, object_type in _ENTITY_BY_ID_FIELD:
+        if id_field in fields:
+            entity_type, entity_key = object_type, fields[id_field]
+            break
+    kind = fields.get("measured_kind", "reading")
+    unit = fields.get("unit", "")
+    value = fields.get("measured_value", "")
+    reading = f"{value} {unit}".strip() or "the reported value"
+    # ``event_id`` rides in the TITLE, not only in handler_payload: the title is on
+    # RecommendationResponse and the payload is not, so this is the only field a
+    # scenario can use to assert judgment -> event correspondence over HTTP.
+    return json.dumps(
+        {
+            "title": f"LLM assessment: escalate {kind} excursion on {entity_key} [{event_id}]",
+            "description": f"{event_id} reports {reading} on {entity_key}, outside its safe band.",
+            "rationale": (
+                f"Sustained {kind} excursion on {entity_key} risks damage; escalate for review."
+            ),
+            "confidence": 0.88,
+            "affected_entities": [{"object_type": entity_type, "primary_key": entity_key}],
+            "suggested_handler": "echo",
+            "handler_payload": {"source": "llm-stub", "event_id": event_id},
+        }
+    )
+
 
 class _StubChatClient:
     """Deterministic offline LLM — call 1 reasons, call 2 emits a judgment.
 
-    Stateless: it decides by request shape, so one instance serves every
-    recommend() call across a streamed batch of events.
+    Stateless, and deliberately so: it decides by request shape plus the event the
+    prompt carries, so one instance serves every recommend() call across a streamed
+    batch **while still answering each event differently**. Statefulness (a counter,
+    a queue of scripted replies) would make the reply depend on call ORDER, which is
+    the one thing a fan-out test must be free to change.
     """
 
     async def chat(
@@ -55,7 +144,9 @@ class _StubChatClient:
         temperature: float = 0.0,
     ) -> ChatResult:
         if response_format is not None:
-            return ChatResult(content=_STUB_JUDGMENT, thinking=None, model="gpt-oss:20b", raw={})
+            return ChatResult(
+                content=_judgment_for(messages), thinking=None, model="gpt-oss:20b", raw={}
+            )
         return ChatResult(
             content="draft assessment",
             thinking="reasoned step by step about the operational event",
