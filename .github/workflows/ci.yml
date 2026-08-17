@@ -52,8 +52,54 @@ jobs:
       - name: ruff format check
         run: uv run --no-sync ruff format --check .
 
-      - name: mypy (strict, services/)
-        run: uv run --no-sync mypy --strict services/
+      # PLAN-0107 AC-1 (① instrument). CI had NO JavaScript runtime, so a syntax
+      # error in a shipped asset reached the browser with every test green — the
+      # Tab I class of defect. `node` ships on the ubuntu runner, so this adds no
+      # dependency (measured: 11.0 s over the 21 assets).
+      #
+      # Enumerated from DISK, never a frozen list, and floored at NON-EMPTY
+      # rather than at a count: a `-ge 20` floor over a population of 21 leaves
+      # one file of headroom and its misfire remedy is editing the number — the
+      # guard-erosion ratchet this PLAN exists to stop. The count invariant lives
+      # in AC-2's bijection test instead, which is strictly stronger.
+      # `nullglob` is load-bearing: without it an unmatched glob expands to the
+      # literal pattern, the array is length 1, and the emptiness test passes
+      # while `node --check` runs against a file that does not exist.
+      - name: JS assets parse (node --check)
+        run: |
+          shopt -s nullglob
+          files=(services/api/static/assets/*.js)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "::error::no services/api/static/assets/*.js matched — the glob found nothing, so this gate would pass vacuously"
+            exit 1
+          fi
+          echo "checking ${#files[@]} JS asset(s)"
+          for f in "${files[@]}"; do node --check "$f"; done
+
+      # PLAN-0107 AC-5: `verticals/` joins the CI mypy scope. The pre-commit hook
+      # already covered it; CI merely stops TRUSTING that the hook ran. Measured
+      # clean over 64 files at adoption, so remediation cost was zero. `tools/` is
+      # deliberately excluded — it has a module-layout collision
+      # (`Source file found twice: "loop._schema" and "tools.loop._schema"`) that
+      # must be fixed before it can be scoped here.
+      - name: mypy (strict, services/ + verticals/)
+        run: uv run --no-sync mypy --strict services/ verticals/
+
+      # PLAN-0107 AC-6: two pre-commit hooks existed but ran ONLY on a developer
+      # machine, so a `--no-verify` commit or an unhooked clone bypassed both.
+      # `detect-secrets` guards a PUBLIC repo (CLAUDE.md §8) and the ontology
+      # schema check guards the semantic layer — the core primitive, whose schema
+      # appears in `tests/` exactly zero times.
+      #
+      # `uv run --no-sync`, NOT `uvx`: all three tools are already in the dev
+      # extra installed above, so `uvx` would resolve and download a second copy;
+      # and a bare `uv run` re-syncs without the dev extra and uninstalls the
+      # tooling mid-job.
+      - name: Secret scan (pre-commit detect-secrets)
+        run: uv run --no-sync pre-commit run detect-secrets --all-files
+
+      - name: Ontology schema check (pre-commit check-jsonschema)
+        run: uv run --no-sync pre-commit run check-jsonschema --all-files
 
       - name: Migrations on a fresh DB (AC-9)
         env:
@@ -85,13 +131,39 @@ jobs:
       # extra; FastAPI resolves multipart route signatures at import time).
       #
       # This step reproduces the IMAGE's dependency set exactly — same flags as
-      # the Dockerfile — and imports the entry module. It runs LAST and into its
-      # own UV_PROJECT_ENVIRONMENT so it cannot strip the dev venv the steps above
-      # depend on (project memory: a bare `uv sync` without the dev extra
-      # uninstalls pytest/ruff/mypy mid-job).
-      - name: Runtime dependency closure boots the app (--no-dev, as the image installs it)
+      # the Dockerfile. It runs LAST and into its own UV_PROJECT_ENVIRONMENT so it
+      # cannot strip the dev venv the steps above depend on (project memory: a
+      # bare `uv sync` without the dev extra uninstalls pytest/ruff/mypy mid-job).
+      #
+      # PLAN-0107 AC-3 (① instrument): it now BOOTS rather than imports. Importing
+      # proves the module resolves; everything the spine actually does happens
+      # inside `lifespan` — discovery, the executor registrar, persona resolution,
+      # and (for four of five verticals) the `procedures.yaml` parse whose
+      # fail-loud contract CLAUDE.md §3 promises. A boot subsumes the import: a
+      # module that cannot import cannot boot. `httpx` is a RUNTIME dep, so
+      # TestClient works in the --no-dev venv.
+      #
+      # 🔴 Once per SPEC-SHIPPING vertical, enumerated from disk. Measured s235:
+      # `lifespan` registers only the ACTIVE vertical's factory, so booting the
+      # default alone catches a malformed spec for `energy` — which is the ONE
+      # vertical whose factory never calls `load_procedures`, and the default.
+      # Booting only the default would have been green and blind to exactly the
+      # configuration CI runs. The `energy` spec-parse residual stays OPEN: closing
+      # it means energy's factory loading its own spec, a behaviour change.
+      - name: Runtime closure BOOTS the app's lifespan, per vertical (--no-dev, as the image installs it)
         env:
           UV_PROJECT_ENVIRONMENT: /tmp/vero-runtime-venv
+          DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
         run: |
           uv sync --frozen --no-dev --no-install-project
-          /tmp/vero-runtime-venv/bin/python -c "import services.api.main; print('runtime import OK')"
+          shopt -s nullglob
+          specs=(verticals/*/procedures.yaml)
+          if [ "${#specs[@]}" -eq 0 ]; then
+            echo "::error::no verticals/*/procedures.yaml matched — nothing would be booted, so this gate would pass vacuously"
+            exit 1
+          fi
+          echo "booting ${#specs[@]} spec-shipping vertical(s)"
+          for spec in "${specs[@]}"; do
+            vertical="$(basename "$(dirname "$spec")")"
+            OCT_VERTICAL="$vertical" /tmp/vero-runtime-venv/bin/python tools/ci/boot_smoke.py
+          done

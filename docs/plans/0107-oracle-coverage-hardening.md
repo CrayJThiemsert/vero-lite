@@ -87,7 +87,7 @@ a source-text read.
   > remedy is editing the number — the guard-erosion ratchet this PLAN exists to
   > stop. The count invariant belongs in AC-2's bijection, which is strictly
   > stronger; non-empty is all AC-1 needs to close the null-glob trap.
-- [ ] **AC-2 [check] — every asset reference resolves; every asset is
+- [x] **AC-2 [check] — every asset reference resolves; every asset is
   referenced.** A new test module `tests/api/test_asset_manifest.py` parses
   `services/api/static/index.html` for all `assets/` references (21 `<script
   src>` at `index.html:51-73`, 4 CSS links at `:28-31`), strips the `?v=`
@@ -118,7 +118,24 @@ a source-text read.
   — exits nonzero if lifespan raises. This makes the spine's fail-loud contract
   (a malformed `procedures.yaml` fails at load — CLAUDE.md §3) CI-visible for
   the first time.
-- [ ] **AC-4 [check] — the executor-registrar map is complete against disk.** A
+  > **Reviewer amendment (Code, 2026-08-17) — the fail-loud clause was MEASURED
+  > and is ACTIVE-VERTICAL DEPENDENT; the step is scoped accordingly.** Probing
+  > the smoke against a corrupted `procedures.yaml` for each spec-shipping
+  > vertical: **CAUGHT** for `fleet_maintenance`, `building_materials`,
+  > `supply_chain`, `procurement` — and ⚠️ **MISSED for `energy`, which boots
+  > green.** Cause, verified at source: `lifespan` registers only
+  > `_PROCEDURE_EXECUTOR_REGISTRARS[OCT_VERTICAL]`, and
+  > `verticals/energy/procedures_factory.py` is the **one** spec-shipping factory
+  > that never calls `load_procedures` (grep: every other one does).
+  > 🔴 **`energy` is also the DEFAULT `OCT_VERTICAL`**, so a smoke that booted
+  > only the default would have been green and blind to exactly the configuration
+  > CI runs — a claim of a runtime property with no reach, which is the class of
+  > defect this PLAN exists to close. **The CI step therefore runs the smoke once
+  > per spec-shipping vertical, enumerated from disk** (6 boots, all green at
+  > adoption). ⚠️ **The `energy` spec-parse residual stays OPEN and is recorded in
+  > `tools/ci/boot_smoke.py`'s docstring** — closing it means energy's factory
+  > loading its own spec, a behaviour change and out of scope here.
+- [x] **AC-4 [check] — the executor-registrar map is complete against disk.** A
   new test asserts every vertical directory shipping a `procedures.yaml` has an
   entry in `_PROCEDURE_EXECUTOR_REGISTRARS` (`services/api/main.py:311-318`),
   with an explicit in-test exemption dict (reason required per entry —
