@@ -1338,3 +1338,11 @@ ten-row window while adding the session-229 row. Moved byte-exact, never retyped
      the row's substance is in docs/plans/done/0103-*.md (SD-8, 7 hits) and its
      Act-card premise correction (9 hits) — verified by grep, not by memory. -->
 | 2026-08-12 | **s224 — RULED (Cray, typed): PLAN-0103 SD-8 = (iii)**, narrative copy in the Act card's place, Step 6 builds it; accepted cost: copy with no oracle. 🔴 **The slot's own premise was MEASURED FALSE** — the Act card renders on **no** published profile, suppressed by PLAN-0100 Step 3 *before* SD-8 was authored, so `was an error`, not `superseded by new info`. | `853d827` (head_commit) / [#1135](https://github.com/CrayJThiemsert/vero-lite/pull/1135) / `docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md` §SD-8 |
+
+<!-- Rotated 2026-08-18 (session 236) from docs/STATUS.md Recent Decisions to
+     hold the table at ten rows. Target is this UNLETTERED BASE file: RD rows
+     archive here, Current-Focus blocks archive to the newest
+     2026-h1*-current-focus.md. Carve-out checked before the cut, not assumed:
+     the row summarises PLAN-0103's AC-6/AC-7 corrections, which live in
+     docs/plans/done/0103-portal-landing-and-per-system-published-profiles.md. -->
+| 2026-08-12 | **s225 — PLAN-0103 Step 6 SHIPPED and nine of eleven ACs CLOSED.** 🔴 **Verifying an inherited "closed in substance" claim rather than relaying it found two ACs FALSE** — AC-7's text described an approval the engine refuses; AC-6's named guard had never existed. **Both fixed, not ticked over.** ⚠️ AC-10 + AC-11 stay OPEN. | `b229fcd` / [#1139](https://github.com/CrayJThiemsert/vero-lite/pull/1139) / [#1140](https://github.com/CrayJThiemsert/vero-lite/pull/1140) / [#1141](https://github.com/CrayJThiemsert/vero-lite/pull/1141) / `docs/plans/done/0103-*.md` |
