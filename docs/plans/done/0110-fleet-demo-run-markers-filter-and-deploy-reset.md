@@ -1,6 +1,13 @@
 # PLAN-0110: Fleet Demo Lifecycle — Tab A Run Markers, Three-Mode Filter, Deploy-Time Reset
 
-**Status:** Draft
+**Status:** Complete (2026-08-18, session 238) — Steps 1–6 shipped in
+[#1213](https://github.com/CrayJThiemsert/vero-lite/pull/1213) (`main` @ `20669ae`);
+Step 7 deployed and verified on MS-S1 under a typed §8 go, recorded in
+[`docs/logs/2026-08-18-plan0110-fleet-demo-reset-deploy.md`](../../logs/2026-08-18-plan0110-fleet-demo-reset-deploy.md).
+⚠️ Two divergences from this PLAN's wording are recorded in #1213 and in the shipped
+code: Step 3's "one transaction" (incompatible with reusing `delete_case`, which owns
+its own commit) and Step 4's runbook location (writing it there reddened the ADR-0036 D2
+label guard, so the procedure ships in the profile directory instead).
 **Owner:** Claude Code (execution). **All five SDs RULED** (Cray, typed, 2026-08-18
 s237) — SD-A (a), SD-B as recommended, **SD-C = deploy-script step, AGAINST the
 drafter recommendation** (see SD-C for why and what it buys/costs), SD-D as
