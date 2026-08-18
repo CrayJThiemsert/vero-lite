@@ -288,6 +288,79 @@ async def test_the_settled_case_is_closed_so_it_leaves_the_gate(
     assert DEMO_CASE_ID in named
 
 
+async def test_the_settled_repair_does_not_sit_in_the_visitors_approval_queue(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """The settled repair's OWN run must leave ``waiting_human``, not just its case.
+
+    🔴 **The sibling above states this intent and cannot see it.** Its docstring says a
+    regression would "show a decided-and-paid repair as if it still needed approving" —
+    and that regression WAS live on the deployed system on 2026-08-18 while that test
+    was green. It asserts the CASE is ``CLOSED`` (true) and that the case is absent
+    from the NEXT run's proposals (true, ``governed_case_facts`` selects OPEN cases).
+    The defect lives in neither field: ``seed_settled_history_case`` called
+    ``resolve_gated_step`` without ``resume_run``, so the APPROVE step read ``resolved``
+    while the RUN stayed ``waiting_human`` at 5/6 — and Tab H's queue counts RUNS, not
+    cases. Measured on live: "2 WAITING ON YOU" where the story wants one.
+
+    The money was never wrong (the close-out landed; the month-end cover read
+    ฿33,705.00 over one row), which is why every offline oracle stayed green. This is
+    an instrument that exists, aimed one field to the left of the damage.
+
+    Nothing is stubbed: the producer is the real shipped ``seed_settled_history_case``
+    (the same coroutine ``lifespan`` calls) and the reader below is the real run store.
+
+    DB-backed — SKIPS when Postgres is unreachable, and a skip is never satisfaction.
+    """
+    from services.engine.procedures.persistence import load_run
+    from services.engine.procedures.runs import PipelineRunStatus
+    from verticals.fleet_maintenance.operate_seed import (
+        DEMO_HISTORY_RUN_ID,
+        seed_settled_history_case,
+    )
+
+    await seed_settled_history_case(db_session)
+    await seed_repair_gate_waiting_human_run(db_session, run_id=DEMO_RUN_ID)
+
+    history = await load_run(db_session, DEMO_HISTORY_RUN_ID)
+    live = await load_run(db_session, DEMO_RUN_ID)
+    assert history is not None and live is not None
+
+    # The queue Tab H renders is a set of RUNS in ``waiting_human`` — read here from
+    # the same store the Monitor reads, not recomputed.
+    waiting = set()
+    for run_id, loaded in ((DEMO_RUN_ID, live), (DEMO_HISTORY_RUN_ID, history)):
+        if loaded.run.status == PipelineRunStatus.WAITING_HUMAN.value:
+            waiting.add(run_id)
+
+    # 🔴 THE POSITIVE HALF, and it is not decoration. The claim below is an ABSENCE,
+    # and an absence passes for free the moment the reader goes blind: if the seed
+    # ever wrote no runs at all, ``waiting`` would be empty and "the settled repair is
+    # not in it" would be TRUE on a completely broken demo. This line is the known
+    # positive the instrument must still find (CLAUDE.md §8: a zero or absence needs a
+    # positive control that finds a known one). If it reddens, the test is untrustworthy
+    # — not the system.
+    assert DEMO_RUN_ID in waiting, (
+        "the LIVE repair is not waiting on a human, so this test cannot tell "
+        "'the settled repair correctly left the queue' from 'the queue reader is "
+        "blind' — fix this before reading the assertion below"
+    )
+
+    # The claim. Stated as MEMBERSHIP, deliberately, not as set equality against
+    # {DEMO_RUN_ID}: equality would couple this test to how many scenarios happen to
+    # be seeded, so a legitimate third seed would redden it for a reason that has
+    # nothing to do with settled repairs. Identity survives that; counts do not.
+    assert DEMO_HISTORY_RUN_ID not in waiting, (
+        f"the settled repair {DEMO_HISTORY_CASE_ID!r} is sitting in the visitor's "
+        f"approval queue: its run {DEMO_HISTORY_RUN_ID!r} is {history.run.status!r} "
+        f"even though the work is done, the invoice is keyed and the case is CLOSED "
+        f"— a visitor is being asked to authorise spend that has already happened. "
+        f"The '{_GATE_STEP}' step resolving is NOT enough: the seed must also resume "
+        f"the run, which is what the HTTP path does in the same call "
+        f"(routers/runs.py:19-21)"
+    )
+
+
 async def test_the_seed_writes_no_export_rows_of_its_own(
     client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
 ) -> None:

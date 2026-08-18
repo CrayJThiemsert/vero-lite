@@ -69,7 +69,7 @@ from services.db.repair_case_evidence import (
 )
 from services.engine.procedures.action_step import resolve_gated_step
 from services.engine.procedures.orchestrator import ProcedureError, RunResult
-from services.engine.procedures.persistence import run_procedure_persisted
+from services.engine.procedures.persistence import resume_run, run_procedure_persisted
 from services.engine.procedures.runs import StepResultStatus
 from services.engine.procedures.spec import load_procedures
 from services.engine.registry import registry
@@ -79,6 +79,9 @@ from verticals.fleet_maintenance.run_link import case_id_of
 _VERTICAL = "fleet_maintenance"
 _PROCEDURE_ID = "governed_repair_approval"
 _APPROVE_STEP = "approve"
+#: The spine's TERMINAL step and its second gate — a human-gated write, not a second
+#: decision (``procedures.yaml`` ``terminal: fulfill``).
+_FULFILL_STEP = "fulfill"
 
 #: The demo case the seeded run is ABOUT. Fixed like ``DEMO_RUN_ID`` and for the same
 #: reason — idempotency — and separate from it because the two are seeded by different
@@ -498,6 +501,72 @@ async def seed_settled_history_case(session: AsyncSession) -> bool:
         procedure=procedure,
         principals=list(spec.principals),
     )
+    # 🔴 RESUME, in the same breath as the resolve — because that is what the visitor
+    # path does, and this seed exists to be indistinguishable from it. The HTTP
+    # resolve endpoint "applies the decisions and then RESUMES the run in the same
+    # call" (`routers/runs.py:19-21`, `:512`); calling only ``resolve_gated_step``
+    # leaves the APPROVE step ``resolved`` while the RUN stays ``waiting_human`` with
+    # its final step never executed.
+    #
+    # Measured on the deployed system 2026-08-18, before this line existed:
+    # ``run-fleet-demo-history`` sat at ``waiting_human``, 5/6, and Tab H counted it
+    # in "2 WAITING ON YOU" — putting a SETTLED repair in the visitor's approval
+    # queue, which is exactly what this function's own docstring says closing the case
+    # is meant to prevent. The money was never wrong (the close-out landed; the
+    # month-end cover read ฿33,705.00 over 1 row), so no offline oracle noticed: the
+    # defect is visible only in the run's status and only in a queue a visitor reads.
+    # ⚠️ TWO gates, not one — measured, not assumed. ``governed_repair_approval`` is a
+    # ``request -> approve -> fulfill`` spine (ADR-0025 D7) whose TERMINAL step is
+    # itself ``autonomy: gated``: ``fulfill`` is the human-gated WRITE of the decision
+    # already made ("only proposes until a human approves, then acts on resume",
+    # `procedures.yaml:336-352`; its ``decision_condition`` is ``gate_kind: none``, so
+    # it carries no ladder and no second authority question). One resume therefore
+    # completes ``approve`` and parks the run again at ``fulfill`` — still
+    # ``waiting_human``, still in the visitor's queue, which is the whole defect.
+    #
+    # The money is NOT what is at stake here: the export row is written by the GATE
+    # RESOLUTION's hook, not by ``fulfill`` (``test_approving_the_seeded_gate_puts_a_
+    # substantive_row_on_the_report`` resolves and never resumes, and still sees the
+    # row). What ``fulfill`` carries is the run's terminal state — and a repair whose
+    # invoice is keyed and whose case is CLOSED must not read as work still pending.
+    agent = next(a for a in spec.agents if a.agent_id == procedure.run_by)
+    executors = registry.get_procedure_executors(_VERTICAL)()
+
+    async def _advance(step_id: str) -> RunResult:
+        return await resume_run(
+            session,
+            procedure,
+            agent,
+            executors,
+            DEMO_HISTORY_RUN_ID,
+            vertical=_VERTICAL,
+            principal=approver,
+        )
+
+    resumed = await _advance(_APPROVE_STEP)
+
+    fulfil = next((s for s in resumed.step_results if s.step_id == _FULFILL_STEP), None)
+    if fulfil is None or fulfil.status != StepResultStatus.WAITING_HUMAN.value:
+        raise ProcedureError(
+            f"fleet history case: after resuming {_APPROVE_STEP!r} the run did not park at "
+            f"{_FULFILL_STEP!r} (status {fulfil.status if fulfil else None!r}) — the spine "
+            "changed shape and this seed's assumption about the terminal gate is stale"
+        )
+    fulfil_decisions = {
+        str(p["action_id"]): "approve"
+        for p in ((fulfil.artifact or {}).get("output_set") or [])
+        if "action_id" in p
+    }
+    await resolve_gated_step(
+        session,
+        DEMO_HISTORY_RUN_ID,
+        _FULFILL_STEP,
+        fulfil_decisions,
+        approver,
+        procedure=procedure,
+        principals=list(spec.principals),
+    )
+    await _advance(_FULFILL_STEP)
 
     # The repair-order number, allocated the SAME way ``key_closeout`` allocates it
     # (`routers/cases.py:818`) rather than invented here — it is gap-free within a
