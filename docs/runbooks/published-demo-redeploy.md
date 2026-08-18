@@ -166,6 +166,39 @@ yourself.
 
 ---
 
+## 4b. A profile may carry its own demo-reset step — check before you deploy
+
+Some published profiles ship an interactive beat a visitor is **meant** to play, and
+playing it **consumes** it: the operate seed skips whenever the run row already exists,
+in any state, so the seed never re-arms and every visitor after the first finds nothing
+left to approve. A redeploy alone does **not** clear that — the rows survive the new
+image.
+
+Where that applies, the profile directory carries its own note:
+
+```
+deploy/published/<system>/DEMO-RESET.md
+```
+
+🔴 **Read it BEFORE you deploy, not after.** The reset must run against the
+still-running old container, and `up -d` must follow it, because the seeds rebuild only
+in the app's boot lifespan. Reset after boot and the demo sits **EMPTY** until the next
+one — worse than the state you started from.
+
+The check itself is zero-risk and deletes nothing, so it is worth running on an ordinary
+day too: a demo consumed on day 1 stays consumed until someone deploys, and nothing
+announces it. That trade is deliberate (PLAN-0110 SD-C, Cray, typed, s237) — deletion on
+a public system happens only under a human's explicit action, so a container
+crash-restart can never wipe a visitor's half-played run.
+
+**Why the commands are not printed here.** They must carry a system's literal compose
+path and project name to be runnable at all, and this runbook already names one system.
+A vero-lite file naming two published systems is a shadow ingress map (ADR-0036 D2),
+enforced by `tests/deploy/test_published_profiles.py`. Per-system operational detail
+therefore lives with its system.
+
+---
+
 ## 5. Rollback
 
 ```bash

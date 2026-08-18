@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from services.api.config import settings
 from services.db.base import Base
+from services.db.repair_case import RepairCase
 from services.engine.discovery import discover_and_register
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.persistence import load_run
@@ -48,6 +49,7 @@ from verticals.fleet_maintenance.operate_seed import (
 from verticals.fleet_maintenance.procedures_factory import (
     register_fleet_maintenance_procedure_executors,
 )
+from verticals.fleet_maintenance.run_link import case_id_of
 
 
 @pytest.fixture
@@ -136,17 +138,51 @@ async def test_the_parked_gate_routes_two_spends_to_two_different_humans(
 async def test_seed_trigger_context_is_the_operate_demo_contract(
     fleet_registered: None, db_engine: AsyncEngine
 ) -> None:
-    """The seeded run announces itself as the demo seed and names the human it acts for.
-    No ``subject`` key: fleet's breaching truck is chosen by the declared query during the
-    run, so it is not knowable beforehand — asserting its absence keeps a future addition
-    an explicit decision rather than a silent one."""
+    """The seeded run announces itself as the demo seed, names the human it acts for, and
+    — since PLAN-0110 Step 1 — carries the ``subject`` the map keys its marker on.
+
+    🔴 **This assertion used to demand that ``subject`` be ABSENT**, on the reasoning that
+    fleet's breaching truck is not knowable at trigger time, and it closed with *"asserting
+    its absence keeps a future addition an explicit decision rather than a silent one."*
+    PLAN-0110 Step 1 is that explicit decision (SD-A ruled (a), Cray, typed, s237): the
+    truck is unknowable at trigger time and **known after ``intake``**, so the seed stamps
+    it from the run's own persisted artifact once it exists. The guard did its job — it
+    reddened here, naming ``subject``, before this edit was written.
+
+    The truck is **recomputed here from the case row the run's own proposal names**, never
+    copied from the seed's ``truck-02`` constant: a test that asserted the constant would
+    agree with the seed by construction and would pass just as happily if the stamp were
+    hardcoded — which is the one thing the derivation must not be.
+    """
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     async with maker() as session:
         result = await seed_repair_gate_waiting_human_run(session, run_id="fleet-seed-tc")
+
+        approve = next(sr for sr in result.step_results if sr.step_id == "approve")
+        expected_trucks = set()
+        for proposal in (approve.artifact or {}).get("output_set") or []:
+            case_id = case_id_of(proposal)
+            if case_id is None:
+                continue
+            case = await session.get(RepairCase, case_id)
+            if case is not None:
+                expected_trucks.add(case.truck_id)
+
+    # The parked gate carries three proposals, all three naming a case id; only ONE of
+    # those ids has a repair_case row (the other two exist only in the fixture). If that
+    # ever stops being true this assertion says so here, rather than letting the seed
+    # fall through its ambiguity guard and silently stamp nothing.
+    assert len(expected_trucks) == 1, (
+        "exactly one proposal on the gate must resolve to a real repair case — "
+        f"got {sorted(expected_trucks)}"
+    )
+    expected_truck = expected_trucks.pop()
+
     tc = result.run.trigger_context or {}
     assert tc["source"] == "operate-demo-seed"
     assert tc["triggered_by"] == "req-mechanic-tom"
-    assert set(tc) == {"source", "triggered_by"}
+    assert set(tc) == {"source", "triggered_by", "subject"}
+    assert tc["subject"] == {"object_type": "Truck", "primary_key": expected_truck}
 
 
 async def test_seed_raises_when_the_gate_does_not_park(

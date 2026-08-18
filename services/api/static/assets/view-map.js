@@ -18,6 +18,45 @@
   let runsByAsset = {};
   const RUN_INFLIGHT = { waiting_human: 1, running: 1 };  // SD-C: never terminal states
 
+  /* ---- PLAN-0110 Step 2: the three-mode run-marker filter (SD-B, Cray, typed, s237) ----
+     RUN_INFLIGHT above is the DEFAULT bucket and is deliberately untouched: PLAN-0084
+     SD-C ruled the marker "never terminal states", and that ruling still governs the
+     view a visitor lands on. The two modes below are OPT-IN views layered on top — the
+     "never" is narrowed for non-default modes only, in writing, rather than silently.
+
+     `completed` means `completed` EXACTLY. `failed`/`cancelled` are NOT finished work
+     and appear under `all` only, wearing a third, muted treatment: a cancelled run that
+     read as settled would report abandoned spend as a decision someone made. */
+  const RUN_COMPLETED = { completed: 1 };
+  const RUN_ALL = { running: 1, waiting_human: 1, completed: 1, failed: 1, cancelled: 1 };
+  const RUN_BUCKETS = { inflight: RUN_INFLIGHT, completed: RUN_COMPLETED, all: RUN_ALL };
+  const RUN_MODE_DEFAULT = 'inflight';
+  const RUN_MODE_LABELS = { inflight: 'In flight', completed: 'Completed', all: 'All' };
+  //: status -> marker treatment. Read off the RUN, never off the mode, so that under
+  //: `all` a node carrying a live gate still reads as live rather than as history.
+  const RUN_TREATMENT = {
+    waiting_human: 'inflight', running: 'inflight',
+    completed: 'settled',
+    failed: 'closed', cancelled: 'closed'
+  };
+  //: Precedence when one node carries several runs: a decision still waiting on a human
+  //: outranks anything already finished.
+  const TREATMENT_ORDER = ['inflight', 'settled', 'closed'];
+
+  let runMode = RUN_MODE_DEFAULT;
+  let runModeTabs = {};
+  //: The last /runs payload, kept so switching modes re-filters what is already loaded
+  //: instead of re-fetching (the population is bounded at 2 on the published profile).
+  let runsPayload = null;
+
+  function treatmentOf(runs) {
+    for (let i = 0; i < TREATMENT_ORDER.length; i++) {
+      const t = TREATMENT_ORDER[i];
+      if (runs.some(r => RUN_TREATMENT[r.status] === t)) return t;
+    }
+    return 'inflight';
+  }
+
   function geoColor(i) {
     const hues = [210, 150, 35, 280, 0];
     return 'oklch(0.70 0.12 ' + hues[i % hues.length] + ')';
@@ -48,6 +87,7 @@
         h('h1', null, 'Where, and in what state'),
       ]),
       h('div', { class: 'flex' }),
+      runModeToggle(),
       h('div', { class: 'view-head-meta', id: 'mapCounts' })
     ]));
 
@@ -77,7 +117,38 @@
     // getJSON precedent), NEVER O.API.request, which silently serves mock data on any
     // failure (api.js fallback). A runs-read failure must mean "no markers", not fake
     // markers: on any error the map renders fully with zero run flags (AC-5).
-    try { computeRunFlags(await getRunsJSON()); } catch (e) { runsByAsset = {}; }
+    try { runsPayload = await getRunsJSON(); computeRunFlags(runsPayload); }
+    catch (e) { runsPayload = null; runsByAsset = {}; }
+  }
+
+  // PLAN-0110 Step 2. Shaped after view-procedures.js' pv-modetoggle, the repo's
+  // segmented-control precedent. Switching modes re-filters the payload already in
+  // hand and re-renders — no refetch, and a runs-read failure keeps its "no markers"
+  // answer in every mode (runsPayload stays null, so computeRunFlags sees nothing).
+  function runModeToggle() {
+    // The toggle lives in the view HEAD, which render() does not rebuild (it clears
+    // only the canvas, the side panel and the counts). So the active state is moved
+    // here by hand rather than re-derived on the next render — measured: without this
+    // the filter applied but every tab kept the class it was built with.
+    runModeTabs = {};
+    const tab = (mode) => {
+      const b = h('button', {
+        class: 'mrf-tab' + (runMode === mode ? ' active' : ''),
+        onClick: () => {
+          if (runMode === mode) return;
+          runMode = mode;
+          Object.keys(runModeTabs).forEach(m => runModeTabs[m].classList.toggle('active', m === mode));
+          computeRunFlags(runsPayload);
+          render();
+        }
+      }, RUN_MODE_LABELS[mode]);
+      runModeTabs[mode] = b;
+      return b;
+    };
+    return h('div', { class: 'map-runfilter' }, [
+      h('span', { class: 'mrf-label' }, 'Governed runs'),
+      h('div', { class: 'mrf-tabs' }, ['inflight', 'completed', 'all'].map(tab))
+    ]);
   }
 
   async function getRunsJSON() {
@@ -89,9 +160,12 @@
 
   function computeRunFlags(payload) {
     runsByAsset = {};
+    // PLAN-0110: the bucket is the ACTIVE mode's, defaulting to RUN_INFLIGHT — the
+    // double gate (subject present AND status in bucket) is otherwise unchanged.
+    const bucket = RUN_BUCKETS[runMode] || RUN_INFLIGHT;
     ((payload && payload.runs) || []).forEach(r => {
       const s = r.subject;
-      if (!s || !s.object_type || !s.primary_key || !RUN_INFLIGHT[r.status]) return;
+      if (!s || !s.object_type || !s.primary_key || !bucket[r.status]) return;
       const key = s.object_type + '|' + s.primary_key;   // exact type+pk, data-driven
       (runsByAsset[key] = runsByAsset[key] || []).push(r);
     });
@@ -226,11 +300,30 @@
         // PLAN-0084 SD-C: the DISTINCT "governed run in flight" marker — a dashed amber
         // ring, deliberately separate from the red anomaly halo above ("anomaly detected"
         // ≠ "governed run awaiting a human" — attribution legibility, PLAN-0080).
+        // PLAN-0110 SD-B adds the two non-default treatments. The three class strings are
+        // spelled out as LITERALS rather than assembled ('run-halo-' + treat) because a
+        // runtime-assembled name is invisible to test_css_class_contract's scan — the
+        // hole that module's own docstring names. Literals keep them inside the guard.
+        const treat = treatmentOf(govRuns);
         const gr = document.createElementNS(NS, 'circle');
         gr.setAttribute('cx', ax); gr.setAttribute('cy', ay); gr.setAttribute('r', 12);
-        gr.setAttribute('class', 'run-halo'); gr.setAttribute('fill', 'none');
-        gr.setAttribute('stroke', 'var(--warn)'); gr.setAttribute('stroke-width', '1.5');
-        gr.setAttribute('stroke-dasharray', '3 3');
+        gr.setAttribute('fill', 'none'); gr.setAttribute('stroke-width', '1.5');
+        if (treat === 'settled') {
+          // SOLID + green: a decision that was made and carried out. Never dashed —
+          // the dash is the demo's visual word for "still open".
+          gr.setAttribute('class', 'run-halo run-halo-settled');
+          gr.setAttribute('stroke', 'var(--ok)');
+        } else if (treat === 'closed') {
+          // failed / cancelled: muted and widely dashed, and deliberately NOT the
+          // settled look — abandoned spend must never read as authorised work.
+          gr.setAttribute('class', 'run-halo run-halo-closed');
+          gr.setAttribute('stroke', 'var(--tx-2)');
+          gr.setAttribute('stroke-dasharray', '2 4');
+        } else {
+          gr.setAttribute('class', 'run-halo run-halo-inflight');
+          gr.setAttribute('stroke', 'var(--warn)');
+          gr.setAttribute('stroke-dasharray', '3 3');
+        }
         gg.appendChild(gr);
       }
       const c = document.createElementNS(NS, 'circle');
@@ -378,7 +471,10 @@
         }, '+' + (nodeRuns.length - CAP) + ' more — open Monitor'));
       }
       card.appendChild(h('div', { class: 'detail-children gov-runs' }, [
-        h('div', { class: 'eyebrow', style: { marginBottom: '8px' } }, 'Governed runs · in flight'),
+        // The label follows the ACTIVE mode: under `completed` this list is history,
+        // and a heading that still said "in flight" would mislabel it.
+        h('div', { class: 'eyebrow', style: { marginBottom: '8px' } },
+          'Governed runs · ' + RUN_MODE_LABELS[runMode].toLowerCase()),
         ...rows
       ]));
     }

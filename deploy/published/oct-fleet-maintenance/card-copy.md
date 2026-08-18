@@ -23,8 +23,8 @@ freely; keep the headings, or the guard reddens.
 
 ### สิ่งที่จะได้เห็น
 
-ใบเสนอราคาซ่อมที่เกินเพดาน ฿5,000 จะวิ่งเข้าสายอนุมัติเอง และไปหยุดที่ระดับไหน
-ขึ้นกับตัวเลข ไม่ใช่ความคุ้นเคย ทุกการอนุมัติและการปฏิเสธถูกบันทึกใต้ชื่อคนที่กดจริง
+งานซ่อมที่รอคุณอยู่บนหน้าจอมีใบเสนอราคาเกินเพดาน ฿5,000 ระบบจึงส่งเข้าสายอนุมัติไว้แล้ว
+และไปหยุดที่ระดับไหนขึ้นกับตัวเลข ไม่ใช่ความคุ้นเคย ทุกการอนุมัติและการปฏิเสธถูกบันทึกใต้ชื่อคนที่กดจริง
 และคุณกดตรวจสอบความครบถ้วนของสายโซ่หลักฐานได้เองในหน้าจอเดียวกัน
 
 ### ตัวตนที่เลือกได้
@@ -55,10 +55,11 @@ Fleet maintenance — an approval chain you can audit
 
 ### What you'll see
 
-A repair quote above the ฿5,000 ceiling routes itself into the approval chain, and
-where it stops is decided by the number, not by who you know. Every approval and
-every refusal is recorded under the person who actually made it — and you can
-verify the evidence chain has not been rewritten, from the same screen.
+The repair waiting on screen carries a quote above the ฿5,000 ceiling, so it is
+already in the approval chain — and where it stops is decided by the number, not by
+who you know. Every approval and every refusal is recorded under the person who
+actually made it — and you can verify the evidence chain has not been rewritten,
+from the same screen.
 
 ### Who you can be
 

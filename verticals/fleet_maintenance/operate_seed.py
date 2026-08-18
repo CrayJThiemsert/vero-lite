@@ -5,8 +5,23 @@ keep the visitor path.** Fleet's published set lands on Tab A but publishes Tab 
 (Monitor), and until a visitor files a case at Tab I that Monitor opens EMPTY — the
 first paint of the system whose whole pitch is "watch a decision get governed" showed
 nothing being governed. This closes that, without removing the visitor path: the seed
-supplies the first paint, the visitor still gets to watch their *own* case enter the
-loop (AC-8's second clause).
+supplies the first paint, and a case opened at Tab I still reaches the case list and
+the evidence surfaces.
+
+🔴 **AC-8's second clause — "the visitor still gets to watch their *own* case enter the
+loop" — is UNREACHABLE on the published profile, and this docstring used to claim it
+outright.** Measured 2026-08-18 (PLAN-0110 G10): ``POST /api/cases`` writes the row and
+fires no procedure (`routers/cases.py:183-219`); ``POST /procedures/{id}/run`` is
+excluded from the published ingress allowlist **by design**, so no visitor can start a
+run; and the already-parked gate cannot adopt a later case, because its proposals are
+frozen in the suspended step's persisted artifact. The visitor's case therefore sits
+OPEN and ungoverned. The clause was authored against the DEV CONSOLE, where the firing
+route is reachable — it holds there and only there.
+
+Cray ruled SD-E = (d) (typed, s237): re-scope the promise now, and build **(b)
+server-side firing on case creation** as the named follow-on. Until that lands, what
+the published demo governs is the SEEDED round — which is a real run through the real
+spine, not a mock — and the card copy says so.
 
 **Why this is not a copy of procurement's seeder, and the difference is the point.**
 ``verticals.procurement.hero_demo.run.seed_operate_waiting_human_run`` must hand-build
@@ -132,6 +147,80 @@ _APPROVER_ID = "appr-owner"
 #: idempotency is the whole point, and two ids would mean two demo runs.
 DEMO_RUN_ID = "run-fleet-operate-demo"
 
+#: The ontology object Tab A keys a run marker on — ``Truck`` / ``truck_id``
+#: (``ontology/fleet_maintenance_v0.yaml:33-34``). A module constant rather than a
+#: parameter: the stamp must describe fleet's own ontology, and a caller-varied type
+#: would let a marker key land under a type the map has no node for.
+_SUBJECT_OBJECT_TYPE = "Truck"
+
+
+async def _stamp_run_subject(session: AsyncSession, result: RunResult) -> str | None:
+    """Stamp ``trigger_context["subject"]`` from the run's OWN persisted artifact.
+
+    PLAN-0110 Step 1 (SD-A ruled (a), Cray, typed, s237). Delivers for fleet what
+    PLAN-0084 SD-D always intended — *"map ingest filters on ``subject`` presence"* —
+    which fleet never received. Returns the stamped ``truck_id``, or ``None`` when it
+    declined to stamp.
+
+    **Why this is not the thing PLAN-0084 SD-D(c) rejected.** That rejection was of a
+    vertical mutating an ENGINE-stamped provenance context from outside the engine.
+    Here the ``trigger_context`` is authored by *this same seed* four lines above, and
+    the added key records the run's **own persisted resolution** — the author
+    annotating its own record from the run's output. Cray ruled that distinction holds.
+
+    🔴 **Why the ``RepairCase`` lookup is the DISCRIMINATOR, not a convenience step —
+    measured 2026-08-18, and the measurement reversed the obvious design.** The parked
+    gate carries THREE proposals and **all three name a ``case_id``**::
+
+        action-event-reading-02                    case-demo-truck01-axle    -> no row
+        action-event-case-case-fleet-operate-demo  case-fleet-operate-demo   -> truck-02
+        action-event-reading-05                    case-demo-truck03-gearbox -> no row
+
+    The two fixture ids *"exist only in the fixture"* (``repair_case_run_link``'s own
+    docstring) and resolve to no ``repair_case`` row. Reading ``truck_id`` off the
+    ingested event instead — the shorter path — would have yielded THREE trucks, hit
+    the ambiguity guard below, and stamped **nothing, forever**, with every test green
+    and the feature silently absent. Resolving through the case table is what separates
+    a real repair from a fixture reading.
+
+    **Fail-soft on zero or ambiguous** (PLAN-0084 SD-D's filtering behaviour, never an
+    error): the run simply carries no subject and Tab A shows no marker, which is
+    exactly today's state. The stamp must never be able to assert an asset the run did
+    not pick — that is the promise the trigger-time NOTE below makes.
+    """
+    approve = next((s for s in result.step_results if s.step_id == _APPROVE_STEP), None)
+    if approve is None:
+        return None
+    # ``output_set`` is the PARKED gate's proposal list — the same key the seed's own
+    # resolution path reads (``:474``). ``decisions`` is the post-resolution shape and
+    # is empty at this point.
+    pending = list((approve.artifact or {}).get("output_set") or [])
+
+    trucks: set[str] = set()
+    for proposal in pending:
+        case_id = case_id_of(proposal)
+        if case_id is None:
+            continue
+        case = await session.get(RepairCase, case_id)
+        if case is None:
+            continue  # a fixture-only case id — see the docstring's measurement
+        trucks.add(case.truck_id)
+
+    if len(trucks) != 1:
+        return None
+    truck_id = trucks.pop()
+
+    # A NEW dict, never an in-place ``[...] =`` on the existing one: SQLAlchemy does not
+    # track in-place mutation of a JSONB value, so the assignment below is what makes
+    # this a persisted change rather than a lost one. ``PipelineRun.version`` bumps via
+    # ``version_id_col`` (``runs.py:111-117``) on the resulting UPDATE.
+    result.run.trigger_context = {
+        **(result.run.trigger_context or {}),
+        "subject": {"object_type": _SUBJECT_OBJECT_TYPE, "primary_key": truck_id},
+    }
+    await session.commit()
+    return truck_id
+
 
 async def _run_repair_round(session: AsyncSession, *, run_id: str) -> RunResult:
     """Fire one real ``governed_repair_approval`` round and persist it.
@@ -151,7 +240,7 @@ async def _run_repair_round(session: AsyncSession, *, run_id: str) -> RunResult:
     # run the resolve endpoint would then 409 on.
     executors = registry.get_procedure_executors(_VERTICAL)()
 
-    return await run_procedure_persisted(
+    result = await run_procedure_persisted(
         session,
         procedure,
         agent,
@@ -161,15 +250,20 @@ async def _run_repair_round(session: AsyncSession, *, run_id: str) -> RunResult:
         trigger_context={
             "source": "operate-demo-seed",
             "triggered_by": requester.person_id,
-            # NOTE: no ``subject`` ref, unlike procurement's seed. Procurement can name
-            # its asset because it hand-builds the intake seed; fleet's breaching truck
-            # is chosen by the declared query DURING the run, so it is not knowable
-            # before it. The Monitor row simply carries no subject — ``_resolve_subject``
-            # already handles that — and inventing one here would mean asserting an
-            # asset the run had not yet picked.
+            # NOTE: no ``subject`` ref HERE, unlike procurement's seed, and the reason is
+            # time-scoped rather than permanent. Procurement can name its asset because
+            # it hand-builds the intake seed; fleet's breaching truck is chosen by the
+            # declared query DURING the run, so it is not knowable at trigger time and
+            # inventing one here would mean asserting an asset the run had not yet
+            # picked. AFTER ``intake`` has run the truck IS known — from the run's own
+            # persisted artifact — and ``_stamp_run_subject`` below adds it there
+            # (PLAN-0110 Step 1). Two phases, one honest record: unknowable at trigger
+            # time, read back from the run's own output once it exists.
         },
         principal=requester,
     )
+    await _stamp_run_subject(session, result)
+    return result
 
 
 async def seed_demo_repair_case(session: AsyncSession, *, case_id: str = DEMO_CASE_ID) -> bool:
