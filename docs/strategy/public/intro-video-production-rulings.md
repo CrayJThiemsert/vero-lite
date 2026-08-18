@@ -20,11 +20,12 @@
 
 ## 1. Why this file exists
 
-The rulings below were typed by Cray across three sessions and lived in exactly two
-places, **both gitignored**: `docs/strategy/private/2026-08-10-intro-video-STORYBOARD-v2.md`
-and a session handoff. A carve-out check run at session 239 confirmed the gap by
-measurement rather than by memory — `git grep -i` over `docs/ deploy/ services/ tests/
-verticals/` returned:
+R1–R7 were typed by Cray across three sessions and lived in exactly two places, **both
+gitignored**: `docs/strategy/private/2026-08-10-intro-video-STORYBOARD-v2.md` and a session
+handoff. (**R8 is the exception** — it was ruled at session 239 and recorded here first,
+which is what this file being tracked now makes possible.) A carve-out check run at session
+239 confirmed the gap by measurement rather than by memory — `git grep -i` over
+`docs/ deploy/ services/ tests/ verticals/` returned:
 
 | Probe | Tracked hits before this file |
 |---|---|
@@ -47,7 +48,7 @@ which is the standing convention that failure produced. Read that for the **why*
 
 ## 2. Cray's typed rulings
 
-Seven rulings across three dates. Each row names where it was typed, because the count
+Eight rulings across three dates. Each row names where it was typed, because the count
 has been mis-carried before: the four rulings of **2026-08-12** sit in the storyboard's
 own ruling table, while the **2026-08-10** ruling was recorded inline in the beat it
 governs. Every summary written afterwards inherited the table and dropped the fifth.
@@ -68,6 +69,7 @@ governs. Every summary written afterwards inherited the table and dropped the fi
 |---|---|---|---|
 | R6 | **Option (A): shoot beat 4 on the PUBLISHED profile.** Tab G is dropped from the video | 2026-08-18 | The beat-4 remap in §4. Tab G is absent from the published profile **by ruling**, not by omission |
 | R7 | **The CTA stays *"reply to this email and I'll send you the link + access code"*** — chosen deliberately, because it demonstrates that access control is handled rather than hiding the Access gate | 2026-08-18 | 🔴 **No demo URL may appear on screen anywhere in the clip.** A viewer who reads a URL off the video hits the Access wall before ever talking to us — which inverts the CTA |
+| R8 | **Drop the ฿15,000 contrast from beat 4** — option (a) of three, ruled after the remap was measured | 2026-08-18 | The ladder is now **declared** rather than demonstrated. See §4.1 for what was lost, what carries it instead, and why (b) was rejected as dishonest |
 
 ---
 
@@ -131,6 +133,31 @@ where all ten tabs render — a different system.
 portal, and it carries *"the LLM drafts the summary (advisory); it decides nothing"* — R3
 and beat 2.5, stated by the product.
 
+### 4.1 What the remap cost — the ฿15,000 contrast (R8)
+
+Measured at session 239, and **not** recorded by the sessions that designed the remap: the
+old beat had a shot that *demonstrated* the authority ladder routing a second, cheaper
+repair to the fleet manager instead of the owner. **No published tab renders that.** Tab A
+lists the anomaly but shows no tier; Tab F names both rungs in prose; Tab H's gate panel
+states only the ฿48,000 case.
+
+So the remap trades a **demonstration** for a **declaration**. Three options went to Cray,
+who ruled **(a) — drop it**:
+
+| | Option | Outcome |
+|---|---|---|
+| ✅ **(a)** | Drop the contrast; let the persona role lists carry the ladder | **RULED.** Buys back runtime R2 is short of |
+| **(b)** | Assert it in the VO over Tab A's anomaly rings | **Rejected — dishonest.** The frame shows no tier, so the VO would claim what the screen does not. Additionally false in the picture: Tab A shows **three** anomalies, and two of the three exceed the band floor |
+| **(c)** | Build it — surface the routed tier per anomaly | **Rejected for the shoot**, not forever. A code change, not a filming decision |
+
+**The consequence, and where it lands.** The persona role lists are now the only reliable
+carrier of *"this is a ladder, not always-escalate"* — so the shot that shows them has to
+**say** it, not leave it to be inferred from three cards. That is a real narrowing of the
+beat, accepted knowingly.
+
+⚠️ **Do not reopen this as "the beat feels thin".** The thinness is the ruled trade, not a
+defect. If it is ever worth paying for, the fix is (c) — a build, not a retake.
+
 ---
 
 ## 5. Open — not ruled
@@ -142,12 +169,21 @@ Nothing below is decided. They are recorded so they are not rediscovered.
    narration-rate benchmark exists. R2's 140 s leaves **less** slack than the 110 s that
    was drafted, so this is the largest unknown in the plan — it may force the 7-beat
    structure back to 6.
-2. **`Advisory proposal (stubbed)` renders THREE stacked identical rows** on Tab H's gate
-   panel. On camera, *(stubbed)* reads as unfinished. **Crop, or reword — undecided.**
+2. **`Advisory proposal (stubbed)` renders three times** on Tab H's gate panel, and
+   *(stubbed)* reads as unfinished on camera. ⚠️ **Corrected at session 239 — this is not
+   a duplicate render.** The gate states *"3 candidates reached this gate; the reasons
+   above describe the first"*: they are three genuine proposals that all carry the same
+   placeholder title. The choice is therefore **not** "crop the duplicate" but **name each
+   candidate**, which turns an unfinished-looking panel into a real one. **Undecided.**
 3. **The fonts are too small to film**: persona name 13.5 px, id 11 px, gate reasons
    12 px on a 927 px viewport. Shooting needs roughly 150 % zoom or a narrower window —
    ⚠️ **and every geometry number in §4 must then be re-measured**, including `docH` and
    the Verify-chain button's y.
+4. **The run list carries an orange `11 WAITING ON YOU` badge**, which reads as *"this
+   operator is behind"*. ⚠️ The number measured at session 239 is **dev-box specific** —
+   that database has accumulated runs from every vertical since bring-up, while each
+   published system has its own. **Crop the left column, or re-measure on the published
+   host before rolling. Do not film the number as measured locally.**
 
 ---
 
@@ -177,9 +213,11 @@ Cray go per occasion** (`CLAUDE.md` §8).
 | R1 | 220 (typed 2026-08-10) | storyboard v2, inline at beat 2.5 — **outside** the ruling table, which is why later summaries dropped it |
 | R2–R5 | 220 (typed 2026-08-12) | storyboard v2 ruling table |
 | R6, R7 | 237 (typed 2026-08-18) | session-237 handoff §5.3 |
+| R8 | 239 (typed 2026-08-18) | **this file** — ruled in-session once §4.1's loss was measured; recorded here first, not rehomed |
 | §3 filming constraints | 220, re-confirmed 237 | storyboard v2 (beats 2.5 and 4) + session-237 handoff §6.1 |
-| §4 remap | 237 | session-237 handoff §6.1 |
-| §5 open items | 220 (item 1), 237 (items 2–3) | session-220 handoff §6, session-237 handoff §5.4 |
+| §4 remap | 237, **geometry re-measured 239** | session-237 handoff §6.1; re-taken on `oct-demo-published-fleet` at 1280×720 |
+| §4.1 the lost contrast | **239** | measured this session — no prior artifact records it |
+| §5 open items | 220 (item 1), 237 (items 2–3), **239 (item 4 + item 2's correction)** | session-220 handoff §6, session-237 handoff §5.4, session-239 measurement |
 
 All sources except this file are gitignored. Rulings were transcribed from the
 originating artifact rather than from the most recent summary of it — the summaries were
