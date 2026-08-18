@@ -68,6 +68,36 @@ ssh <ssh-alias> docker compose -f C:/projects/vero-lite/deploy/published/oct-fle
 
 Then re-run step 1 and confirm `DEMO-STATE: PRISTINE`.
 
+## 2a. 🔴 The ONE case where the order above is impossible — a bootstrap deploy
+
+Step 2's ordering assumes the reset tool is already on the running container. **It is
+not, on the deploy that introduces it** — the tool ships *inside the image it is meant
+to run before*. Measured on the live host, 2026-08-18, against the pre-PLAN-0110 image:
+
+```
+docker exec oct-fleet-maintenance-app python -m services.db.demo_run_reset
+  →  /app/.venv/bin/python: No module named services.db.demo_run_reset   (exit 1)
+```
+
+It fails **safely and by this document's own rule**: no `DEMO-STATE:` token is printed,
+and §1 already says a missing token is a failed check, never a pass. So the hazard is a
+wrong ordering, not a silent one.
+
+**When the tool (or a change to it) is part of the image you are shipping, use this
+sequence instead** — two boots rather than one. The window between them leaves the demo
+in the consumed state it was already in, so there is no regression:
+
+1. ship the image (`docker save` → `ssh … docker load`; the image id must be **identical**
+   on both machines — see the bring-up log)
+2. `up -d` — the app is recreated on the new image. Expect the boot log to still say
+   `run 'run-fleet-operate-demo' already present — skip`; the rows are still there, and
+   that is the defect, not a failure of this step
+3. **now** run §1's check — a printed token doubles as proof the new image is running —
+   then §2's `--execute`
+4. `restart app` — the boot lifespan rebuilds through the virgin-boot path
+
+Every subsequent deploy uses §2's ordering, because by then the tool is already deployed.
+
 ## 3. Four things to know about these commands
 
 1. **The shared `deploy/published/deploy.py` is not used for this system.** That script
