@@ -62,6 +62,13 @@ _boot_logger = logging.getLogger("uvicorn.error")
 _STATIC_MIME_TYPES: tuple[tuple[str, str], ...] = (
     ("font/woff2", ".woff2"),
     ("font/woff", ".woff"),
+    # Tab F's origin narrative (session 239) is served from assets/narratives/ and
+    # read with fetch().text(), which decodes UTF-8 regardless of the header — so
+    # the wrong type here would not visibly break the panel. It is registered
+    # anyway, because the guard's contract is that the served type is a property
+    # of this application rather than of the base image's mime files, and a
+    # silently-differing dev/image response is what that rule exists to prevent.
+    ("text/markdown", ".md"),
 )
 
 for _mime_type, _extension in _STATIC_MIME_TYPES:

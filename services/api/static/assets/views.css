@@ -546,6 +546,98 @@
 }
 .pv-agent-sep { color: var(--line-strong); }
 
+/* ---- origin narrative (session 239) ----
+   The raw customer story a vertical was formalised FROM, opened from Tab F so it
+   sits against the procedure prose that replaced it. Reading surface, not a
+   console surface: wider leading and a capped measure, because the content is
+   Thai prose paragraphs rather than labelled data. */
+.pv-origin {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin: 0 0 12px; padding: 8px 10px;
+  border: 1px dashed var(--line-strong); border-radius: var(--r-md);
+  background: var(--bg-inset);
+}
+.pv-origin-btn { flex: 0 0 auto; }
+.pv-origin-hint { font-size: 12px; line-height: 1.5; }
+
+.nv-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(5, 8, 13, 0.72);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 5vh 16px; overflow-y: auto;
+}
+.nv-panel {
+  width: 100%; max-width: 760px;
+  background: var(--bg-2); border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg); box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+}
+.nv-head {
+  display: flex; align-items: flex-start; gap: 12px;
+  padding: 16px 20px; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; background: var(--bg-2);
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
+}
+.nv-title { margin: 2px 0 0; font-size: 18px; font-weight: 600; color: var(--tx-0); }
+.nv-close { flex: 0 0 auto; }
+.nv-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.nv-body { padding: 18px 20px 26px; }
+.nv-intro {
+  font-size: 13.5px; line-height: 1.8; color: var(--tx-1);
+  border-left: 2px solid var(--accent); padding-left: 12px; margin: 0 0 18px;
+}
+.nv-h { font-size: 15px; font-weight: 600; color: var(--tx-1); margin: 0 0 12px; }
+.nv-note {
+  margin: 0 0 16px; padding: 10px 12px;
+  background: var(--bg-inset); border-left: 2px solid var(--line-strong);
+  font-size: 12.5px; line-height: 1.7; color: var(--tx-2);
+}
+.nv-rule { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
+/* Thai has no word spaces and stacks diacritics, so it needs more leading than
+   the console's 1.55 — this is a reading measure, not a data row. */
+.nv-p {
+  font-size: 14.5px; line-height: 1.95; color: var(--tx-0);
+  max-width: 62ch; margin: 0 0 15px;
+}
+.nv-p b { color: var(--tx-0); font-weight: 600; }
+
+/* ---- which sentence became which step ----
+   One highlight treatment plus a numbered badge, deliberately NOT six colours:
+   the panel is filmed, and six hues at 12px read as decoration while one
+   treatment with a number reads as a reference. */
+.nv-legend {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--bg-1); padding: 12px 14px; margin: 0 0 20px;
+}
+.nv-leg-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 7px 16px; margin-top: 9px;
+}
+.nv-leg-item { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; line-height: 1.5; }
+.nv-leg-item.is-unmapped { opacity: 0.62; }
+.nv-leg-no {
+  flex: 0 0 auto; min-width: 18px; height: 18px; padding: 0 5px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 9px; background: var(--accent-soft); border: 1px solid var(--accent-line);
+  color: var(--accent); font-family: var(--mono); font-size: 11px; font-weight: 600;
+}
+.nv-leg-item.is-unmapped .nv-leg-no {
+  background: transparent; border-color: var(--line-strong); color: var(--tx-3);
+}
+.nv-leg-name { color: var(--tx-1); }
+.nv-leg-none { font-size: 11.5px; }
+
+.nv-hl {
+  background: var(--accent-soft); color: var(--tx-0);
+  box-shadow: inset 0 -1px 0 var(--accent-line);
+  border-radius: 2px; padding: 1px 2px;
+}
+.nv-hl-no {
+  font-family: var(--mono); font-size: 9.5px; font-weight: 700;
+  color: var(--accent); margin-left: 3px; vertical-align: super; line-height: 0;
+}
+
 /* steps */
 .pv-steps { display: flex; flex-direction: column; gap: 14px; }
 .pv-step { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-1); padding: 13px 14px; }
