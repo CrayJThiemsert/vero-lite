@@ -165,8 +165,21 @@
 /* PLAN-0084: the DISTINCT "governed run in flight" marker (SD-C) — a slow-breathing
    dashed amber ring, visually separate from the red anomaly .halo pulse above
    ("anomaly detected" ≠ "governed run awaiting a human"). */
-.mnode .run-halo { animation: runHaloBreathe 2.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+.mnode .run-halo { transform-origin: center; transform-box: fill-box; }
+/* PLAN-0110 SD-B: only the IN-FLIGHT treatment breathes. A settled ring that pulsed
+   would say "still happening" about work that is finished — the animation is the
+   demo's visual word for "waiting on you", so it belongs to that state alone. */
+.mnode .run-halo-inflight { animation: runHaloBreathe 2.6s ease-in-out infinite; }
+.mnode .run-halo-settled { opacity: .9; }
+.mnode .run-halo-closed { opacity: .5; }
 @keyframes runHaloBreathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+/* PLAN-0110 Step 2: the Tab A run-marker mode filter, shaped after .pv-modetoggle. */
+.map-runfilter { display: inline-flex; align-items: center; gap: 8px; }
+.map-runfilter .mrf-label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--tx-2); }
+.map-runfilter .mrf-tabs { display: inline-flex; gap: 2px; padding: 2px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+.map-runfilter .mrf-tab { font-size: 12px; padding: 3px 11px; border: 0; background: transparent; color: var(--tx-2); border-radius: 4px; cursor: pointer; }
+.map-runfilter .mrf-tab:hover:not(.active) { color: var(--tx-1); }
+.map-runfilter .mrf-tab.active { background: var(--bg-inset); color: var(--tx-0); }
 /* PLAN-0084: the panel "Governed runs · in flight" section (SD-E) */
 .gov-runs .gov-run-row { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin: 6px 0; border-radius: var(--r-md); background: var(--bg-1); border: 1px solid var(--line); }
 .gov-runs .grr-id { flex: 1; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
