@@ -107,18 +107,37 @@ The run rows live in Postgres, which was not recreated, so the boot seed found t
 skipped — leaving the visitor's beat exactly where it was. `DEMO-STATE` read `PRISTINE`
 before and after. This deploy neither restored nor consumed anything.
 
-## What was NOT verified here, stated rather than implied
+## The edge, closed the same day — by the one observation this process cannot make
 
-- **The panel rendered on the published surface.** The button, the legend, the six
-  highlights and the skipped front matter were all verified in the local browser under the
-  published profile before the deploy, with the served asset versions confirmed so the
-  render was the new code. They were **not** re-observed through the tunnel, which sits
-  behind Cloudflare Access and needs an interactive PIN — the same limit session 238 hit.
-  What is proven here is that the file is in the running container, byte-identical, at the
-  path the JS fetches.
-- **That Cloudflare Access admits `/assets/narratives/…`.** The allowlist file says
-  `^/assets/.+$` and is unchanged, but a committed rule is not a served route. Opening the
-  panel on the live host is a browser action for Cray.
+Everything above proves the file is in the running container at the path the JS fetches.
+It does **not** prove Cloudflare Access admits that path, because a committed allowlist
+rule is not a served route, and the tunnel needs an interactive PIN that an automated
+process has no way to satisfy. Session 238 hit the same wall and recorded it as an open
+edge.
+
+**Cray closed it, minutes after the deploy, by opening the live system** —
+`oct-fleet-maintenance.cray-n8n.com/#F`, through Cloudflare Access, screenshot taken.
+Observed on that surface:
+
+- the **`อ่านเรื่องเล่าตั้งต้น` button** renders on Tab F, against the procedure prose;
+- the **panel opens** — so `^/assets/.+$` does admit `/assets/narratives/…` at the edge,
+  which is the claim no offline test and no in-container read can make;
+- the **legend renders all six steps**, with step 3 (`reshape`) dimmed and carrying
+  *"ไม่มีต้นทางในเรื่องเล่า — เป็นกลไกที่ระบบต้องมีเอง"* — the deliberate gap survived the
+  trip to production intact;
+- the **highlights carry their superscript numbers** in the prose;
+- the **front matter is absent** — no PLAN number, no *"ฉบับปรับแก้เลอะ"*, no
+  *"Cray-modified"* on a customer-facing screen.
+
+Recorded as Cray's observation rather than as this process's measurement, because that is
+what it is. The distinction matters: it is the half of Layer 3 that only a human holding
+the Access credential can perform, and pretending otherwise would make the next deploy's
+"verified" weaker than it looks.
+
+## What remains unverified
+
+- **The visitor beat played end to end on the live system.** Doing so would consume the
+  beat, which `DEMO-STATE` currently reports `PRISTINE`. Left deliberately unplayed.
 
 ## Correction owed to the runbook
 
