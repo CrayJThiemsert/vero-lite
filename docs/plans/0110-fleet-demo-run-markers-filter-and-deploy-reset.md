@@ -1,15 +1,20 @@
 # PLAN-0110: Fleet Demo Lifecycle — Tab A Run Markers, Three-Mode Filter, Deploy-Time Reset
 
 **Status:** Draft
-**Owner:** Claude Code
+**Owner:** Claude Code (execution). **All five SDs RULED** (Cray, typed, 2026-08-18
+s237) — SD-A (a), SD-B as recommended, **SD-C = deploy-script step, AGAINST the
+drafter recommendation** (see SD-C for why and what it buys/costs), SD-D as
+recommended, SD-E (d) with (b) the named follow-on build.
 **Created:** 2026-08-18
 **Related ADRs:** ADR-0032 (demo→pilot wedge — the published fleet demo IS the wedge artifact), ADR-0035 (published-surface decisions), ADR-0025 (the `request → approve → fulfill` spine shape), ADR-016 (run records + audit chain)
 **Related PLANs:** PLAN-0084 (map↔monitor run linkage — SD-C/SD-D rulings this PLAN inherits), PLAN-0103 (published fleet profile), PLAN-0105 (case retention — the deletion-ordering precedent and the SD-4 link-row ruling this PLAN diverges from, explicitly), PLAN-0107 (backlog-case seeds, untouched)
 
 > Drafted by the in-harness `plan-drafter` subagent (ADR-013 D1 phased authority) from
 > Code's session-237 dispatch + fact-pack; amended same-session per Cray's (ข) ruling
-> (fold in SD-E — the visitor-case→run gap, G10) from Code's follow-up dispatch, all
-> new anchors re-verified on disk. Independent review: Cray at PR merge.
+> (fold in SD-E — the visitor-case→run gap, G10), then again when Cray ruled all five
+> SDs (typed, 2026-08-18 s237) — rulings folded in place, with SD-C ruled against the
+> drafter recommendation and its consequences priced in SD-C/G11. All new anchors
+> re-verified on disk at each amendment. Independent review: Cray at PR merge.
 > Baseline: `main` @ `808bfc0`. PLAN-0109 (open PR, Ask ontology) is **not** a
 > dependency of this PLAN and must not become one.
 
@@ -31,11 +36,13 @@ filter — **in-flight (default, unchanged per PLAN-0084 SD-C) / completed / all
 parked at the `approve` gate (`waiting_human`), one completed through both gates —
 which is precisely what a fresh boot already produces since PR #1209 (`90a8f67`), so
 the reset's job is to **make the seed able to rebuild**, not to invent a new end state.
-Per Cray's 2026-08-18 (ข) ruling this PLAN additionally surfaces — as SD-E, without
-pre-deciding it — the measured gap that **a visitor's own case can never enter a
-governed run on the published profile** (G10), because the chosen answer changes
-G4's population bound and therefore the filter-cap and reset-scoping ground the
-other pieces stand on.
+The PLAN also carries the measured gap that **a visitor's own case can never enter a
+governed run on the published profile** (G10): Cray ruled SD-E = (d) — this PLAN
+re-scopes the narrative promise (Step 6, AC-10, now active work), and **(b)
+server-side firing is the named follow-on build**. That ruling keeps G4's two-run
+bound as current fact, so the filter-cap and reset-scoping ground the other pieces
+stand on holds. The reset runs as a **deploy-script step, not at boot** (SD-C, ruled
+against the drafter recommendation — trade priced in SD-C and G11).
 
 ## Ground — measured facts this PLAN stands on
 
@@ -75,13 +82,14 @@ to"; `:111-112` and `:202` name the route). **A visitor cannot create a run**; r
 come from the boot seed only, so the population is structurally bounded at 2. The
 bound is a *consequence of the allowlist* — **tripwire: if that route is ever
 admitted, the cap question reopens** and this paragraph is the place that says so.
-**⚠️ Contingency (added under Cray's 2026-08-18 (ข) ruling):** this bound holds
-today and under SD-E option (d) only. SD-E options (a), (b) and (c) each give
-visitor activity a way to produce runs, which **dissolves the bound** — the "all"
-mode regains an unbounded axis and the reset's "exactly two runs" pristine claim
-becomes "exactly two *demo* runs among N visitor runs". The per-candidate pricing
-lives in SD-E; this paragraph must be rewritten, not deleted, when SD-E is ratified
-to a build option.
+**Contingency RESOLVED (SD-E RULED (d), Cray, typed, 2026-08-18 s237): the two-run
+bound HOLDS as current fact.** The reopen tripwire is retained, deliberately, with
+two triggers: (i) if `POST /procedures/{id}/run` is ever admitted to the allowlist,
+or (ii) when SD-E's named follow-on build (b) — server-side firing on case creation
+— lands. Either dissolves the bound: the "all" mode regains an unbounded axis and
+"exactly two runs" becomes "exactly two *demo* runs among N visitor runs" (the
+per-candidate pricing stays recorded in SD-E for that day). Rewrite this paragraph
+then; never delete the tripwire.
 
 **G5 — the consumable-once defect, precisely.** `services/api/main.py:307`:
 `if await load_run(session, DEMO_RUN_ID) is not None: return` — the seed skips on row
@@ -189,6 +197,30 @@ one sentence: *the demo resets; the audit log remembers.*
    allowlist must close this asymmetry **in the same change** — a weaker door must
    not ship beside a stronger one.
 
+**G11 — "add it to the deploy script" is not a neutral instruction (measured; the
+SD-C ruling's binding constraint).** `deploy/published/deploy.py` serves
+**`oct-energy` only**, by typed decision (Cray, s219 — recorded in the module's own
+header at `deploy.py:65-83`): `_HOST_COMPOSE` and `_LOCAL_COMPOSE` are hardwired to
+`deploy/published/oct-energy/docker-compose.yml` (`:89`, `:102`), the
+parameterize-vs-copy decision is **explicitly deferred** ("designing a `--system`
+interface against a second deployment that has never run" is named as the
+speculative-generality failure), and `tests/deploy/test_deploy.py:44-47` **pins**
+the script to energy's compose file "so a second system cannot quietly start riding
+these energy-shaped literals." Fleet was brought up and redeployed by a **different,
+manual path** (`docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`): its
+compose declares `build:` with **no** `image:`, so the image must be `docker save`
+→ `ssh … docker load`-shipped (the deploy host cannot build — measured, `:65-77` of
+that log), and the same log's addendum records fleet's first redeploy as a by-hand
+sequence — including the boot line `run 'run-fleet-operate-demo' already present —
+skip`, which is this PLAN's G5 defect surviving a redeploy on the live system. Two
+further measured constraints on any fleet deploy step: remote commands land in
+**PowerShell** (no quotes/`$`/braces; **forward slashes** — a backslashed path is
+silently stripped to a relative one, the log's Correction 1), and every fleet
+redeploy is a §8 host-state action under an explicit typed go. Consequence: the
+reset step must **not** attach to `deploy.py` in this PLAN — that would force the
+s219-deferred parameterization decision as a side effect and widen a deliberate
+test pin. Step 4 states what it attaches to instead.
+
 ## Acceptance Criteria
 
 Each AC names its artifact by path, its command, and a pass/fail read fixed before
@@ -238,8 +270,9 @@ disposable test DB — one pytest per checkout; Windows worktrees skip DB tests.
   authenticated `POST /runs/{id}/gate/resolve` for `approve`, then `fulfill` →
   completed; and separately `POST /runs/{id}/cancel` → cancelled; plus the
   approve-only shape parked at `fulfill` — all three of G5): running the reset entry
-  point (the same function the boot path calls) followed by the same lifespan seed
-  functions yields, via `GET /runs`, **exactly two** fleet demo runs —
+  point (the same function the Step 4 operator step invokes at deploy time) followed
+  by the same lifespan seed functions yields, via `GET /runs`, **exactly two** fleet
+  demo runs —
   `run-fleet-operate-demo` at `waiting_human` **suspended at the `approve` step with
   an undecided proposal set** (status alone is insufficient: a run parked at
   `fulfill` is also `waiting_human` — G5), and `run-fleet-demo-history` at
@@ -279,14 +312,33 @@ disposable test DB — one pytest per checkout; Windows worktrees skip DB tests.
   a break (the absence claim "no breaks" is backed by a demonstrated detection).
   Fail: any decrease, any break on the honest path, or a silent positive control.
 
-- [ ] **AC-8 — the reset fails closed.**
+- [ ] **AC-8 — the reset fails closed (SD-C RULED: deploy-step shape).**
   Artifact + command: as AC-1.
-  Pass: with the flag unset/false (default), the boot path performs **zero**
-  deletions on a consumed state (rows re-read identical — positive control: the same
-  harness with the flag true does reset, so the "nothing happened" read is proven
-  able to detect "something happened"); with the flag true but
-  `settings.oct_vertical != "fleet_maintenance"`, likewise zero deletions. Fail: any
-  deletion on either guard path.
+  Pass, three reads: (1) **plan mode is the default** — invoking the entry point
+  without its explicit execute flag performs **zero** deletions on a consumed state
+  (rows re-read identical; positive control: the same harness *with* the execute
+  flag does reset, so the "nothing happened" read is proven able to detect
+  "something happened"); (2) with the execute flag but
+  `settings.oct_vertical != "fleet_maintenance"`, the entry point **refuses** with
+  zero deletions; (3) **nothing at boot invokes it** — a grep read asserting
+  `services/api/main.py` contains no reference to the reset module (absence claim;
+  positive control: the same grep over `tests/` finds the scenario test's own
+  import, proving the reader can find a present reference). Fail: any deletion on
+  (1)/(2), or a boot-path reference on (3).
+
+- [ ] **AC-11 — the degraded state is observable without deploying (SD-C
+  consequence: a manual reset needs a visible precondition).**
+  Artifact: `services/db/demo_run_reset.py` (plan-mode output) +
+  `tests/api/test_fleet_demo_reset_scenario.py`.
+  Command: as AC-1.
+  Pass: the entry point's **plan mode prints a verdict token** — the literal
+  `DEMO-STATE: PRISTINE` when the two fixed runs match the pristine read (one
+  `waiting_human` suspended at `approve`, one `completed`), and the literal
+  `DEMO-STATE: CONSUMED` otherwise — asserted in both states through the real seed
+  + consume paths (an echoed exit code is corruptible; the token is the read).
+  Fail: missing/wrong token in either state.
+  Non-vacuity: the CONSUMED assertion runs after a real gate-resolve — the same
+  mutation AC-4 already drives — so the token is witnessed to flip.
 
 - [ ] **AC-9 — cache-bust for the shipped JS.**
   Artifact: `tests/api/test_map_run_filter_contract.py` (same file as AC-2).
@@ -295,8 +347,8 @@ disposable test DB — one pytest per checkout; Windows worktrees skip DB tests.
   baseline value recorded in the test (per-file counter — differing numbers across
   files are normal). Fail: unbumped.
 
-- [ ] **AC-10 — narrative promise matches the published surface (contingent on
-  SD-E = (d); replaced by the ratified option's own ACs otherwise).**
+- [ ] **AC-10 — narrative promise matches the published surface (SD-E RULED (d) —
+  ACTIVE work, not contingent, not optional).**
   Artifacts: `deploy/published/oct-fleet-maintenance/card-copy.md` +
   `verticals/fleet_maintenance/operate_seed.py` (module docstring).
   Command: Grep tool (not WSL `rg` — it is absent there) over both files.
@@ -332,16 +384,20 @@ disposable test DB — one pytest per checkout; Windows worktrees skip DB tests.
   visitor play; their idempotency guards are untouched.
 - ❌ **Marker styling redesign beyond the SD-B modes** — the in-flight marker's
   visual language (PLAN-0084 SD-C) is unchanged.
-- ❌ **Building the visitor-case→run path** (SD-E options (a)/(b)/(c)) — surfaced
-  and priced in SD-E, recommended as a follow-on scope; it enters this PLAN only if
-  Cray ratifies it in (precedent: PLAN-0084 SD-D, where Cray ratified wider than
-  the defer recommendation — this SD is written so that pull-in is clean). If that
-  happens, G4, AC-4/AC-5's population reads, and the "all"-mode cap line all change
-  together, per SD-E's interaction pricing — never piecemeal.
+- ❌ **Building the visitor-case→run path — SD-E RULED (d):** (a) and (c) are not
+  planned; **(b) server-side firing is the NAMED follow-on build** (Cray, typed,
+  2026-08-18 s237), carrying with it the RoPA/AC-11 description line, the
+  anonymous-intake principal question (`cases.py:206` `_UNATTRIBUTED`), and — per
+  G4's retained tripwire — the joint rewrite of G4, AC-4/AC-5's population reads,
+  and the "all"-mode cap line, never piecemeal.
+- ❌ **Parameterizing `deploy/published/deploy.py` across systems** — the s219-typed
+  deferral stands (G11); this PLAN's reset step deliberately does not attach to that
+  script, so the deferred `--system` decision is not forced here and
+  `tests/deploy/test_deploy.py`'s energy pin does not widen.
 
 ## Steps
 
-### Step 1: Backfill `subject` on the two demo runs (SD-A — drafted per recommendation (a), contingent on Cray)
+### Step 1: Backfill `subject` on the two demo runs (SD-A RULED (a) — Cray, typed, 2026-08-18 s237)
 
 In `verticals/fleet_maintenance/operate_seed.py`, after `_run_repair_round`'s
 `run_procedure_persisted` returns (`:154-172` — the shared path both seeds use, on
@@ -361,7 +417,7 @@ two-phase reasoning (unknowable at trigger time; known and stamped after `intake
 - Output that changes: the `subject` field of both fleet rows in the real
   `GET /runs` payload — `null` → `{"object_type": "Truck", "primary_key": …}`.
 
-### Step 2: Three-mode filter on Tab A (SD-B — drafted per recommendation, contingent on Cray)
+### Step 2: Three-mode filter on Tab A (SD-B RULED as recommended — Cray, typed, 2026-08-18 s237)
 
 In `services/api/static/assets/view-map.js`: introduce a mode state
 (`inflight` default / `completed` / `all`), a small header control on Tab A, and
@@ -375,7 +431,7 @@ contract test in the same step.
   `completed`, the history run (status `completed`, subject present post-Step 1)
   gains a marker that the default mode never shows.
 
-### Step 3: The demo-run deleter — first run-delete path in the repo (SD-D — drafted per recommendation, contingent on Cray)
+### Step 3: The demo-run deleter — first run-delete path in the repo (SD-D RULED as recommended — Cray, typed, 2026-08-18 s237)
 
 New module `services/db/demo_run_reset.py` (executor may co-locate differently;
 keep it demo-named, not generic): deletes, for **exactly** the fixed ids imported
@@ -398,36 +454,65 @@ completeness guard beside it.
   step_results/link rows, 2→0 demo cases) while the decoy/visitor rows' re-read
   stays byte-identical.
 
-### Step 4: Boot wiring + the fail-closed flag (SD-C — drafted per recommendation (a), contingent on Cray)
+### Step 4: The deploy-step entry point + runbook wiring (SD-C RULED: deploy-script step, NOT boot-time — Cray, typed, 2026-08-18 s237)
 
-Add a `Settings` field (`services/api/config.py`, `class Settings` at `:45`;
-`oct_vertical` precedent at `:228`): `demo_reset_on_boot: bool = False` (env
-`DEMO_RESET_ON_BOOT`; env names are uppercase). In `services/api/main.py`'s fleet
-seed block, **before** the `:307` skip: if flag AND
-`settings.oct_vertical == "fleet_maintenance"`, run the Step 3 reset (one
-transaction; on any error, roll back — prior state stands, existing seeds then skip:
-degraded, never half-deleted) and log loudly. The existing seeds
-(`seed_settled_history_case`, `seed_case_list_history`,
-`seed_repair_gate_waiting_human_run`) then find a virgin surface and rebuild the
-pristine pair through the exact path a fresh boot uses — no new end state is
-invented (G6). Set `DEMO_RESET_ON_BOOT=1` in
-`deploy/published/oct-fleet-maintenance/published.env` only; no other env file, no
-compose default.
+**No boot wiring, no `Settings` flag, no `published.env` change** — the boot-time
+design was the drafter's recommendation and Cray ruled against it (SD-C states the
+trade). What ships instead, resolving G11's constraint explicitly:
+
+**Attachment (the G11 question, answered):** the reset does **not** attach to
+`deploy.py` (energy-hardwired by typed s219 decision, test-pinned — G11). It is an
+**operator entry point on the reset module itself**, baked into the app image:
+`services/db/demo_run_reset.py` gains a `__main__` guard (argparse), invoked inside
+the running fleet app container —
+`ssh <host> docker compose -f C:/projects/vero-lite/deploy/published/oct-fleet-maintenance/docker-compose.yml -p oct-fleet-maintenance exec -T app python -m services.db.demo_run_reset [--execute]`
+— plain words only (PowerShell-safe: no quotes, no `$`, no braces; **forward
+slashes** per the bring-up log's Correction 1), the container's own `DATABASE_URL`
+and `OCT_VERTICAL` (so it aims at the right database by construction and the
+vertical guard reads the deployed system's own setting), and no new credential
+surface anywhere. The documented sequence lives in
+`docs/runbooks/published-demo-redeploy.md` (SD-C consequence 2).
+
+**Safety pattern, copied from `deploy.py`'s own (`deploy.py:36-41`):** the default
+invocation is a **plan** — it deletes nothing and prints the AC-11 verdict token
+(`DEMO-STATE: PRISTINE` / `DEMO-STATE: CONSUMED`), which doubles as the SD-C
+consequence-1 observable check *and* as the not-silently-a-no-op guard (no token ⇒
+the module did not run — the `python -m` silent-no-op hazard is detectable by
+construction). Deletion requires an explicit `--execute`. Guards retained in full
+(they matter MORE in an operator-invoked step, where a hand-typed invocation can aim
+at the wrong target): fixed-id constants imported from `operate_seed`, the
+`oct_vertical == "fleet_maintenance"` refusal, one transaction (an error rolls back
+— prior state stands, never half-deleted).
+
+**🔴 Ordering within the redeploy is load-bearing.** The seeds rebuild only in the
+app's boot lifespan. The runbook step is therefore: **reset with `--execute` first
+(against the still-running old container), then `up -d`** — the recreate boots the
+new image, the seeds find a virgin surface and rebuild the pristine pair through the
+exact path a virgin boot uses (G6). If a redeploy does not recreate the app (image
+id unchanged), the runbook names the explicit follow-up: `… compose restart app`.
+A reset run *after* the app has booted, with no restart, leaves the demo EMPTY until
+the next boot — the runbook states this as the failure the ordering exists to
+prevent.
+
 - Execution-time confirms (bounded): `seed_demo_repair_case`'s idempotency guard
   key (expected: case id, mirroring `:410` — confirm before relying on rebuild);
-  whether any guard test asserts `published.env`'s contents.
-- Non-vacuity probe: AC-8 both ways — flag false → consumed state persists
-  unchanged; flag true in the same harness → it does not (the positive control).
-- Output that changes: the boot log gains the reset line, and only under
-  flag+vertical do the Step 3 counts change.
+  the `compose exec -T` plain-word argv surviving the ssh→PowerShell chain (a Step 7
+  live confirm, under the §8 go).
+- Non-vacuity probe: AC-8 all three reads — plan-default deletes nothing (positive
+  control: `--execute` does); wrong vertical refuses; no boot-path reference exists
+  (positive control: the scenario test's own import is found).
+- Output that changes: only under `--execute` + fleet vertical do the Step 3 counts
+  change; plan mode changes nothing and prints the token.
 
 ### Step 5: The scenario test — real producer into real consumer (binding, CLAUDE.md §8)
 
 `tests/api/test_fleet_demo_reset_scenario.py`: boot-seed via the real lifespan
 functions → consume the beat via the **real endpoints** in each of G5's three shapes
 (persona-authenticated resolve of `approve` then `fulfill`; approve-only parked at
-`fulfill`; `/cancel`) → reset via the boot entry point → re-seed → assert AC-1,
-AC-4, AC-5, AC-7, AC-8 against the real `GET /runs` / `GET /runs/{id}` payloads.
+`fulfill`; `/cancel`) → reset via the operator entry point (the same function
+Step 4's deploy step invokes, both plan and `--execute` modes) → re-seed → assert
+AC-1, AC-4, AC-5, AC-7, AC-8 and AC-11's verdict tokens against the real
+`GET /runs` / `GET /runs/{id}` payloads and the entry point's printed output.
 No mocked seam on either side: the seed that produces, the endpoints that consume,
 the reset that restores are all the shipped code paths.
 - Record (not hide) the measured reset side-effects in the test's docstring: each
@@ -437,7 +522,7 @@ the reset that restores are all the shipped code paths.
 - Non-vacuity probe: AC-4's skip-the-reset probe — the consumed state must be SEEN
   to persist before the restore green counts.
 
-### Step 6: Narrative correction (contingent on SD-E = (d); superseded by the ratified option otherwise)
+### Step 6: Narrative correction (SD-E RULED (d) — ACTIVE work; Cray, typed, 2026-08-18 s237)
 
 Correct exactly the sentences G10(4) names: `card-copy.md:26-27` (TH) and `:58-59`
 (EN) — replace the "routes itself into the approval chain" claim with copy scoped to
@@ -454,16 +539,25 @@ published profile (it is not — G10(4)). Ship AC-10's reads in the same change.
 
 ### Step 7: Deploy + live verification (host-state — Cray go required)
 
-Redeploy the published fleet system with the new image + env. Live checks (evidence,
-not the gate — the offline oracle is the gate, CLAUDE.md §8): `GET /runs` shows two
-runs with subjects; Tab A default view shows one in-flight marker on `truck-02`'s
-node; switching modes shows the completed run; play the beat, redeploy, confirm the
-queue is pristine again. Any MS-S1 / host action gets explicit Cray go first.
+Redeploy the published fleet system with the new image, following the runbook's
+updated fleet sequence (Step 4): plan-mode state read → reset `--execute` → ship +
+`up -d` (the manual fleet path per G11 — `deploy.py` is not used for fleet). Live
+checks (evidence, not the gate — the offline oracle is the gate, CLAUDE.md §8):
+plan mode prints `DEMO-STATE:` and the token flips across the cycle; `GET /runs`
+shows two runs with subjects; Tab A default view shows one in-flight marker on
+`truck-02`'s node; switching modes shows the completed run; play the beat, run the
+reset + redeploy, confirm the queue is pristine again; `GET /audit/verify` still
+reports intact with a row count that never decreased. Any MS-S1 / host action gets
+explicit Cray go first, per invocation.
 
 ## Surfaced decisions
 
-Recommendations are drafted into the Steps above but are **contingent on Cray's
-ratification**; record ratified picks here per PLAN-0084's convention.
+**All five SDs RULED (Cray, typed, 2026-08-18 s237)** — stamps recorded per SD
+below, per PLAN-0084's convention. Four rulings follow the drafter recommendation;
+**SD-C does not** — it is stamped with what the ruling buys and costs, both
+directions, because a ruling against the drafter must be priced, not just recorded.
+The original recommendations are retained under each SD for the reasoning lineage
+(CLAUDE.md §6: superseded-by-ruling, not erased).
 
 ### SD-A — where the `subject` backfill happens
 
@@ -493,6 +587,11 @@ loads it deliberately avoids today.
 **Why Cray:** (a) sits next to a ratified rejection whose boundary must be ruled, not
 inferred; and which surface carries the demo's map story is a wedge-artifact call
 (ADR-0032 D1).
+**RULED (Cray, typed, 2026-08-18 s237): (a) as recommended** — seed-local
+post-round stamp. The PLAN-0084 SD-D(c) boundary question is thereby settled for
+the seed-authored case: the author annotating its own record from the run's
+persisted output is inside the line. PLAN change: none — Step 1 already implements
+this shape.
 
 ### SD-B — what "completed" means in the filter
 
@@ -515,29 +614,74 @@ rejected in recommendation); hiding `failed`/`cancelled` even from "all" (an "al
 that lies about its name).
 **Why Cray:** bucket membership and the three marker treatments are demo-stage
 vocabulary Cray narrates live — SD-C-0084's own why-Cray, unchanged.
+**RULED (Cray, typed, 2026-08-18 s237): as recommended** — completed means
+`{completed}` exactly; `failed`/`cancelled` appear only under "all"; the default
+stays in-flight-only. PLAN change: none — Step 2 / AC-2 / AC-3 already encode this.
 
 ### SD-C — where the reset runs, and its blast radius
 
 **Question:** boot-time, deploy-script step, or operator command? This is the
 highest-risk piece: a misfiring reset would wipe a run mid-visitor-session.
-**Recommendation — (a) boot-time in the fleet seed block, triple-guarded,
-fail-closed** (Step 4): `DEMO_RESET_ON_BOOT` (default **false**; set only in
+**Drafter recommendation (SUPERSEDED by the ruling below — retained for lineage) —
+(a) boot-time in the fleet seed block, triple-guarded, fail-closed:**
+`DEMO_RESET_ON_BOOT` (default **false**; set only in
 `published.env`) AND `oct_vertical == "fleet_maintenance"` AND fixed-id constants —
 any guard unmet → zero deletions; one transaction → an error mid-reset rolls back to
 prior state (never half-deleted). Dev, CI, local, and every non-fleet deployment can
 never fire it (AC-8).
-**Named failure mode, accepted rather than hidden:** with (a), a container
-*crash-restart* — not only a deploy — also resets, so a visitor mid-beat at that
-moment loses the half-played run and finds a pristine demo. Against the measured
-alternative (the beat permanently consumed, G5), re-arming is the better failure for
-a demo whose promise is "the approve beat is always available." If Cray weighs the
-mid-session wipe heavier, option (b) is the fallback.
-**Alternatives:** (b) deploy-script one-shot (resets only on explicit deploy;
-restarts never reset — but adds an out-of-app execution surface with DB credentials,
-and a forgettable manual step is exactly the shape of the current defect); (c)
-operator CLI (same objection, more manual).
+**Named failure mode of (a), accepted rather than hidden in the draft:** a
+container *crash-restart* — not only a deploy — also resets, so a visitor mid-beat
+at that moment loses the half-played run and finds a pristine demo.
+**Alternatives as drafted:** (b) deploy-script one-shot (resets only on explicit
+deploy; restarts never reset — but adds an out-of-app execution surface with DB
+credentials, and a forgettable manual step is exactly the shape of the current
+defect); (c) operator CLI (same objection, more manual).
 **Why Cray:** the restart-wipe vs permanent-consumption trade-off is a
 demo-operations judgment about the live surface Cray runs in front of people.
+
+**RULED (Cray, typed, 2026-08-18 s237): the DEPLOY-SCRIPT step — AGAINST the
+drafter recommendation (a).** Recorded with the trade priced both directions:
+
+- **What the ruling buys (why Cray chose it):** the accepted failure the draft
+  named **cannot happen** — a crash-restart can never wipe a visitor's mid-session
+  run, because the reset fires only when an operator deploys. Deletion on a public
+  system happens only under a human's explicit, §8-gated action.
+- **What it costs, stated as a consequence, not buried:** the demo stays in
+  whatever state a visitor left it **until the next deploy**. A beat consumed on
+  day 1 with the next deploy three weeks out means three degraded weeks — and
+  nothing self-heals or surfaces it. Boot-time would have re-armed on every
+  restart; a deploy step does not. Two mitigations ship in this PLAN, neither a
+  monitoring system: **(1) the degraded state is observable without deploying** —
+  the entry point's plan mode prints `DEMO-STATE: PRISTINE|CONSUMED` (AC-11), a
+  zero-risk read an operator (or a runbook check) can run any day; **(2) the reset
+  is discoverable at deploy time** — `docs/runbooks/published-demo-redeploy.md`
+  gains the fleet reset step (Step 4), so the operation does not live only in this
+  PLAN. An operation nobody can tell is needed will not be run; these two lines
+  are the cheapest honest answer to that.
+- **The drafter's original objection to this option — an out-of-app credential
+  surface — is dissolved by the Step 4 attachment shape:** the entry point runs
+  *inside* the app container via `compose exec`, on the container's own
+  `DATABASE_URL`/`OCT_VERTICAL`, so no credential leaves the deployed system.
+  The "forgettable manual step" objection is mitigated (not erased) by the runbook
+  line + the observable check; the residual — an operator who never deploys never
+  resets — is exactly the priced cost above.
+- **Guards retained in full** (fixed-id constants, vertical refusal, one
+  transaction, plan-by-default + explicit `--execute`): they matter MORE in an
+  operator-invoked step, where a hand-typed invocation can aim at the wrong
+  target (AC-5, AC-8).
+- **Attachment (G11 — the binding constraint the follow-up dispatch flagged as
+  REJECT-IF: "add it to the deploy script" must not be written unresolved):**
+  `deploy.py` is `oct-energy`-only by typed s219 decision, test-pinned
+  (`tests/deploy/test_deploy.py:44-47`), with the `--system` parameterization
+  explicitly deferred; fleet deploys by a documented manual sequence (G11).
+  **Resolved: the reset attaches to the reset module itself** (an in-image
+  `__main__` entry point invoked via `compose exec`), documented as a step in the
+  fleet section of the redeploy runbook — NOT a `deploy.py` change (which would
+  force the deferred parameterization and widen a deliberate test pin), NOT a
+  runbook-only prose sequence (a hand-typed SQL sequence would carry none of the
+  guards). If the s219-deferred parameterization is ever taken up, folding this
+  step into a per-system deploy script is a natural rider — for that PLAN, not
+  this one.
 
 ### SD-D — delete-and-reseed under fixed ids, and what "pristine" covers
 
@@ -574,6 +718,10 @@ the cap); run-only deletion (cannot rebuild — G7; rejected as measured-infeasi
 not as taste).
 **Why Cray:** it operationalizes Cray's own typed ruling *and* diverges from
 PLAN-0105 SD-4 in a named sub-case.
+**RULED (Cray, typed, 2026-08-18 s237): as recommended** — delete deep (runs +
+`step_results` + demo-scoped link rows + the demo cases), never audit rows; the
+PLAN-0105 SD-4 divergence is granted for the id-reuse sub-case only, and the note
+above stays as its record. PLAN change: none — Step 3 already implements this.
 
 ### SD-E — how a visitor's case reaches a governed run on the published profile (added per Cray's 2026-08-18 (ข) ruling)
 
@@ -661,10 +809,15 @@ assertions carrying the rest.
 run** on a public surface — a published-exposure decision of exactly the kind
 ADR-0035/PLAN-0103 reserved for explicit rulings, and (a) would reverse one of
 those rulings by name.
+**RULED (Cray, typed, 2026-08-18 s237): (d) as recommended** — re-scope the
+promise in this PLAN (Step 6 + AC-10, active work), with **(b) server-side firing
+the NAMED follow-on build** (its RoPA line, anonymous-intake principal question,
+and the G4/AC-4/AC-5 joint rewrite all recorded above for that PLAN). G4's bound
+holds as current fact; the tripwire stays.
 
 ## Verification
 
 1. **Offline (the gate):** `uv run --extra dev pytest tests/api/test_fleet_demo_reset_scenario.py tests/api/test_map_run_filter_contract.py tests/services/db/test_demo_run_reset_fk_guard.py -q 2>&1` — all green **after** each AC's named non-vacuity probe has been SEEN red in a scratch copy (probes restore from the scratchpad, never from git). Full suite + `mypy services/` + bare `ruff check .` per the offline-gate-matches-CI rule. DB-backed tests need the dev Postgres (port 5442); run from the main checkout, not a Windows worktree.
 2. **Pass/fail reads were fixed above, per AC — the run confirms them, never rewrites them.** A green whose assertion was not witnessed red on its own mutation is not evidence (CLAUDE.md §8).
 3. **Live (evidence, not the gate; host-state → explicit Cray go):** Step 7's checks on the published system — two subjects in `/runs`, one default marker, mode switching, and the play-then-redeploy pristine cycle.
-4. Merge order: this PLAN's ADR-less mechanics ride existing rulings (PLAN-0084 SD-C/SD-D, Cray's 2026-08-18 typed directions); the five SDs above must carry ratified stamps before the implementing PR closes them out. SD-E in particular gates Step 6 + AC-10 (its (d) recommendation) and, if ratified to a build option instead, rewrites G4's contingency paragraph and the AC-4/AC-5 population reads together — never piecemeal.
+4. Rulings: **all five SDs are RULED** (Cray, typed, 2026-08-18 s237) and stamped in place — SD-A (a), SD-B as recommended, **SD-C = deploy-script step, against the drafter recommendation** (chosen to make the crash-restart mid-session wipe impossible; its cost — a consumed demo stays degraded until the next deploy — is priced in SD-C with the AC-11 observable check and the runbook line as the mitigations), SD-D as recommended, SD-E (d) with (b) the named follow-on. The implementing PR executes the ruled shapes; no SD remains open.
