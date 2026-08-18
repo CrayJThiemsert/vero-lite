@@ -37,6 +37,59 @@
      Maps a Step -> the five-facet view-model. Each field carries its
      provenance class and an `editable` flag (always false in v1). PLAN-0040
      reuses this verbatim and flips `editable` on the governance H-class. */
+  /* ---- the origin narrative (session 239) --------------------------------
+     Tab F already renders a vertical's procedure as the product states it —
+     typed steps, gates, an authority ladder. That prose is the FORMALISED form
+     of something that started as a business owner talking. This panel shows the
+     raw version beside it, so a demo viewer can see what the input to their own
+     vertical would look like: not a spec, a conversation.
+
+     The file is served as a static asset (`^/assets/.+$` is on the published
+     allowlist, and `connect-src 'self'` admits the fetch), so this needs no
+     backend, no new route, and no change to UI_PUBLISHED_VIEWS — Tab F is
+     already published under SD-3.
+
+     Registry, not a hard-coded path: a second vertical's narrative is a new
+     entry here, not new code. Absent vertical => no button, silently. */
+  const NARRATIVES = {
+    fleet_maintenance: {
+      file: 'assets/narratives/fleet_maintenance.md',
+      label: 'อ่านเรื่องเล่าตั้งต้น',
+      title: 'เรื่องเล่าตั้งต้น — บริษัทขนส่ง',
+      intro: 'นี่คือสิ่งที่เจ้าของกิจการเล่าให้เราฟัง ไม่มีสเปก ไม่มีฟอร์ม ' +
+        'มีแต่คนเล่าปัญหาของตัวเอง — procedure ที่คุณเพิ่งเห็นด้านหลัง คือรูปที่ระบบบังคับใช้ได้ของเรื่องนี้',
+      // The narrative's own front matter (the `# ร่าง narrative …` heading and the
+      // `> สถานะ:` line) is working-doc metadata — a PLAN number, "ฉบับปรับแก้เลอะ",
+      // "Cray-modified". Cray ruled the FILE ships byte-identical, so it is the
+      // PANEL that skips them: the file stays the reviewed artifact, and a viewer
+      // does not read our internal fixture labels.  (Cray, typed 2026-08-18.)
+      skipLeadingBlocks: 2,
+      // Which procedure this story became. The legend is built from THIS
+      // procedure's live steps, not from a copied list — so a renamed step follows
+      // automatically and a deleted one is detectable rather than silently stale.
+      procedure_id: 'governed_repair_approval',
+      // step_id -> the sentence in the narrative it was formalised from. Anchors
+      // are exact substrings, verified to occur exactly once (see
+      // tests/api/test_origin_narrative_contract.py) — a near-miss would be a
+      // silent no-op, highlighting nothing while everything still rendered.
+      //
+      // `reshape` is deliberately absent, and that absence is shown in the legend
+      // rather than hidden: it is the one step with no origin in what the owner
+      // said, because it is machinery the platform needs (quote-as-reading →
+      // quote-as-governed-spend), not a rule the business stated. Forcing a
+      // sentence onto it would make the panel claim more than it can support.
+      highlights: [
+        { step_id: 'intake', match: 'ตอนนี้ทุกอย่างมันอยู่ในไลน์กลุ่มหมดเลยพี่ กลุ่มนึงแจ้งซ่อม กลุ่มนึงอู่ โทรกันมั่วไปหมด' },
+        { step_id: 'judge', match: 'ซ่อมนิดหน่อยๆ ผมให้ต้อมเคาะเลย' },
+        { step_id: 'quote_gate', match: 'แต่พอของใหญ่มันต้องเทียบราคาไง' },
+        { step_id: 'approve', match: 'ถ้าเยอะหน่อยก็ให้พี่วิรัช ผู้จัดการเดินรถแกดู แต่ถ้าหนักๆ พวกยกเครื่อง เปลี่ยนเกียร์เนี่ย ต้องมาถึงผม' },
+        { step_id: 'approve', match: 'คนทำเรื่องเบิกห้ามเป็นคนอนุมัติเอง' },
+        { step_id: 'fulfill', match: 'ให้มันส่งเรื่องตามคนอนุมัติเองตามสเต็ปมันอะ ไม่ต้องให้ผมไปนั่งไล่บี้ตามโทรหาคนนู้นคนนี้' }
+      ],
+      unmappedNote: 'ไม่มีต้นทางในเรื่องเล่า — เป็นกลไกที่ระบบต้องมีเอง'
+    }
+  };
+
   function facetModel(step, opts) {
     const f = step.facet || {};
     const dc = f.decision_condition || null;
@@ -335,6 +388,12 @@
         ? h('div', { class: 'pv-goal muted pv-advisory-desc' }, [advisoryBand(), h('span', null, proc.goal)])
         : h('p', { class: 'pv-goal muted' }, proc.goal));
     }
+
+    // The raw story this prose was formalised FROM — placed here, against the goal,
+    // because the adjacency is the point (session 239). Renders nothing for a
+    // vertical with no narrative registered.
+    const origin = originNarrativeLink(vEntry.vertical, vEntry);
+    if (origin) card.appendChild(origin);
     if (agent) {
       card.appendChild(h('div', { class: 'pv-agent' }, [
         h('span', { class: 'eyebrow' }, 'Run by'),
@@ -685,6 +744,181 @@
         'the capture module (intake-procedures.js) did not load.', null
       ));
     }
+  }
+
+  /* ---- origin-narrative panel -------------------------------------------- */
+
+  // Minimal renderer for the narrative's actual shape: an h1, one blockquote
+  // status line, an hr, and prose paragraphs, with `**bold**` inline. Builds
+  // DOM nodes via h()/textContent and never touches innerHTML, so the content
+  // cannot inject markup no matter what a future narrative file contains.
+  function renderInline(text) {
+    // `**bold**` splits into alternating plain / bold runs — odd indices are bold.
+    return text.split('**').map((run, i) => (i % 2 ? h('b', null, run) : document.createTextNode(run)));
+  }
+
+  // Wraps every registered anchor found in `text` in a numbered <mark>, leaving
+  // the rest to renderInline. Anchors are plain substrings, matched longest-first
+  // so a shorter anchor nested inside a longer one cannot split it.
+  function renderProse(text, marks) {
+    if (!marks || !marks.length) return renderInline(text);
+    const ordered = marks.slice().sort((a, b) => b.match.length - a.match.length);
+    let segments = [{ text: text }];
+    ordered.forEach((mark) => {
+      const next = [];
+      segments.forEach((seg) => {
+        if (seg.mark) { next.push(seg); return; }
+        const at = seg.text.indexOf(mark.match);
+        if (at === -1) { next.push(seg); return; }
+        if (at > 0) next.push({ text: seg.text.slice(0, at) });
+        next.push({ text: mark.match, mark: mark });
+        const rest = seg.text.slice(at + mark.match.length);
+        if (rest) next.push({ text: rest });
+      });
+      segments = next;
+    });
+    const out = [];
+    segments.forEach((seg) => {
+      if (!seg.mark) { renderInline(seg.text).forEach((n) => out.push(n)); return; }
+      out.push(h('mark', {
+        class: 'nv-hl', 'data-step': String(seg.mark.no),
+        title: 'ขั้นที่ ' + seg.mark.no + ' · ' + seg.mark.name
+      }, [
+        document.createTextNode(seg.text),
+        h('sup', { class: 'nv-hl-no' }, String(seg.mark.no))
+      ]));
+    });
+    return out;
+  }
+
+  function renderNarrative(md, opts) {
+    const options = opts || {};
+    const marks = options.marks || [];
+    const out = [];
+    let blocks = md.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+    // Drop the working-doc front matter (see `skipLeadingBlocks` in the registry).
+    if (options.skipLeadingBlocks) blocks = blocks.slice(options.skipLeadingBlocks);
+    blocks.forEach((block) => {
+      if (block === '---') { out.push(h('hr', { class: 'nv-rule' })); return; }
+      if (block.startsWith('# ')) { out.push(h('h2', { class: 'nv-h' }, block.slice(2).trim())); return; }
+      if (block.startsWith('>')) {
+        const inner = block.split('\n').map((l) => l.replace(/^>\s?/, '')).join(' ').trim();
+        out.push(h('blockquote', { class: 'nv-note' }, renderInline(inner)));
+        return;
+      }
+      out.push(h('p', { class: 'nv-p' }, renderProse(block.split('\n').join(' '), marks)));
+    });
+    return out;
+  }
+
+  // The legend, built from the procedure's LIVE steps — so it names what the
+  // system actually runs today, and a step that lost its anchor shows as unmapped
+  // instead of quietly disappearing.
+  function narrativeLegend(entry, vEntry) {
+    const proc = ((vEntry && vEntry.procedures) || [])
+      .find((p) => p.procedure_id === entry.procedure_id);
+    if (!proc || !Array.isArray(proc.steps) || !proc.steps.length) return { el: null, marks: [] };
+
+    const byStep = {};
+    (entry.highlights || []).forEach((hl) => {
+      (byStep[hl.step_id] = byStep[hl.step_id] || []).push(hl);
+    });
+
+    const marks = [];
+    const chips = proc.steps.map((step, i) => {
+      const no = i + 1;
+      const name = step.name || step.step_id;
+      const hits = byStep[step.step_id] || [];
+      hits.forEach((hl) => marks.push({ match: hl.match, no: no, name: name }));
+      return h('div', { class: 'nv-leg-item' + (hits.length ? '' : ' is-unmapped') }, [
+        h('span', { class: 'nv-leg-no' }, String(no)),
+        h('span', { class: 'nv-leg-name' }, name),
+        hits.length
+          ? null
+          : h('span', { class: 'nv-leg-none faint' }, entry.unmappedNote || 'ไม่มีต้นทางในเรื่องเล่า')
+      ].filter(Boolean));
+    });
+
+    return {
+      el: h('div', { class: 'nv-legend' }, [
+        h('div', { class: 'eyebrow' }, 'ประโยคไหนกลายเป็นขั้นตอนไหน · ' + proc.title),
+        h('div', { class: 'nv-leg-grid' }, chips)
+      ]),
+      marks: marks
+    };
+  }
+
+  function openNarrative(entry, vEntry) {
+    const opener = document.activeElement;
+    const body = h('div', { class: 'nv-body' }, [h('p', { class: 'nv-p faint' }, 'กำลังโหลด…')]);
+    const closeBtn = h('button', { class: 'btn nv-close', 'aria-label': 'ปิด' }, '✕');
+    const panel = h('div', {
+      class: 'nv-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': entry.title
+    }, [
+      h('div', { class: 'nv-head' }, [
+        h('div', null, [
+          h('div', { class: 'eyebrow' }, 'ก่อนจะเป็น procedure'),
+          h('h2', { class: 'nv-title' }, entry.title)
+        ]),
+        h('div', { class: 'flex' }),
+        closeBtn
+      ]),
+      body
+    ]);
+    const back = h('div', { class: 'nv-backdrop' }, [panel]);
+
+    function close() {
+      document.removeEventListener('keydown', onKey, true);
+      back.remove();
+      if (opener && opener.focus) opener.focus();
+    }
+    function onKey(e) { if (e.key === 'Escape') { e.stopPropagation(); close(); } }
+
+    back.addEventListener('click', (e) => { if (e.target === back) close(); });
+    closeBtn.addEventListener('click', close);
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(back);
+    closeBtn.focus();
+
+    fetch(entry.file)
+      .then((r) => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then((md) => {
+        clear(body);
+        if (entry.intro) body.appendChild(h('p', { class: 'nv-intro' }, entry.intro));
+        const legend = narrativeLegend(entry, vEntry);
+        if (legend.el) body.appendChild(legend.el);
+        renderNarrative(md, {
+          marks: legend.marks,
+          skipLeadingBlocks: entry.skipLeadingBlocks
+        }).forEach((n) => body.appendChild(n));
+      })
+      .catch((err) => {
+        clear(body);
+        // Says what failed and what it means, not "an error occurred".
+        body.appendChild(O.errorState(
+          'เปิดเรื่องเล่าตั้งต้นไม่ได้',
+          'ไฟล์ ' + entry.file + ' โหลดไม่สำเร็จ (' + err.message + ') — ตัว demo ส่วนอื่นไม่ได้รับผลกระทบ',
+          null
+        ));
+      });
+  }
+
+  // The trigger, rendered only when the active vertical HAS a narrative.
+  function originNarrativeLink(vertical, vEntry) {
+    const entry = NARRATIVES[vertical];
+    if (!entry) return null;
+    const btn = h('button', { class: 'btn pv-origin-btn', title: entry.title }, [
+      icon('play', { width: 12, height: 12 }), entry.label
+    ]);
+    btn.addEventListener('click', () => openNarrative(entry, vEntry));
+    return h('div', { class: 'pv-origin' }, [
+      btn,
+      h('span', { class: 'pv-origin-hint faint' },
+        'เรื่องที่เจ้าของกิจการเล่ามาก่อน — procedure ด้านบนคือรูปที่ระบบบังคับใช้ได้ของเรื่องเดียวกันนี้')
+    ]);
   }
 
   // exposed: `mount` (read by app.js). `facetModel` is exported so PLAN-0040's
