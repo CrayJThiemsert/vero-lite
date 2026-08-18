@@ -477,3 +477,66 @@ DSR-on-request remainder.
 > **Also landed:** #1159 corrected the RoPA's deployment-status line and two §7
 > controls `owed` → `built` (`docs/compliance/ropa-published-demo.md`) —
 > factual only, no controller judgment touched.
+
+<!-- rotated from docs/STATUS.md by the session-238 reconcile -->
+
+> **Session 232, 2026-08-15 (head_commit `b2fe45e` → `5425822`) — ELEVEN PRs
+> MERGED (#1170–#1179), 0 open. A next-work ranking became a fleet bring-up
+> push: grounding REFUTED the inherited "blocked on ONE artifact" framing and
+> found three more gates. Cray ruled six times and five gates closed — then the
+> session continued past its own close and shut three MORE, leaving fleet on
+> exactly one.** _[Reconciled s233 — s232 closed before #1178/#1179.]_
+>
+> 🔴 **Prose has no consumer, proven twice** — PLAN-0105's archived text claimed
+> a `delete_case` factoring **that did not exist** (EXTRACTED, not re-worded,
+> #1171), and fleet's Operate seed shipped s221 while **two of the three
+> artifacts describing it still said it was unbuilt**; ruff, mypy and 4093 tests
+> stayed silent eleven sessions (#1170, #1173). _[Both in their TODO rows.]_
+>
+> ⚠️ **`GET /api/cases` is unauthenticated and unfiltered** and `^/api/cases$` is
+> on fleet's allowlist — cloudflared matches PATH, not METHOD. **RULED INTENDED**
+> (Cray, typed). 🔴 **Record the PREMISE, not the word:** legitimate **because the
+> data is synthetic**. Recipients fact: `ropa-change-statement-fleet.md` §4(c).
+> ⚠️ **This measurement also forced SD-1's visibility clause WIDER than its
+> draft** — the exposure is not surface-bound.
+>
+> ⚠️ **An empty database is invisible until a visitor hits it.** `/health` never
+> touches Postgres and `cloudflared` gates only on `service_healthy` — the tunnel
+> OPENS on a system whose visitor case path fails on the first write. RULED
+> **operator step + make the skip LEGIBLE** (#1176). ✅ **Also RULED (#1174,
+> #1175):** ADR-0037 **D4/OQ-2 = (a)** · recorder free text = **(i)** · ⚠️ OQ-1
+> had been ruled since s231 while the ADR still read OPEN. ✅ **`deploy.py` does
+> NOT block the bring-up** — it is the REDEPLOY tool.
+>
+> 🔴 **ADR-0037 D2.4 was an obligation with NO OWNER for three sessions** — the
+> ADR said mechanics belong to the owning PLAN and none took it; no STATUS row,
+> no test, no checklist held it, and it surfaced only by walking D2's obligations
+> one at a time. ✅ **Owned by PLAN-0106 (#1174), then RULED in full, BUILT and
+> MERGED the same session (#1178, #1179) — D2.4 is DISCHARGED.** 11 tests;
+> **4107 passed / 8 skipped**. **Read the PLAN's §Surfaced decisions, never a
+> restatement.**
+>
+> 🔴 **A guard that scans COMMITTED files is blind to a NEW file, and the blind
+> spot sits where confidence peaks** — #1179 went RED in CI but **not locally**.
+> Its sibling: **the visual pass found what eleven green tests could not** (no
+> CSS; legible but not recognisable *as* a notice). Both, plus the guard family
+> and the practice, are recorded in
+> [`docs/lessons/0044-*.md`](lessons/0044-a-committed-file-guard-is-blind-to-the-new-file.md)
+> — **read it, never a restatement.**
+>
+> ✅ **Fleet's two Cloudflare artifacts and four host secrets are DONE and
+> PROVEN** — ⚠️ the **differential PIN test** is the only check that proves the
+> policy *discriminates*; a wide-open policy returns the same `302` and shows the
+> same screen. **ADR-0036 D2's price is paid for fleet.** 🔴 **Read the evidence,
+> never a restatement — and note it is RECONSTRUCTED, not captured live:**
+> [`docs/logs/2026-08-15-fleet-cloudflare-artifacts-and-secrets-staging.md`](logs/2026-08-15-fleet-cloudflare-artifacts-and-secrets-staging.md)
+> (written s233 — the bring-up log that will normally own AC-10's evidence cannot
+> exist until the bring-up does, and until then it lived only in a **gitignored**
+> handoff).
+>
+> ⚠️ **The gate list is now ONE item, not five. PLAN-0103 AC-11's RoPA is the
+> only one left, and only Cray can write it.** Fleet's typed §8 go was given
+> **verbally but cannot yet be validly RECORDED** — AC-11 requires the record to
+> cite the RoPA **by path**. **Requester identification for the DSR path remains
+> genuinely undesigned:** `repair_case.opened_by` has no foreign key and personas
+> add no visitor identity, so a request matches rows **only by content**.
