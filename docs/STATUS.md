@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-19T10:45:00+07:00
-session: 239
-current_batch: "s239 — EIGHT PRs (#1216-#1223), 0 open, and TWO host-state deploys to MS-S1 under separately typed gos. The video rulings rehomed tracked (seven, not four). Tab F opens the origin narrative with six passages mapped to six steps. DEPLOY.md created for this system and corrected on its first real use. The brand mark is live."
+last_updated: 2026-08-19T13:27:52+07:00
+session: 240
+current_batch: "s240 — THREE PRs (#1225-#1227), 0 open. PLAN-0107 AC-11 CLOSED: negative money refused at the close-out seam. DEPLOY.md gains a pre-ship image/tree sha256 compare. PLAN-0111 drafted, six SDs ruled."
 current_actor: code
-blocked_on: "NOTHING blocks repo work; main is green, 0 open PRs. ADR-0037 SD-1 stays Cray's — unruled across EIGHT sessions. ADR-0038's three-strike counter still has NO owner."
-next_action: "Cray's pick: name the three Advisory-proposal candidates so the gate panel stops reading as unfinished (small, unblocks the video); measure the run-list backlog badge on the host now that DEPLOY.md makes host reads routine; PLAN-0109 execution (Ask over repair cases); or PLAN-0107 Phase B. The font-size decision gates re-measuring every geometry number in the beat-4 mockup."
-head_commit: dbb3e58
-recent_commits: [dbb3e58, b1701b4, 71e7723, 54fb7a6, d665c3e, 907a842, ca10604, e08bb73, c01dd2a, 75690ec]
+blocked_on: "NOTHING blocks repo work; main green, 0 open PRs. PLAN-0111's AV-1 (what Express reconciles a credit note against) is owed before Step 4, not merge. ADR-0037 SD-1 and ADR-0038's counter stay unowned."
+next_action: "Cray's pick: PLAN-0111 execution (credit-note table); PLAN-0107 Phase B remainder (AC-9 design-blocked, AC-10); PLAN-0109 (Ask over repair cases); or name the three Advisory-proposal candidates."
+head_commit: 8fd3848
+recent_commits: [8fd3848, e22d824, d912891, a17c79b, dbb3e58, b1701b4, 71e7723, 54fb7a6, d665c3e, 907a842]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,91 @@ recent_commits: [dbb3e58, b1701b4, 71e7723, 54fb7a6, d665c3e, 907a842, ca10604, 
 ---
 
 ## Current Focus
+
+> **Session 240, 2026-08-19 (head_commit `dbb3e58` → `8fd3848`) — THREE PRs
+> MERGED (#1225–#1227), 0 open. PLAN-0107 AC-11 CLOSED, `DEPLOY.md` gained a
+> pre-ship check, and PLAN-0111 was drafted with all six of its SDs ruled in the
+> same session.**
+>
+> 🔴 **The organising finding: three losses of correct work, two of them mine
+> this session — each caught by a discipline, none by re-reading a summary.**
+>
+> 🔴 **(1) A `git merge` reported success and silently reverted a merged PR.** It
+> first died with `Unable to write index` although the two sides touched disjoint
+> files; `git status` then read *"All conflicts fixed but you are still merging"*
+> with **no `index.lock` on disk**. Concluding it produced a merge commit whose
+> tree **dropped #1225's entire `DEPLOY.md` change** — while `git merge-base
+> --is-ancestor origin/main HEAD` answered **YES**. **Ancestry is not content.**
+> Caught by grepping the merged tree for a string only the incoming side
+> introduces; recovered by `git reset --hard` to my own commit and re-merging,
+> which reported the expected `53 insertions(+)`.
+>
+> 🔴 **(2) The first non-vacuity probe proved the wrong thing.** The scenario's
+> `assert status_code == 422` sat *before* the month-end read, so disarming the
+> guard reddened **that** line and returned — the money assertion, the claim the
+> module exists to make, never executed. Reordered so the ฿ assertions fire
+> first; the RED now reads `assert Decimal('-15000.00') == Decimal('20000.00')`,
+> the export holding one row carrying the credit note's document date.
+>
+> ⚠️ **(3) Two ACs in the first-pushed PLAN-0111 draft named test files that do
+> not exist** — corrected to grep-verified paths. Separately, swapping a stale
+> line citation for a symbol produced a *wrong symbol* (`get_case` for
+> `get_closeout`) until the enclosing function was grepped rather than assumed.
+>
+> ✅ **PLAN-0107 AC-11 CLOSED — negative money refused at the close-out producer**
+> (#1226), plus a four-test scenario module. 🔴 **Why a refusal and not `sum()`:**
+> `repair_case_closeout` is append-only with **latest-wins** — `latest_closeout`
+> returns one row per case and both consumers read it, so a credit note keyed
+> there does not join the invoice, it **REPLACES** it. Measured: month-end moves
+> `20,000.00` → `-15,000.00` with every row still looking perfectly filled in.
+> Admitting the negative is the **silent** option, not the lenient one. 🔴 **It
+> closes an asymmetry rather than adding a rule** — the quote side already refused
+> negative money on the same reasoning
+> (`tests/api/test_cases_endpoint.py::test_a_negative_quote_is_refused`, *"Not a
+> discount — a typo or a credit note"*); the close-out was the outlier, and it is
+> the end that feeds the month-end figure. A credit note is internally
+> **coherent** (`-14,018.69 + -981.31 = -15,000.00`), so it passes the existing
+> totals check — the sign check is its own door, and the scenario pins that
+> discriminator. The refusal is **INTERIM**, says so in the handler docstring, and
+> names its lift condition: only with a schema holding invoice and credit as two
+> coexisting facts.
+>
+> ✅ **`DEPLOY.md` §2a Pre-ship** (#1225) — build locally, then compare a
+> `sha256sum` taken **inside the freshly built image** against the working tree,
+> before the host is touched at all.
+>
+> ✅ **PLAN-0111 drafted and all six SDs RULED** (Cray, typed 2026-08-19, #1227);
+> `Status: Draft` — the SDs were ratified, not the PLAN. **SD-E: multiple partial
+> credits may coexist** (ทยอยลด; over-credit refused 422), **which forces SD-A to
+> (b), a separate `repair_case_credit_note` table** — latest-per-kind would re-arm
+> the replacement trap one level down. SD-B (b) one composite reader · SD-C (b)
+> two lines matching real documents · SD-D (a) credit inherits the case's `RC-`
+> number · SD-F (a) KPI counts repairs, not documents. Newly load-bearing from
+> those rulings, each verified against code: the new table must join retention's
+> `_FK_CHILD_MODELS`; 🔴 **`load_monthly_export`'s ungoverned branch enumerates
+> cases only from `RepairCaseCloseout.entered_at`, so a credit-only month would
+> emit no row at all** and must union a second source; and 🔴 **AV-2 stopped being
+> hypothetical** — a table FK'd to the close-out with no `case_id` column is
+> invisible to both retention walks, prohibited without a guard extension
+> witnessed RED first. ⚠️ **AV-1 is the one thing this repo cannot answer** — what
+> Express/accounting reconciles a ใบลดหนี้ against; SD-C is provisional on it, and
+> the PLAN requires confirming it before Step 4, not before merge.
+>
+> **Gates: 4174 passed / 8 skipped** (4170 baseline + 4), `mypy --strict services/
+> verticals/` clean over **201** files, bare `ruff check .` + `ruff format
+> --check .` clean over **643**. Three non-vacuity probes witnessed RED: the
+> `DEPLOY.md` operator-path guard naming `DEPLOY.md:111` · the guard-disarm
+> reddening the ฿ assertion · the `< 0` → `<= 0` tightening reddening **only** the
+> zero-VAT positive control — disjoint sets, which is what makes the control a
+> control. **No host-state action this session; MS-S1 was not touched.**
+>
+> ⚠️ **CARRIED FORWARD from s239's `next_action` — recorded here because the
+> frontmatter cap cannot hold them and nothing else in this file does; none was
+> touched this session, none is resolved:** (i) the **font-size decision still
+> gates re-measuring every geometry number in the beat-4 mockup**; (ii) the
+> **run-list backlog badge on the host is still unmeasured** (a host-state read,
+> so it needs its own typed §8 go); (iii) the **three Advisory-proposal
+> candidates are still unnamed**, so the gate panel still reads as unfinished.
 
 > **Session 239, 2026-08-18→19 (head_commit `32854ab` → `dbb3e58`) — EIGHT PRs
 > MERGED (#1216–#1223), 0 open, and TWO host-state deploys to MS-S1 under two
@@ -164,111 +249,12 @@ this reconcile, keeping the window at four sessions.]_
 > beat-4 Tab G→H remap. `git grep` finds none of it. Needs a tracked home before
 > the clip is shot.
 
-> **Session 236, 2026-08-17→18 (head_commit `218a521` → `de3295a`) — FOUR PRs
-> MERGED (#1201–#1204), 0 open. The session that paid s235's STATUS debt in full
-> and then built the first four oracles PLAN-0107 asks for.**
->
-> ✅ **STATUS is reconciled and PR-B is COMPLETE — 61,736 → 48,852 B, under R1's
-> 49,152 B soft target for the first time in this chain**, headroom 3,800 →
-> **16,684 B**. The rehome, not the trim, is what paid: every carve-out fact moved
-> to **the artifact whose reader needs it**, then the row collapsed to a pointer
-> (PLAN-0100's residuals → its own §Post-archival amendment, 2,202 → 480 B). Six
-> facts came out of a **gitignored** handoff into
-> `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`; nine rows out of
-> STATUS into code, tests, a benchmark module and `docs/logs/`. **Read those, never
-> a restatement.**
->
-> ✅ **PLAN-0107 Phase A CLOSED 6/6** (#1204) — CI gained four oracles it did not
-> have: `node --check` over every shipped JS asset · an asset↔reference
-> **bijection** (chosen over a floor constant: a `≥ 20` floor over 21 files has one
-> file of headroom and its misfire remedy is editing the number) · a **per-vertical
-> lifespan boot smoke** · `mypy --strict verticals/` plus the two pre-commit hooks
-> that had only ever run on a developer's laptop. **Measured bill: `gate` 7m53s →
-> 9m7s ≈ +74 s, no new dependency.** Verified at **step level**, not job level — a
-> green job cannot distinguish a step that passed from one that was skipped.
->
-> 🔴 **AC-3's own central claim was MEASURED FALSE in the configuration CI runs.**
-> The AC said the smoke makes §3's fail-loud contract CI-visible; corrupting each
-> spec in turn, it is **CAUGHT** for fleet_maintenance, building_materials,
-> supply_chain and procurement and **MISSED for `energy`** — the **default**
-> vertical, and the one spec-shipping factory that never calls `load_procedures`.
-> Booting only the default would have been green and blind to exactly what CI runs.
-> Fixed by booting once per spec-shipping vertical; **the `energy` residual stays
-> OPEN** in `tools/ci/boot_smoke.py`'s docstring.
->
-> 🔴 **CI caught what no local probe structurally could.** Phase A's first run died
-> on `ModuleNotFoundError: No module named 'services'` — the runtime venv is
-> `--no-install-project` by design, and `python <file>` puts the *script's*
-> directory on `sys.path` where `python -c` put the CWD. **Every local run used the
-> dev venv, which has the project installed, so the failing state was unreachable
-> there.** A ② *reach* failure inside the PLAN that exists to close ② failures.
-> Fixed by **building** that condition locally and reproducing the error, not by
-> reasoning about it.
->
-> 🔴 **ELEVEN inherited claims were checked and EIGHT were wrong** — including two
-> live falsehoods in STATUS itself (`deploy.py`'s "broken" compose path, fixed a day
-> earlier; *"AC-11's RoPA is still Cray's"*, adopted at s233), a guard cited at the
-> wrong file, and a scenario census stale in both figures (13/63 → **14/69**, the
-> third drift of that number). **The base rate is high enough that checking an
-> inherited claim is not optional.**
->
-> **Gates, every PR: `pytest tests/` 4115 → 4123 passed / 8 skipped**, `mypy
-> --strict services/ verticals/` clean over **200** files, ruff + format clean over
-> 634, CI `gate` pass.
-
-> **Session 235, 2026-08-17 (head_commit `027986e` → `218a521`) — EIGHT PRs
-> MERGED (#1193–#1200), 0 open. s234's Tab I clip was asked to generalise beyond
-> UI, and it did: a five-specialist audit turned one 305px defect into a measured
-> failure-class census, ADR-0038 made five classes BINDING, and `CLAUDE.md`
-> gained FOUR new rules — in one session.**
->
-> 🔴 **The organising law the whole session turns on:** an oracle sees a defect
-> only when three independent conditions hold — **① an INSTRUMENT can read the
-> artifact · ② the test DATA can reach the failing state · ③ someone ARMED it as
-> a gate rather than as evidence.** The weakness is **not** UI-specific and is
-> **not** a missing test; it was failing silently across two of the three
-> Phase-1 OCT features.
->
-> ✅ **ADR-0038 RATIFIED** (#1195, #1197) — the three-strike promotion rule for
-> advisory lessons, the census, D2's per-class enforcement forms, D5's demotion
-> path. **All four surfaced decisions RULED** (Cray, typed); its OQ-5 resolved to
-> the PLAN template rather than a build task (#1198). **Read the ADR, never a
-> restatement:** `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md`.
->
-> ✅ **`CLAUDE.md` BOUND — four new rules, +314 words / +1,852 B, zero new
-> sections** (#1200): a load-bearing green is not evidence until its assertion is
-> **witnessed RED** in the direction it claims · an **expected-value set is not
-> an oracle of the system** until the system's own output is scored against it ·
-> an **inherited premise a decision rests on is a claim, not context** · **name
-> the rule's consumer, then check the home is in that consumer's input.** Per the
-> file's own convention the amendment record is the commit message
-> (`git log --follow -- CLAUDE.md`) and is not restated here.
->
-> 🔴 **A live defect on `main` was fixed** (#1193) — `deploy.py` built against
-> `deploy/published/docker-compose.yml`, deleted three commits earlier; Phase 1
-> would have died on the next `--execute`. Path promoted to a module constant
-> plus a guard that walks the module's own path constants. ⚠️ **That guard's
-> first draft masked its own oracle** — the probe reddened on a pinned literal
-> and the filesystem stat never ran. **Seeing RED is not enough; read the RED.**
->
-> ✅ **The control group that shaped the whole response:** `CLAUDE.md` §8's
-> scenario-test rule is **GENUINELY OBEYED — all 17 scenario/e2e files, zero
-> violations**, recorded per §6 as `confirmed — prior intact`, not a defect. This
-> repo obeys a binding *mechanical* rule almost perfectly and fails on *advisory*
-> ones — the asymmetry ADR-0038 rests on.
->
-> ✅ **Branch protection verified LIVE, not from memory:** `strict: true`,
-> `contexts: ["gate"]`, `enforce_admins: true`. With `strict` plus a bare
-> `actions/checkout@v4` on `pull_request`, **the graded tree IS the tree that
-> lands** — so `on: push: main` is NOT worth adding, and a specialist proposal to
-> add it was retired on this evidence.
->
-> **PLAN-0107 + PLAN-0108 drafted and split by ORACLE STRENGTH** (#1194, #1199)
-> on Cray's typed S1 ruling; both `Draft`, unratified. **Gates, eight times:**
-> `pytest tests/` **4115 passed / 8 skipped**, `mypy --strict services/` clean
-> over 136, ruff + format clean over 631, CI `gate` **pass** every time.
-
-this reconcile, keeping the window at four sessions.]_
+_[The session-235 and session-236 blocks rotated to
+`docs/status-archive/2026-h1d-current-focus.md` this reconcile, holding the
+window at the four most-recent sessions (237–240). A malformed leftover
+rotation note that sat here — a fragment with no opening clause, reading
+"this reconcile, keeping the window at four sessions" — was removed at the
+same time.]_
 
 ## Prior focus (archived)
 
@@ -287,6 +273,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-19 | **s240 — THREE PRs (#1225–#1227); PLAN-0107 AC-11 CLOSED and PLAN-0111 drafted with all six SDs ruled (Cray, typed).** 🔴 **A `git merge` reported success and silently reverted #1225** — `merge-base --is-ancestor` answered YES while the merged tree had dropped the change; **ancestry is not content**. 🔴 **A non-vacuity probe proved the wrong thing** — the `422` assert sat before the money read, so the claim the module exists to make never executed. 🔴 **Latest-wins means a credit note REPLACES the invoice** (`20,000.00` → `-15,000.00`), so admitting it is the silent option; the refusal closes the quote side's asymmetry and is INTERIM by docstring. **SD-E forces SD-A to a separate `repair_case_credit_note` table.** | `8fd3848` / [#1226](https://github.com/CrayJThiemsert/vero-lite/pull/1226) / [#1227](https://github.com/CrayJThiemsert/vero-lite/pull/1227) / `docs/plans/0111-*.md` |
 | 2026-08-19 | **s239 — EIGHT PRs (#1216–#1223) and TWO host-state deploys under separately typed gos.** 🔴 **An ACCURATE summary still shrinks:** the video rulings were seven, not four — one typed two days earlier and recorded inline rather than in the table, carrying a live tripwire. Rehomed tracked, each row stamped with its source position. 🔴 **s238's correct forward-slash fix silently disarmed the path guard** for the ten commands it corrected, and the module's own `checked >= 5` floor stayed satisfied by the READMEs — a count floor cannot see a document category go dark. Now 26 paths checked, 0 broken. 🔴 **The shared `deploy.py` cannot deploy this system** and §3 handed it over without saying so; `DEPLOY.md` created, and its FIRST use found its own gap (`<last-deployed-sha>` comes from the HOST checkout, not the image's build sha). ✅ Tab F opens the origin narrative with six passages mapped to six steps, `reshape` deliberately unmapped. ✅ R8 ruled: drop the ฿15,000 contrast. ✅ Brand mark live — and **not legible at 28 px**, recorded rather than discovered later. | `dbb3e58` / [#1218](https://github.com/CrayJThiemsert/vero-lite/pull/1218) / [#1221](https://github.com/CrayJThiemsert/vero-lite/pull/1221) / `deploy/published/oct-fleet-maintenance/DEPLOY.md` / `docs/strategy/public/intro-video-production-rulings.md` |
 | 2026-08-18 | **s238 — PLAN-0110 BUILT and DEPLOYED; COMPLETE 7/7, ARCHIVED.** Tab A run markers + a three-mode filter + a deploy-time demo reset. 🔴 **The gate's three proposals ALL name a `case_id`; two resolve to no row** — reading the truck off the event instead of the case table stamps nothing forever, green. ✅ Live: `CONSUMED` → `PRISTINE`, subjects landed, #1209's fix finally live, audit rows 9 → 17. 🔴 **The deploy found `DEMO-RESET.md`'s bootstrap gap** — the tool ships in the image it must run before. | `32854ab` / [#1213](https://github.com/CrayJThiemsert/vero-lite/pull/1213) / [#1214](https://github.com/CrayJThiemsert/vero-lite/pull/1214) / `docs/logs/2026-08-18-plan0110-*.md` |
 | 2026-08-18 | **s237 — the video pivot: measuring the LIVE demo REFUTED beat 4.** Tab G is not on the published profile **by ruling**; the storyboard was verified on a dev profile. Cray ruled (A) shoot published; Tab H replaces three shots with ONE frame, no scrolling. 🔴 **A real fleet defect found on live** — a settled repair in the visitor's approval queue, root cause in TWO layers (the terminal step is itself gated, so one resume is not enough). PLAN-0109 + PLAN-0110 drafted, all five SDs ruled. ⚠️ **Video rulings live only in a gitignored handoff.** | `b906193` / [#1208](https://github.com/CrayJThiemsert/vero-lite/pull/1208)–[#1212](https://github.com/CrayJThiemsert/vero-lite/pull/1212) / `docs/conventions/local-first-published-parity.md` |
@@ -296,9 +283,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-16 | **s233 — SEVEN PRs MERGED (#1180–#1187); AC-11's RoPA WRITTEN and ADOPTED, closing fleet's last gate.** Cray ruled **seven** times; every ruling is stamped on the RoPA itself. 🔴 **ADR-0037 OQ-3 had been RULED while its recorded Recommendation was still the OVERRULED option**, and three downstream artifacts inherited it. ⚠️ **The RoPA's authorship DEPARTS from D2.1**, disclosed on the artifact; **SD-1 is UNRULED and D2.1 as written still governs.** | `3b9a084` / [#1184](https://github.com/CrayJThiemsert/vero-lite/pull/1184) / `docs/compliance/ropa-fleet-cases.md` |
 | 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
 | 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every accepted-quote case, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
-| 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
 
-_[The oldest row (s228) rotated to `docs/status-archive/2026-h1-status.md` this reconcile, holding the table at ten.]_
+_[The oldest row (s229) rotated to `docs/status-archive/2026-h1-status.md` this reconcile, holding the table at ten.]_
 
 ## In-Flight Discussions
 
@@ -315,7 +301,8 @@ _[The oldest row (s228) rotated to `docs/status-archive/2026-h1-status.md` this 
 ## Active TODOs
 
 - [ ] **🆕 The four s235 audit findings ADR-0038 did NOT absorb — REHOMED s235 out of a gitignored handoff into `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`.** The **retrieval-reliability ranking** · **"pruning never reclaims storage"** (so never argue a rotation on disk grounds) · **`docker build` in CI, rated YES and owned by no PLAN** · **the 11-class vacuity taxonomy**. 🔴 **One live obligation in there: ADR-0038's three-strike counter has NO OWNER** — three items sit at two firings and no artifact records a count. PLAN-0108 is the natural owner and does not claim it.
-- [ ] **PLAN-0107 — oracle-coverage hardening: `Draft`, 15 ACs. ✅ PHASE A CLOSED 6/6 s236 ([#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204)); Phases B and C remain, and NOTHING gates them.** CI now runs four oracles it lacked — `node --check`, the asset↔reference bijection, a **per-vertical** lifespan boot smoke, `mypy --strict verticals/` and the two adopted pre-commit hooks (**measured +74 s, no new dependency**). ⚠️ **Executing Phase B/C: read each AC and its `Reviewer amendment` blocks as authoritative and treat the §Steps prose as narrative — three measured divergences in Phase A alone** (a retired `≥ 20` floor, a superseded asset count, `uvx` vs `uv run --no-sync`). 🔴 **Phase B is the load-bearing prerequisite:** with today's 2-case live seed nothing overflows, so any browser stage built before it is green-and-vacuous on day one. **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md` (§Phase A closing evidence · §Acceptance Criteria).
+- [ ] **🆕 PLAN-0111 — the fleet close-out record that can hold a credit note (ใบลดหนี้): `Draft`, and all six SDs RULED in the same session** (Cray, typed 2026-08-19, [#1227](https://github.com/CrayJThiemsert/vero-lite/pull/1227)). **Cray ratified the SDs, not the PLAN; nothing gates execution.** 🔴 **SD-E (partial credits may coexist; over-credit refused 422) FORCES SD-A to (b), a separate `repair_case_credit_note` table** — a latest-per-kind row would re-arm the replacement trap one level down. ⚠️ **AV-1 is owed before Step 4, not before merge:** what Express/accounting reconciles a ใบลดหนี้ against is the one thing this repo cannot answer, and SD-C is provisional on it. The three code-verified obligations the rulings created (`_FK_CHILD_MODELS`, the `load_monthly_export` union, the AV-2 prohibition) are in the s240 Current Focus block above and in the PLAN. **Read the PLAN, never a restatement:** `docs/plans/0111-fleet-closeout-credit-note-record.md`.
+- [ ] **PLAN-0107 — oracle-coverage hardening: `Draft`, 15 ACs. ✅ Phase A CLOSED 6/6 s236 ([#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204)); ✅ Phase B's AC-7 + AC-8 CLOSED s236 (#1206 `7a37c6d`, #1207 `5aedaf2`) and ✅ AC-11 CLOSED s240 ([#1226](https://github.com/CrayJThiemsert/vero-lite/pull/1226)). Remaining: Phase B's AC-9 (design-blocked) + AC-10, and Phase C — NOTHING gates them.** _[Corrected s240, `was an error`: this row read "Phases B and C remain", which had been false since s236.]_ CI now runs four oracles it lacked — `node --check`, the asset↔reference bijection, a **per-vertical** lifespan boot smoke, `mypy --strict verticals/` and the two adopted pre-commit hooks (**measured +74 s, no new dependency**). ⚠️ **Executing the remainder: read each AC and its `Reviewer amendment` blocks as authoritative and treat the §Steps prose as narrative — three measured divergences in Phase A alone** (a retired `≥ 20` floor, a superseded asset count, `uvx` vs `uv run --no-sync`). _[Also corrected s240: this row's *"with today's 2-case live seed nothing overflows"* — the stated reason for holding a browser stage back — has **expired on that ground**; AC-7 grew the seed and the tree now holds **21** cases. ⚠️ **The same stale sentence is still in the PLAN itself.**]_ **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md` (§Phase A closing evidence · §Acceptance Criteria).
 - [ ] **🆕 PLAN-0108 — AC-authoring + pre-close convention hardening: `Draft`, UNRATIFIED.** The weak-oracle half of the same audit; its only blocker was ADR-0038, **which has landed**, so nothing gates it either. Owns ADR-0038's **OQ-5** — the staleness-guard obligation attaches to the PLAN template, not to a build task. **Read the PLAN, never a restatement:** `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md`.
 - [x] **PLAN-0106 — fleet's own in-app case-persistence disclosure (ADR-0037 D2.4): COMPLETE 7/7, marked Complete by Cray (typed) and ARCHIVED s234.** AC-7's ordering clause closed on fleet's Step-10 go record, which cites this PLAN by number. **No live residual.** **Read the archived PLAN, never a restatement:** `docs/plans/done/0106-fleet-case-persistence-disclosure.md` (§Closure evidence · §Surfaced decisions).
 - [ ] **TWO unruled silent drops in the NL engine's aggregate paths — REHOMED s235 to the code.** (i) the **`started_week` filter is ignored entirely** (found s228) and (ii) **`group_by` never reaches `AggregateResult`**, so *"average duration per procedure"* validates, executes and silently returns **one ungrouped number** (found s232). Both live at `_aggregate_duration` / `_aggregate_benefit`; ⚠️ **the count path DOES pass `groups`**, so (ii) is a two-site gap in an otherwise-correct design, not a missing feature. **No test covers either.** **Read the docstring, never a restatement:** `services/engine/run_query.py::_aggregate_duration`. **Same two dispositions each, NEITHER ruled: (a) refuse, or (b) make it work.**

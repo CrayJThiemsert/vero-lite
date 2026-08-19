@@ -608,3 +608,109 @@ DSR-on-request remainder.
 > **Gates: 4114 passed / 8 skipped**, `mypy --strict services/` clean over 136
 > files, ruff + format clean over 631. Full record — bring-up **and** redeploy
 > addendum: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
+
+## Rotated this reconcile — session 240 (2026-08-19)
+
+> **Session 236, 2026-08-17→18 (head_commit `218a521` → `de3295a`) — FOUR PRs
+> MERGED (#1201–#1204), 0 open. The session that paid s235's STATUS debt in full
+> and then built the first four oracles PLAN-0107 asks for.**
+>
+> ✅ **STATUS is reconciled and PR-B is COMPLETE — 61,736 → 48,852 B, under R1's
+> 49,152 B soft target for the first time in this chain**, headroom 3,800 →
+> **16,684 B**. The rehome, not the trim, is what paid: every carve-out fact moved
+> to **the artifact whose reader needs it**, then the row collapsed to a pointer
+> (PLAN-0100's residuals → its own §Post-archival amendment, 2,202 → 480 B). Six
+> facts came out of a **gitignored** handoff into
+> `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`; nine rows out of
+> STATUS into code, tests, a benchmark module and `docs/logs/`. **Read those, never
+> a restatement.**
+>
+> ✅ **PLAN-0107 Phase A CLOSED 6/6** (#1204) — CI gained four oracles it did not
+> have: `node --check` over every shipped JS asset · an asset↔reference
+> **bijection** (chosen over a floor constant: a `≥ 20` floor over 21 files has one
+> file of headroom and its misfire remedy is editing the number) · a **per-vertical
+> lifespan boot smoke** · `mypy --strict verticals/` plus the two pre-commit hooks
+> that had only ever run on a developer's laptop. **Measured bill: `gate` 7m53s →
+> 9m7s ≈ +74 s, no new dependency.** Verified at **step level**, not job level — a
+> green job cannot distinguish a step that passed from one that was skipped.
+>
+> 🔴 **AC-3's own central claim was MEASURED FALSE in the configuration CI runs.**
+> The AC said the smoke makes §3's fail-loud contract CI-visible; corrupting each
+> spec in turn, it is **CAUGHT** for fleet_maintenance, building_materials,
+> supply_chain and procurement and **MISSED for `energy`** — the **default**
+> vertical, and the one spec-shipping factory that never calls `load_procedures`.
+> Booting only the default would have been green and blind to exactly what CI runs.
+> Fixed by booting once per spec-shipping vertical; **the `energy` residual stays
+> OPEN** in `tools/ci/boot_smoke.py`'s docstring.
+>
+> 🔴 **CI caught what no local probe structurally could.** Phase A's first run died
+> on `ModuleNotFoundError: No module named 'services'` — the runtime venv is
+> `--no-install-project` by design, and `python <file>` puts the *script's*
+> directory on `sys.path` where `python -c` put the CWD. **Every local run used the
+> dev venv, which has the project installed, so the failing state was unreachable
+> there.** A ② *reach* failure inside the PLAN that exists to close ② failures.
+> Fixed by **building** that condition locally and reproducing the error, not by
+> reasoning about it.
+>
+> 🔴 **ELEVEN inherited claims were checked and EIGHT were wrong** — including two
+> live falsehoods in STATUS itself (`deploy.py`'s "broken" compose path, fixed a day
+> earlier; *"AC-11's RoPA is still Cray's"*, adopted at s233), a guard cited at the
+> wrong file, and a scenario census stale in both figures (13/63 → **14/69**, the
+> third drift of that number). **The base rate is high enough that checking an
+> inherited claim is not optional.**
+>
+> **Gates, every PR: `pytest tests/` 4115 → 4123 passed / 8 skipped**, `mypy
+> --strict services/ verticals/` clean over **200** files, ruff + format clean over
+> 634, CI `gate` pass.
+
+> **Session 235, 2026-08-17 (head_commit `027986e` → `218a521`) — EIGHT PRs
+> MERGED (#1193–#1200), 0 open. s234's Tab I clip was asked to generalise beyond
+> UI, and it did: a five-specialist audit turned one 305px defect into a measured
+> failure-class census, ADR-0038 made five classes BINDING, and `CLAUDE.md`
+> gained FOUR new rules — in one session.**
+>
+> 🔴 **The organising law the whole session turns on:** an oracle sees a defect
+> only when three independent conditions hold — **① an INSTRUMENT can read the
+> artifact · ② the test DATA can reach the failing state · ③ someone ARMED it as
+> a gate rather than as evidence.** The weakness is **not** UI-specific and is
+> **not** a missing test; it was failing silently across two of the three
+> Phase-1 OCT features.
+>
+> ✅ **ADR-0038 RATIFIED** (#1195, #1197) — the three-strike promotion rule for
+> advisory lessons, the census, D2's per-class enforcement forms, D5's demotion
+> path. **All four surfaced decisions RULED** (Cray, typed); its OQ-5 resolved to
+> the PLAN template rather than a build task (#1198). **Read the ADR, never a
+> restatement:** `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md`.
+>
+> ✅ **`CLAUDE.md` BOUND — four new rules, +314 words / +1,852 B, zero new
+> sections** (#1200): a load-bearing green is not evidence until its assertion is
+> **witnessed RED** in the direction it claims · an **expected-value set is not
+> an oracle of the system** until the system's own output is scored against it ·
+> an **inherited premise a decision rests on is a claim, not context** · **name
+> the rule's consumer, then check the home is in that consumer's input.** Per the
+> file's own convention the amendment record is the commit message
+> (`git log --follow -- CLAUDE.md`) and is not restated here.
+>
+> 🔴 **A live defect on `main` was fixed** (#1193) — `deploy.py` built against
+> `deploy/published/docker-compose.yml`, deleted three commits earlier; Phase 1
+> would have died on the next `--execute`. Path promoted to a module constant
+> plus a guard that walks the module's own path constants. ⚠️ **That guard's
+> first draft masked its own oracle** — the probe reddened on a pinned literal
+> and the filesystem stat never ran. **Seeing RED is not enough; read the RED.**
+>
+> ✅ **The control group that shaped the whole response:** `CLAUDE.md` §8's
+> scenario-test rule is **GENUINELY OBEYED — all 17 scenario/e2e files, zero
+> violations**, recorded per §6 as `confirmed — prior intact`, not a defect. This
+> repo obeys a binding *mechanical* rule almost perfectly and fails on *advisory*
+> ones — the asymmetry ADR-0038 rests on.
+>
+> ✅ **Branch protection verified LIVE, not from memory:** `strict: true`,
+> `contexts: ["gate"]`, `enforce_admins: true`. With `strict` plus a bare
+> `actions/checkout@v4` on `pull_request`, **the graded tree IS the tree that
+> lands** — so `on: push: main` is NOT worth adding, and a specialist proposal to
+> add it was retired on this evidence.
+>
+> **PLAN-0107 + PLAN-0108 drafted and split by ORACLE STRENGTH** (#1194, #1199)
+> on Cray's typed S1 ruling; both `Draft`, unratified. **Gates, eight times:**
+> `pytest tests/` **4115 passed / 8 skipped**, `mypy --strict services/` clean
+> over 136, ruff + format clean over 631, CI `gate` **pass** every time.
