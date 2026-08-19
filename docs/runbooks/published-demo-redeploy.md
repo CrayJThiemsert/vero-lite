@@ -105,12 +105,34 @@ machines**, never across rebuilds.
 
 ## 3. Deploy
 
+> 🔴 **This script deploys ONE profile — `oct-energy` — and it has no way to target
+> another.** The compose path, the project name, the image tag and the connector
+> config are hardwired constants, and `--system` was **deliberately deferred**
+> (Cray, typed s219, recorded at `deploy.py:65-83`; pinned by
+> `tests/deploy/test_deploy.py`). Running it with `--execute` while intending to
+> deploy a different published system would build and ship **that** profile's image
+> and bring up **that** project — doing nothing for the system you meant, and
+> recreating a container on one you did not.
+>
+> **A published system that is not this profile is deployed by a manual sequence,
+> not by this script.** That sequence lives with the system: read
+> `deploy/published/<system>/` — its `DEMO-RESET.md` where one exists — and the
+> prior host-state records for that system under `docs/logs/`. This file names one
+> system by design (ADR-0036 D2 keeps the cross-system map out of this repo), so it
+> cannot list the others' commands here.
+>
+> **The check costs nothing and is the first line of the plan.** Run plan mode and
+> read which profile it prints before you type `--execute`. A session-239 deploy
+> found this exactly that way.
+
 ```bash
 python3 deploy/published/deploy.py --host <ssh-alias>
 ```
 
-That is a **plan**. It prints every command and touches nothing. Read it, then
-get Cray's go, then:
+That is a **plan**. It prints every command and touches nothing — verified in the
+code, not only in this sentence: `Runner.run` returns before `subprocess.run` when
+not executing, and that split lives in one class so a new call site cannot execute
+during a plan. Read it, **check the profile it names**, then get Cray's go, then:
 
 ```bash
 python3 deploy/published/deploy.py --host <ssh-alias> --execute --smoke-url https://<subdomain>/health
