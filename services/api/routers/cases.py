@@ -783,8 +783,49 @@ async def key_closeout(
     hand, and the alternative is discovering the discrepancy at month end against
     Express, where the paper is a filing cabinet away. If real invoices turn out to
     carry rounding adjustments, this comparison is the one place to relax.
+    **A negative amount is refused, and the reason is structural.** This table is
+    append-only with LATEST-WINS — ``latest_closeout`` returns one row per case and
+    both consumers read it, the month-end export and ``get_closeout`` below. So a
+    credit note keyed here would not JOIN the invoice it credits, it would REPLACE
+    it: the export would report the credit as the repair's whole cost while looking
+    perfectly filled in, which is the failure a completeness KPI structurally cannot
+    see — the same trap ``tax_invoice_date`` and ``seq`` are documented against.
+
+    🔴 **This refusal is INTERIM, not a finding that the domain has no credit notes.**
+    เมย์ does receive ใบลดหนี้ (Cray, typed 2026-08-19). Recording one needs a schema
+    that can hold an invoice and its credit as two coexisting facts, which this one
+    cannot: there is no document-type column, and ``RepairCaseOrderNumber`` is one per
+    case. Until that exists, a loud refusal leaves the month-end figure **knowably
+    incomplete** instead of **invisibly wrong**. Lift this only together with that
+    schema — a silent lift re-arms the replacement failure.
     """
     await _load(session, case_id)
+
+    # Checked BEFORE the totals, because a credit note is internally COHERENT:
+    # -1,000 pre-VAT + -70 VAT = -1,070 total satisfies the comparison below and
+    # would be stored as a repair that cost less than nothing. The more specific
+    # diagnosis must not be masked by the more general one.
+    negative = [
+        name
+        for name, value in (
+            ("amount_pre_vat_thb", req.amount_pre_vat_thb),
+            ("vat_thb", req.vat_thb),
+            ("total_thb", req.total_thb),
+        )
+        if value is not None and value < 0
+    ]
+    if negative:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"negative amount in {', '.join(negative)} — a close-out records one "
+                "vendor invoice, and this record is append-only with latest-wins, so a "
+                "credit note (ใบลดหนี้) keyed here would REPLACE the invoice it credits "
+                "rather than offset it, and month-end would report the credit as the "
+                "repair's whole cost. Key the invoice as issued; a credit note needs a "
+                "record this system does not yet have"
+            ),
+        )
 
     expected_total = req.amount_pre_vat_thb + (req.vat_thb or Decimal("0"))
     if req.total_thb != expected_total:
