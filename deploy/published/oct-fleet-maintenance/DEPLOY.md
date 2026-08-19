@@ -73,8 +73,25 @@ constraint (reset first, boot second) changes the sequence.
 ### What you may not need — establish it, do not assume it
 
 - **A host `git pull`** is only needed if something the host reads has changed. The host
-  reads `docker-compose.yml` and `cloudflared/config.yml` from its checkout, not from the
-  image. Check with `git diff --name-only <last-deployed-sha>..HEAD -- deploy/published/oct-fleet-maintenance/`.
+  reads `docker-compose.yml` and `cloudflared/config.yml` **from its own checkout**, not
+  from the image — so the sha to compare against is the **host checkout's**, which is not
+  the sha the running image was built from and can differ from it. Ask the host:
+
+  ```bash
+  ssh <ssh-alias> git -C C:/projects/vero-lite rev-parse HEAD
+  ```
+
+  then diff **only the two files the host actually reads**, because the profile directory
+  also holds documentation that compose never opens and a whole-directory diff reports it
+  as if it mattered:
+
+  ```bash
+  git diff --name-only <host-sha> HEAD -- deploy/published/oct-fleet-maintenance/docker-compose.yml deploy/published/oct-fleet-maintenance/cloudflared/
+  ```
+
+  Empty output means no pull is needed. ⚠️ If `<host-sha>` is not a commit in your
+  checkout, `git fetch` first — a diff against an unknown sha fails loudly, but a diff
+  against the *wrong* sha does not.
 - **`--force-recreate cloudflared`** is only needed if `cloudflared/config.yml` changed in
   that same diff. Recreating the connector re-registers the tunnel for no reason otherwise.
 
