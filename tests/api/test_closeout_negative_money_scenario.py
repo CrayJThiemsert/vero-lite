@@ -8,8 +8,13 @@ it settles the pick, and not in the direction the phrasing suggests.
 🔴 **The domain HAS credit notes; this RECORD cannot hold one.** เมย์ receives
 ใบลดหนี้ (Cray, typed 2026-08-19). But ``repair_case_closeout`` is append-only with
 LATEST-WINS: :func:`services.db.repair_case_closeout.latest_closeout` returns one
-row per case and **both** consumers read it — ``repair_spend_export.py:683`` and
-``cases.py:843``. A credit-note row therefore does not JOIN the invoice it credits,
+row per case and **both** consumers read it — ``_build_row`` in
+``services.db.repair_spend_export`` and ``get_closeout`` in
+``services.api.routers.cases``.
+⚠️ Cited by SYMBOL rather than by line on purpose: the two line numbers this module
+first carried were measured correct against ``main`` and were stale the moment this
+very module landed 41 lines above one of them.
+A credit-note row therefore does not JOIN the invoice it credits,
 it **REPLACES** it. So "admit the negative and let ``sum()`` handle it" is not the
 lenient option, it is the silent one: the month-end figure would report the credit
 as the repair's entire cost while every row looked perfectly filled in — the failure
