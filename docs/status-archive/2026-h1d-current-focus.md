@@ -540,3 +540,71 @@ DSR-on-request remainder.
 > cite the RoPA **by path**. **Requester identification for the DSR path remains
 > genuinely undesigned:** `repair_case.opened_by` has no foreign key and personas
 > add no visitor identity, so a request matches rows **only by content**.
+
+
+### Rotated 2026-08-19, session-239 reconcile — Current Focus s233-234
+
+> **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `027986e`) — TWELVE
+> PRs merged (#1180–#1191), 0 open. Fleet's last gate closed, fleet WENT LIVE, a
+> human drove it, and it broke in a way CI structurally cannot see.
+> `oct-fleet-maintenance` is published system #3 and is now serving the FIXED
+> build; PLAN-0103 is COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
+>
+> ✅ **AC-11's RoPA was written and ADOPTED** (`docs/compliance/ropa-fleet-cases.md`,
+> #1184) — the artifact the whole chain waited on. 🔴 **Its authorship DEPARTS
+> from ADR-0037 D2.1, disclosed ON the artifact:** Code drafted at Cray's request,
+> Cray ruled every promise slot and adopted. **SD-1 stays unruled; until it is,
+> D2.1 as written governs.**
+>
+> 🔴 **s233's load-bearing work was VERIFICATION, not construction — seven
+> inherited claims were checked and REFUTED**, including ADR-0037's OQ-3, which
+> had been *ruled* 2026-08-14 while its recorded Recommendation was still the
+> **OVERRULED** option. Three downstream artifacts inherited it and it nearly
+> sent the RoPA into the wrong file. _[Closed #1185. The general rule — a ruled
+> OQ closes in the same change that records the ruling — is proposed as SD-2 and
+> is UNRULED.]_
+>
+> ✅ **Tab J shows real money — ฿33,705, not a structural ฿0** (#1187), with an
+> honest empty state. ⚠️ Seeding onto the demo's flagship truck **displaced** its
+> ฿48,000 axle breach (the query projects the latest event **per truck**) —
+> silent demo damage caught only by the full suite.
+>
+> ✅ **s234 executed Step 10 under Cray's typed §8 go**, and the pre-flight found
+> **two steps every prose summary of that sequence had omitted** — the image was
+> not on the host (`build:` with no `image:`, so `up -d` would build on the deploy
+> host and fail there), and the host checkout was deliberately **not** pulled
+> (the `deploy/` diff across those eight commits is empty).
+>
+> 🔴 **The keyed `/whoami` control was recorded as a DIFFERENTIAL** — keyless
+> 401, correct key 200, **wrong key 401**. The third reading is what makes the
+> second mean anything: a `200` alone is equally explained by "auth is off".
+>
+> 🔴 **Two documentation claims were MEASURED FALSE and corrected in the same
+> PR** — the backslashed Windows path stripped through `ssh`→PowerShell, and
+> *"302 proves a **working** origin"*. **Both now live in the runbooks they
+> misled.** ⚠️ **Step 9's headroom projection is exceeded (≈1.33 GiB vs ≈0.95)
+> because it models containers at boot** — the PLAN-0103 Active TODO owns that
+> residual.
+>
+> Do-no-harm held on both host actions, against baselines captured **before** the
+> first one: `oct-energy-app` and `oct-procurement-app` never restarted.
+>
+> 🔴 **Then Cray drove the live surface through Access, and that is the session's
+> lesson.** It closed the scope limit Code had recorded (all six tabs render;
+> Tab J shows **฿33,705** live) **and found a defect 4,113 green tests could
+> not** — Tab I's root stood **919px inside a 614px `overflow: hidden` view**, so
+> **305px was unreachable** with no scrollbar and no error. Fixed by copying
+> Tab J's contract (#1190), guarded by a stylesheet-reading test, shipped live
+> under a second typed §8 go. **CI has no JS runtime — that is the gap, not a
+> missing test; own Active TODO.**
+>
+> ✅ **Redeploy, measured:** the new image id **differs**, **only `app` was
+> recreated** so the tunnel never re-registered, both seeds' idempotency proven on
+> real data, and the audit chain's `head_hash` came back **byte-identical** —
+> which proves nothing was written, a claim `intact: true` alone cannot make.
+> ⚠️ `index.html` is served `cache-control: no-store`, which **narrows**
+> PLAN-0100's "nothing purges the edge" residual without closing it (fonts stand).
+>
+> **Gates: 4114 passed / 8 skipped**, `mypy --strict services/` clean over 136
+> files, ruff + format clean over 631. Full record — bring-up **and** redeploy
+> addendum: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
