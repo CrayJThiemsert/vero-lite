@@ -775,15 +775,35 @@ def test_ac5_a_profile_mentions_only_its_own_label(profile: Path) -> None:
 
 #: `docker compose -f <path>` and `cloudflared … --config <path>`, as an operator
 #: would copy them out of a runbook or a profile README.
+#: ⚠️ The drive-letter alternative accepts EITHER separator. It originally accepted
+#: only ``C:\``, which was correct for the runbook it was written against — and then
+#: session 238 corrected every host path to forward slashes, because a backslash is
+#: silently stripped by the ssh→PowerShell chain and fails as a missing file. That
+#: correction was right, and it moved every corrected path OUT of this regex's reach:
+#: measured at session 239, the two profile-local operator documents carried ten
+#: `docker compose -f C:/…` commands between them and this guard matched **zero** of
+#: them. A guard that stops matching is indistinguishable from a guard that passes,
+#: which is why the count assertion below exists — but the count was still satisfied
+#: by the READMEs, so it did not fire either.
 _OPERATOR_PATH = re.compile(
-    r"(?:-f|--config)\s+((?:[A-Za-z]:\\|/)?[\w./\\-]*deploy[/\\]published[/\\][\w./\\-]+)"
+    r"(?:-f|--config)\s+((?:[A-Za-z]:[\\/]|/)?[\w./\\-]*deploy[/\\]published[/\\][\w./\\-]+)"
 )
 
 
 def _resolve(raw: str) -> Path:
-    """Map a documented path — Windows host or repo-relative — onto this checkout."""
-    cleaned = raw.replace(_HOST_CHECKOUT_PREFIX, "").replace("\\", "/").lstrip("/")
-    return Path(cleaned)
+    """Map a documented path — Windows host or repo-relative — onto this checkout.
+
+    Slashes are normalised BEFORE the host prefix is stripped, so the prefix matches
+    whichever separator the document uses. Stripping first worked only for the
+    backslash spelling and silently left a forward-slash host path as an absolute
+    ``C:/…`` that cannot exist in this checkout — reported as a broken path rather
+    than resolved.
+    """
+    cleaned = raw.replace("\\", "/")
+    prefix = _HOST_CHECKOUT_PREFIX.replace("\\", "/")
+    if cleaned.startswith(prefix):
+        cleaned = cleaned[len(prefix) :]
+    return Path(cleaned.lstrip("/"))
 
 
 def test_every_documented_operator_path_resolves() -> None:
@@ -797,7 +817,17 @@ def test_every_documented_operator_path_resolves() -> None:
     path an operator reaches for when the normal one has already failed. Nothing in
     the suite noticed, because no test read the runbooks as instructions.
     """
-    sources = [*_RUNBOOKS, *(p / "README.md" for p in _profiles()), _DEPLOY_ROOT / "README.md"]
+    # EVERY markdown file in a profile directory, not just its README. Measured at
+    # session 239: `DEMO-RESET.md` carries three `docker compose -f <host path>`
+    # commands and `DEPLOY.md` carries seven, and none of them was read here — the
+    # guard's own rationale ("a command someone will paste at 2am") describes those
+    # files better than it describes a README, because they exist to be pasted.
+    # A profile's operator procedures cannot live in its README: the two-label rule
+    # pushes per-system commands out of the shared runbook and into files like
+    # these, so scoping this guard to README.md scoped it away from exactly the
+    # documents the split created.
+    profile_docs = sorted(p for profile in _profiles() for p in profile.glob("*.md"))
+    sources = [*_RUNBOOKS, *profile_docs, _DEPLOY_ROOT / "README.md"]
     broken: list[str] = []
     checked = 0
     for source in sources:
