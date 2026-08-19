@@ -1,7 +1,7 @@
 # PLAN-0111: Credit notes (ใบลดหนี้) in the fleet close-out record
 
 **Status:** Draft
-**Owner:** both — Cray rules SD-A…SD-F, Claude Code executes
+**Owner:** both — SD-A…SD-F **ruled** (Cray, typed 2026-08-19); Claude Code executes
 **Created:** 2026-08-19
 **Related ADRs:** ADR-0037 (fleet Postgres + RoPA D2.1), ADR-0028 (SD-P1 accounting timezone)
 **Related PLANs:** PLAN-0096 (close-out record, AC-9 export), PLAN-0099 (seq latest-wins),
@@ -10,8 +10,12 @@ interim refusal, PR #1226)
 
 > **Drafting disclosure (ADR-012 D4.3):** authored by the in-harness `plan-drafter`
 > subagent from a Code-originated dispatch (2026-08-19); independent review = Cray at
-> PR merge. SD slots below are **surfaced, not decided** — every recommendation is
-> contingent on Cray's ratification.
+> PR merge. SD slots below were surfaced 2026-08-19 and **ruled by Cray (typed) the
+> same day**; the rulings were recorded by the same subagent from a second dispatch
+> (2026-08-19), which also collapsed the two-branch conditionality to the ruled
+> SD-A(b) branch and re-fixed every pass read against the ruled options. The rejected
+> alternatives are retained deliberately per SD. Status stays **Draft** — Cray
+> ratifies the PLAN itself at PR merge.
 
 ## Goal
 
@@ -65,24 +69,48 @@ document date.
   its own document month vs netted into the invoice line; whether a negative-amount row
   keyed with a credit-note number in `เลขที่ใบกำกับภาษี` imports cleanly). Not derivable
   from the repo. Same class as the ศูนย์ต้นทุน granularity question AC-9 pre-authorised
-  shipping unfilled — **recommend a partner-intake question**, and SD-C stays
-  provisional until answered.
-- **AV-2 — Whether the retention completeness guard catches a child-of-child FK** (a
-  credit table FK'd to `repair_case_closeout` rather than to `repair_case`). The guard's
-  membership check reads FKs at the root (F11); a grand-child's coverage is untested by
-  this draft. Step 6 verifies it empirically before relying on it.
+  shipping unfilled — a partner-intake question. **NOT closed by the 2026-08-19
+  rulings:** SD-C's ruling is (b) *provisional on AV-1* — confirm before Step 4 lands.
+- **AV-2 — retention-guard coverage of the new credit table — now LIVE (SD-A(b)
+  ruled), resolved empirically at Step 6 / AC-7 with a witnessed RED, never asserted.
+  NOT closed by the rulings.** Code-read at recording time (2026-08-19) sharpens what
+  the guards actually assert (`tests/services/db/test_case_retention_completeness.py`):
+  `test_ac5i_the_declared_fk_children_equal_the_fks_the_metadata_declares` asserts set
+  **equality** between `FK_CHILD_TABLES` and the tables holding an FK to
+  `repair_case.case_id` (`:42-55,70-91`), and
+  `test_ac5ii_every_case_id_bearing_table_is_classified_exactly_once` reddens on ANY
+  `case_id`-bearing table left unclassified (`:94-117`) — so the **ruled shape**
+  (root FK + `case_id` column) is covered by both walks *on code-read*. Two residuals
+  keep AV-2 open: (i) **no witnessed RED yet** — coverage stays a code-read claim
+  until AC-7's probe reddens `test_ac5i` naming `repair_case_credit_note`;
+  (ii) the true child-of-child shape — a table referencing `repair_case_closeout`
+  while carrying **no** `case_id` column — is invisible to BOTH walks
+  (`_tables_with_an_fk_to_repair_case` filters on the root target only, `:42-55`;
+  `_tables_with_a_case_id_column` needs the column, `:45-46`), and the order guard
+  inspects only edges whose source is already declared in the family (`:171-185`).
+  The ruled build does not construct that shape (document-number linkage, no FK to
+  `repair_case_closeout`), so Step 6 also forbids drifting into it: any later FK
+  targeting `repair_case_closeout` requires a guard extension witnessed RED **before**
+  the FK lands.
 - **AV-3 — No third production reader of the close-out row.** Grep over `services/` finds
   only F7's two consumers plus retention (deletion) and `operate_seed` (writer). Claimed
   exhaustive **for `services/` at draft time**; the executor re-greps at execution time
   (the base moves).
 
-## Surfaced decisions — Cray rules; recommendations are contingent
+## Surfaced decisions — ALL SIX RULED (Cray, typed 2026-08-19)
 
-> These have multiple defensible answers with different schema/consumer consequences;
-> ADR-009 D1 makes them Cray's, not Code's. **SD-A and SD-E are coupled** — rule them
-> together.
+> These had multiple defensible answers with different schema/consumer consequences;
+> ADR-009 D1 made them Cray's, not Code's. SD-A and SD-E were ruled **together** —
+> the cardinality couples them, and SD-A's branch was *selected by* SD-E's ruling.
+> The options and reasoning below are **retained deliberately**: a future reader must
+> see what was rejected and why. Only SD-C's ruling remains provisional (on AV-1).
 
 ### SD-A — Shape of the record
+
+**RULED (Cray, typed 2026-08-19): (b) — the separate `repair_case_credit_note`
+table.** Selected **by SD-E's cardinality ruling**, not chosen independently: per the
+contingent recommendation below, once N partial credits coexist, latest-per-kind
+cannot hold them without re-arming the replacement trap one level down.
 
 **Question.** Where does a credit note live?
 
@@ -116,6 +144,9 @@ paperwork shapes (multiple partial credits) the pilot promises to hold.
 
 ### SD-B — What `latest_closeout` returns once two document kinds exist
 
+**RULED (Cray, typed 2026-08-19): (b) — the one composite reader; the raw-latest
+read becomes uncallable from outside the module.**
+
 **Constraint (already documented, F10 + the function's own docstring):** *"every
 consumer — the case endpoint, the month-end export — must agree on which row is
 current. One query in one place is how they stay agreed."* The two consumers must not
@@ -140,6 +171,12 @@ consciously, never silently.
 **Why Cray:** it deletes/renames a documented seam two consumers and a guard test pin.
 
 ### SD-C — Month-end presentation
+
+**RULED (Cray, typed 2026-08-19): (b) — two lines matching real documents, the
+credit filed in its own month. ⚠️ Provisional on AV-1 (the ruling did not close it):
+confirm what Express/accounting reconciles a ใบลดหนี้ against before Step 4 lands; if
+the intake answer contradicts two-line filing, SD-C returns to Cray with the answer
+attached — the executor does not re-decide it.**
 
 **Question.** Does the export show a credited repair as **one netted line**
 (`5,000.00`) or **two lines that sum to the net** (invoice `20,000.00` + credit
@@ -171,6 +208,9 @@ promise, not an implementation detail.
 
 ### SD-D — Does a credit note get its own repair-order number?
 
+**RULED (Cray, typed 2026-08-19): (a) — the credit inherits the case's `RC-`
+number.** F4's one-number-per-case invariant stands untouched.
+
 - **(a) Inherit the case's `RC-` number.** F4's invariant (one number per case,
   `case_id` = PK, gap-free series) stands untouched; the credit is paperwork about the
   same repair, and the series counts **repairs**, not documents.
@@ -183,6 +223,11 @@ Express conventions could conceivably demand a distinct reference per keyed line
 (AV-1).
 
 ### SD-E — Partial vs full credit; over-credit; how many credits per case
+
+**RULED (Cray, typed 2026-08-19): MULTIPLE partial credit notes may coexist on one
+case** (ทยอยลด — the vendor credits in instalments). Partial **and** full credits
+allowed; over-credit refused 422, as recommended. **This cardinality is what selects
+SD-A(b)** — see SD-A's RULED line.
 
 - Partial credits: the measured fixture is itself partial (−15,000 against 20,000) —
   refusing partials contradicts the paperwork that motivated the LOCKED ruling.
@@ -197,12 +242,19 @@ Express conventions could conceivably demand a distinct reference per keyed line
   credits coexist" → latest-per-kind cannot hold them, and the correction path needs a
   per-credit identity (which document is เมย์ correcting?) — a mistyped credit-note
   *number* cannot itself be the identity key. **Recommend: rule the cardinality
-  explicitly**; this draft's Steps are written for both branches.
+  explicitly**; this draft's Steps were originally written for both branches
+  (collapsed to the ruled SD-A(b) branch when the rulings were recorded, 2026-08-19 —
+  the per-credit-identity consequence is directed at Step 1).
 
 **Why Cray:** cardinality + over-credit policy define what the system refuses a real
 operator mid-paperwork.
 
 ### SD-F — KPI / `is_fully_traceable` consequence
+
+**RULED (Cray, typed 2026-08-19): (a) — the KPI counts repairs, not documents.**
+The SD-C(b) × SD-F(a) interaction is now first-class: see AC-6, which fixes the
+denominator-exclusion, approval-question-exclusion, and case-level credit-completeness
+consequences as probeable assertions.
 
 Verified consequences (F9): the denominator is `len(rows)`; `audit_answers` asks "who
 approved it" of every row; a second line per case (SD-C(b)) would (i) double-weight
@@ -228,10 +280,12 @@ by ruling, not drift.
 > Every command runs via WSL from the repo root with `2>&1` merged (CLAUDE.md §8).
 > Pass reads are fixed **here, before any run**. Each test-closing AC names its
 > non-vacuity probe: the mutation, the assertion it must redden, and the direction.
-> ACs marked *(ruling-shaped)* fix the pass read against the SD option Cray ratifies;
-> the concrete figures below are written for the recommended options (SD-A per
-> SD-E's cardinality, SD-B(b), SD-C(b), SD-D(a), SD-F(a)) and are re-fixed in this
-> file at Step 1 if Cray rules otherwise — before execution, never after.
+> **All six SDs are RULED (Cray, typed 2026-08-19)** — SD-E multiple partial credits
+> coexist → SD-A(b) `repair_case_credit_note` table, SD-B(b) composite reader,
+> SD-C(b) two lines (provisional on AV-1), SD-D(a) inherited `RC-` number, SD-F(a)
+> KPI counts repairs. Every pass read below is fixed against the **ruled** options;
+> the draft's two-branch conditionality is collapsed. The only remaining contingency
+> is SD-C(b)'s AV-1 caveat (AC-5, Step 0/Step 4).
 
 - [ ] **AC-1 — Schema + migration `0026` round-trips.**
   Command: `uv run alembic upgrade head && uv run alembic check && uv run alembic downgrade 0025 && uv run alembic upgrade head`.
@@ -239,14 +293,14 @@ by ruling, not drift.
   leaves migrations `0013`–`0025` intact. (Caveat: `alembic check` cannot see
   server-default-only drift — MEMORY s203; the round-trip is the load-bearing half.)
   Non-vacuity probe: with the DB at `0025`, run the AC-3 scenario test — it must go
-  RED with `UndefinedColumn`/`UndefinedTable` (direction: the schema is what admits
-  the credit), then green again at head.
+  RED with `UndefinedTable` on `repair_case_credit_note` (direction: the ruled
+  SD-A(b) table is what admits the credit), then green again at head.
 
-- [ ] **AC-2 — Both consumers agree on the coexisting facts** *(ruling-shaped: SD-B)*.
+- [ ] **AC-2 — Both consumers agree on the coexisting facts** *(SD-B(b) as ruled)*.
   A test drives `POST` invoice then `POST` credit, then reads **both** consumers:
   `GET /api/cases/{id}/closeout` and the case's export row(s).
   Command: `uv run pytest tests/api/test_closeout_credit_note_scenario.py -q -k consumers_agree 2>&1`.
-  Pass read fixed now (recommended options): endpoint reports invoice
+  Pass read fixed now (ruled options): endpoint reports invoice
   `total_thb == 20000.00` AND the credit `-15000.00` as distinct documents; the export
   holds a `20000.00` line and a `-15000.00` line for the case; **no reader anywhere
   reports `-15000.00` as the case's whole cost**.
@@ -259,14 +313,15 @@ by ruling, not drift.
 - [ ] **AC-3 — Scenario test: real producer → real consumer (CLAUDE.md §8, binding).**
   New module `tests/api/test_closeout_credit_note_scenario.py`, modelled on the
   PLAN-0107 AC-11 module: producer = the real authn-on `POST /api/cases/{id}/closeout`
-  (+ the credit route per SD-A ruling), consumer = the real `load_monthly_export` and
+  + the real credit route (SD-A(b) as ruled — Step 3's new endpoint, nothing seeded
+  directly into the table), consumer = the real `load_monthly_export` and
   its real `total_thb` sum (F8). Realistic data: invoice `18,691.59 + 1,308.41 =
   20,000.00`; credit `-14,018.69 + -981.31 = -15,000.00`. Nothing stubbed on either
   side; DB-backed, SKIP ≠ satisfaction; month bounds derived in `Asia/Bangkok`, and
   month selection keyed on `entered_at` (F8 — a `tax_invoice_date`-keyed month
   silently selects an empty one).
   Command: `uv run pytest tests/api/test_closeout_credit_note_scenario.py -q 2>&1`.
-  Pass read fixed now (recommended options): the month-end `total_thb == 5000.00`
+  Pass read fixed now (ruled options): the month-end `total_thb == 5000.00`
   when both documents key in the same month; the ฿ assertion is ordered **before**
   any status-code assertion (the PLAN-0107 module's own lesson, stated in its
   docstring at lines 219-224).
@@ -289,8 +344,12 @@ by ruling, not drift.
   Non-vacuity probe: remove the invoice-path sign check → the invoice-path 422
   assertion must redden with a 201 (direction: the door that must stay shut, opened).
 
-- [ ] **AC-5 — Express CSV shape holds** *(ruling-shaped: SD-C)*.
-  Command: `uv run pytest tests/services/db/test_repair_spend_export.py tests/api/test_export_endpoint*.py -q 2>&1` (executor confirms exact export-endpoint test path at Step 0).
+- [ ] **AC-5 — Express CSV shape holds** *(SD-C(b) as ruled — ⚠️ provisional on
+  AV-1; confirmed at Step 0 before Step 4 lands)*.
+  Command: `uv run pytest tests/services/db/test_repair_spend_export.py tests/api/test_repair_spend_export_scenario.py tests/api/test_export_cover_ui_contract.py -q 2>&1`
+  (paths verified by repo grep at recording time, 2026-08-19 — the draft's
+  `test_export_endpoint*.py` pattern matched nothing; executor re-confirms at Step 0,
+  the base moves).
   Pass read fixed now (SD-C(b)): `to_csv` still emits **exactly the 15
   `EXPORT_COLUMNS`** (F7 — Express keyability is a documented constraint, not a
   preference); the credit line carries the credit note's own number and document date;
@@ -299,30 +358,78 @@ by ruling, not drift.
   Non-vacuity probe: append a 16th column to the writer → the column-count assertion
   must redden 16 ≠ 15.
 
-- [ ] **AC-6 — KPI and `is_fully_traceable` behave per SD-F ruling.**
-  Command: `uv run pytest tests/services/db/test_repair_spend_export.py -q -k traceab 2>&1`.
-  Pass read fixed now (SD-F(a)): a governed, fully-papered case with a fully-papered
-  credit is traceable and counts **once**; the same case with a credit missing its
-  document number is **not** traceable; `traceability_pct`'s denominator does not
-  change when a credit is added to an already-counted case.
-  Non-vacuity probe: mutate `is_fully_traceable` to ignore credit completeness → the
-  incomplete-credit assertion must redden traceable-when-it-must-not-be.
+- [ ] **AC-6 — The SD-C(b) × SD-F(a) interaction, first-class: two lines per
+  credited case, ONE KPI unit.**
+  The ruled pair interacts: SD-C(b) puts a second line in `rows` for a credited case,
+  SD-F(a) says the KPI counts repairs — so the credit line must be **excluded from
+  the KPI denominator and from the approval questions**, while the case's own
+  judgment **absorbs** credit paperwork completeness.
+  Command: `uv run pytest tests/services/db/test_repair_spend_export.py -q -k "traceab or credit" 2>&1`.
+  Pass read fixed now, against the verified KPI surfaces (`repair_spend_export.py`:
+  denominator `len(self.rows)` at `:190-199`; `cover_summary`'s
+  `askable = len(self.rows) * len(AUDIT_QUESTIONS)` at `:241-244`; `audit_answers`
+  at `:302-322`; `is_fully_traceable` at `:363-406`):
+  (i) a governed, fully-papered case with a fully-papered credit is traceable and
+  counts **once** — `traceability_pct` and the cover's audit-answer figures are
+  **identical** before and after the credit is added to the already-counted case;
+  (ii) the same case with a credit missing its document number is **not** traceable —
+  each credit's paperwork completeness (number + document date + amounts) folds into
+  the case's `is_fully_traceable`;
+  (iii) the approval questions are **never asked of a credit line** — no gate ever
+  decided the credit, and its structural unanswerability must not drag
+  `audit_answer_pct` down for *more complete* paperwork;
+  (iv) a credit on a **governed** case leaves `ungoverned_thb` (`:231-239`)
+  unchanged — the credit line inherits its case's governed status for the money
+  buckets, else a governed case's credit prints as negative escaped money — while
+  `MonthlyExport.total_thb` (`:227-229`) **does** include the credit line (that
+  netting is the Goal figure).
+  Non-vacuity probes (mutation → the assertion it must redden, direction):
+  **P1** — re-admit credit lines into the KPI arithmetic (drop the row-kind exclusion
+  in `traceability_pct` / `cover_summary`) → assertion (i) reddens: the denominator
+  grows by one per credit and the pct moves (direction: a credit line re-entered the
+  denominator — this probe is the tripwire the ruling asked for);
+  **P2** — mutate `is_fully_traceable` to ignore credit completeness → assertion (ii)
+  reddens traceable-when-it-must-not-be;
+  **P3** — ask the approval questions of the credit line → assertion (iii) reddens:
+  `audit_answer_pct` drops on a case whose paperwork got *more* complete.
 
-- [ ] **AC-7 — Retention still deletes everything, in order** *(conditional: fires iff
-  SD-A ruling creates a new table)*.
-  New table joins `_FK_CHILD_MODELS` in deletion order (F11).
-  Command: `uv run pytest tests/services/db/test_repair_case_retention*.py -q 2>&1` (executor confirms exact path at Step 0 — AV-2).
-  Pass read fixed now: completeness + order guards green with the new table declared;
-  a seeded case carrying invoice + credit deletes cleanly past the window.
-  Non-vacuity probe: remove the new model from `_FK_CHILD_MODELS` → the completeness
-  guard must redden naming the missing table. AV-2 is resolved here: if the guard
-  does NOT redden for a child-of-child FK, extend the guard in the same step and
-  witness the extension RED first.
+- [ ] **AC-7 — Retention still deletes everything, in order** *(SD-A(b) as ruled —
+  fires unconditionally; the conditional framing is collapsed)*.
+  `RepairCaseCreditNote` joins `_FK_CHILD_MODELS`
+  (`services/db/repair_case_retention.py:82-89`). The order guard imposes **no**
+  position constraint on it — the ruled shape holds no inter-child FK
+  (document-number linkage, no FK to `repair_case_closeout`) — place it adjacent to
+  `RepairCaseCloseout` for the reader; the order guard's own edge-emptiness assertion
+  (`test_case_retention_completeness.py:209-213`) stays satisfied by the standing
+  accepted-quote→quote edge.
+  Command: `uv run pytest tests/services/db/test_case_retention.py tests/services/db/test_case_retention_completeness.py tests/api/test_case_retention_scenario.py -q 2>&1`
+  (paths verified by repo grep at recording time, 2026-08-19 — the draft's
+  `test_repair_case_retention*.py` pattern matched nothing; executor re-confirms at
+  Step 0).
+  Pass read fixed now: `test_ac5i_the_declared_fk_children_equal_the_fks_the_metadata_declares`,
+  `test_ac5ii_every_case_id_bearing_table_is_classified_exactly_once`, and
+  `test_the_declared_order_respects_every_child_to_child_dependency` all green with
+  the new table declared; the retention scenario deletes a seeded case carrying an
+  invoice + **N ≥ 2** coexisting partial credits (SD-E's ruled cardinality, not the
+  single-credit shape) cleanly past the window.
+  Non-vacuity probe — **this probe IS AV-2's empirical resolution; witnessed, never
+  asserted**: with the table created, remove `RepairCaseCreditNote` from
+  `_FK_CHILD_MODELS` → `test_ac5i` must redden in its *"declares an FK to repair_case
+  but the sweep never clears it"* direction, naming `repair_case_credit_note` (the
+  assertion message spells both directions — `test_case_retention_completeness.py:86-91`).
+  If it does NOT redden, the guard has the hole AV-2 predicted: extend the guard in
+  the same step and witness the extension RED first. Standing prohibition either way
+  (AV-2(ii)): any later FK targeting `repair_case_closeout` — the shape invisible to
+  both walks — requires a guard extension witnessed RED **before** that FK lands.
 
-- [ ] **AC-8 — Sign stated as schema, not convention** *(ruling-shaped: SD-A)*.
-  CheckConstraint(s) per the F2 precedent: invoice rows non-negative, credit rows
-  non-positive (exact spelling per SD-A shape). `vat_thb` NULL-vs-zero semantics (F3)
-  preserved verbatim on any new/changed column, stated in the mapped column's comment.
+- [ ] **AC-8 — Sign stated as schema, not convention** *(SD-A(b) as ruled — the
+  constraint splits across two tables)*.
+  CheckConstraints per the F2 precedent: `repair_case_closeout` money columns
+  **non-negative** (the invoice table can no longer hold the negative the measured
+  failure rode in on), `repair_case_credit_note` amounts **non-positive** (matching
+  the measured fixture and the export line). `vat_thb` NULL-vs-zero semantics (F3)
+  restated verbatim on the credit table's column comment — NULL = vendor not
+  VAT-registered, a different fact from `0.00`.
   Command: `uv run pytest tests/services/db/ -q -k "closeout or credit" 2>&1` including a direct-INSERT test that bypasses the API.
   Pass read fixed now: a raw INSERT of a negative invoice row or a positive credit row
   raises `IntegrityError` naming the constraint.
@@ -364,36 +471,50 @@ by ruling, not drift.
 
 ## Steps
 
-### Step 0: Ruling round (blocker — nothing lands before it)
+### Step 0: Ruling round — **DONE** (Cray, typed 2026-08-19) + residual confirmations
 
-Cray rules SD-A…SD-F (SD-A + SD-E together — the cardinality couples them). The
-executor re-fixes every *(ruling-shaped)* AC pass read in this file in the same
-commit that records the rulings, then re-greps AV-3 (readers of the close-out row)
-and confirms the exact retention/export test paths named in AC-5/AC-7 against the
-then-current tree. If AV-1 (Express reconciliation practice) can be answered by
-partner intake before Step 4, record the answer here; otherwise SD-C's ruling is
-marked provisional-on-AV-1 in the artifact.
+The rulings are recorded inline per SD and every pass read in this file is re-fixed
+against them (same edit, 2026-08-19; test paths in AC-5/AC-7 corrected to
+grep-verified ones in that edit). **Remaining Step-0 work for the executor, before
+Step 1:** re-grep AV-3 (readers of the close-out row) and re-confirm the AC-5/AC-6/
+AC-7 test paths against the then-current tree (the base moves), and pursue **AV-1 by
+partner intake — SD-C(b) is provisional on it; confirm before Step 4 lands.** If the
+intake answer contradicts two-line filing, SD-C returns to Cray with the answer
+attached — the executor does not re-decide it.
 
-### Step 1: Schema — `services/db/repair_case_closeout.py` + `alembic/versions/0026_*.py`
+### Step 1: Schema — new module `services/db/repair_case_credit_note.py` + `alembic/versions/0026_*.py`
 
-Per SD-A ruling:
-- **(a)-branch:** add `document_type` (`sa.Text`, NOT NULL, server_default `'invoice'`
-  for backfill, default dropped in the same migration after backfill — the F12 seed and
-  every existing writer then supply it explicitly) + nullable
-  `credits_tax_invoice_no` (NULL meaning stated in the column comment per F3's
-  discipline: *NULL = this row is an invoice, not a credit*); CheckConstraints:
-  document-type vocabulary (F2 precedent) + sign-by-kind (AC-8).
-- **(b)-branch:** new module/table `repair_case_credit_note` (TenantKeyMixin; own
-  `seq` Identity + `UniqueConstraint(tenant_id, seq)` per F1's pattern; FK to
-  `repair_case.case_id`; credited invoice named by document number, not by
-  `closeout_id` — a corrected invoice must not orphan the credit); migration `0026`
-  creates it.
-Update `operate_seed.py:674` constructor accordingly (F12). Money stays `Numeric`,
-never float (module docstring rule).
+Per SD-A(b) **as ruled** (the (a)/(c) shapes remain recorded in SD-A as the rejected
+alternatives; no `document_type` discriminator is added to `repair_case_closeout`):
+- New table `repair_case_credit_note`: TenantKeyMixin; own `seq` Identity +
+  `UniqueConstraint(tenant_id, seq)` per F1's pattern (append-only — a correction is
+  a new row, never an UPDATE); FK to `repair_case.case_id`; the credited invoice
+  named by **document number**, never by `closeout_id` — a corrected invoice must not
+  orphan the credit — and **no FK may target `repair_case_closeout`** (AV-2(ii): that
+  shape is invisible to the retention walks).
+- **Per-credit identity for corrections** (the consequence SD-E's ruled cardinality
+  makes mandatory — the crux itself noted a mistyped credit-note *number* cannot be
+  the identity key): each row carries its own `credit_note_id` PK; a correction row
+  names its predecessor via `supersedes_credit_note_id` (plain column, no FK — same
+  no-FK reasoning as the invoice linkage); *current* credits = unsuperseded rows, and
+  the over-credit arithmetic (Step 3) reads current credits only. Executor-directed
+  mechanism within the ruled shape, reviewable at PR — not a re-opened SD.
+- Migration `0026` creates the table and adds AC-8's CheckConstraints on **both**
+  tables; round-trip per AC-1. Money stays `Numeric`, never float (module docstring
+  rule); all three figures supplied, none derived (Out of Scope).
+- **Seed verified unaffected — F12's hazard is closed for the ruled branch:** SD-A(b)
+  leaves `RepairCaseCloseout`'s columns untouched, so the direct constructor at
+  `operate_seed.py:672-685` compiles and runs unchanged; no edit, no defaulting
+  (the NOT-NULL-column hazard was an (a)-branch consequence — moot as ruled).
+  Seeding a *demonstration* credit note is not a step of this PLAN; it rides the
+  keying-surface PLAN (see Out of Scope: UI).
 
 ### Step 2: Reader — SD-B's single seam
 
-Per SD-B(b): introduce the composite reader in `services/db/repair_case_closeout.py`,
+Per SD-B(b) **as ruled**: introduce the composite reader —
+`current_closeout_documents(session, case_id) → CurrentCloseoutDocuments(invoice:
+RepairCaseCloseout | None, credits: tuple[RepairCaseCreditNote, ...])`, the
+two-table equivalent SD-B(b) named — in `services/db/repair_case_closeout.py`,
 route **both** consumers (`repair_spend_export.py:683`, `cases.py:884`) through it,
 and make the raw-latest read uncallable from outside the module. Amend the F10
 ordering guard (`tests/services/db/test_run_analytics_ordering_guard.py:290`) in the
@@ -403,26 +524,42 @@ necessary and the one that prevents its recurrence.
 
 ### Step 3: Producer — `services/api/routers/cases.py` + `services/api/models/cases.py`
 
-Per SD-A ruling: either extend `CloseOutRequest` (`models/cases.py:422`) with the
-discriminator, or add a credit-note request model + route. Mechanisms, whichever
-branch:
+Per SD-A(b) **as ruled**: a credit-note request model + its own route —
+`CloseOutRequest` (`models/cases.py:422`) is **not** extended; the invoice path's
+request shape is untouched. Mechanisms:
 - The invoice path's sign check **stays**, message intact (AC-4).
-- The credit path enforces SD-E: internally coherent totals (reuse the existing
-  comparison), sign per kind, over-credit refused against the invoice's **current**
-  total + prior credits, credit-before-invoice refused (there is nothing to credit),
-  document number + date coherence rule carried over (`cases.py:841-856`).
+- The credit path enforces SD-E as ruled: internally coherent totals (reuse the
+  existing comparison), non-positive sign, **over-credit refused 422 against the
+  invoice's current total + the cumulative *current* credits** (SD-E's ruled
+  cardinality — N coexisting partials, ทยอยลด, must sum), credit-before-invoice
+  refused (there is nothing to credit), document number + date coherence rule
+  carried over (`cases.py:841-856`).
 - `key_closeout`'s 🔴 interim docstring block is rewritten to record the lift
-  (AC-4); `get_closeout` / its response model return the composite (SD-B).
+  (AC-4); `get_closeout` / its response model return the composite (SD-B(b)) —
+  the invoice plus **all** current credits as distinct documents.
 
 ### Step 4: Consumer — `services/db/repair_spend_export.py`
 
-Per SD-C + SD-F rulings. For the recommended (b)/(a) pair: `load_monthly_export` emits
-the credit line as its own row filed by the credit's `entered_at` month (F8's
-ungoverned precedent — never `tax_invoice_date`, which is nullable); `_build_row`
-splits into per-document assembly; `to_csv` unchanged in column count (AC-5);
-`is_fully_traceable` + `traceability_pct` + `audit_answers` per SD-F(a) — credit lines
-carried outside the KPI arithmetic, credit completeness folded into the case's
-judgment. The governed-month/approval-date filing for the *invoice* row is untouched.
+Per SD-C(b) + SD-F(a) **as ruled**. ⚠️ Gated on the AV-1 confirmation (Step 0) —
+SD-C(b) is provisional until the intake answer lands.
+- **`load_monthly_export` unions a second source — a verified gap, not a style
+  choice:** today the ungoverned branch enumerates cases **only** from
+  `RepairCaseCloseout.entered_at` (`repair_spend_export.py:631-640`) and the month's
+  case set is `governed_by_case | ungoverned_case_ids` (`:646`) — a case whose only
+  in-month activity is a credit would produce **no row at all**. Add the equivalent
+  select over `RepairCaseCreditNote.entered_at` to the enumeration, and file each
+  credit line by the credit's own `entered_at` month (F8's ungoverned precedent —
+  never the nullable document date), with the credit's document date in
+  `วันที่เอกสาร`.
+- `_build_row` splits into per-document assembly; its `latest_closeout` call
+  (`:683`) becomes the Step-2 composite reader.
+- `to_csv` unchanged in column count (AC-5).
+- KPI per SD-F(a): credit rows carried outside the KPI arithmetic — **AC-6's four
+  assertions are the spec** (denominator invariance; approval questions never asked
+  of a credit line; credit completeness folded into the case's `is_fully_traceable`;
+  the credit line inherits its case's governed status so `ungoverned_thb` never
+  shows negative escaped money on a governed case).
+- The governed-month/approval-date filing for the *invoice* row is untouched.
 
 ### Step 5: Tests
 
@@ -435,23 +572,30 @@ judgment. The governed-month/approval-date filing for the *invoice* row is untou
 
 ### Step 6: Retention + census closeout
 
-If SD-A created a table: `_FK_CHILD_MODELS` gains it in deletion order (F11), AC-7's
-probe resolves AV-2. Either branch: re-grep `RepairCaseCloseout` / the new table over
-`services/` + `verticals/` and reconcile against AV-3's census before the PR is
+SD-A(b) created the table, so this step fires unconditionally: `_FK_CHILD_MODELS`
+(`repair_case_retention.py:82-89`) gains `RepairCaseCreditNote` (F11; placement per
+AC-7 — no inter-child FK constrains it). **AC-7's probe IS AV-2's empirical
+resolution**: witness `test_ac5i` RED naming `repair_case_credit_note` before
+trusting the guard, and honor the standing prohibition — no FK targeting
+`repair_case_closeout` without first extending the guard family and witnessing the
+extension RED (AV-2(ii)). Then re-grep `RepairCaseCloseout` + `RepairCaseCreditNote`
+over `services/` + `verticals/` and reconcile against AV-3's census before the PR is
 opened.
 
 ### Step 7: Compliance flag + PLAN closeout
 
-AC-9's STATUS TODO; PLAN moves to `docs/plans/done/` only after Cray's rulings and all
-ACs are checked (keep `Status: Draft` until then — an "Accepted" PLAN G1-gates its own
-closeout).
+AC-9's STATUS TODO; PLAN moves to `docs/plans/done/` only after all ACs are checked
+(the rulings themselves are recorded — 2026-08-19, this file; keep `Status: Draft`
+until closeout — an "Accepted" PLAN G1-gates its own closeout, and Cray ratifies the
+PLAN at PR merge).
 
 ## Verification
 
 - Each AC's own command + fixed pass read, in AC order; AC-10's full gates last.
 - The one figure that summarises the whole PLAN, from AC-3's scenario: a case carrying
   a real invoice (`20,000.00`) and a real ใบลดหนี้ (`-15,000.00`) month-ends at
-  **`5,000.00`** (or SD-C(a)'s ruled equivalent), with both documents readable from
-  both consumers — against today's measured `20,000.00 → -15,000.00` replacement.
+  **`5,000.00`** (SD-C(b) as ruled: two lines summing to it, each matching a real
+  document), with both documents readable from both consumers — against today's
+  measured `20,000.00 → -15,000.00` replacement.
 - Non-vacuity: every probe above names its mutation, its reddened assertion, and the
   direction; a probe whose RED was never witnessed does not close its AC.
