@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-18T19:40:00+07:00
-session: 238
-current_batch: "s237–238 — PLAN-0110 drafted, ruled, BUILT and DEPLOYED to MS-S1; COMPLETE 7/7 and ARCHIVED. The video pivot refuted beat 4 on the live demo (Tab G is unpublished by ruling; Tab H replaces three shots with one frame). SEVEN PRs, #1208–#1214."
+last_updated: 2026-08-19T10:45:00+07:00
+session: 239
+current_batch: "s239 — EIGHT PRs (#1216-#1223), 0 open, and TWO host-state deploys to MS-S1 under separately typed gos. The video rulings rehomed tracked (seven, not four). Tab F opens the origin narrative with six passages mapped to six steps. DEPLOY.md created for this system and corrected on its first real use. The brand mark is live."
 current_actor: code
-blocked_on: "NOTHING blocks repo work; main is green. ADR-0037 SD-1 stays Cray's — unruled across SEVEN sessions. ADR-0038's three-strike counter still has NO owner."
-next_action: "Cray's pick: beat 4 rewritten + the Tab G→H visual mockup (stream 4), PLAN-0109 execution (Ask over repair cases), or PLAN-0107 Phase B. 🔴 First, rehome s237's video rulings out of the gitignored handoff — git grep finds none of them."
-head_commit: 32854ab
-recent_commits: [32854ab, 187138e, 20669ae, 83b80e1, b906193, 0de50e3, d5cfeff, f28c417, 58794e5, 375c21e]
+blocked_on: "NOTHING blocks repo work; main is green, 0 open PRs. ADR-0037 SD-1 stays Cray's — unruled across EIGHT sessions. ADR-0038's three-strike counter still has NO owner."
+next_action: "Cray's pick: name the three Advisory-proposal candidates so the gate panel stops reading as unfinished (small, unblocks the video); measure the run-list backlog badge on the host now that DEPLOY.md makes host reads routine; PLAN-0109 execution (Ask over repair cases); or PLAN-0107 Phase B. The font-size decision gates re-measuring every geometry number in the beat-4 mockup."
+head_commit: dbb3e58
+recent_commits: [dbb3e58, b1701b4, 71e7723, 54fb7a6, d665c3e, 907a842, ca10604, e08bb73, c01dd2a, 75690ec]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,97 @@ recent_commits: [32854ab, 187138e, 20669ae, 83b80e1, b906193, 0de50e3, d5cfeff, 
 ---
 
 ## Current Focus
+
+> **Session 239, 2026-08-18→19 (head_commit `32854ab` → `dbb3e58`) — EIGHT PRs
+> MERGED (#1216–#1223), 0 open, and TWO host-state deploys to MS-S1 under two
+> separately typed §8 gos.**
+>
+> 🔴 **The organising finding, and it is not about any one artifact: a summary
+> that is ACCURATE about what it cites still shrinks.** s237's handoff cited the
+> storyboard's ruling table (four rulings) and was correct; s238 inherited that
+> and was correct; the actual count was **seven**, because one was typed two days
+> earlier and recorded INLINE in the beat it governs rather than in the table —
+> and it is the one with a live tripwire (*"a number enters beat 2.5 or 4"*).
+> Going to the ORIGINATING artifact rather than the latest summary is what
+> recovered it. Everything now lives in `docs/strategy/public/intro-video-production-rulings.md`,
+> tracked, each row carrying its **date and source position** for exactly this
+> reason. Before #1216, `git grep` over the repo returned **ZERO** hits for the
+> CTA ruling, `barely say`, `verify-chain` and `founder on camera`.
+>
+> 🔴 **A correct fix silently disarmed the guard that was watching it — measured,
+> and the more transferable half of the session.** s238 rightly corrected every
+> documented host path to forward slashes, because a backslash is stripped by the
+> ssh→PowerShell chain and fails as a missing file. `test_every_documented_operator_path_resolves`
+> accepted a drive letter only before a **backslash**, so that correction moved
+> ten `docker compose -f C:/…` commands OUT of its reach and the guard matched
+> **zero** of them. ⚠️ **The module's own anti-vacuity floor (`checked >= 5`)
+> stayed satisfied by the READMEs the whole time** — a count floor cannot see a
+> category of document going dark. Widened to every profile `*.md` and the regex
+> fixed: **26 paths checked, 0 broken**, eight of them previously unreachable and
+> three (`DEMO-RESET.md`) unchecked since the day they were written.
+>
+> 🔴 **The shared deploy script cannot deploy this system, and the runbook handed
+> it over without saying so.** Plan mode — which touches nothing, verified in the
+> code rather than taken from the docstring — printed `oct-energy` in every
+> literal. `--execute` would have built and shipped the wrong profile's image and
+> recreated a container on a system nobody meant to touch. The fact was already
+> recorded in three places, none of them where §3 sends a reader: a **routing**
+> gap, not a knowledge gap. Fixed at the point of handover (#1220), and the
+> missing procedure now exists — `deploy/published/oct-fleet-maintenance/DEPLOY.md`
+> (#1221), the procedure tier this system never had. Its **first real use found
+> its own gap**: §2 said to diff `<last-deployed-sha>..HEAD` without saying the
+> sha comes from the HOST's checkout, which is not the image's build sha — here
+> `205ba4b3` vs `907a842`. Corrected in the same PR as the deploy record (#1223).
+>
+> ✅ **Tab F now opens the raw customer story its procedure was formalised from**
+> (#1218), with six passages numbered against `governed_repair_approval`'s six
+> steps and the legend built from the procedure's **live** steps. `reshape` is
+> deliberately left unmapped and the legend says so — it is platform machinery,
+> not a rule the business stated, and forcing a sentence onto it would make the
+> panel's claim false in the one place a careful viewer checks. Needs no
+> infrastructure: `^/assets/.+$` is already allowlisted, `connect-src 'self'`
+> already admits the fetch, Tab F is already published under SD-3. It had to live
+> under `services/` because the Dockerfile COPYs that and **pointedly not `docs/`**.
+>
+> ✅ **R8 RULED (Cray, typed): drop the ฿15,000 contrast from beat 4** (#1217).
+> Measured this session and recorded by no prior artifact: the remap trades a
+> **demonstration** for a **declaration** — no published tab renders the second,
+> cheaper repair routing to the fleet manager. Option (b), asserting it over Tab
+> A's rings, was rejected as dishonest and the measurement made it worse than it
+> looked — Tab A shows **three** anomalies, not the two `published.env` documents,
+> and two of the three exceed the band floor.
+>
+> ✅ **The header brand mark is the Cray.J logo** (#1222), deployed and confirmed
+> by Cray on the live surface. Recorded rather than discovered later: it is **not
+> legible at 28 px** — the artwork paints at 7% of source scale, so the wordmark
+> inside it renders about 16×4.6 px. Cray chose that form knowingly from three
+> options; the fix is cropping the artwork to the bunny and needs no code change.
+>
+> **Both deploys were do-no-harm verified against a baseline captured BEFORE the
+> first action**: this system's `cloudflared` and `postgres` kept their container
+> ids and uptimes both times — the tunnel never re-registered, `pgdata` was never
+> at risk — and both sibling systems' four containers were untouched. The demo
+> read `DEMO-STATE: PRISTINE` before and after each, so **`--execute` appears
+> nowhere in what was executed** and no row was deleted. Image id **IDENTICAL on
+> both machines** each time, which is the guarantee — "a rebuild produced the same
+> id" is not, since buildkit's provenance attestation makes an id identify a build
+> rather than its content.
+>
+> ⚠️ **The half neither deploy could close: the render through Cloudflare Access.**
+> It needs an interactive PIN no automated step can satisfy. Cray closed it both
+> times by opening the live system, and both records say so — recorded as **Cray's
+> observation, not this process's measurement**, because blurring that would make
+> the next deploy's "verified" weaker than it reads.
+>
+> **Gates: 4170 passed / 8 skipped**, `mypy --strict services/ verticals/` clean
+> over 201 files, bare `ruff check .` + `ruff format --check .` clean over 642.
+> Twenty-two non-vacuity probes across the session, each restored from a `/tmp`
+> copy and each seen RED with a message naming what broke. Host records:
+> `docs/logs/2026-08-18-s239-fleet-origin-narrative-deploy.md` and
+> `docs/logs/2026-08-19-s239-brand-mark-deploy.md`.
+
+_[The sessions-233–234 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
+this reconcile, keeping the window at four sessions.]_
 
 > **Sessions 237–238, 2026-08-18 (head_commit `de3295a` → `32854ab`) — SEVEN PRs
 > MERGED (#1208–#1214), 0 open. PLAN-0110 drafted, ruled, built and DEPLOYED in
@@ -177,72 +268,6 @@ recent_commits: [32854ab, 187138e, 20669ae, 83b80e1, b906193, 0de50e3, d5cfeff, 
 > `pytest tests/` **4115 passed / 8 skipped**, `mypy --strict services/` clean
 > over 136, ruff + format clean over 631, CI `gate` **pass** every time.
 
-> **Sessions 233–234, 2026-08-15→16 (head_commit `5425822` → `027986e`) — TWELVE
-> PRs merged (#1180–#1191), 0 open. Fleet's last gate closed, fleet WENT LIVE, a
-> human drove it, and it broke in a way CI structurally cannot see.
-> `oct-fleet-maintenance` is published system #3 and is now serving the FIXED
-> build; PLAN-0103 is COMPLETE 11/11 and PLAN-0106 COMPLETE 7/7, both ARCHIVED.**
->
-> ✅ **AC-11's RoPA was written and ADOPTED** (`docs/compliance/ropa-fleet-cases.md`,
-> #1184) — the artifact the whole chain waited on. 🔴 **Its authorship DEPARTS
-> from ADR-0037 D2.1, disclosed ON the artifact:** Code drafted at Cray's request,
-> Cray ruled every promise slot and adopted. **SD-1 stays unruled; until it is,
-> D2.1 as written governs.**
->
-> 🔴 **s233's load-bearing work was VERIFICATION, not construction — seven
-> inherited claims were checked and REFUTED**, including ADR-0037's OQ-3, which
-> had been *ruled* 2026-08-14 while its recorded Recommendation was still the
-> **OVERRULED** option. Three downstream artifacts inherited it and it nearly
-> sent the RoPA into the wrong file. _[Closed #1185. The general rule — a ruled
-> OQ closes in the same change that records the ruling — is proposed as SD-2 and
-> is UNRULED.]_
->
-> ✅ **Tab J shows real money — ฿33,705, not a structural ฿0** (#1187), with an
-> honest empty state. ⚠️ Seeding onto the demo's flagship truck **displaced** its
-> ฿48,000 axle breach (the query projects the latest event **per truck**) —
-> silent demo damage caught only by the full suite.
->
-> ✅ **s234 executed Step 10 under Cray's typed §8 go**, and the pre-flight found
-> **two steps every prose summary of that sequence had omitted** — the image was
-> not on the host (`build:` with no `image:`, so `up -d` would build on the deploy
-> host and fail there), and the host checkout was deliberately **not** pulled
-> (the `deploy/` diff across those eight commits is empty).
->
-> 🔴 **The keyed `/whoami` control was recorded as a DIFFERENTIAL** — keyless
-> 401, correct key 200, **wrong key 401**. The third reading is what makes the
-> second mean anything: a `200` alone is equally explained by "auth is off".
->
-> 🔴 **Two documentation claims were MEASURED FALSE and corrected in the same
-> PR** — the backslashed Windows path stripped through `ssh`→PowerShell, and
-> *"302 proves a **working** origin"*. **Both now live in the runbooks they
-> misled.** ⚠️ **Step 9's headroom projection is exceeded (≈1.33 GiB vs ≈0.95)
-> because it models containers at boot** — the PLAN-0103 Active TODO owns that
-> residual.
->
-> Do-no-harm held on both host actions, against baselines captured **before** the
-> first one: `oct-energy-app` and `oct-procurement-app` never restarted.
->
-> 🔴 **Then Cray drove the live surface through Access, and that is the session's
-> lesson.** It closed the scope limit Code had recorded (all six tabs render;
-> Tab J shows **฿33,705** live) **and found a defect 4,113 green tests could
-> not** — Tab I's root stood **919px inside a 614px `overflow: hidden` view**, so
-> **305px was unreachable** with no scrollbar and no error. Fixed by copying
-> Tab J's contract (#1190), guarded by a stylesheet-reading test, shipped live
-> under a second typed §8 go. **CI has no JS runtime — that is the gap, not a
-> missing test; own Active TODO.**
->
-> ✅ **Redeploy, measured:** the new image id **differs**, **only `app` was
-> recreated** so the tunnel never re-registered, both seeds' idempotency proven on
-> real data, and the audit chain's `head_hash` came back **byte-identical** —
-> which proves nothing was written, a claim `intact: true` alone cannot make.
-> ⚠️ `index.html` is served `cache-control: no-store`, which **narrows**
-> PLAN-0100's "nothing purges the edge" residual without closing it (fonts stand).
->
-> **Gates: 4114 passed / 8 skipped**, `mypy --strict services/` clean over 136
-> files, ruff + format clean over 631. Full record — bring-up **and** redeploy
-> addendum: `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`.
-
-_[The session-232 block rotated to `docs/status-archive/2026-h1d-current-focus.md`
 this reconcile, keeping the window at four sessions.]_
 
 ## Prior focus (archived)
@@ -262,6 +287,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-19 | **s239 — EIGHT PRs (#1216–#1223) and TWO host-state deploys under separately typed gos.** 🔴 **An ACCURATE summary still shrinks:** the video rulings were seven, not four — one typed two days earlier and recorded inline rather than in the table, carrying a live tripwire. Rehomed tracked, each row stamped with its source position. 🔴 **s238's correct forward-slash fix silently disarmed the path guard** for the ten commands it corrected, and the module's own `checked >= 5` floor stayed satisfied by the READMEs — a count floor cannot see a document category go dark. Now 26 paths checked, 0 broken. 🔴 **The shared `deploy.py` cannot deploy this system** and §3 handed it over without saying so; `DEPLOY.md` created, and its FIRST use found its own gap (`<last-deployed-sha>` comes from the HOST checkout, not the image's build sha). ✅ Tab F opens the origin narrative with six passages mapped to six steps, `reshape` deliberately unmapped. ✅ R8 ruled: drop the ฿15,000 contrast. ✅ Brand mark live — and **not legible at 28 px**, recorded rather than discovered later. | `dbb3e58` / [#1218](https://github.com/CrayJThiemsert/vero-lite/pull/1218) / [#1221](https://github.com/CrayJThiemsert/vero-lite/pull/1221) / `deploy/published/oct-fleet-maintenance/DEPLOY.md` / `docs/strategy/public/intro-video-production-rulings.md` |
 | 2026-08-18 | **s238 — PLAN-0110 BUILT and DEPLOYED; COMPLETE 7/7, ARCHIVED.** Tab A run markers + a three-mode filter + a deploy-time demo reset. 🔴 **The gate's three proposals ALL name a `case_id`; two resolve to no row** — reading the truck off the event instead of the case table stamps nothing forever, green. ✅ Live: `CONSUMED` → `PRISTINE`, subjects landed, #1209's fix finally live, audit rows 9 → 17. 🔴 **The deploy found `DEMO-RESET.md`'s bootstrap gap** — the tool ships in the image it must run before. | `32854ab` / [#1213](https://github.com/CrayJThiemsert/vero-lite/pull/1213) / [#1214](https://github.com/CrayJThiemsert/vero-lite/pull/1214) / `docs/logs/2026-08-18-plan0110-*.md` |
 | 2026-08-18 | **s237 — the video pivot: measuring the LIVE demo REFUTED beat 4.** Tab G is not on the published profile **by ruling**; the storyboard was verified on a dev profile. Cray ruled (A) shoot published; Tab H replaces three shots with ONE frame, no scrolling. 🔴 **A real fleet defect found on live** — a settled repair in the visitor's approval queue, root cause in TWO layers (the terminal step is itself gated, so one resume is not enough). PLAN-0109 + PLAN-0110 drafted, all five SDs ruled. ⚠️ **Video rulings live only in a gitignored handoff.** | `b906193` / [#1208](https://github.com/CrayJThiemsert/vero-lite/pull/1208)–[#1212](https://github.com/CrayJThiemsert/vero-lite/pull/1212) / `docs/conventions/local-first-published-parity.md` |
 | 2026-08-18 | **s236 — PR-B's carve-out rehome COMPLETE (61,736 → 48,852 B, under R1's soft target) and PLAN-0107 Phase A CLOSED 6/6.** CI gained four oracles: JS syntax, asset bijection, per-vertical lifespan boot, widened mypy + two adopted hooks (**+74 s, no new dependency**). 🔴 **AC-3's own claim was MEASURED FALSE for the DEFAULT vertical** — the boot smoke misses a malformed spec on `energy`. 🔴 **Eleven inherited claims checked, EIGHT wrong.** | `de3295a` / [#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204) / `docs/plans/0107-*.md` |
@@ -271,9 +297,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-15 | **s232 — ELEVEN PRs MERGED (#1170–#1179); the "fleet blocks on ONE artifact" framing was REFUTED — 14 gates walked, TWO owned by nobody.** Six typed rulings folded. ✅ **PLAN-0106 then RULED, BUILT and MERGED — D2.4 DISCHARGED** — and Cloudflare + host secrets closed. 🔴 **Fleet's gate list is now ONE item, AC-11's RoPA.** | `5425822` / [#1178](https://github.com/CrayJThiemsert/vero-lite/pull/1178) / [#1179](https://github.com/CrayJThiemsert/vero-lite/pull/1179) / `docs/plans/done/0106-*.md` / `docs/logs/2026-08-15-fleet-cloudflare-*.md` |
 | 2026-08-14 | **s231 — PLAN-0105 drafted, its four SD slots RULED (Cray, typed), built and CLOSED 11/11 in one session: fleet's visitor cases, their six FK children and their upload dirs delete 90 days after `opened_at`.** 🔴 **The declared order deleted `repair_case_quote` BEFORE its composite-FK child** — `ForeignKeyViolation` on every accepted-quote case, swallowed by the fail-soft and **retried forever** with unit tests green; **AC-5 checks membership, not order**. Caught by the Step-6 scenario. | `b2fe45e` / [#1167](https://github.com/CrayJThiemsert/vero-lite/pull/1167) / `docs/plans/done/0105-*.md` |
 | 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
-| 2026-08-13 | **s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go; AC-7 CLOSED, PLAN COMPLETE 8/8 and ARCHIVED.** 🔴 **The fresh 12/13 RETIRES the prior figure as non-comparable — it does NOT beat it** (prompt changed in #1149; gold grew 12 → 13), and the obvious citation is a trap: that file's arm-comparison `11/12` is **text-to-SQL**, not engine-A's. nl-06's miss was re-run, failed again, investigated — **not a regression; the victim moved**. | `ad2804d` (head_commit) / [#1151](https://github.com/CrayJThiemsert/vero-lite/pull/1151) / `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum |
 
-_[The 2 oldest rows (s226–s227) rotated to `docs/status-archive/2026-h1-status.md` this reconcile, holding the table at ten.]_
+_[The oldest row (s228) rotated to `docs/status-archive/2026-h1-status.md` this reconcile, holding the table at ten.]_
 
 ## In-Flight Discussions
 
