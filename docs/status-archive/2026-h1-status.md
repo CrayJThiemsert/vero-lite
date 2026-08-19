@@ -1356,3 +1356,7 @@ ten-row window while adding the session-229 row. Moved byte-exact, never retyped
 ### Rotated 2026-08-19, session-239 reconcile — Recent Decisions s228
 
 | 2026-08-13 | **s228 — PLAN-0104 Step 7 EXECUTED under a typed §8 go; AC-7 CLOSED, PLAN COMPLETE 8/8 and ARCHIVED.** 🔴 **The fresh 12/13 RETIRES the prior figure as non-comparable — it does NOT beat it** (prompt changed in #1149; gold grew 12 → 13), and the obvious citation is a trap: that file's arm-comparison `11/12` is **text-to-SQL**, not engine-A's. nl-06's miss was re-run, failed again, investigated — **not a regression; the victim moved**. | `ad2804d` (head_commit) / [#1151](https://github.com/CrayJThiemsert/vero-lite/pull/1151) / `benchmarks/nl_query_feasibility/RESULTS.md` §Addendum |
+
+### Rotated 2026-08-19, session-240 reconcile — Recent Decisions s229
+
+| 2026-08-14 | **s229 — R8's PLAN-reference guard was blind to glob refs (`NNNN-*.md`, the form registries use) since s183; #1153 closes it.** The one live dead pointer had been dead since s216 and was **never reported once** — including by the commit that fixed the stream-2 row beside it. Resolves globs through the **same MOVED-not-MISSING predicate**; `Path.glob` would descend into `done/` and fail **OPEN**. | `ee968e5` (head_commit) / [#1153](https://github.com/CrayJThiemsert/vero-lite/pull/1153) / `docs/runbooks/memory-architecture.md` §R8 |
