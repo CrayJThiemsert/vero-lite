@@ -202,7 +202,13 @@
     // ---- header ----
     const header = h('div', { class: 'header' });
     header.appendChild(h('div', { class: 'brand' }, [
-      h('div', { class: 'mark' }, icon('grid', { width: 16, height: 16 })),
+      // The brand mark is a shipped raster, not an inline icon, so the file has to
+      // exist at this exact string or the header renders a broken image — a seam
+      // nothing else in the suite reads. tests/api/test_brand_mark_contract.py is
+      // that reader: it parses this src and GETs it through the real static mount.
+      h('div', { class: 'mark' }, h('img', {
+        src: 'assets/brand/cray-j.png', alt: 'Cray.J', width: 24, height: 17
+      })),
       h('div', { class: 'wordmark' }, [h('b', null, 'OCT'), h('span', null, 'Control Tower')])
     ]));
     metaChipsEl = h('div', { class: 'meta-chips' });

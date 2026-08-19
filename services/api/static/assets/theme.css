@@ -186,13 +186,28 @@ body { overflow: hidden; }
   padding-left: 14px;
 }
 .brand { display: flex; align-items: center; gap: 11px; padding-right: 14px; flex: 0 0 auto; }
+/* The tile keeps its 28x28 footprint so the header bar's geometry is untouched.
+   Its ground is now light rather than the dark gradient, because the mark is an
+   RGB PNG with no alpha — a white-backed logo dropped on the old gradient reads
+   as a white rectangle punched into the bar, not as a logo. */
 .brand .mark {
   width: 28px; height: 28px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: 0 0 auto;
-  background: linear-gradient(160deg, #2b3a52, #19222f);
+  background: #f4f6f8;
   border: 1px solid var(--line-strong);
+  overflow: hidden;
 }
 .brand .mark svg { width: 16px; height: 16px; }
+/* `contain`, never `cover`: the mark is 374x262 and the tile is square, so a
+   cover crop would cut the wordmark off and a stretch would distort the bunny.
+   Contained it renders about 24x17 inside the 28px tile. */
+.brand .mark img {
+  width: 100%; height: 100%;
+  object-fit: contain;
+  padding: 1px;
+  box-sizing: border-box;
+  display: block;
+}
 .brand .wordmark { display: flex; flex-direction: column; line-height: 1.05; }
 .brand .wordmark b { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
 .brand .wordmark span { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--tx-2); }
