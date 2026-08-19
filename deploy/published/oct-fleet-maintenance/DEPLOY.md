@@ -97,6 +97,59 @@ constraint (reset first, boot second) changes the sequence.
 
 ---
 
+## 2a. Pre-ship — build locally, then read what you are about to ship
+
+This step **builds**, so it is not part of §2's read-only set. It touches nothing on the
+host, so it needs no §0 go of its own — and it runs **before** the §3 go is asked for.
+
+§3 asserts *"build on the dev box, never on the host"* in prose and never shows the
+command. Here it is, with the two placeholders compose demands. Both are `:?`-required in
+`docker-compose.yml`, so compose refuses to interpolate the file without them — even to
+decide what to build:
+
+```bash
+OCT_FLEET_DB_PASSWORD=placeholder CLOUDFLARED_CREDENTIALS_FILE=/dev/null docker compose -f deploy/published/oct-fleet-maintenance/docker-compose.yml -p oct-fleet-maintenance build app
+```
+
+⚠️ `-p oct-fleet-maintenance` is load-bearing here, not decoration. The `app` service
+declares no `image:` key, so compose names the image `<project>-<service>` — the project
+flag is what makes it `oct-fleet-maintenance-app:latest`, the exact tag §3 ships.
+
+Then read the files this deploy changes **inside the freshly built image**, and compare
+each against the working tree it was built from:
+
+```bash
+docker run --rm --entrypoint sha256sum oct-fleet-maintenance-app:latest /app/<path> /app/<path>
+sha256sum <path> <path>
+```
+
+| Read | Pass, fixed **before** the run |
+|---|---|
+| the two hash columns | **identical, line for line.** A mismatch means the file in the image is not the file you edited |
+| the image-side command at all | it prints a hash per path. `sha256sum: ...: No such file or directory` means the file **never entered the image** — the failure this whole step exists to catch |
+
+**Which files.** The ones this deploy's own diff touches under the build context. §2
+already teaches taking that diff for the host's two files; this is the same diff, widened
+from what the host reads to what `COPY` carries. A deploy that ships one asset checks one
+file — the step scales to the change, not to the repo.
+
+🔴 **Hash the content; never compare image ids.** §3 gives the reason and it applies here
+first: buildkit's provenance attestation makes an id identify a *build* rather than its
+content, so a local id is not evidence about what is inside. Ids are the §3 guarantee
+because they are compared **across machines**; content is what this step is for.
+
+**What this catches, and why §4 catches it too late.** A `.dockerignore` entry that
+excludes the asset, a `COPY` that never reached it, a path that moved under an unchanged
+Dockerfile. §4's in-container read finds all three — but only **after** step 5 has
+recreated the live container, with `:prev` one deep as the only way back. This step moves
+the same discovery to a point where the host has not been touched at all.
+
+⚠️ **A pass here does not replace §4.** This proves the image on the dev box is right; §4
+proves the image the host is *running* is that image. Shipping is between them, and §3
+step 3's id equality is what joins the two.
+
+---
+
 ## 3. The sequence — five commands, in this order
 
 ```bash
