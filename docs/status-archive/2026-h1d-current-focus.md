@@ -714,3 +714,157 @@ DSR-on-request remainder.
 > on Cray's typed S1 ruling; both `Draft`, unratified. **Gates, eight times:**
 > `pytest tests/` **4115 passed / 8 skipped**, `mypy --strict services/` clean
 > over 136, ruff + format clean over 631, CI `gate` **pass** every time.
+
+### Rotated 2026-08-20, session-241 reconcile — Current Focus s237-238
+
+> **Sessions 237–238, 2026-08-18 (head_commit `de3295a` → `32854ab`) — SEVEN PRs
+> MERGED (#1208–#1214), 0 open. PLAN-0110 drafted, ruled, built and DEPLOYED in
+> one arc; s237 was never separately reconciled, so this block carries both.**
+>
+> 🔴 **s237's method, and it is the transferable part: measuring the LIVE demo
+> refuted the intro video's central beat.** Beat 4's three shots film **Tab G**,
+> which the published profile does not serve — excluded **by ruling** (SD-3 s218 +
+> ADR-0032 D1.2), while the storyboard was verified on a local dev profile where
+> all ten tabs render. Cray ruled (A): shoot on the published profile. Measuring
+> the replacement found **Tab H carries the whole beat in ONE frame, no scrolling**
+> (`docH == viewport == 737`), against Tab G's two halves 797 px apart.
+>
+> 🔴 **A real fleet defect, found on the LIVE system, with a NON-obvious second
+> layer** (#1209). Tab H showed a **settled** repair — invoice keyed, case CLOSED —
+> sitting in the visitor's approval queue. Root cause: `seed_settled_history_case`
+> resolved the gate without resuming; **and one resume is not enough**, because
+> `governed_repair_approval`'s TERMINAL step is itself `autonomy: gated`, so
+> resuming once parks the run again at `fulfill`, still `waiting_human`. **The
+> money was never wrong**, which is why no offline oracle noticed — the defect
+> lived in a run's status field, on a screen counting RUNS while every assertion
+> counted CASES. An instrument existed and was aimed one field to the left.
+>
+> ✅ **PLAN-0110 COMPLETE 7/7 and ARCHIVED** — Tab A run markers, a three-mode run
+> filter, and a deploy-time demo reset ([#1213](https://github.com/CrayJThiemsert/vero-lite/pull/1213) code,
+> [#1214](https://github.com/CrayJThiemsert/vero-lite/pull/1214) evidence).
+> 🔴 **The measurement that reversed the obvious design:** the parked gate carries
+> **three** proposals and **all three name a `case_id`** — two exist only in the
+> fixture and resolve to no row. Reading `truck_id` off the ingested event (the
+> shorter path) yields three trucks, trips the ambiguity guard, and stamps
+> **nothing, forever**, with every test green. The `repair_case` lookup is the
+> discriminator, not a formality.
+>
+> ⚠️ **TWO divergences from PLAN-0110's own wording, named in its Status block
+> rather than left in a diff:** Step 3's *"one transaction"* is incompatible with
+> reusing `delete_case` (which owns its commit + rollback by PLAN-0105 contract);
+> and Step 4's runbook location **reddened the ADR-0036 D2 label guard**, so the
+> operator procedure ships in the profile directory instead.
+>
+> ✅ **Step 7 DEPLOYED to MS-S1 under a typed §8 go.** `DEMO-STATE: CONSUMED` →
+> `PRISTINE`; both demo runs gained a `subject` (`NULL` before, so Tab A could key
+> no marker); `run-fleet-demo-history` went `waiting_human` → **`completed`**, so
+> #1209's fix is finally live. Audit rows **9 → 17, never decreased**. Only `app`
+> recreated; postgres + cloudflared kept their container ids.
+> 🔴 **The deploy found a gap in a file merged hours earlier:** `DEMO-RESET.md`
+> prescribes reset-then-`up -d`, but **the tool ships inside the image it must run
+> before** — impossible on a bootstrap deploy. It fails safely (no token = failed
+> check, by that file's own rule); §2a now documents the four-step form.
+> Full record: `docs/logs/2026-08-18-plan0110-fleet-demo-reset-deploy.md`.
+>
+> 🔴 **CARRIED RISK — s237's video rulings exist ONLY in a gitignored handoff**
+> (`.claude/handoffs/session-237/…-CLOSE-…`): Cray's option-(A) ruling, the CTA
+> decision (*no demo URL on screen*, or viewers hit the Access wall), and the
+> beat-4 Tab G→H remap. `git grep` finds none of it. Needs a tracked home before
+> the clip is shot.
+
+### Rotated 2026-08-20, session-241 reconcile — Current Focus s239
+
+_[Rotated ONE session below R2's four-session window, deliberately. Keeping
+this block would have left `docs/STATUS.md` at ~54 KB, over R1's 49,152 B soft
+target, because the s241 reconcile added five citation-dense Active-TODO
+corrections. Current Focus therefore holds s240 + s241 only. The trade is R2's
+window against R1's soft target — neither dominant — and the content is
+preserved verbatim here rather than trimmed.]_
+
+> **Session 239, 2026-08-18→19 (head_commit `32854ab` → `dbb3e58`) — EIGHT PRs
+> MERGED (#1216–#1223), 0 open, and TWO host-state deploys to MS-S1 under two
+> separately typed §8 gos.**
+>
+> 🔴 **The organising finding, and it is not about any one artifact: a summary
+> that is ACCURATE about what it cites still shrinks.** s237's handoff cited the
+> storyboard's ruling table (four rulings) and was correct; s238 inherited that
+> and was correct; the actual count was **seven**, because one was typed two days
+> earlier and recorded INLINE in the beat it governs rather than in the table —
+> and it is the one with a live tripwire (*"a number enters beat 2.5 or 4"*).
+> Going to the ORIGINATING artifact rather than the latest summary is what
+> recovered it. Everything now lives in `docs/strategy/public/intro-video-production-rulings.md`,
+> tracked, each row carrying its **date and source position** for exactly this
+> reason. Before #1216, `git grep` over the repo returned **ZERO** hits for the
+> CTA ruling, `barely say`, `verify-chain` and `founder on camera`.
+>
+> 🔴 **A correct fix silently disarmed the guard that was watching it — measured,
+> and the more transferable half of the session.** s238 rightly corrected every
+> documented host path to forward slashes, because a backslash is stripped by the
+> ssh→PowerShell chain and fails as a missing file. `test_every_documented_operator_path_resolves`
+> accepted a drive letter only before a **backslash**, so that correction moved
+> ten `docker compose -f C:/…` commands OUT of its reach and the guard matched
+> **zero** of them. ⚠️ **The module's own anti-vacuity floor (`checked >= 5`)
+> stayed satisfied by the READMEs the whole time** — a count floor cannot see a
+> category of document going dark. Widened to every profile `*.md` and the regex
+> fixed: **26 paths checked, 0 broken**, eight of them previously unreachable and
+> three (`DEMO-RESET.md`) unchecked since the day they were written.
+>
+> 🔴 **The shared deploy script cannot deploy this system, and the runbook handed
+> it over without saying so.** Plan mode — which touches nothing, verified in the
+> code rather than taken from the docstring — printed `oct-energy` in every
+> literal. `--execute` would have built and shipped the wrong profile's image and
+> recreated a container on a system nobody meant to touch. The fact was already
+> recorded in three places, none of them where §3 sends a reader: a **routing**
+> gap, not a knowledge gap. Fixed at the point of handover (#1220), and the
+> missing procedure now exists — `deploy/published/oct-fleet-maintenance/DEPLOY.md`
+> (#1221), the procedure tier this system never had. Its **first real use found
+> its own gap**: §2 said to diff `<last-deployed-sha>..HEAD` without saying the
+> sha comes from the HOST's checkout, which is not the image's build sha — here
+> `205ba4b3` vs `907a842`. Corrected in the same PR as the deploy record (#1223).
+>
+> ✅ **Tab F now opens the raw customer story its procedure was formalised from**
+> (#1218), with six passages numbered against `governed_repair_approval`'s six
+> steps and the legend built from the procedure's **live** steps. `reshape` is
+> deliberately left unmapped and the legend says so — it is platform machinery,
+> not a rule the business stated, and forcing a sentence onto it would make the
+> panel's claim false in the one place a careful viewer checks. Needs no
+> infrastructure: `^/assets/.+$` is already allowlisted, `connect-src 'self'`
+> already admits the fetch, Tab F is already published under SD-3. It had to live
+> under `services/` because the Dockerfile COPYs that and **pointedly not `docs/`**.
+>
+> ✅ **R8 RULED (Cray, typed): drop the ฿15,000 contrast from beat 4** (#1217).
+> Measured this session and recorded by no prior artifact: the remap trades a
+> **demonstration** for a **declaration** — no published tab renders the second,
+> cheaper repair routing to the fleet manager. Option (b), asserting it over Tab
+> A's rings, was rejected as dishonest and the measurement made it worse than it
+> looked — Tab A shows **three** anomalies, not the two `published.env` documents,
+> and two of the three exceed the band floor.
+>
+> ✅ **The header brand mark is the Cray.J logo** (#1222), deployed and confirmed
+> by Cray on the live surface. Recorded rather than discovered later: it is **not
+> legible at 28 px** — the artwork paints at 7% of source scale, so the wordmark
+> inside it renders about 16×4.6 px. Cray chose that form knowingly from three
+> options; the fix is cropping the artwork to the bunny and needs no code change.
+>
+> **Both deploys were do-no-harm verified against a baseline captured BEFORE the
+> first action**: this system's `cloudflared` and `postgres` kept their container
+> ids and uptimes both times — the tunnel never re-registered, `pgdata` was never
+> at risk — and both sibling systems' four containers were untouched. The demo
+> read `DEMO-STATE: PRISTINE` before and after each, so **`--execute` appears
+> nowhere in what was executed** and no row was deleted. Image id **IDENTICAL on
+> both machines** each time, which is the guarantee — "a rebuild produced the same
+> id" is not, since buildkit's provenance attestation makes an id identify a build
+> rather than its content.
+>
+> ⚠️ **The half neither deploy could close: the render through Cloudflare Access.**
+> It needs an interactive PIN no automated step can satisfy. Cray closed it both
+> times by opening the live system, and both records say so — recorded as **Cray's
+> observation, not this process's measurement**, because blurring that would make
+> the next deploy's "verified" weaker than it reads.
+>
+> **Gates: 4170 passed / 8 skipped**, `mypy --strict services/ verticals/` clean
+> over 201 files, bare `ruff check .` + `ruff format --check .` clean over 642.
+> Twenty-two non-vacuity probes across the session, each restored from a `/tmp`
+> copy and each seen RED with a message naming what broke. Host records:
+> `docs/logs/2026-08-18-s239-fleet-origin-narrative-deploy.md` and
+> `docs/logs/2026-08-19-s239-brand-mark-deploy.md`.
