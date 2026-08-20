@@ -1,6 +1,6 @@
 ---
 name: code-operational-policy
-description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, the dispatch-quality discipline (Frontier + oracle-scoped accelerator + REJECT-if blocks, the 4-move follow-up vocabulary, the pre-close counterexample step), and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Use when deciding worktree isolation, handing off a transcript, authoring a Cowork / plan-drafter / subagent dispatch, following up on a subagent's partial return, closing an acceptance criterion, judging a ruff/lint gate, interpreting test failures in a Windows worktree, OR planning a host-state run / live benchmark / multi-step verification. Other tiers do not need this.
+description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, the dispatch-quality discipline (Frontier + oracle-scoped accelerator + REJECT-if blocks, the 4-move follow-up vocabulary, the pre-close counterexample step), and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Also carries the instrument-vs-subject test for when a check and a claim disagree, and the pre-committed assertion battery for any two-file move (rotation / archive append / rehome). Use when deciding worktree isolation, handing off a transcript, authoring a Cowork / plan-drafter / subagent dispatch, following up on a subagent's partial return, closing an acceptance criterion, judging a ruff/lint gate, interpreting test failures in a Windows worktree, planning a host-state run / live benchmark / multi-step verification, OR whenever a guard/test/assertion fails and you are about to decide whether the check or the artifact is wrong, or about to move content between two files. Other tiers do not need this.
 ---
 
 # Tier 2 (Code) operational policy
@@ -138,6 +138,50 @@ host-state runs and false reads):
    evidence artifact with the **Read tool** (never piped `cat`/`wc` — it silently
    misreports; verify-relayed / verify-pin lessons). Judge against step 2's
    criteria and report misses honestly: out-of-scope/known vs regression.
+
+### 🔴 When a check and a claim disagree — the instrument-vs-subject test
+
+Measured s241, five times in one session, and **the armchair answer was wrong in
+BOTH directions**: three times the check was right and the claim wrong, twice the
+opposite. Nothing but reading the artifact separated them, so do not decide by
+which is cheaper to change.
+
+Read the flagged line itself — not a summary of it — then ask in order:
+
+1. **Is the check reporting a real property of the artifact?** A new guard
+   blocked its own first commit; the guard was right and its *rules* were the
+   defect (a file exempted from *declaring* could not exempt its own examples
+   either).
+2. **If the check is right, does the fix change the artifact or the rule?**
+   ⚠️ **Narrowing a matcher until it stops matching is editing the artifact to
+   satisfy the instrument.** Legitimate only when the reach was wrong on its own
+   terms — never because the report was inconvenient.
+3. **If the check is wrong, is it wrong about the artifact or about itself?**
+   Three failed assertions in one session were wrong about *themselves* — a
+   comment counted as data, a case-sensitive needle, a needle straddling `**`
+   emphasis. Fix the needle; changing the file to match a bad needle is step 2's
+   error in disguise.
+
+**Pre-commit the assertion; do not verify after.** All three self-inflicted
+misfires above cost nothing because the assertion ran **before** the write. The
+one incident caught only afterwards had already put a false claim into a tracked
+file. For any two-file move (a rotation, an archive append, a rehome):
+
+> pin each slice by its expected **first AND last** text · assert no
+> neighbour-bleed · assert it is not already in the target · then check
+> **presence-in-target and absence-from-source SEPARATELY** — never infer one
+> from the other.
+
+That battery aborted a rotation this session with **both files untouched**.
+
+⚠️ **A subagent's report is a claim about the tree, not the tree.** One reported
+removing two notes that were still there; an archive note written from that
+report asserted something false. Diff or grep the artifact before repeating what
+a report says it did.
+
+Full incident set:
+[`docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md`](../../../docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md).
+For the aggregate-before-synthesis half, see the `fan-out-dispatch` skill.
 
 ### Judge a lint gate on the tracked tree, not on your checkout
 

@@ -1,6 +1,6 @@
 ---
 name: fan-out-dispatch
-description: Split work across parallel sessions/agents safely — run the write-set disjointness check BEFORE spawning, keep shared writes with the dispatcher, and avoid the append-to-tail / shared-enumerating-list conflict shapes. Use whenever about to call spawn_task more than once for related work, fan work out to several sessions or subagents, split a backlog into parallel chips, or decide whether work is parallel-safe at all. Encodes Lesson #0031 (3 wasted merge commits + a policy clause authored twice, s141-142).
+description: Split work across parallel sessions/agents safely, and close the loop when they return — run the write-set disjointness check BEFORE spawning, keep shared writes with the dispatcher, avoid the append-to-tail / shared-enumerating-list conflict shapes, and COUNT the returns against the dispatches before synthesising anything from them. Use whenever about to call spawn_task more than once for related work, fan work out to several sessions or subagents, split a backlog into parallel chips, decide whether work is parallel-safe at all, OR write a ranking / summary / recommendation that aggregates results from more than one agent. Encodes Lesson #0031 (3 wasted merge commits + a policy clause authored twice, s141-142) and Lesson #0046 (a synthesis cited five agents when four had returned, s241).
 ---
 
 # Fan-out dispatch — split on the write-set, not on the idea
@@ -132,3 +132,29 @@ Real disjointness, verified — not assumed:
 > myself, after they land."*
 
 If you cannot fill in the last clause, do not spawn yet.
+
+## 🔴 After they return — COUNT before you synthesise
+
+**Measured s241: five grounding agents were dispatched, four returned, and the synthesis
+was written as if it had five.** The fifth failed silently; its completion notice arrived
+long after. Two rows of a ranked recommendation to Cray were written **with no source** and
+had to be retracted once measured.
+
+The rule *"verify a subagent delivered"* already existed in memory and did **not** fire —
+because it had no **moment of application**. This is that moment:
+
+> **Before writing anything that aggregates subagent results — a ranking, a summary, a
+> table, a recommendation — list the agents you dispatched and tick off each one's return.**
+
+- **Four-of-five is not five.** A missing return does not announce itself; you notice the
+  notifications you got, never the one you did not.
+- **Do not fill a gap from expectation.** If an agent's scope is uncited, the honest output
+  is *"not grounded — agent did not return"*, not a plausible sentence.
+- **Read the tick-list out loud in the reply** when the fan-out is load-bearing, so a wrong
+  count is visible to Cray and not only to you.
+- A background agent that dies leaves the harness silent, not red. Silence is not a pass —
+  the same shape as [`docs/lessons/0007`](../../../docs/lessons/0007-harness-exit-code-artifact.md)'s
+  fabricated exit code, one layer up.
+
+Full incident + the four siblings it travelled with:
+[`docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md`](../../../docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md).
