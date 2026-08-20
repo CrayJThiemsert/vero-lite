@@ -154,3 +154,19 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # An AC's ledger must agree with itself
+      # (tools/check_ac_consistency.py). Two failures measured s241, neither
+      # visible to any existing check: PLAN-0108 shipped SIX AC items wearing
+      # FIVE labels (two both read AC-5) — valid Markdown, lint-clean, and in the
+      # one PLAN whose subject is AC-authoring hygiene; and docs/STATUS.md
+      # recorded "AC-11 CLOSED" in four places while PLAN-0107 still carried
+      # `- [ ] **AC-11`, so the file an executor opens said the work was open.
+      # always_run because both violations are authored by editing ONE side of a
+      # pair — a PLAN without STATUS, or STATUS without the PLAN.
+      - id: ac-consistency-guard
+        name: AC ledger guard (no duplicate labels; STATUS closures are ticked)
+        entry: uv run python tools/check_ac_consistency.py
+        language: system
+        always_run: true
+        pass_filenames: false
