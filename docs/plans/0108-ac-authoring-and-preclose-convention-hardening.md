@@ -153,12 +153,21 @@ reads the artifact — never its own constant); wording-quality claims are
   Command: `uv run --no-sync pytest tests/tools/test_skill_preclose_contract.py -q`.
   `judge` half: Cray confirms the replacement wording subsumes the old
   vacuity question (condition ③ contains it) rather than dropping it.
-- [ ] **AC-5 [evidence] — the retro-classification is recorded.** The 54
+- [ ] **AC-6 [evidence] — the retro-classification is recorded.** The 54
   audited ACs are re-classified under the final ratified bucket set and the
   table is recorded in the closing PR body. Recorded, **explicitly NOT a
   gate**: `done/` PLANs are archaeology and are not edited; the table exists
   to calibrate the new rules against real history and to hand the companion
   ADR's reviewer a measured base rate.
+  _[Corrected s241, `was an error`: two ACs in this PLAN both wore the label
+  **AC-5** — the `[check]` staleness-guard item above and this `[evidence]`
+  item — six criteria under five labels, in the PLAN whose own subject is
+  AC-authoring hygiene. This later-in-document item is the one renumbered, to
+  **AC-6**; the staleness-guard AC keeps **AC-5**, so ADR-0038 OQ-5's
+  attachment and any prior "AC-5" reading of it stay pointed at the same
+  criterion. The two internal citations of this item — "AC-5's table" (Out of
+  Scope) and "(AC-5, evidence)" (Step 5) — are updated to AC-6 in the same
+  edit.]_
 
 ## Out of Scope
 
@@ -192,7 +201,7 @@ reads the artifact — never its own constant); wording-quality claims are
   has survived a few PLANs' worth of use; a candidate follow-up, noted, not
   planned.
 - ❌ **Retro-editing `done/` PLANs** to the new discipline — archaeology stays
-  frozen; AC-5's table is the only retrospective artifact.
+  frozen; AC-6's table is the only retrospective artifact.
 
 ## Surfaced decisions (for Cray — proposed, not settled)
 
@@ -285,7 +294,7 @@ under each mutation.
 ### Step 5: the retro-classification table
 
 Re-classify the 54 audited ACs under the final bucket set; record the table +
-the base rate in the closing PR body (AC-5, evidence).
+the base rate in the closing PR body (AC-6, evidence).
 **Probe:** none claimed — this is the PLAN's one evidence artifact and it is
 labelled as such; a probe would be theatre. The table's honesty check is
 AC-2/AC-3's calibration work, which already forced the rules to disagree with
