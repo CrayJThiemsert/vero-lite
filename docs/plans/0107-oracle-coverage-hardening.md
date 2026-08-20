@@ -40,11 +40,25 @@ The gap lives in oracles that don't exist, states no fixture reaches, and
 checks that exist as evidence instead of gates.
 
 **Phase order is load-bearing: Phase B (② reach) must land before any browser
-work is even considered.** With a 2-case live seed
-(`verticals/fleet_maintenance/operate_seed.py:201,:315`) nothing overflows, so
-a browser stage added today would go green-and-vacuous on day one — a detector
-that cannot fail. The browser stage itself is Out of Scope (see below); this
-PLAN builds the reach it will need.
+work is even considered.** At drafting the live seed held 2 cases, so nothing
+overflowed and a browser stage added then would have gone green-and-vacuous on
+day one — a detector that cannot fail. The browser stage itself is Out of
+Scope (see below); this PLAN builds the reach it will need.
+_[Corrected s241, `superseded by new info`: the vacuity ground above was true
+on 2026-08-17 and was falsified when AC-7 closed (s236, #1206) — the seed now
+holds **21** cases (the two narrative cases, `seed_demo_repair_case` +
+`seed_settled_history_case`, plus the NINETEEN-entry closed backlog
+`_CASE_LIST_HISTORY` seeded by `seed_case_list_history`; the module's own
+comment above that tuple states the load-bearing arithmetic), one past the
+UI's own `limit=20`, so the overflow state IS now reachable. The *conclusion*
+still stands and was honoured in the event — reach landed first. What carries
+the browser-stage deferral today is no longer unreachability but the
+Out-of-Scope entry's ground (b): every PR already pays a full `gate` round, so
+a browser stage belongs behind `workflow_dispatch` + a `ui` label in a
+successor plan. The original text also cited the 2-case seed sites as
+`operate_seed.py:201,:315`; AC-7's ~200 added lines moved both onto unrelated
+code (`:201` now sits inside `_stamp_run_subject`'s proposal loop, `:315` on a
+`description=(` line), so this section now anchors by symbol instead.]_
 
 ## Goal
 
@@ -203,10 +217,14 @@ a source-text read.
   (`:201,:315`) to **≥ 21 staggered cases** — timestamps spread across the
   trailing weeks so the month-end view reads as history, all bulk cases
   **CLOSED** (the seed module's own rationale: a closed case "leaves the event
-  stream and never competes for the truck's latest-event slot",
-  `operate_seed.py:318-321` — the two existing narrative cases and the
-  truck-02 displacement logic stay intact), idempotent and fail-soft like the
-  existing helpers. A scenario test then drives the real list endpoint
+  stream and never competes for the truck's latest-event slot" — the comment
+  inside `seed_settled_history_case` _[Corrected s241, `superseded by new
+  info`: this cite read `operate_seed.py:318-321`, measured correct at
+  drafting; AC-7's own ~200 added lines moved the comment (near `:512` on disk
+  today, while `:318` now holds a `status=CASE_STATUS_OPEN,` field), so it is
+  re-anchored by symbol + quoted sentence rather than by line]_ — the two
+  existing narrative cases and the truck-02 displacement logic stay intact),
+  idempotent and fail-soft like the existing helpers. A scenario test then drives the real list endpoint
   (`services/api/routers/cases.py:248-274`): `limit=20` (the UI's own request,
   `services/api/static/assets/view-case.js:71`) returns exactly 20, newest
   first, stable across two reads (the `opened_at`/`case_id` tiebreak,
@@ -278,12 +296,58 @@ a source-text read.
   only, so the corpus as it stands can never redden a regression in how
   non-reading events flow through the evaluated path. Command:
   `uv run --no-sync pytest tests/services/engine/eval -q`.
+  > **Reviewer amendment (s241) — AC-9 is BLOCKED pending a Cray ruling on
+  > re-scope: its Step 7 probe is UNRUNNABLE AS WRITTEN.** Three independent
+  > defects, measured s241 and re-verified against the working tree 2026-08-20:
+  >
+  > **(1) The named seam holds no comparison.** Step 7 says to invert the
+  > `below` comparison inside the threshold-crossing predicate
+  > ("`demo_events.py:62` seam") — but `:62` is
+  > `and crosses_threshold(e["measured_value"], threshold, direction)`, a
+  > **delegation**; `below` appears in `demo_events.py` exactly twice, both in
+  > a docstring. The comparison lives at `services/engine/recommender.py:77-79`
+  > (`crosses_threshold`), whose own docstring names it *"The single source of
+  > truth shared by the trigger (`_is_recommendation_trigger`), the fail-safe
+  > rule (`_rule_recommend`), and the demo-anchor breach selector
+  > (`demo_events._breach_event`)"* — inverting it reddens three unrelated
+  > consumers, not one trace.
+  >
+  > **(2) The named oracle cannot observe the mutation.**
+  > `tests/services/engine/eval/test_eval_harness.py:39-43` loads the corpus as
+  > **static JSON** (`json.loads(path.read_text(...))`); its five tests assert
+  > only a non-empty glob, `LlmJudgment` validation, confidence in range,
+  > handler resolution and envelope composition. Grep
+  > `crosses_threshold|demo_events` over `tests/services/engine/eval/`: **zero
+  > matches**. The Step 7 mutation changes nothing this harness reads, so its
+  > promised RED cannot fire there by construction.
+  >
+  > **(3) The producer this AC presumes may not exist.** The AC requires traces
+  > *"produced by the same harness that produced traces 01–03"*; grep
+  > `golden_trace` across every `.py` in the repo returns **one** file — the
+  > test module itself — and Step 7 concedes the mechanism was never read
+  > (*"mechanism read at execution — the corpus predates this PLAN"*).
+  >
+  > Executing this AC as written would therefore manufacture an **ADR-0038
+  > class-C1 guard — a green that could not have gone RED — inside the PLAN
+  > whose stated purpose is to eliminate class-C1 guards:** dropping two JSON
+  > files into `golden_traces/` adds ~8 parametrized assertions checking
+  > schema / confidence / handler / composition, none of which can pin the
+  > `below` branch or the non-`reading` path. `docs/STATUS.md` §"Active TODOs"
+  > has carried "AC-9 design-blocked" since s241, but that judgement had never
+  > been written into this PLAN — this amendment closes that gap. **Re-scope
+  > options for Cray, laid out neutrally; none is picked here:** (a) re-home
+  > the below-direction oracle to where the predicate actually runs
+  > (`recommender.crosses_threshold`, already reached by existing tests);
+  > (b) build a real trace producer first, then the two traces; (c) retire
+  > AC-9. Until ruled, this AC stays `[ ]` and no execution against it is
+  > authorised.
 - [ ] **AC-10 [check] — every expressible gold case is compared to the real
   engine.** The nl-13 harness
   (`tests/benchmark/test_nl_query_feasibility_gold.py:220-244` — real engine,
   real adapter, real scorer, only the model transport stubbed) is extended to
-  every non-ceiling case nl-01…nl-12, each with its hand-authored structured
-  translation. Today those 12 are checked only for internal self-consistency
+  every non-ceiling case nl-01…nl-11 — **eleven** cases — each with its
+  hand-authored structured translation. Today those eleven are checked only for
+  internal self-consistency
   (`:68-89`, e.g. `expected_count == len(expected_ids)`) — **gold compared to
   gold**, the self-agreeing shape §8 forbids at a seam §8's wording does not
   reach. Any case inexpressible as a single structured query goes in an
@@ -292,7 +356,25 @@ a source-text read.
   never a silent xfail and never a gold edit (LOCKED: the energy synthetic
   events do not change — `gold.yaml:64,:77,:145,:173,:218-224` hard-couple to
   them). Command: `uv run --no-sync pytest tests/benchmark/test_nl_query_feasibility_gold.py -q`.
-- [ ] **AC-11 [check] — negative money is pinned at a real seam.** The month-end
+  _[Corrected s241, `was an error`: this AC read "nl-01…nl-12" (and Step 8's
+  heading "twelve more times") — but nl-12 is the gold set's ONLY
+  `ceiling: true` case (`benchmarks/nl_query_feasibility/gold.yaml:190`, the
+  honesty-no-data probe; corroborated by the well-formedness assertion
+  `any(c["ceiling"] for c in cases)` at
+  `tests/benchmark/test_nl_query_feasibility_gold.py:88`, which passes on
+  nl-12 alone), so the non-ceiling remainder is **nl-01…nl-11, eleven cases**.
+  nl-12 stays separately runnable via the scorer's ceiling lane if anyone wants
+  it as a bonus, but is outside this AC's stated scope. Also recorded here so
+  the next reader does not re-derive it: a circulating claim held that the two
+  unruled silent drops in `services/engine/run_query.py` (`started_week`
+  ignored; `group_by` never reaching `AggregateResult`) constrain this AC —
+  measured FALSE s241: those live in the `pipeline_run` corpus compiler,
+  `services/engine/nl_query.py` contains **zero** references to `run_query`
+  (grep), and no gold case targets a run-corpus object type (the set's
+  `expected_object_type` values are Asset / OperationalEvent / Site / Alert).
+  They make ZERO nl-01…nl-11 cases inexpressible and must NOT appear in this
+  AC's inexpressibility register.]_
+- [x] **AC-11 [check] — negative money is pinned at a real seam.** The month-end
   ฿ aggregation seam (`services/db/repair_case_closeout.py` — confirmed by grep
   to carry ฿ amounts; internals read at execution, per Step 9) gets a test that
   drives a negative `Decimal` amount through the real producer→consumer path
@@ -302,9 +384,28 @@ a source-text read.
   Today the repo has exactly one distinct negative `Decimal` literal and it is
   a DoA tier bound (`tests/services/engine/procedures/test_doa_tier.py:176`);
   sign handling in ฿ aggregation is untested. Command:
-  `uv run --no-sync pytest tests/services/test_closeout_negative_money.py -q`
+  `uv run --no-sync pytest tests/api/test_closeout_negative_money_scenario.py -q`
   (final module placement follows the house layout at execution; the command
   tracks the file).
+  _[Corrected s241, `superseded by new info`: the command read
+  `tests/services/test_closeout_negative_money.py`; the module landed at
+  `tests/api/test_closeout_negative_money_scenario.py` — exactly the placement
+  drift the parenthetical above pre-authorised, so the command now tracks the
+  file that exists.]_
+  > **Closing evidence (Code, 2026-08-19 / s240,
+  > [#1226](https://github.com/CrayJThiemsert/vero-lite/pull/1226)).** A
+  > four-test scenario, `tests/api/test_closeout_negative_money_scenario.py`,
+  > whose module docstring opens *"A credit note keyed as a close-out, driven
+  > into the month-end ฿ figure"* and names this AC. The pin chosen after
+  > reading the seam is the **explicit loud rejection** (422 at the real
+  > `POST /api/cases/{id}/closeout` producer, nothing stubbed on either side) —
+  > and NOT because the domain lacks credits: it has them (ใบลดหนี้, Cray,
+  > typed 2026-08-19). The record is append-only with **latest-wins**, so a
+  > credit-note row would REPLACE the invoice it credits and the month-end ฿
+  > figure would silently report the credit as the repair's entire cost — the
+  > failure a completeness KPI structurally cannot see. The refusal is INTERIM
+  > and says so at the seam; the schema that can hold an invoice and its credit
+  > as two coexisting facts is PLAN-0111's subject.
 - [ ] **AC-12 [check] — a floor under the executed DB-test count.** *(Ruled by
   Cray 2026-08-17: close this as a count floor.)* A session-finish check
   (in the top-level conftest, active when `CI` is set — GitHub sets `CI=true`)
@@ -371,11 +472,17 @@ a source-text read.
   whose `docs/conventions/ui.md` documents having none. LOCKED.
 - ❌ **Browser stage (Playwright)** — the only instrument that can adjudicate a
   clip, and it belongs in a LATER plan: (a) it depends on this PLAN's Phase B —
-  with a 2-case seed nothing overflows, so a browser stage today is green and
-  vacuous on day one; (b) protection is `strict:true`, so every PR already pays
-  a full `gate` round — a ~3-minute browser stage on non-UI PRs is pure tax.
-  When it lands it should be `workflow_dispatch` + a `ui` label, not a required
-  check. LOCKED as to sequencing; the successor plan decides the rest.
+  at drafting the 2-case seed meant nothing overflowed, so a browser stage
+  added then would have been green and vacuous on day one; (b) protection is
+  `strict:true`, so every PR already pays a full `gate` round — a ~3-minute
+  browser stage on non-UI PRs is pure tax. When it lands it should be
+  `workflow_dispatch` + a `ui` label, not a required check. LOCKED as to
+  sequencing; the successor plan decides the rest.
+  _[Corrected s241, `superseded by new info`: ground (a) was true on 2026-08-17
+  and expired when AC-7 closed (s236, #1206) — the seed now holds **21** cases,
+  one past the UI's `limit=20`, so the Phase B dependency is SATISFIED and (a)
+  no longer argues for deferral on its own. The rejection still stands, resting
+  on (b) plus the sequencing ruling; the LOCK is untouched.]_
 - ❌ **Arming a coverage floor** — the dead `fail_under` is deleted (AC-13,
   ruled); arming a measured one is a separate future decision, not smuggled in
   here.
@@ -503,9 +610,19 @@ Cost: not measured (record per AC-15).
 Grow `operate_seed.py` to ≥ 21 staggered cases (ruled): a bulk of CLOSED
 historical cases with `opened_at` spread across the trailing weeks — closed so
 they leave the event stream and never compete for a truck's latest-event slot
-(`operate_seed.py:318-321` rationale), preserving the two narrative cases and
-the truck-02 displacement design (`:204-206` region) untouched; idempotent
-and fail-soft like the existing helpers. Then write the overflow scenario
+(the rationale comment inside `seed_settled_history_case`), preserving the two
+narrative cases and the truck-02 displacement design (the "live case DISPLACES
+whatever the fixture had for that truck" comment inside `seed_demo_repair_case`)
+untouched; idempotent and fail-soft like the existing helpers.
+_[Corrected s241, `superseded by new info` (the second cite verified at review,
+2026-08-20): this sentence cited `operate_seed.py:318-321` and the `:204-206`
+region, both measured correct at drafting and both moved by AC-7's ~200 added
+lines — on disk today `:318` holds a `status=CASE_STATUS_OPEN,` field and
+`:204-206` sits inside `_stamp_run_subject`'s proposal loop, while the
+rationale comment lives near `:512` in `seed_settled_history_case` and the
+displacement comment near `:303-312` in `seed_demo_repair_case`. Re-anchored
+by symbol + quoted comment, not by arithmetic on the old numbers.]_
+Then write the overflow scenario
 against the real list endpoint: truncation boundary at the UI's own
 `limit=20`, ordering stability (the `opened_at`/`case_id` tiebreak,
 `cases.py:270-274`), default-limit inclusion.
@@ -544,18 +661,22 @@ non-`reading` events from the pipeline the trace exercises → trace (b)'s
 verdict reds while 01–03 stay green. Output changed: each new trace's eval
 verdict. Cost: inside pytest, not separately measured.
 
-### Step 8 (B / AC-10): gold meets engine, twelve more times
+### Step 8 (B / AC-10): gold meets engine, eleven more times
+
+_[Corrected s241, `was an error`: this heading read "twelve more times" and the
+substep below read "nl-01…nl-12" / "twelve real-engine runs" — the non-ceiling
+remainder is eleven; the measurement is in AC-10's correction annotation.]_
 
 Parametrize the nl-13 harness over every non-ceiling case with hand-authored
 structured translations; add the reasoned inexpressibility register.
 **Measure-first substep:** run the extended comparison once BEFORE asserting;
-any nl-01…nl-12 mismatch is written up as a surfaced finding for Cray (gold
+any nl-01…nl-11 mismatch is written up as a surfaced finding for Cray (gold
 wrong vs engine wrong is a ruling, not a guess), and the case enters the
 register with that reason until ruled. The energy events are not touched
 (LOCKED).
 **Probe:** perturb one `expected_count` in a scratch copy of `gold.yaml` → that
 case's comparison reds. Output changed: the scorer's verdict for the perturbed
-case. Cost: not measured (twelve real-engine runs; record per AC-15).
+case. Cost: not measured (eleven real-engine runs; record per AC-15).
 
 ### Step 9 (B / AC-11): pin negative money
 
