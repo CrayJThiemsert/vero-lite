@@ -868,3 +868,81 @@ preserved verbatim here rather than trimmed.]_
 > copy and each seen RED with a message naming what broke. Host records:
 > `docs/logs/2026-08-18-s239-fleet-origin-narrative-deploy.md` and
 > `docs/logs/2026-08-19-s239-brand-mark-deploy.md`.
+
+### Rotated 2026-08-21, session-241 second reconcile — Current Focus s241 (first version)
+
+_[The s241 block was REWRITTEN in place rather than rotated out: the session ran
+two days and five PRs, and one session keeps one block. This is its first
+version, covering PR #1229 only, preserved for the detail the rewrite compressed
+away — the measured cost of the stale DNS claim, and the "no RED witnessed"
+record.]_
+
+> **Session 241, 2026-08-20 (head_commit `8fd3848` → `5cdbf68`) — ONE PR MERGED
+> ([#1229](https://github.com/CrayJThiemsert/vero-lite/pull/1229)), 0 open: the
+> `ms-s1-ollama` skill's seven-model snapshot REMOVED (not refreshed) and two
+> stale claims corrected.**
+>
+> 🔴 **The organising finding: two of the three were corrections the file had
+> ALREADY made in its own body, then contradicted in its own footer and helper
+> script.** `SKILL.md` fixed the DNS claim at s171 and the §8 gate pointer at
+> s174; `warm.sh:11`'s *"`ms-s1-max` has no WSL DNS entry"* and the footer routing
+> the gate to *"the active PLAN/handoff"* were never propagated. **A correction
+> that lands at the top of a file and is not propagated reads as settled — while
+> the stale copy stays the one an operator follows.** Measured cost:
+> `services/api/config.py` defaults `ollama_host` to `http://ms-s1-max:11434`, so
+> *"does not resolve"* made a live default read as inert. It is not — a test that
+> reached it ran `gpt-oss:20b` twice with no §8 go.
+> <!-- retired: "`ms-s1-max` has no WSL DNS entry" -->
+> <!-- The line above QUOTES a dead claim to narrate its correction. The marker
+>      is what makes that legible to the guard and to a skimming reader: a live
+>      surface repeating a retired claim labels it dead where it appears. -->
+
+>
+> 🔴 **The snapshot was REMOVED, not refreshed** (dated 2026-06-11, seven models;
+> the box holds eleven): a refresh rots at the next `ollama pull`, re-measuring to
+> rewrite it is **itself a host-state call needing its own go**, and it held
+> nothing durable — the `gpt-oss:20b` pin and `qwen3.x` = NOT_JSON already live
+> under *"The pinned model"*. All three claims had **zero tracked hits** before
+> this PR: they lived only in a gitignored handoff and would have died with it.
+>
+> ⚠️ **No RED was witnessed, and that is recorded rather than papered over** — no
+> test or guard reads either file, so there is no oracle to mutate; a
+> comment-and-prose change, not dressed up with a vacuous guard. Gate **pass**
+> (8m30s), `sha=MATCH` across local HEAD / PR head / the run's own `head_sha`;
+> merged content re-verified on `main` via `git show HEAD:<path>` (3 new strings
+> present, 3 old gone). **No host-state action; MS-S1 was not contacted.**
+>
+> 🔴 **A five-agent grounded fan-out re-ranked next work and returned
+> claim-vs-code corrections with ZERO tracked hits — folded into the Active TODO
+> rows below, which own the detail:** PLAN-0108's *"nothing gates it"* is false
+> (SD-1 routed, not ruled; Step 1 G2-gated) and it wears **two AC-5 labels**;
+> PLAN-0107's AC-9 Step-7 probe is **unrunnable as written**; PLAN-0109's AC-11
+> would **delete a true sentence and write a false one**.
+
+### Rotated 2026-08-21, session-241 second reconcile — Active TODO rows, pre-round-2
+
+_[The PLAN-0107 and PLAN-0108 rows below are their versions BEFORE the round-2
+reconcile shrank their now-discharged annotations. What is unique here is the
+FULL s240/s241 correction text — the AC-11 checkbox drift, the AC-9 probe
+diagnosis, the AC-10 off-by-one and the two-AC-5 finding — which the live rows
+now compress to a pointer, because the PLANs themselves carry them.
+_[Corrected at write time: an earlier draft of this note said the +74 s CI
+measurement and the three Phase-A prose divergences no longer appear live. They
+do — the reconcile kept both. The report this note was written from listed them
+as removed; the tree says otherwise, and the tree wins. Checked after the
+append, not assumed.]_
+The deploy.py row is fully discharged and rotated for good — its
+durable homes are deploy/published/deploy.py, tests/deploy/test_deploy.py and
+lesson 0043.]_
+
+**PLAN-0107 row (pre-round-2):**
+
+- [ ] **PLAN-0107 — oracle-coverage hardening: `Draft`, 15 ACs. ✅ Phase A CLOSED 6/6 s236 ([#1204](https://github.com/CrayJThiemsert/vero-lite/pull/1204)); ✅ Phase B's AC-7 + AC-8 CLOSED s236 (#1206 `7a37c6d`, #1207 `5aedaf2`) and ✅ AC-11 CLOSED s240 ([#1226](https://github.com/CrayJThiemsert/vero-lite/pull/1226)). Remaining: Phase B's AC-9 (design-blocked) + AC-10, and Phase C — NOTHING gates them.** _[Corrected s240, `was an error`: this row read "Phases B and C remain", which had been false since s236.]_ CI now runs four oracles it lacked — `node --check`, the asset↔reference bijection, a **per-vertical** lifespan boot smoke, `mypy --strict verticals/` and the two adopted pre-commit hooks (**measured +74 s, no new dependency**). ⚠️ **Executing the remainder: read each AC and its `Reviewer amendment` blocks as authoritative and treat the §Steps prose as narrative — three measured divergences in Phase A alone** (a retired `≥ 20` floor, a superseded asset count, `uvx` vs `uv run --no-sync`). _[Also corrected s240: this row's *"with today's 2-case live seed nothing overflows"* — the stated reason for holding a browser stage back — has **expired on that ground**; AC-7 grew the seed and the tree now holds **21** cases. ⚠️ **The same stale sentence is still in the PLAN itself.**]_ _[Corrected s241: (a) **AC-11 closed s240 but its checkbox in the PLAN still reads `[ ]`** (`0107:295`) — STATUS and the PLAN disagree and the PLAN is the stale one. (b) 🔴 **AC-9 is not merely "design-blocked" — its Step 7 probe is UNRUNNABLE AS WRITTEN, SURFACED to Cray:** it names `services/engine/demo_events.py:62` as the `below` comparison to invert, but that line **delegates** — the comparison lives at `services/engine/recommender.py:77-79`; and `tests/services/engine/eval/test_eval_harness.py` loads traces as static JSON with **zero** references to `demo_events` or `crosses_threshold`, so the mutation is unobservable there **by construction**. Executing it as written would manufacture an ADR-0038 **class-C1** guard inside the PLAN that exists to eliminate class-C1 guards. (c) **AC-10's scope is off by one** — it says *"nl-01…nl-12"*, but nl-12 is the set's only `ceiling: true` case, so the real remainder is **nl-01…nl-11 (eleven)**.]_ **Read the PLAN, never a restatement:** `docs/plans/0107-oracle-coverage-hardening.md` (§Phase A closing evidence · §Acceptance Criteria).
+
+**PLAN-0108 row (pre-round-2):**
+
+- [ ] **🆕 PLAN-0108 — AC-authoring + pre-close convention hardening: `Draft`, UNRATIFIED.** The weak-oracle half of the same audit. _[Corrected s241, `was an error`: this row read *"its only blocker was ADR-0038, which has landed, so nothing gates it either"* — measured s241, **SD-1 is NOT ruled, it was ROUTED to Cowork** (`0108:209`: *"Not ruled here… Until it returns and is ratified, §8 as written governs"*), **three of six ACs close only on Cray's PR-merge judge read**, and **Step 1 is G2-gated for Code** (`0108:240-242`). 🔴 **The PLAN also wears TWO ACs both labelled AC-5** — `:93` `[check]` staleness-guard and `:156` `[evidence]` retro-classification, six items under five labels, in a PLAN whose subject is AC-authoring hygiene.]_ Owns ADR-0038's **OQ-5** — the staleness-guard obligation attaches to the PLAN template, not to a build task. **Read the PLAN, never a restatement:** `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md`.
+
+**deploy.py dead-compose-path row (discharged, rotated for good):**
+
+- [x] **`deploy.py`'s dead compose path — FIXED s235 ([#1193](https://github.com/CrayJThiemsert/vero-lite/pull/1193)).** Found s232 and live on `main` for three commits; Phase 1 would have died on the next `--execute`. The path is now the module constant `_LOCAL_COMPOSE`, guarded by a test that walks the module's own path constants, so a future straggler reddens by construction. **Read the code and the guard, never a restatement:** `deploy/published/deploy.py` · `tests/deploy/test_deploy.py`. ⚠️ **That guard's first draft masked its own oracle** — homed in [`docs/lessons/0043-*.md`](lessons/0043-a-probes-red-must-name-what-broke.md), now binding via `CLAUDE.md` §8's witnessed-RED rule.
