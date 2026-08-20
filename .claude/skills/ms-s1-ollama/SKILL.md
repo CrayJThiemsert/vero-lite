@@ -178,14 +178,28 @@ remains sentinel + ETA rule — the ping is convenience, never load-bearing.
   generations pollute each other's latency. Do not warm/generate against MS-S1
   while another measured run is in flight.
 
-## Snapshot — models on MS-S1 (2026-06-11; verify with warm.sh, don't trust this list)
+## Which models are on MS-S1 — read the live list, never a snapshot
 
-`gpt-oss:20b` (pin), `gemma4:12b`, `gemma4:26b`, `qwen3.6:35b`, `qwen3.5:35b`,
-`qwen2.5-coder:32b`, `groomflow-unified:latest`.
+`warm.sh` step 1 prints every tag present *before* it warms anything, and the
+by-hand `curl … /api/tags | jq` above does the same. That is the only
+trustworthy answer, so **this file deliberately carries no inventory.**
+
+⚠️ **Corrected 2026-08-20 (session 241).** This section used to hold a
+seven-model snapshot dated 2026-06-11. Measured live at session 240 the box held
+**eleven** — the list had been wrong for over two months while carrying its own
+*"don't trust this list"* disclaimer, which is the tell that a volatile
+inventory does not belong in a Tier 2.6 skill at all. **Removed rather than
+refreshed:** a refresh buys accuracy until the next `ollama pull` and re-arms
+the identical rot, and re-measuring to write it down would itself be a
+host-state call needing a §8 go. The durable facts — the `gpt-oss:20b` pin and
+`qwen3.x`'s NOT_JSON behaviour on the structured path — are above under
+**The pinned model**, which is where they belong.
 
 ---
 
 *Tier 2.6 skill (ADR-0017). Mechanics only — the host-state ASK-Cray gate is a
-binding rule in the active PLAN/handoff, not here. Sources: ADR-0001 (pin),
-ADR-0002 (MS-S1), Lessons on MS-S1 reachability / verify-pin-before-override /
-process-check.*
+binding rule in **`CLAUDE.md` §8**, not here (see the gate note at the top of
+this file). The *"active PLAN/handoff"* pointer this line carried until session
+241 was superseded at session 62 and corrected in-body at session 174; the
+footer was simply missed. Sources: ADR-0001 (pin), ADR-0002 (MS-S1), Lessons on
+MS-S1 reachability / verify-pin-before-override / process-check.*

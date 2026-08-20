@@ -8,8 +8,11 @@
 #
 # Fails closed: aborts if MS-S1 is unreachable OR the requested model is not in
 # the tag list (session-37: never warm/smoke the WRONG model). Reaches MS-S1 by
-# IP — `ms-s1-max` has no WSL DNS entry. Run with `bash warm.sh`, not `./warm.sh`
-# (the WSL UNC mount strips exec bits). Requires `jq`.
+# IP because the IP does not depend on whatever added the DNS entry — NOT because
+# the hostname fails: `ms-s1-max` resolves fine (measured s171, corrected in
+# SKILL.md; this line still said otherwise until s241). Never treat the hostname
+# as a safety property. Run with `bash warm.sh`, not `./warm.sh` (the WSL UNC
+# mount strips exec bits). Requires `jq`.
 set -euo pipefail
 
 HOST="${OLLAMA_HOST:-http://192.168.1.133:11434}"
