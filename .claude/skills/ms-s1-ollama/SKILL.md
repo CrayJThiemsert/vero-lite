@@ -23,6 +23,11 @@ wrong when written**: session 62 (2026-06-16) promoted the rule into `CLAUDE.md`
 precisely so it survives when no PLAN is active — the pointer here was simply never
 updated, and PLAN-0020 has since been archived. Cite §8.
 
+<!-- retired: "binding rule in the active PLAN/handoff, not here" -->
+<!-- The claim above is dead. It survived in this file's OWN footer for three
+     sessions after this correction landed, 165 lines below it. -->
+
+
 **Related:** MS-S1 is also reachable over **SSH** for box-level work (services,
 Docker, scheduled tasks, event logs) — that is the **`ms-s1-admin`** skill, and §8
 covers those changes too.
@@ -45,6 +50,12 @@ inert-by-default. It is not. A test that reached the default config ran
 `gpt-oss:20b` twice without the §8 go-ahead before anyone noticed. Isolation now
 comes from the `_no_outbound_network` guard in `tests/conftest.py`, which blocks
 every non-loopback socket regardless of host, name resolution or config.
+
+<!-- retired: "`ms-s1-max` has no WSL DNS entry" -->
+<!-- The claim above is dead. It survived in warm.sh for two months after this
+     correction landed; tools/check_retired_claims.py now fails the commit if it
+     comes back anywhere live. -->
+
 
 ## The pinned model
 

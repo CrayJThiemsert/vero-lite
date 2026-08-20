@@ -33,6 +33,11 @@ recent_commits: [5cdbf68, 44a0ec9, 8fd3848, e22d824, d912891, a17c79b, dbb3e58, 
 > `services/api/config.py` defaults `ollama_host` to `http://ms-s1-max:11434`, so
 > *"does not resolve"* made a live default read as inert. It is not — a test that
 > reached it ran `gpt-oss:20b` twice with no §8 go.
+> <!-- retired: "`ms-s1-max` has no WSL DNS entry" -->
+> <!-- The line above QUOTES a dead claim to narrate its correction. The marker
+>      is what makes that legible to the guard and to a skimming reader: a live
+>      surface repeating a retired claim labels it dead where it appears. -->
+
 >
 > 🔴 **The snapshot was REMOVED, not refreshed** (dated 2026-06-11, seven models;
 > the box holds eleven): a refresh rots at the next `ollama pull`, re-measuring to

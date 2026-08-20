@@ -137,3 +137,20 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # A claim declared RETIRED must not survive anywhere live
+      # (docs/conventions/retired-claims.md). This repo records corrections well
+      # and PROPAGATES them badly: measured s241, `warm.sh:11` kept asserting a
+      # claim SKILL.md corrected at s171 for two more months, and that same
+      # file's footer kept pointing at a host-state gate home corrected at s174,
+      # 165 lines below the correction. Both were found by a human, late; nothing
+      # could find them mechanically because a correction records the new answer
+      # and the repo kept no account of the retired one. always_run because the
+      # violation is authored by editing a DIFFERENT file than the one that
+      # declared the claim dead — the cross-file half is the whole point.
+      - id: retired-claim-guard
+        name: retired-claim propagation guard (a corrected claim must stay dead)
+        entry: uv run python tools/check_retired_claims.py
+        language: system
+        always_run: true
+        pass_filenames: false
