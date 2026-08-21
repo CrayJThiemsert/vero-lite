@@ -160,6 +160,33 @@ itself is confirmed as stated.
   from a close-out. **`seed_settled_history_case` remains necessary; only its reason
   sentence needs splitting** — nothing in this finding implies the seed becomes
   redundant.
+- **G-14 — SD-2(b) and SD-5(b) do NOT compose on the bridge's stock key (measured
+  s243, on `docs/plan-0112-sd2-4-5-6-7-ruled` @ `4913a80` — postdates this section's
+  header stamp).** `event_key` hashes `(vertical, event_kind, sorted(entity_ids),
+  detected_at // window_seconds)` (`services/engine/procedures/event_bridge.py:41-69`);
+  the run id is `<procedure_id>@<key>` (`event_run_id`, `:72-76`); and `fire_event_run`
+  returns `ALREADY_FIRED` without starting anything when that run id already exists
+  (`:303-305`; existence check `_event_run_exists`, `:239-245`). **The accepted amount
+  is not in the key** — a re-accept at a new amount within one dedup window would be
+  deduped away, silently defeating SD-2(b) exactly as ruled. The constraint the build
+  must carry: `entity_ids` must carry the accepted quote's identity, i.e.
+  `[case_id, quote_id]` — the **same** quote re-accepted → same key → no new run
+  (correct: not a material change); a **different** quote accepted → different key →
+  a new run (precisely SD-2(b)). Two traps, both measured: (1) do **not** key on
+  `accepted_id` — `accept_quote` mints a fresh `accepted-{uuid4}` on **every** call
+  (`services/api/routers/cases.py:699-700`), so an accidental double-click of the
+  same quote would mint two runs; (2) `dedup_window_seconds` defaults to 3600 (`gt=0`,
+  `services/engine/procedures/spec.py:178-186`), and with a time bucket in the key a
+  same-quote re-accept **after** the window would spuriously re-fire. This event is
+  human-driven, not a polled steady-state detection, so the window must be authored
+  wide enough that the bucket is effectively constant — reducing the key to
+  `(vertical, event_kind, case_id, quote_id)`, which is SD-2(b) as ruled and nothing
+  more. The window value is a deliberate build choice, for this reason (Step 3).
+- **G-15 — SD-6's premise, measured (s243, same branch @ `4913a80`).** `list_runs`
+  (`services/api/routers/runs.py:273-330`) issues
+  `select(PipelineRun).order_by(PipelineRun.started_at.desc())` with **no `.limit()`**
+  (`:295-299`) — the endpoint is unbounded today, returning every run ever on each
+  Tab H load.
 
 ## Acceptance Criteria
 
@@ -182,17 +209,29 @@ itself is confirmed as stated.
   Non-vacuity probe: comment out the new guard in a scratch copy → the 403 assertion
   reddens to a 200 **and** the zero-rows assertion reddens to 1 — both directions
   witnessed. **[offline/DB]**
-- [ ] **AC-2 — the governable moment fires exactly one new run, idempotently
-  [contingent on SD-2/SD-5; SD-1 RULED (b), s242 — see SD-1].** After a case crosses its governable moment
-  (accepted quote whose amount breaches the truck's ceiling — G-4), exactly **one** new
-  `PipelineRun` exists attributable to that case-event; repeating the trigger action
-  (re-accept, projection re-refresh) creates **no second run**. Pass read: scenario
-  drives open → quote → accept over HTTP; `GET /runs` gains exactly one run beyond the
-  baseline; drive accept again → still exactly one. A **sub-ceiling** acceptance fires
-  per the SD-2 ruling's stated behaviour (recommended: fires and completes with no
-  gate — the loop *did* judge it; assert the ruled read). Non-vacuity probe: drop the
-  idempotency key (deterministic run id / existence check) in a scratch copy → the
-  exactly-one assertion reddens to 2 on the repeated accept. **[offline/DB]**
+- [ ] **AC-2 — the governable moment fires runs per SD-2(b), idempotent per quote
+  identity [SD-2 RULED (b) + SD-5 RULED (b), s243 — pass read re-fixed; the
+  once-per-case read is retired; SD-1 RULED (b), s242 — see SD-1].** The accept seam
+  fires through the declared event trigger (SD-5(b)) under the G-14 key constraint:
+  `entity_ids = [case_id, quote_id]`, never `accepted_id`, with a deliberately wide
+  `dedup_window_seconds` so the bucket is effectively constant (G-14). Pass read —
+  **both directions asserted**: scenario drives open → quote → accept over HTTP;
+  `GET /runs` gains exactly one run beyond baseline; (i) re-accept the **same**
+  quote → still exactly one run (not a material change); (ii) accept a **different**
+  quote on the same case → exactly one **more** run (SD-2(b) as ruled). Sub-ceiling
+  clause, corrected per the SD-2 stamp: a sub-ceiling acceptance still fires (the
+  loop *did* judge it), and in the shipped demo that run **gates anyway** — intake
+  is a fleet-wide scan (G-6) and the seeded demo pair stays OPEN with breaching
+  accepted quotes (G-12) — so assert instead that the run exists and that the
+  visitor's sub-ceiling case appears in **none** of the gate's proposals (`reshape`
+  consumes only the breach subset, `procedures.yaml:190-193`); "completes with no
+  gate" holds only in a fleet with no other breaching truck and is asserted nowhere.
+  Non-vacuity probes, re-fixed so each mutation reddens the named assertion in the
+  direction it claims: drop `quote_id` from the key (`entity_ids = [case_id]`) in a
+  scratch copy → assertion (ii) reddens (the different-quote accept dedups to
+  `ALREADY_FIRED`; the count stays 1 where 2 is asserted); key on `accepted_id` in
+  a scratch copy → assertion (i) reddens (the same-quote re-accept mints a second
+  run; the count reads 2 where 1 is asserted). **[offline/DB]**
 - [ ] **AC-3 — the binding scenario test: real producer into real consumer (CLAUDE.md
   §8).** Producer, concretely: the **Tab I HTTP intake flow** — `POST /api/cases` →
   `POST /api/cases/{id}/quotes` → `POST /api/cases/{id}/accepted-quote`
@@ -211,7 +250,10 @@ itself is confirmed as stated.
   "run exists in `GET /runs`" assertion reddens from 1 to 0 — the exact break the
   feature closes, re-witnessed. **[offline/DB]**
 - [ ] **AC-4 — no reachable intake path mints a dead-end run [SD-1 RULED (b), s242 —
-  pass read re-fixed against the ruling; the shape-(a) read is retired].** The
+  pass read re-fixed against the ruling; the shape-(a) read is retired. SD-5 RULED
+  (b), s243 — the ruled mechanism supplies exactly this G-9 actor shape: the
+  `event_trigger` descriptor's `owning_person_id` is recorded as the SoD requester
+  (`spec.py:168-177`); the pass read below stands unchanged].** The
   invariant: every run a visitor-reachable path can fire has a gate the declared
   approvers can actually resolve. Pass read: every fired run's SoD requester is the
   declared owning person holding `requester` (the service-principal fire, G-9 shape);
@@ -260,17 +302,18 @@ itself is confirmed as stated.
   PLAN-0100/0102 convention) executing the tripwire's own instruction
   (`done/0110:92-99` — "rewrite this paragraph then; never delete the tripwire"),
   stating the new bound ("exactly two runs bearing the fixed demo ids among N visitor
-  runs") and citing this PLAN. The ruled history above it is not touched. Pass read:
+  runs") **in the SD-6(b) shape as ruled (s243): the Monitor's `GET /runs` carries a
+  bounded newest-N default, the two demo runs asserted within bound (AC-8)** — and
+  citing this PLAN. The ruled history above it is not touched. Pass read:
   the amendment section exists, the tripwire text survives verbatim, and
   `test_fleet_demo_reset_scenario.py`'s id-scoped assertions are cited as the code
   half. **[offline/DB]** for (i); doc-read for (ii).
-- [ ] **AC-8 — the reopened cap/filtering question is answered, not dodged [contingent
-  on SD-6].** Whichever SD-6 rules: (b)-recommended — `GET /runs` gains a bounded
-  newest-N default with the client filter unchanged; pass read = a test seeds N+1 runs
-  and reads N back, plus the two demo runs always present within bound; non-vacuity =
-  lift the bound in scratch → the count assertion reddens. If (a)-unbounded is ruled:
-  the pass read becomes the recorded acceptance note + a rewritten tripwire condition
-  in AC-7(ii)'s amendment, and no endpoint change ships. **[offline/DB]**
+- [ ] **AC-8 — the reopened cap/filtering question is answered, not dodged [SD-6
+  RULED (b), s243 — pass read fixed as ruled; the (a)-unbounded branch is retired].**
+  `GET /runs` — unbounded today (G-15) — gains a bounded newest-N default with the
+  client filter unchanged; pass read = a test seeds N+1 runs and reads N back, plus
+  the two demo runs always present within bound; non-vacuity = lift the bound in
+  scratch → the count assertion reddens. **[offline/DB]**
 - [ ] **AC-9 — full gates + the ingress guard moves only as ruled [SD-3 RULED (a),
   s243 — the (b)/no-ingress-change/byte-identical branch is retired].** `uv run --extra dev
   pytest tests/ -q 2>&1`, `uv run mypy services/ 2>&1`, bare `ruff check . 2>&1` — all
@@ -313,16 +356,29 @@ exist beside stronger ones for even one commit on which a firing path lands.
 No build past Step 1 until the SDs below are ruled. Contingent ACs (2, 4, 5, 8) are
 re-fixed against the ruled options in this file, with the ruling stamped per SD
 (the PLAN-0110/0111 convention), before Step 3 begins.
+**Discharged s243:** all seven SDs are RULED and stamped in place (SD-1 s242;
+SD-3 s243; SD-2/SD-4/SD-5/SD-6/SD-7 s243), and the contingent pass reads are
+re-fixed in the same edits — the gate on Steps 3+ is lifted (§Verification item 4).
 
-### Step 3: Build the firing seam (AC-2)
-Per SD-1/SD-2/SD-5 rulings: hook the governable moment (`cases.py:715`, after
-`_refresh_case_events`) to fire `governed_repair_approval` with the ruled actor shape
-and an idempotency key (deterministic per case-event id if SD-5 takes the bridge-shaped
-id, `event_bridge.py:95` precedent). Executor resolution goes through
-`registry.get_procedure_executors` (G-10) — test fixtures must register fleet's factory
-first, and the seam's failure mode is ruled in SD-2 (recommended: fail-soft on the case
-write, loud in the log + trace, mirroring the boot seed's posture at `main.py:508-511`
-— the case row must never be lost to a firing error).
+### Step 3: Build the firing seam (AC-2) — SD-1(b) s242; SD-2(b) + SD-5(b) s243
+The mechanism as ruled — the event bridge. In
+`verticals/fleet_maintenance/procedures.yaml`: flip `governed_repair_approval` to
+`trigger: event`; author the `event_trigger` descriptor on procurement's live
+template (`verticals/procurement/procedures.yaml:861-868` — the SD-5 stamp;
+`owning_person_id` = the standing `requester`-role person per SD-1(b)); choose
+`dedup_window_seconds` **deliberately wide** per G-14 (this event is human-driven,
+not a polled detection — the bucket must be effectively constant so the key reduces
+to `(vertical, event_kind, case_id, quote_id)`); and **correct the stale `# L-1`
+comment at `procedures.yaml:144` in the same edit** (the SD-5 stamp). Hook the
+governable moment (`cases.py:715`, after `_refresh_case_events`) to invoke the
+bridge — a new invocation seam under any option (G-9: today only `actions.py:177-186`
+calls it) — with `entity_ids = [case_id, quote_id]` per G-14, never `accepted_id`.
+Executor resolution goes through `registry.get_procedure_executors` (G-10) — test
+fixtures must register fleet's factory first. Failure posture (the PLAN's carried
+requirement, not part of Cray's pick): fail-soft on the case write, loud in the log
++ trace — the accept row must never be lost to a firing error (precedent:
+procurement's operate seed, `main.py:507-515`, the citation correction recorded in
+the SD-2 stamp).
 
 ### Step 4: The scenario test + dead-end guard (AC-3, AC-4)
 The §8-binding scenario lands with the seam in the same PR, plus the AC-4 invariant
@@ -340,9 +396,13 @@ excluded, and the ฿ column comes from a close-out); and the seed's necessity i
 restated — split its reason sentence, never remove the seed. The RoPA rider (AC-6)
 lands here.
 
-### Step 6: Population-bound follow-through (AC-7, AC-8) — per SD-6/SD-7
-The reset-coexistence scenario, the `done/0110` post-archival amendment, the cap (or
-its recorded acceptance), and the visitor-run lifecycle disposition SD-7 rules.
+### Step 6: Population-bound follow-through (AC-7, AC-8) — SD-6(b) + SD-7(a)+(c), s243
+Now unconditional: the reset-coexistence scenario; the `done/0110` post-archival
+amendment (its new bound stated in the SD-6(b) shape — AC-7(ii)); the bounded
+newest-N default on `GET /runs` (AC-8); and the ruled visitor-run disposition —
+retain (a), an operator cancels stale parked runs manually through the existing
+`cancel_run_endpoint` (c), which requires an authenticated human and cancels only
+`waiting_human` runs (the SD-7 stamp). No sweep ships.
 
 ### Step 7: Full gates + live evidence (AC-9)
 Offline gates first (the gate). Then, under an explicit typed Cray go (§8 host-state;
@@ -459,11 +519,51 @@ ADR-016/ADR-0035 class of ruling, and the exact question SD-E reserved.
 
 ### SD-2 — the firing moment and its idempotency/failure semantics
 
+**RULED (Cray, typed, s243, 2026-08-21): (b)** — re-fire on every projection-material
+change (re-accept at a new amount → a new run). **This is NOT the option the PLAN
+recommended: the recommendation below was (a), once-per-case, and it was not taken.**
+Cray typed the pick only — no reasoning was given, and none is recorded here.
+(Contrast SD-1, whose stamp records Cray's typed "two halves" because Cray typed it;
+everything below this ruling line is the PLAN's record, not Cray's.)
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`4913a80` — each re-checkable):**
+
+- **The ruled option and SD-5(b) do not compose on the bridge's stock dedup key —
+  G-14.** The accepted amount is not in `event_key`, so a re-accept at a new amount
+  within one dedup window would be deduped away — silently defeating (b) exactly as
+  ruled. The build must key on the accepted quote's identity
+  (`entity_ids = [case_id, quote_id]`), never on `accepted_id`, and must author
+  `dedup_window_seconds` deliberately wide; the full mechanism, both traps, and the
+  citations are G-14. Step 3 and AC-2 carry the constraint.
+- **AC-2's sub-ceiling pass read was FALSE in the demo environment and is corrected
+  in this edit.** The `reshape` step consumes only the breach subset
+  (`input: {from: judge, where: {verdict: breach}}`,
+  `verticals/fleet_maintenance/procedures.yaml:190-193`), so a non-breaching row
+  never reaches the doa_tier gate — but intake is a fleet-wide population scan (G-6)
+  and the seeded demo pair stays OPEN with breaching accepted quotes (G-12), so
+  **every** visitor-fired run gates, sub-ceiling or not. The old clause "a
+  sub-ceiling acceptance fires and completes with no gate" holds only in a fleet
+  where no other truck breaches — never in the shipped demo. AC-2's pass read is
+  re-fixed accordingly (a direct SD-4(a) consequence).
+- **Citation correction (requirement kept, attribution fixed).** Option (a) below
+  cites the fail-soft posture as "the boot seed's posture, `main.py:508-511`"; that
+  block sits inside `if vertical == "procurement":` (`services/api/main.py:507-515`)
+  — it is **procurement's** operate seed, not fleet's. A valid fail-soft precedent,
+  imprecisely attributed. The requirement itself — the accept write must never be
+  lost to a firing error — stands, and Step 3 carries it (the PLAN's requirement,
+  not part of Cray's pick).
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected — including the recommendation that was not taken.
+
 Measured (G-4): case-open cannot fire anything real; the governable moment is
 quote-acceptance. Remaining choices: **(a)** fire on accept only, once per case
 (deterministic id; a re-accept re-fires only if the prior run for that case-event is
 absent), fail-soft on the case write (loud log + trace; the accept must not be lost to
-a firing error — the boot seed's posture, `main.py:508-511`); **(b)** re-fire on every
+a firing error — the boot seed's posture, `main.py:508-511` *[attribution corrected
+s243: procurement's operate seed, `main.py:507-515` — see the stamp block above]*);
+**(b)** re-fire on every
 projection-material change (re-accept at a new amount → a new run; honest but noisy —
 each re-fire adds a parked run someone must resolve or cancel); **(c)** fire-on-open
 as literally commissioned — measured to govern nothing (G-4) and recorded here so the
@@ -555,6 +655,26 @@ PLAN-0100/0103/ADR-0035 reserved for typed rulings.
 
 ### SD-4 — the population-scan gate: whose cases does a visitor-fired run propose?
 
+**RULED (Cray, typed, s243, 2026-08-21): (a)** — accept the multi-case gate. Cray
+typed the pick only — no reasoning was given, and none is recorded here; everything
+below this ruling line is the PLAN's record, not Cray's.
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`4913a80`):**
+
+- **The accepted cost is stronger than the option text below states.**
+  `GateResolveRequest.decisions: dict[str, Literal["approve", "reject"]]`
+  (`services/api/models/runs.py:190-200`) is described in the model itself as
+  "action_id -> approve | reject; EVERY proposal at the gate needs an explicit
+  decision (no silent default)". So the approver is not merely **able** to decide
+  the visitor's proposal independently — on every visitor-fired round they are
+  **compelled** to explicitly decide the demo pair's re-proposals too. Option (a)'s
+  "the approver decides per proposal" understates this; the sharpened cost is
+  recorded here as accepted with the ruling.
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why.
+
 Measured (G-6): a fired run proposes every currently-breaching OPEN case — the
 visitor's *and* the demo pair's *and* other visitors'. **(a)** Accept the multi-case
 gate: it is what the declared procedure means ("read the fleet, govern what breaches");
@@ -574,6 +694,46 @@ narrative — product voice, not code.
 
 ### SD-5 — mechanism: imperative call vs declared event trigger
 
+**RULED (Cray, typed, s243, 2026-08-21): (b)** — declared event trigger through the
+shipped bridge. Cray typed the pick only — no reasoning was given, and none is
+recorded here; everything below this ruling line is the PLAN's record, not Cray's.
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`4913a80` — each re-checkable):**
+
+- **(b) has a live on-disk template; it is not an invention.** Procurement's
+  `emergency_sourcing_round` ships `trigger: event` with
+  `event_trigger: {event_kind: emergency_source, owning_person_id: req-planner}` on
+  a doa_tier + SoD procedure (`verticals/procurement/procedures.yaml:861-868`) — the
+  same archetype as fleet's `governed_repair_approval`. The `EventTrigger` model is
+  `services/engine/procedures/spec.py:144-186`: `event_kind` unique per vertical,
+  cross-ref validated at load; `owning_person_id` = the SP-5 person recorded as the
+  SoD requester; `dedup_window_seconds` default 3600, `gt=0`.
+- **Flipping the declared trigger does NOT break manual firing — a de-risk the
+  option text below did not state.** `_RUNNABLE_TRIGGERS = frozenset({Trigger.MANUAL,
+  Trigger.SCHEDULE, Trigger.EVENT})` (`services/engine/procedures/
+  orchestrator.py:149`); `validate_runnable` checks only membership in that allowlist
+  (`:169-174`); and `run_procedure_endpoint` never reads the procedure's **declared**
+  trigger (`services/api/routers/runs.py:370-419` — `_trigger_of` at `:239-242`
+  reads the *trigger_context*, i.e. how this particular run was fired). The manual
+  console/demo door survives (b) intact.
+- **The cost the option text names is smaller than stated: the `# L-1` comment
+  already misdescribes its own file.** `verticals/fleet_maintenance/
+  procedures.yaml:144` reads `trigger: manual  # L-1: only manual runs in Phase 1
+  (the PLAN-0019 precedent)`. L-1 is a genuine PLAN-0019 **LOCKED** scope decision
+  (`docs/plans/done/0019-core-procedure-baseline.md:52`, `:65`), but its substance
+  ("Phase-1 = `manual` trigger ONLY") has already been lifted twice: the **same
+  file** ships `trigger: schedule` at `:496` (annotated Cray-ratified, typed, s163,
+  at `:498`), and `event` is runnable per ADR-0029 / PLAN-0056. So (b) corrects a
+  stale comment rather than reversing a live lock. **Step 3 must update that
+  comment as part of the build.**
+- **The composition constraint with SD-2(b) is G-14:** the bridge's stock key must
+  carry the accepted quote's identity, or the dedup silently defeats SD-2(b). Step 3
+  and AC-2 carry it.
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why.
+
 **(a)** Imperative: the accept path calls `run_procedure_persisted` directly with the
 ruled actor shape — smallest diff, hand-rolled idempotency, wiring lives in the router.
 **(b)** Declared: give `governed_repair_approval` an `event_trigger` and fire through
@@ -583,15 +743,31 @@ ADR-0029 SD-2), owning-person shape built in (G-9), and the vertical's behaviour
 comment (`procedures.yaml:144`, "L-1: only manual runs in Phase 1") changes meaning as
 a declared decision, and the bridge needs a new invocation seam from the accept path
 either way (G-9 — today only `actions.py` calls it, behind `event_bridge_enabled`).
-**Recommendation:** (b) if SD-1 = (b) (the shapes compose; the idempotency is free);
+**Recommendation:** (b) if SD-1 = (b) (the shapes compose; the idempotency is free
+*[qualified s243: free only on the stock key — SD-2(b) requires the quote's identity
+in `entity_ids`; G-14]*);
 (a) if SD-1 = (a) (the bridge's service-principal actor contradicts firing as the
 persona). **SD-1 is now RULED (b) (s242), so the condition holds: the live
 recommendation is (b) — the bridge's service-principal + owning-person actor is
-exactly the ruled SD-1 shape. SD-5 itself remains UNRULED.** **Why Cray:** with SD-1
+exactly the ruled SD-1 shape. SD-5 itself remained unruled when this was written
+*[ruled (b) s243 — the stamp above]*.** **Why Cray:** with SD-1
 it fixes which precedent (manual-door vs S1/S2-headless) this surface extends — an
 architecture-lineage call.
 
 ### SD-6 — the dissolved population bound: cap and server-side filtering
+
+**RULED (Cray, typed, s243, 2026-08-21): (b)** — a bounded newest-N default on
+`GET /runs`. Cray typed the pick only — no reasoning was given, and none is recorded
+here; everything below this ruling line is the PLAN's record, not Cray's.
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`4913a80`):** the premise holds — `list_runs` (`services/api/routers/runs.py:273-330`)
+issues `select(PipelineRun).order_by(PipelineRun.started_at.desc())` with **no
+`.limit()`** (`:295-299`); the endpoint is unbounded today, returning every run ever
+on each Tab H load (G-15).
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why.
 
 The two `done/0110:375-383` Out-of-Scope items reopen the moment a visitor can mint
 runs (G4 tripwire trigger (ii), pre-armed). **(a)** Accept unbounded at pilot scale:
@@ -603,6 +779,22 @@ the complete answer, priced as overbuild before any measured need. **Recommendat
 (b). **Why Cray:** G4 records the cap as Cray's own reopened question by name.
 
 ### SD-7 — visitor-run lifecycle: who owns the runs that now accumulate?
+
+**RULED (Cray, typed, s243, 2026-08-21): (a)+(c)** — retain visitor runs; an
+operator cancels stale parked ones manually via the existing endpoint. Cray typed
+the pick only — no reasoning was given, and none is recorded here; everything below
+this ruling line is the PLAN's record, not Cray's.
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`4913a80`):** (c)'s mechanism is live and scoped exactly where it is needed —
+`cancel_run_endpoint` (`services/api/routers/runs.py:538-560`) requires an
+authenticated human (403 otherwise, mirroring the resolve guard, `:553-560`), and v1
+cancels **only** a `waiting_human` run — any other state is a 409. Visitor-fired
+runs park at `waiting_human` (G-12), so (c) applies precisely to them and to
+nothing else.
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why.
 
 Measured (G-11): visitor runs survive every reset by design and accumulate across
 deploys. SD-E: "a decision someone must own — in the follow-on PLAN, not silently
@@ -618,6 +810,16 @@ manual, and honest, but an operator chore. **Recommendation:** (a) + (c) as post
 **Why Cray:** retention of governed records on a public demo is a compliance-adjacent
 posture call (PDPA framing in §8), not an implementation detail.
 
+### The ruled posture, read together (the PLAN's reading — not Cray's)
+
+SD-2(b) accepts Monitor noise as the price of audit completeness: every material
+change to a governed spend leaves its own run. SD-6(b) bounds what the Monitor
+*displays*, not what exists — the noise is capped at the read side. And SD-7(a)+(c)
+assigns the residue to an operator: parked runs that have served their purpose are
+cancelled by hand through the existing governed endpoint, never swept. The three
+rulings compose — a later reader should not take (b)-on-SD-2 for an oversight that
+SD-6/SD-7 then had to mop up.
+
 ## Verification
 
 1. **Offline (the gate):** the AC-9 full gates plus, per AC, its own named test —
@@ -629,15 +831,23 @@ posture call (PDPA framing in §8), not an implementation detail.
    seam; a PR that lands both in one diff fails review by this line.
 3. **Live (evidence, not the gate):** Step 7 under an explicit typed Cray go — §8
    host-state rules; every fleet redeploy is the by-hand path (PLAN-0110 G11).
-4. **Rulings:** SD-1 is **RULED and stamped in place** (Cray, typed, s242 — with the
-   measured state of its premises and the ADR-0035 amendment dependency recorded in
-   the same stamp); AC-4 was re-fixed and AC-2/AC-5's contingency brackets narrowed
-   in that edit. SD-3 is **RULED and stamped in place** (Cray, typed, s243 — a pick
-   with no typed reasoning, recorded as such; the measured state M-corrections and
-   G-13 recorded with the stamp, AC-5/AC-9 re-fixed and Step 5 made unconditional
-   in the same edit, and the SD-1 dependency note's `Cf-Access` sentence corrected
-   per Cray's same-turn ruling). SD-2 and SD-4 … SD-7 remain **unruled**. This PLAN
-   stays `Draft`; each
-   further ruling is stamped in place per SD (`RULED (Cray, typed, date, session):
-   …`) the moment it lands, and the contingent ACs are re-fixed in the same edit
-   (drafter dispatch — `docs/plans/` stays G2-gated for Code).
+4. **Rulings — all seven SDs are RULED; the Step-2 gate is DISCHARGED (s243).**
+   SD-1 is **RULED (b)** and stamped in place (Cray, typed, s242 — with Cray's typed
+   "two halves" reasoning, the measured state of its premises, and the ADR-0035
+   amendment dependency recorded in the same stamp); AC-4 was re-fixed and
+   AC-2/AC-5's contingency brackets narrowed in that edit. SD-3 is **RULED (a)**
+   (Cray, typed, s243 — a pick with no typed reasoning, recorded as such; the
+   measured-state corrections and G-13 recorded with the stamp, AC-5/AC-9 re-fixed
+   and Step 5 made unconditional in the same edit, and the SD-1 dependency note's
+   `Cf-Access` sentence corrected per Cray's same-turn ruling). SD-2 **(b)**, SD-4
+   **(a)**, SD-5 **(b)**, SD-6 **(b)** and SD-7 **(a)+(c)** are **RULED** and
+   stamped in place (Cray, typed, s243, 2026-08-21 — picks only: no reasoning was
+   typed for any of the five and none is recorded; **SD-2's ruling is NOT the
+   option this PLAN recommended** — its stamp says so plainly). In that same edit:
+   G-14/G-15 added to §Grounded measurements, AC-2 re-fixed against SD-2(b)+SD-5(b)
+   with its sub-ceiling clause corrected, AC-4 annotated with the SD-5(b) actor
+   shape, AC-7(ii)'s bound restated in the SD-6(b) shape, AC-8's (a)-branch
+   retired, and Steps 3/6 made unconditional. This PLAN stays `Draft`; every ruling
+   is stamped in place per SD (`RULED (Cray, typed, date, session): …`) with the
+   contingent ACs re-fixed in the same edit (drafter dispatch — `docs/plans/` stays
+   G2-gated for Code).
