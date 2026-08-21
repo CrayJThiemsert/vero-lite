@@ -44,6 +44,11 @@ itself is confirmed as stated.
   "a gated step requires an authenticated human approver (ADR-016 S2 RF-1)…")`
   (`runs.py:444-451`) — and `cancel_run_endpoint` (`:553-560`). PLAN-0110 G10.6
   (`done/0110:196-205`) demanded any firing path close this **in the same change**.
+  _[Closed 2026-08-21 by Step 1 — PR #1246, merged `f52dbdc`: the refusal now
+  exists at `runs.py:391-398`, before spec loading and any DB write; the sibling
+  citations `:444-451` / `:553-560` above (fixed on `e4eaf78`) now resolve at
+  `:460-466` / `:569-576` — pure line shift from the insertion. G10.6 is
+  satisfied ahead of any firing path; evidence in AC-1's closing stamp.]_
 - **G-3 — downstream of a fired run, the chain works.** `link_resolved_cases`
   (`verticals/fleet_maintenance/run_link.py:143-193`, armed by
   `register_fleet_run_link_hook` `:196-198`) writes `RepairCaseRunLink` per decided case
@@ -199,7 +204,7 @@ itself is confirmed as stated.
 > deterministic, no LLM); **[offline/no-DB]** = pure pytest; **[published]** = live
 > evidence only, never the gate (§8 host-state rules apply).
 
-- [ ] **AC-1 — the run endpoint fails closed on a missing principal (unconditional;
+- [x] **AC-1 — the run endpoint fails closed on a missing principal (unconditional;
   Step 1; lands before any firing path exists).** `run_procedure_endpoint` refuses with
   403 when `auth.person_id is None`, mirroring `runs.py:444-451` verbatim in mechanism
   (independent of the `api_auth_enabled` toggle), before spec loading or any DB write.
@@ -209,6 +214,52 @@ itself is confirmed as stated.
   Non-vacuity probe: comment out the new guard in a scratch copy → the 403 assertion
   reddens to a 200 **and** the zero-rows assertion reddens to 1 — both directions
   witnessed. **[offline/DB]**
+  > **CLOSED (Code, 2026-08-21) — PR #1246, merged `f52dbdc`** (4 files, +207/−18;
+  > long form in the PR body + commit message — pointers only here). The guard:
+  > `services/api/routers/runs.py:391-398` (rationale comment `:384-390`), at the
+  > top of `run_procedure_endpoint`'s body — before `settings.oct_vertical` /
+  > `_spec_for` (`:400-401`) and before `run_procedure_persisted` — mirroring the
+  > resolve and cancel guards in mechanism (the resolve guard this AC cites as
+  > `:444-451` on `e4eaf78` now sits at `:460-466`; pure line shift from this
+  > insertion). The test: `tests/api/test_run_endpoint_principal_guard.py` — the
+  > refusal (403 + RF-1 citation + zero new `pipeline_runs` rows) and its positive
+  > control (a keyed `req-mechanic-tom` still fires and parks `waiting_human`).
+  > **Non-vacuity witnessed RED in BOTH directions — via TWO probes on DIFFERENT
+  > assertions, not one mutation** (the ⚠️ finding below): **P1** guard deleted →
+  > `assert 200 == 403` reddened, the body printing `"triggered_by": null` — the
+  > pre-fix defect itself; proves **presence**. **P2** guard relocated *after*
+  > `run_procedure_persisted` → `assert 1 == 0` reddened with the placement
+  > message *while the 403 assertion still passed* (ruling out an unrelated
+  > break); proves **placement** — the AC's own "before spec loading or any DB
+  > write" clause. Each probe restored byte-identical from `/tmp` (never from
+  > git), sha256-verified. **Blast radius measured before AND after:** a
+  > pre-change baseline over the nine driver files captured green (45 passed) so
+  > any later red was attributable; four reddened, two kinds — two scenarios
+  > firing unkeyed, and the SIBLING guards' own tests, whose *arrangement* (not
+  > assertion) minted their parked run through the very door this change closes;
+  > arming authn in the scenario fixture then reddened two further tests in that
+  > module (the fixture governs every request there, not only the run POST).
+  > Also landed: `test_runs_endpoints.py` sibling guard tests re-arranged + the
+  > now-dead `runs_no_auth` fixture removed; `test_case_event_path_scenario.py`
+  > keyed as `req-mechanic-tom`. **Full gate at CI scope:** `pytest tests/`
+  > **4222 passed / 8 skipped** (4220 at session start — +2 exactly, so nothing
+  > else moved) · bare `ruff check .` clean · `ruff format --check .` 648 files
+  > already formatted (no file touched after the probes were witnessed) ·
+  > `mypy --strict services/ verticals/` clean over 201 files.
+  > ⚠️ **Finding for the probe batteries ahead (AC-2, AC-3, AC-4, AC-7, AC-8 —
+  > specified in this same both-directions shape).** This AC's probe read asked
+  > one mutation to redden two assertions ("the 403 assertion reddens to a 200
+  > **and** the zero-rows assertion reddens to 1 — both directions witnessed") —
+  > but both assertions live in ONE test, and pytest stops at the first failed
+  > assert, so a single mutation can only ever witness ONE direction. Closing
+  > honestly required two independent probes: deletion (presence) and
+  > **relocation past the write** (placement). The placement half is the half
+  > that evidences the AC's own ordering clause — a battery that only deletes
+  > would have left that clause unevidenced while reporting success. For the ACs
+  > above: where a pass read names two reddening assertions, plan one probe
+  > **per assertion**, each naming its mutation and direction — and prefer
+  > mutations under which the *other* assertion stays green, because that green
+  > is what rules out "something unrelated broke."
 - [ ] **AC-2 — the governable moment fires runs per SD-2(b), idempotent per quote
   identity [SD-2 RULED (b) + SD-5 RULED (b), s243 — pass read re-fixed; the
   once-per-case read is retired; SD-1 RULED (b), s242 — see SD-1].** The accept seam
@@ -351,6 +402,18 @@ The non-negotiable ordering (PLAN-0110 G10.6; STATUS names it the prerequisite).
 Mirror `runs.py:444-451`'s refusal at the top of `run_procedure_endpoint`, independent
 of the authn toggle, with its own test. Ships as its own PR — a weaker door must not
 exist beside stronger ones for even one commit on which a firing path lands.
+
+**EXECUTED (Code, 2026-08-21) — PR #1246, merged `f52dbdc`, as its own PR as
+required.** What landed: the fail-closed guard at `runs.py:391-398` (before spec
+loading and any DB write), `tests/api/test_run_endpoint_principal_guard.py`
+(refusal + positive control), the sibling-test re-arrangement in
+`test_runs_endpoints.py` (dead `runs_no_auth` fixture removed), and
+`test_case_event_path_scenario.py` keyed as `req-mechanic-tom`. The two-probe
+non-vacuity record (presence AND placement, each witnessed RED), the measured
+blast radius, and the full gate (4222 passed / 8 skipped, +2 exactly) are in
+AC-1's closing stamp — which also carries the ⚠️ probe-battery finding for the
+steps ahead. Ordering held: no firing path existed when this merged
+(§Verification item 2, first half discharged).
 
 ### Step 2: Cray rules SD-1 … SD-7; pass reads re-fixed
 No build past Step 1 until the SDs below are ruled. Contingent ACs (2, 4, 5, 8) are
@@ -829,6 +892,9 @@ SD-6/SD-7 then had to mop up.
    dev Postgres (5442).
 2. **Ordering is part of the pass:** AC-1's PR merges before any PR containing a firing
    seam; a PR that lands both in one diff fails review by this line.
+   _[First half discharged 2026-08-21: AC-1's PR #1246 merged `f52dbdc` with no
+   firing seam yet in existence. The line stays live — it continues to bind
+   every future firing-seam PR (Steps 3+).]_
 3. **Live (evidence, not the gate):** Step 7 under an explicit typed Cray go — §8
    host-state rules; every fleet redeploy is the by-hand path (PLAN-0110 G11).
 4. **Rulings — all seven SDs are RULED; the Step-2 gate is DISCHARGED (s243).**
