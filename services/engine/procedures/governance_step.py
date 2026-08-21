@@ -66,6 +66,14 @@ def _spend(entity: Any) -> tuple[Decimal, str]:
     return value, str(entity["currency"])
 
 
+_ECONOMIC_IMPACT = "economic_impact"
+"""The reasoning-trace discriminator the Box-4 ฿ lift moves onto the STEP trace.
+
+The same literal ``services/db/run_analytics.py`` reads (its ``_ECONOMIC_IMPACT``): that
+module's S2 extract-on-read contract is defined over ``StepResult.reasoning_trace``, so this
+constant names the one key that makes a facet reachable by the ฿ rollup."""
+
+
 EXCURSION_SEVERITY_FIELD = "excursion_severity"
 """The entity field a ``severity_tier`` gate reads its authority quantity from (PLAN-0074).
 
@@ -179,6 +187,16 @@ class GovernanceActionExecutor:
     # it stay byte-identical (None = today's behavior). Trace-only by construction:
     # its entries are appended to reasoning_trace in _doa_tier and NEVER to audit.
     advisory_builder: GateAdvisoryBuilder | None = None
+    # The run-scoped ฿-facet ledger read by :meth:`_lift_economic_steps`. The registry
+    # Step-2 contract builds this executor FRESH per run/resume request, and the
+    # orchestrator hands that one instance to EVERY ``action`` step of the run — so a
+    # plain instance set is exactly run-scoped, with no RunContext change (the context is
+    # documented read-only and stays that way). ``compare=False`` keeps a mutable set out
+    # of the frozen dataclass' generated ``__eq__`` / ``__hash__``; ``init=False`` keeps it
+    # off the constructor signature every vertical factory already calls.
+    _emitted_economic: set[tuple[str, str]] = field(
+        default_factory=set, init=False, compare=False, repr=False
+    )
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         gc = step.governance_content
@@ -189,6 +207,59 @@ class GovernanceActionExecutor:
         if isinstance(gc, SeverityLadder):
             return await self._severity_tier(step, gc, input_set, ctx)
         return await self.base.execute(step, input_set, ctx)
+
+    def _lift_economic_steps(self, output: list[Any]) -> list[dict[str, Any]]:
+        """Lift the advisory Box-4 ``economic_impact`` facets off the base executor's action
+        envelopes onto the STEP trace — at most once per ``(action_id, facet kind)`` per run.
+
+        **Why a lift is needed at all.** The base
+        :class:`~services.engine.procedures.action_step.ActionStepExecutor` builds the facet into
+        each ``RecommendedAction``'s OWN ``reasoning_trace`` (ADR-0030 / PLAN-0071), which
+        persists inside ``StepResult.artifact["output_set"]``. That is not the surface the ฿
+        rollup reads: ``services/db/run_analytics.py`` extracts the facet from
+        ``StepResult.reasoning_trace`` (its S2 extract-on-read contract). A facet left nested in
+        the envelope is therefore present in the run and **invisible to Tab J** — measured
+        session 244 on ``fleet_maintenance/governed_repair_approval``, whose ``approve`` step
+        carried a grounded ฿7,200 ``overpay_avoided`` facet while ``benefit_rollup`` filtered to
+        that procedure returned zero buckets.
+
+        **Why the once-per-run ledger.** The base executor rebuilds the facet at EVERY action
+        step, so a procedure with two action steps over the same event carries the SAME figure
+        twice. Measured on ``procurement/emergency_sourcing_round`` (``source`` + ``approve``)
+        and ``supply_chain/cold_chain_excursion_disposition`` (``assess`` + ``approve``): each
+        pair the identical ledger value under the identical ``action_id``. Lifting both would
+        DOUBLE those verticals' ฿ sums — a worse defect than the one being fixed, and a silent
+        one. The ledger keys on ``(action_id, facet kind)`` and NOT on the figure, because two
+        DISTINCT entities can legitimately ground equal ฿: ``aquaculture/morning_pond_health_
+        round``'s ``aerate`` step carries two ฿247,000 facets under different ``action_id``s,
+        and a value-keyed ledger would silently drop one of them.
+
+        Advisory + never-raise, like the facet itself: the empty list when no producer is
+        registered, when the event grounds no ฿ figure, or when this run already lifted it. The
+        entries pass through BYTE-IDENTICAL — the ledger key is computed, never stamped — so no
+        consumer of the trace shape changes.
+        """
+        lifted: list[dict[str, Any]] = []
+        for entry in output:
+            if not isinstance(entry, Mapping):
+                continue
+            action = entry.get("action")
+            if not isinstance(action, Mapping):
+                continue
+            action_id = str(action.get("id", ""))
+            for trace_step in action.get("reasoning_trace") or []:
+                if not isinstance(trace_step, Mapping):
+                    continue
+                if trace_step.get("kind") != _ECONOMIC_IMPACT:
+                    continue
+                detail = trace_step.get("detail")
+                facet_kind = str(detail.get("kind", "")) if isinstance(detail, Mapping) else ""
+                key = (action_id, facet_kind)
+                if key in self._emitted_economic:
+                    continue
+                self._emitted_economic.add(key)
+                lifted.append(cast("dict[str, Any]", trace_step))
+        return lifted
 
     async def _doa_tier(
         self, step: Step, ladder: DoaLadder, input_set: list[Any], ctx: RunContext
@@ -210,24 +281,34 @@ class GovernanceActionExecutor:
             for amount, currency in (_spend(entity) for entity in input_set)
         ]
         base_outcome = await self.base.execute(step, input_set, ctx)
-        trace = list(base_outcome.reasoning_trace) + [
-            {
-                "kind": "doa_tier_resolved",
-                "resolved_tier_id": v.resolved_tier_id,
-                "required_role": v.required_role,
-                "resolved_approver_id": v.resolved_approver_id,
-                "summary": (
-                    f"spend {v.amount.value} {v.amount.currency} -> tier '{v.resolved_tier_id}' "
-                    f"(approver_role '{v.required_role}'"
-                    + (
-                        f", resolved to '{v.resolved_approver_id}')"
-                        if v.resolved_approver_id is not None
-                        else ", no native-tier approver — tier-authority enforces at the gate)"
-                    )
-                ),
-            }
-            for v in verdicts
-        ]
+        # The authority gate KEEPS ``base_outcome.output`` (unlike _scored_rule below), so
+        # the ฿ facet is not destroyed here — it is merely unreachable, nested inside the
+        # action envelopes rather than on the trace ``run_analytics`` is contracted to read.
+        # Lift it onto that surface; the ledger keeps a second action step in the same run
+        # from lifting the same figure twice.
+        trace = (
+            list(base_outcome.reasoning_trace)
+            + self._lift_economic_steps(base_outcome.output)
+            + [
+                {
+                    "kind": "doa_tier_resolved",
+                    "resolved_tier_id": v.resolved_tier_id,
+                    "required_role": v.required_role,
+                    "resolved_approver_id": v.resolved_approver_id,
+                    "summary": (
+                        f"spend {v.amount.value} {v.amount.currency} -> "
+                        f"tier '{v.resolved_tier_id}' "
+                        f"(approver_role '{v.required_role}'"
+                        + (
+                            f", resolved to '{v.resolved_approver_id}')"
+                            if v.resolved_approver_id is not None
+                            else ", no native-tier approver — tier-authority enforces at the gate)"
+                        )
+                    ),
+                }
+                for v in verdicts
+            ]
+        )
         # PLAN-0085 SD-1(b): the advisory gate recommendation — appended to the TRACE
         # only (shown, never routes; L-B). The builder never raises (ADR-0030 D5), so a
         # failing advisory cannot fail, park, or divert the run; the audit block below
@@ -268,24 +349,33 @@ class GovernanceActionExecutor:
             for severity in (_severity(entity) for entity in input_set)
         ]
         base_outcome = await self.base.execute(step, input_set, ctx)
-        trace = list(base_outcome.reasoning_trace) + [
-            {
-                "kind": "severity_tier_resolved",
-                "resolved_tier_id": v.resolved_tier_id,
-                "required_role": v.required_role,
-                "resolved_approver_id": v.resolved_approver_id,
-                "summary": (
-                    f"severity '{v.severity.value}' -> tier '{v.resolved_tier_id}' "
-                    f"(approver_role '{v.required_role}'"
-                    + (
-                        f", resolved to '{v.resolved_approver_id}')"
-                        if v.resolved_approver_id is not None
-                        else ", no native-tier approver — tier-authority enforces at the gate)"
-                    )
-                ),
-            }
-            for v in verdicts
-        ]
+        # The same reachability gap as _doa_tier — the non-money authority gate also KEEPS
+        # the envelopes. A no-op on today's only severity_tier user (``supply_chain``'s
+        # ``approve`` follows a ``scored_rule`` ``assess`` that already lifted the same
+        # facet, so the ledger dedupes it), and correct for the next vertical that gates on
+        # severity alone.
+        trace = (
+            list(base_outcome.reasoning_trace)
+            + self._lift_economic_steps(base_outcome.output)
+            + [
+                {
+                    "kind": "severity_tier_resolved",
+                    "resolved_tier_id": v.resolved_tier_id,
+                    "required_role": v.required_role,
+                    "resolved_approver_id": v.resolved_approver_id,
+                    "summary": (
+                        f"severity '{v.severity.value}' -> tier '{v.resolved_tier_id}' "
+                        f"(approver_role '{v.required_role}'"
+                        + (
+                            f", resolved to '{v.resolved_approver_id}')"
+                            if v.resolved_approver_id is not None
+                            else ", no native-tier approver — tier-authority enforces at the gate)"
+                        )
+                    ),
+                }
+                for v in verdicts
+            ]
+        )
         # PLAN-0075 SD-6(a): no run-time principal-naming tie (see _doa_tier) — the actor-named
         # ``governed_decision`` is emitted at GATE time after the tier-authority check passes.
         audit = {
@@ -324,15 +414,12 @@ class GovernanceActionExecutor:
         # facet into each RecommendedAction's reasoning_trace (ADR-0030 / PLAN-0071). This method
         # REPLACES base_outcome.output below (dropping those action envelopes to thread the selected
         # spend forward), which would discard the facet — so lift it onto the STEP trace here, where
-        # it persists on the governed run. Advisory + never-raise: an empty list when no producer is
-        # registered or the event does not ground a ฿ figure (it never changes the action).
-        economic_steps: list[dict[str, Any]] = [
-            cast("dict[str, Any]", trace_step)
-            for entry in base_outcome.output
-            if isinstance(entry, Mapping)
-            for trace_step in (entry.get("action") or {}).get("reasoning_trace", [])
-            if isinstance(trace_step, Mapping) and trace_step.get("kind") == "economic_impact"
-        ]
+        # it persists on the governed run. The lift is now the shared :meth:`_lift_economic_steps`
+        # (the authority gates need the same one), which ALSO claims this run's ledger key — that
+        # is what keeps procurement's downstream ``approve`` doa_tier from re-lifting the identical
+        # figure and doubling the ฿ sum. Behaviour here is unchanged: this is the first action
+        # step of the run, so nothing has claimed the key yet.
+        economic_steps: list[dict[str, Any]] = self._lift_economic_steps(base_outcome.output)
         # PLAN-0078 PR-4 (the ratified SD-8 = (a) one derivation home): stamp the two FACTORS of
         # the spend, never their product — the declared `derive_spend` transform downstream
         # multiplies them into `amount`, so the derivation lives ONCE, as governed data.
