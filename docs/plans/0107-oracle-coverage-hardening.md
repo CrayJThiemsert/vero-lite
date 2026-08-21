@@ -341,7 +341,7 @@ a source-text read.
   > (b) build a real trace producer first, then the two traces; (c) retire
   > AC-9. Until ruled, this AC stays `[ ]` and no execution against it is
   > authorised.
-- [ ] **AC-10 [check] — every expressible gold case is compared to the real
+- [x] **AC-10 [check] — every expressible gold case is compared to the real
   engine.** The nl-13 harness
   (`tests/benchmark/test_nl_query_feasibility_gold.py:220-244` — real engine,
   real adapter, real scorer, only the model transport stubbed) is extended to
@@ -374,6 +374,39 @@ a source-text read.
   `expected_object_type` values are Asset / OperationalEvent / Site / Alert).
   They make ZERO nl-01…nl-11 cases inexpressible and must NOT appear in this
   AC's inexpressibility register.]_
+  > **Closing evidence (Code, 2026-08-21 / s242,
+  > [#1238](https://github.com/CrayJThiemsert/vero-lite/pull/1238), merged
+  > `b453bef`).** `tests/benchmark/test_nl_query_feasibility_gold.py` grew
+  > 245 → **428** lines (+184 insertions, **zero** production lines), all inside
+  > that one module: `_HAND_AUTHORED_TRANSLATIONS` — eleven `StructuredQuery`
+  > payloads for nl-01…nl-11, hand-authored and deliberately NOT derived from
+  > gold (deriving either from the other would make the comparison circular) —
+  > plus four tests: the partition test (every non-ceiling gold case is in the
+  > table OR the register; both exclusions — nl-12 as the only `ceiling: true`
+  > case, nl-13 keeping its own test — are derived from gold at runtime, never
+  > restated), the written-reason test (a blank/whitespace reason fails), the
+  > no-overlap test, and the engine-agreement test parametrized over the eleven
+  > (a mismatch asserts a message containing `SURFACED FINDING` that names both
+  > sides and says not to edit gold).
+  > **The register shipped EMPTY — `_INEXPRESSIBLE: dict[str, str] = {}` — and
+  > that emptiness is measured, not assumed:** a reconnaissance probe run
+  > BEFORE any test was written returned `VERDICT=ALL_ELEVEN_REPRODUCE`
+  > (correct 11, diverged 0, errored 0), so all eleven are expressible. No
+  > surfaced finding exists, and no gold value was touched (LOCKED honoured).
+  > **Witnessed RED, four ways — `VERDICT=ALL_FOUR_WITNESSED_RED`**, each probe
+  > reddening its own test with the expected message, the file restored
+  > byte-identical from `/tmp` (not via git), and the battery RE-RUN after
+  > `ruff format` touched the file (a changed file invalidates the previous
+  > RED): mistranslating nl-04 to `severity=warn` — the engine returns 2 warn
+  > events instead of 1 critical, a behaviour change, not cosmetic — reddens
+  > the grading assertion with `SURFACED FINDING` · dropping nl-07 from the
+  > table reddens the partition test with `ungraded=['nl-07']` · registering
+  > nl-07 with a blank reason reddens the written-reason test · putting nl-07
+  > in both reddens the overlap test.
+  > Gates at CI scope: `ruff check .` clean · `ruff format --check .` 647 files
+  > · `mypy --strict services/ verticals/` 201 source files, no issues ·
+  > `pytest -q` **4220 passed, 8 skipped** — baseline 4206 → **+14 exactly**
+  > (11 parametrized + 3 structural), so nothing else moved.
 - [x] **AC-11 [check] — negative money is pinned at a real seam.** The month-end
   ฿ aggregation seam (`services/db/repair_case_closeout.py` — confirmed by grep
   to carry ฿ amounts; internals read at execution, per Step 9) gets a test that
