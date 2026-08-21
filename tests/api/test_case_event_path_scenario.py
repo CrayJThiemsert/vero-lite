@@ -18,11 +18,20 @@ Realistic data, not placeholders: a roadside axle failure on truck-01, three gar
 quoting in the ranges the design partner described, and the dearer garage accepted
 for a reason a human would actually give.
 
+Every request here is keyed as ``req-mechanic-tom`` — ต้อม, the head mechanic. That
+became load-bearing at PLAN-0112 AC-1, which closed ``POST /procedures/{id}/run``'s
+RF-1 hole: firing a governed run now requires an authenticated human, so the module
+arms authn and carries the bearer on every call. It also makes the scenario truer to
+its own story — a mechanic filing and keying his own case, not an anonymous caller —
+and no assertion here reads ``opened_by``/``accepted_by``, so nothing this module
+proves changed with the identity.
+
 DB-backed — SKIPS when Postgres is unreachable, and a skip is never satisfaction.
 """
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Iterator
 from decimal import Decimal
 
@@ -39,6 +48,15 @@ _HERO = "governed_repair_approval"
 #: The fixture beat this scenario is meant to outrank — truck-01's ฿48,000 axle
 #: breakdown, the demo's hero row until a real case exists on that truck.
 _FIXTURE_HERO_EVENT = "event-reading-02"
+
+#: PLAN-0112 AC-1 closed `POST /procedures/{id}/run`'s RF-1 hole, so firing the hero
+#: now requires an authenticated human. Keyed as the head mechanic — the ONE persona
+#: holding fleet's SoD `requester` role, so the run's requester resolves and a distinct
+#: approver can still govern it. Mirrors `test_run_link_scenario.py`'s established shape.
+_MECHANIC = "req-mechanic-tom"
+_RAW_KEY = "test-key-req-mechanic-tom"
+_DIGEST = hashlib.sha256(_RAW_KEY.encode("utf-8")).hexdigest()
+_HEADERS = {"Authorization": f"Bearer {_RAW_KEY}"}
 
 
 @pytest.fixture(autouse=True)
@@ -71,11 +89,18 @@ async def fleet_active(monkeypatch: pytest.MonkeyPatch) -> None:
     discover_and_register()
     await register_fleet_maintenance_procedure_executors()
     monkeypatch.setattr(settings, "oct_vertical", _VERTICAL)
+    # PLAN-0112 AC-1: the run endpoint now fails closed without a principal, so the
+    # hero is fired as a real authenticated ต้อม. `req-mechanic-tom` is a declared
+    # fleet principal, so the bearer resolves against the real spec with no
+    # `_principal_index` monkeypatch (the `test_run_link_scenario.py` precedent).
+    monkeypatch.setattr(settings, "api_auth_enabled", True)
+    monkeypatch.setattr(settings, "api_keys", {_DIGEST: _MECHANIC})
 
 
 async def _open_axle_case(client: AsyncClient) -> str:
     response = await client.post(
         "/api/cases",
+        headers=_HEADERS,
         json={
             "truck_id": "truck-01",
             "work_type": "breakdown",
@@ -89,7 +114,9 @@ async def _open_axle_case(client: AsyncClient) -> str:
 
 async def _quote(client: AsyncClient, case_id: str, vendor: str, amount: str) -> str:
     response = await client.post(
-        f"/api/cases/{case_id}/quotes", data={"vendor": vendor, "amount_thb": amount}
+        f"/api/cases/{case_id}/quotes",
+        data={"vendor": vendor, "amount_thb": amount},
+        headers=_HEADERS,
     )
     assert response.status_code == 201, response.text
     quote_id: str = response.json()["quote_id"]
@@ -125,6 +152,7 @@ async def test_a_real_accepted_case_reaches_the_gate_and_outranks_the_fixture(
 
     accepted = await client_with_db.post(
         f"/api/cases/{case_id}/accepted-quote",
+        headers=_HEADERS,
         json={
             "quote_id": dearest,
             "reason": "เจ้าเดียวที่มีเพลาพร้อมเปลี่ยนวันนี้ รออะไหล่อีก 5 วันไม่ได้",
@@ -156,7 +184,7 @@ async def test_a_real_accepted_case_reaches_the_gate_and_outranks_the_fixture(
     ), "the fixture row must still be ON the timeline as history — superseded, not deleted"
 
     # --- the consumer: the real shipped procedure, through the real endpoint ---
-    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={})
+    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={}, headers=_HEADERS)
     assert fired.status_code == 200, fired.text
     body = fired.json()
     assert body["status"] == "waiting_human", "the run must park for a person, not self-approve"
@@ -184,7 +212,9 @@ async def test_a_case_below_the_ceiling_never_reaches_the_gate(
     case_id = await _open_axle_case(client_with_db)
     quote_id = await _quote(client_with_db, case_id, "ร้านประจำ", "3200.00")
     accepted = await client_with_db.post(
-        f"/api/cases/{case_id}/accepted-quote", json={"quote_id": quote_id}
+        f"/api/cases/{case_id}/accepted-quote",
+        json={"quote_id": quote_id},
+        headers=_HEADERS,
     )
     assert accepted.status_code == 201, accepted.text
 
@@ -196,7 +226,7 @@ async def test_a_case_below_the_ceiling_never_reaches_the_gate(
     # ...and under the ฿30,000 comparison threshold the sourcing rule never applied.
     assert event["three_quote_basis"] == "under_threshold"
 
-    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={})
+    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={}, headers=_HEADERS)
     assert fired.status_code == 200, fired.text
     rendered = repr(fired.json()["proposals"])
     assert case_id not in rendered, (
@@ -255,7 +285,9 @@ async def test_switching_the_agreed_garage_moves_the_governed_figure(
     dearer = await _quote(client_with_db, case_id, "อู่ริมทางปากช่อง", "62000.00")
 
     first = await client_with_db.post(
-        f"/api/cases/{case_id}/accepted-quote", json={"quote_id": cheaper}
+        f"/api/cases/{case_id}/accepted-quote",
+        json={"quote_id": cheaper},
+        headers=_HEADERS,
     )
     assert first.status_code == 201, first.text
     (event,) = (e for e in await _fleet_events() if e.get("case_id") == case_id)
@@ -264,6 +296,7 @@ async def test_switching_the_agreed_garage_moves_the_governed_figure(
     switched = await client_with_db.post(
         f"/api/cases/{case_id}/accepted-quote",
         json={"quote_id": dearer, "reason": "เจ้าแรกถอนตัว ไม่มีเพลา"},
+        headers=_HEADERS,
     )
     assert switched.status_code == 201, switched.text
     (event,) = (e for e in await _fleet_events() if e.get("case_id") == case_id)

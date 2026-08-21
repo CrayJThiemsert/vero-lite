@@ -381,6 +381,22 @@ async def run_procedure_endpoint(
     value in the request body is overwritten — AC-2), and the ambient SoD
     requester principal is the authenticated ``Person``.
     """
+    # RF-1 (ADR-016 S2): firing a governed run is a consequential action —
+    # require an authenticated human (authn off -> no accountable actor -> 403),
+    # mirroring the resolve and cancel endpoints' guards. PLAN-0112 AC-1 closes
+    # the asymmetry PLAN-0110 G10.6 found: this is the ONLY producer of a
+    # ``PipelineRun``, and it was the only one of the three doors that did not
+    # fail closed. It sits before spec loading and before any DB write, so a
+    # principal-less request can never leave a row behind.
+    if auth.person_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "firing a governed run requires an authenticated human (ADR-016 S2 "
+                "RF-1) — api_auth_enabled is off or no valid credential was presented"
+            ),
+        )
+
     vertical = settings.oct_vertical
     spec = _spec_for(vertical)
     procedure = _find_procedure(spec, procedure_id)
