@@ -35,12 +35,16 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
+from services.db.audit_log import AuditLog
+from services.db.repair_case_run_link import RepairCaseRunLink
 from services.engine import demo_events
 from services.engine.procedures import gate_hooks
+from services.engine.procedures.persistence import load_run
 from verticals.fleet_maintenance import case_projection
 
 _VERTICAL = "fleet_maintenance"
@@ -53,6 +57,24 @@ _MECHANIC = "req-mechanic-tom"
 _RAW_KEY = "test-key-req-mechanic-tom"
 _DIGEST = hashlib.sha256(_RAW_KEY.encode("utf-8")).hexdigest()
 _HEADERS = {"Authorization": f"Bearer {_RAW_KEY}"}
+
+#: วิรัช — ผจก.เดินรถ. The partner's ladder (Q9) routes ฿5,001-30,000 to him, so a
+#: mid-band repair is what makes "a DECLARED approver can actually resolve it"
+#: (AC-4) a live assertion rather than a hypothetical: he holds `ผจก.เดินรถ` and
+#: `ช่างใหญ่` cumulatively (PLAN-0075 Policy B) but NOT `เจ้าของกิจการ`, so he can
+#: resolve this band and could not resolve the ฿62,000 one above.
+_WIRAT = "appr-fleet-manager-wirat"
+_WIRAT_KEY = "test-key-appr-fleet-manager-wirat"
+_WIRAT_HEADERS = {"Authorization": f"Bearer {_WIRAT_KEY}"}
+
+#: The two amounts the partner's own numbers make meaningful, and neither is round
+#: by accident. ฿12,000 is over every truck's ฿5,001 repair ceiling (so the judge
+#: bands it `breach` and it reaches the gate) and inside วิรัช's ฿5,001-30,000 rung.
+#: ฿4,500 is UNDER the ceiling, so the judge bands it `ok` and `reshape` — which
+#: consumes only the breach subset — must drop it before the gate ever sees it.
+_MID_BAND_THB = "12000.00"
+_SUB_CEILING_THB = "4500.00"
+_APPROVE, _FULFILL = "approve", "fulfill"
 
 
 @pytest.fixture(autouse=True)
@@ -84,15 +106,31 @@ async def fleet_active(monkeypatch: pytest.MonkeyPatch) -> None:
     await register_fleet_maintenance_procedure_executors()
     monkeypatch.setattr(settings, "oct_vertical", _VERTICAL)
     monkeypatch.setattr(settings, "api_auth_enabled", True)
-    monkeypatch.setattr(settings, "api_keys", {_DIGEST: _MECHANIC})
+    monkeypatch.setattr(
+        settings,
+        "api_keys",
+        {
+            _DIGEST: _MECHANIC,
+            hashlib.sha256(_WIRAT_KEY.encode("utf-8")).hexdigest(): _WIRAT,
+        },
+    )
 
 
-async def _open_case_with_quotes(client: AsyncClient) -> tuple[str, list[str]]:
-    """A real ฿62,000 axle breakdown with three garages compared — over truck-01's ceiling."""
+async def _open_case_with_quotes(
+    client: AsyncClient,
+    *,
+    amounts: tuple[tuple[str, str], ...] = (
+        ("ส.เจริญยนต์", "58000.00"),
+        ("อู่ริมทางปากช่อง", "62000.00"),
+        ("อู่ช่างเล็ก", "59500.00"),
+    ),
+    truck_id: str = "truck-01",
+) -> tuple[str, list[str]]:
+    """A real axle breakdown with garages compared. Defaults to the ฿62,000 shape."""
     opened = await client.post(
         "/api/cases",
         json={
-            "truck_id": "truck-01",
+            "truck_id": truck_id,
             "work_type": "breakdown",
             "description": "เพลาขาดกลางทางแถวปากช่อง",
         },
@@ -101,11 +139,7 @@ async def _open_case_with_quotes(client: AsyncClient) -> tuple[str, list[str]]:
     assert opened.status_code == 201, opened.text
     case_id: str = opened.json()["case_id"]
     quote_ids: list[str] = []
-    for vendor, amount in (
-        ("ส.เจริญยนต์", "58000.00"),
-        ("อู่ริมทางปากช่อง", "62000.00"),
-        ("อู่ช่างเล็ก", "59500.00"),
-    ):
+    for vendor, amount in amounts:
         quoted = await client.post(
             f"/api/cases/{case_id}/quotes",
             data={"vendor": vendor, "amount_thb": amount},
@@ -250,3 +284,205 @@ async def test_the_seeded_demo_run_does_not_swallow_a_visitor_acceptance(
     )
     fired = next(r for r in runs if r["run_id"] != seeded.run.run_id)
     await _assert_run_is_about(client_with_db, fired["run_id"], case_id)
+
+
+# --- Step 4 ------------------------------------------------------------------
+# AC-2's remaining clause, AC-3's consumer half, and AC-4's dead-end invariant.
+# The seam these exercise shipped in #1248; nothing below re-tests the firing count
+# on its own — each asserts something the count cannot see.
+
+
+async def _resolve(client: AsyncClient, run_id: str, step: str, decisions: dict[str, str]) -> str:
+    """Resolve one gate through the REAL route as a keyed approver.
+
+    The deciding principal comes from the bearer key and never from the body
+    (`GateResolveRequest`'s own contract), which is what makes this a real SoD check
+    rather than a self-declared one.
+    """
+    got = await client.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": step, "decisions": decisions},
+        headers=_WIRAT_HEADERS,
+    )
+    assert got.status_code == 200, got.text
+    return str(got.json()["run_status"])
+
+
+async def _decisions_for(
+    client: AsyncClient, run_id: str, verdict: str = "approve"
+) -> dict[str, str]:
+    got = await client.get(f"/runs/{run_id}", headers=_HEADERS)
+    assert got.status_code == 200, got.text
+    return {str(p["action_id"]): verdict for p in got.json()["proposals"]}
+
+
+async def test_a_sub_ceiling_acceptance_fires_but_never_reaches_the_gate(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """AC-2's sub-ceiling clause, corrected per the SD-2 stamp.
+
+    The old clause read "a sub-ceiling acceptance fires and completes with no gate".
+    That is FALSE in the shipped demo: intake is a fleet-wide population scan (G-6)
+    and the seeded demo pair stays OPEN with breaching accepted quotes (G-12), so
+    every visitor-fired run gates — sub-ceiling or not. What is actually true, and
+    what this asserts, is narrower: the run fires, the gate exists, and the
+    visitor's own sub-ceiling case is in NONE of its proposals, because `reshape`
+    consumes only the breach subset (`procedures.yaml`, `where: {verdict: breach}`).
+
+    🔴 The negative assertion carries its own positive control. "This case is not in
+    the proposals" is vacuously true of an EMPTY proposal list, which is exactly what
+    a broken intake would produce — so the demo case must be found in the same list
+    before the absence means anything.
+    """
+    from verticals.fleet_maintenance.operate_seed import DEMO_CASE_ID, seed_demo_repair_case
+
+    await seed_demo_repair_case(db_session)
+    await case_projection.refresh(db_session)
+    before = len(await _hero_runs(client_with_db))
+
+    case_id, quotes = await _open_case_with_quotes(
+        client_with_db,
+        amounts=(("อู่ช่างเล็ก", _SUB_CEILING_THB),),
+    )
+    await _accept(client_with_db, case_id, quotes[0])
+
+    runs = await _hero_runs(client_with_db)
+    assert len(runs) == before + 1, "a sub-ceiling acceptance still fires — the loop DID judge it"
+
+    proposals = await _proposal_case_ids(client_with_db, runs[0]["run_id"])
+    assert any(DEMO_CASE_ID in pid for pid in proposals), (
+        "positive control: the breaching demo case must be AT the gate, or the "
+        "absence asserted below is vacuous — an empty proposal list satisfies it too"
+    )
+    assert not any(case_id in pid for pid in proposals), (
+        f"the ฿{_SUB_CEILING_THB} case is under every truck's ฿5,001 ceiling, so the "
+        f"judge bands it `ok` and reshape must drop it before the gate — found {proposals}"
+    )
+
+
+async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """AC-3's consumer half — and it takes TWO resolves, not one (G-12).
+
+    `governed_repair_approval` is a `request -> approve -> fulfill` spine: resolving
+    `approve` does not complete the run, it parks it again at the gated `fulfill`.
+    A test that stopped after one resolve would report a delivered promise while the
+    run sat in the visitor's queue.
+
+    The outcome surface asserted here is the `RepairCaseRunLink` row, not the
+    evidence pack: the pack is verdict-free BY DESIGN ("a case's sourcing evidence
+    as FACTS — deliberately not a verdict"), so the row the real
+    `link_resolved_cases` hook writes is what carries the decision.
+
+    No `POST /procedures/{id}/run` anywhere — that is the clause separating this
+    test from `test_visitor_case_to_monitor_scenario.py`'s older shape.
+    """
+    case_id, quotes = await _open_case_with_quotes(
+        client_with_db, amounts=(("อู่ริมทางปากช่อง", _MID_BAND_THB),)
+    )
+    await _accept(client_with_db, case_id, quotes[0])
+
+    runs = await _hero_runs(client_with_db)
+    assert len(runs) == 1, "one acceptance, one run"
+    run_id = runs[0]["run_id"]
+    await _assert_run_is_about(client_with_db, run_id, case_id)
+
+    after_approve = await _resolve(
+        client_with_db, run_id, _APPROVE, await _decisions_for(client_with_db, run_id)
+    )
+    assert after_approve == "waiting_human", (
+        "resolving `approve` must NOT complete the run — it parks again at the gated "
+        "`fulfill` (G-12). A one-resolve test would call this done while it is not"
+    )
+
+    after_fulfill = await _resolve(
+        client_with_db, run_id, _FULFILL, await _decisions_for(client_with_db, run_id)
+    )
+    assert after_fulfill == "completed", "the second resolve is what finishes the walk"
+
+    links = list(
+        (
+            await db_session.execute(
+                sa.select(RepairCaseRunLink).where(RepairCaseRunLink.case_id == case_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(links) == 1, f"one decision on this case, one link row — got {len(links)}"
+    assert links[0].run_id == run_id
+    assert links[0].step_id == _APPROVE
+    assert links[0].outcome == "approved"
+    assert links[0].three_quote_basis, (
+        "the row must carry the sourcing basis the gate ACTUALLY SAW, read from the "
+        "engine's own artifact rather than recomputed"
+    )
+    assert gate_hooks.failures() == [], "the hook is fail-soft; a swallowed error must show here"
+
+    served = await client_with_db.get(f"/api/cases/{case_id}", headers=_HEADERS)
+    assert served.status_code == 200, served.text
+    assert served.json()["case_id"] == case_id
+
+
+async def test_a_visitor_fired_run_is_never_a_dead_end(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """AC-4: every run a visitor-reachable path can fire has a gate a declared
+    approver can actually resolve.
+
+    G-7 measured the failure this excludes, and it is worse than an ungoverned run:
+    a `None`-principal fire mints a run that starts, parks, appears in Tab H, and can
+    NEVER be resolved by anyone — `check_principal_sod` raises `UNRESOLVED_PRINCIPAL`
+    on every attempt. The ruled SD-5(b) mechanism supplies the shape that prevents it:
+    `event_trigger.owning_person_id` is recorded as the SoD requester at fire time.
+
+    Three things are asserted because they fail independently — the requester being
+    recorded, the actor being the SERVICE principal (not a human), and the resolve
+    actually succeeding for the declared approver of this band.
+    """
+    case_id, quotes = await _open_case_with_quotes(
+        client_with_db, amounts=(("อู่ริมทางปากช่อง", _MID_BAND_THB),)
+    )
+    await _accept(client_with_db, case_id, quotes[0])
+    run_id = (await _hero_runs(client_with_db))[0]["run_id"]
+
+    loaded = await load_run(db_session, run_id)
+    assert loaded is not None
+    assert loaded.run.step_principals is not None, (
+        "a run with no step_principals map never carried SoD — the gate would then "
+        "skip the live check instead of enforcing it (ADR-0026 D4)"
+    )
+    assert loaded.run.step_principals.get("intake") == _MECHANIC, (
+        "the declared owning person must be recorded as the SoD requester at fire "
+        f"time (G-9 shape) — got {loaded.run.step_principals}"
+    )
+
+    rows = list(
+        (
+            await db_session.execute(
+                sa.select(AuditLog).where(
+                    AuditLog.run_id == run_id, AuditLog.action == "run_started"
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1, "one run, one run_started row"
+    payload = rows[0].payload or {}
+    assert payload.get("actor_kind") == "service", (
+        "a visitor-fired run acts as the agent's SERVICE principal, never as the "
+        f"visitor — got {payload.get('actor_kind')!r}"
+    )
+    assert (
+        payload.get("on_behalf_of", {}).get("owning_person_id") == _MECHANIC
+    ), "the SP-5 on-behalf-of lineage names the declared human the service acts for"
+
+    status = await _resolve(
+        client_with_db, run_id, _APPROVE, await _decisions_for(client_with_db, run_id)
+    )
+    assert status == "waiting_human", (
+        f"the declared approver for the ฿{_MID_BAND_THB} rung must be able to resolve "
+        "this gate — a 403 here is the dead-end G-7 describes"
+    )
