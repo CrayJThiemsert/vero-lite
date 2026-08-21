@@ -21,6 +21,7 @@ storage is a live external call.
 
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -69,6 +70,11 @@ from services.db.repair_case_evidence import (
 )
 from services.db.repair_case_task import TASK_STATUSES, RepairCaseTaskEvent
 from services.db.session import get_session
+from services.engine.procedures.event_bridge import (
+    EventBridgeError,
+    fire_event,
+    load_event_resolver,
+)
 from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.task_chain import (
     TASK_CHAIN,
@@ -86,6 +92,78 @@ _CHUNK_BYTES = 64 * 1024
 #: explicitly rather than left NULL: "we do not know who opened this" is a fact the
 #: traceability KPI must be able to SEE, not a blank to be mistaken for clean data.
 _UNATTRIBUTED = "unattributed"
+
+_logger = logging.getLogger(__name__)
+
+#: The ``event_trigger.event_kind`` fleet's hero declares for this seam
+#: (``verticals/fleet_maintenance/procedures.yaml``). A vertical whose spec claims no
+#: procedure for this kind resolves to nothing and the seam is a quiet no-op — the
+#: correct behaviour for a non-fleet deployment, not a failure to report.
+_ACCEPTED_QUOTE_EVENT_KIND = "repair_quote_accepted"
+
+
+async def _fire_governed_run_for_acceptance(
+    session: AsyncSession, *, case_id: str, quote_id: str, accepted_at: datetime
+) -> None:
+    """Fire the governed run this acceptance is the governable moment for.
+
+    PLAN-0112 Step 3, under SD-1(b) / SD-2(b) / SD-5(b) as ruled. Three things about
+    this call are load-bearing and each was measured, not assumed:
+
+    **Why acceptance, and not case-open.** A just-opened case projects NOTHING onto
+    the event stream — ``governed_case_facts`` skips any case whose evidence pack has
+    no accepted amount (PLAN-0112 G-4). A case becomes governable at the moment a
+    quote is agreed, so this is the only seam where firing means anything.
+
+    **Why AFTER ``_refresh_case_events``, and never before.** The run's ``intake``
+    step reads the PROJECTED event stream, latest reading per truck across the fleet
+    (G-6). Fire before the projection catches up and the run still fires, still
+    parks, still shows a gate — about some OTHER truck's case, with the visitor's own
+    case absent from every proposal and no error raised anywhere. Measured in session
+    244: a run whose single proposal resolved to ``case-demo-truck03-gearbox`` while
+    the visitor's case sat unprojected.
+
+    **Why ``entity_ids`` is ``[case_id, quote_id]``.** G-14: ``event_key`` hashes the
+    sorted entity ids, so the quote's identity is what makes re-accepting the SAME
+    quote a no-op (correct — not a material change) while accepting a DIFFERENT quote
+    mints a new run, which is SD-2(b) exactly as ruled. It must NOT key on
+    ``accepted_id`` — ``accept_quote`` mints a fresh one on every call, so a
+    double-click would mint two runs.
+
+    ``skip_if_in_flight=False`` because SD-P4 backpressure contradicts SD-2(b) on a
+    gated procedure; the reasoning and the measurements are on :func:`fire_event`.
+    The SD-2 idempotency skip is untouched.
+
+    **Fail-SOFT, mirroring ``_refresh_case_events`` above.** The acceptance row is
+    already committed when this runs. Turning a firing error into a 500 would tell
+    เมย์ her acceptance did not save when it did — and the acceptance is the record
+    that matters; the run can be fired again by accepting again.
+    """
+    try:
+        resolve = await load_event_resolver(settings.oct_vertical)
+        if resolve is None:
+            return  # this deployment is not wired for the bridge — a no-op, not a fault
+        request = resolve(
+            event_kind=_ACCEPTED_QUOTE_EVENT_KIND,
+            entity_ids=[case_id, quote_id],
+            detected_at=accepted_at,
+        )
+        outcome = await fire_event(session, request, now=datetime.now(UTC), skip_if_in_flight=False)
+        _logger.info(
+            "case %s: acceptance of quote %s -> governed run %s (%s)",
+            case_id,
+            quote_id,
+            outcome.run_id,
+            outcome.result.value,
+        )
+    except EventBridgeError as exc:
+        # REACHABLE and not an error here: a vertical whose spec declares no procedure
+        # for this event_kind. Logged at debug so a non-fleet deployment is not noisy.
+        _logger.debug("case %s: no governed procedure for an acceptance: %s", case_id, exc)
+    except Exception as exc:  # fail-soft — see the docstring
+        _logger.warning(
+            "case %s: acceptance committed but the governed run did not fire: %s", case_id, exc
+        )
 
 
 async def _refresh_case_events(session: AsyncSession) -> None:
@@ -713,6 +791,13 @@ async def accept_quote(
     session.add(accepted)
     await session.commit()
     await _refresh_case_events(session)
+    # PLAN-0112 Step 3 — the ordering here is the claim, not a detail. See the helper.
+    await _fire_governed_run_for_acceptance(
+        session,
+        case_id=case_id,
+        quote_id=quote.quote_id,
+        accepted_at=accepted.accepted_at,
+    )
     return _accepted_response(accepted, quote)
 
 
