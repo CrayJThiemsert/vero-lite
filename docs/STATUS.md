@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-21T09:05:00+07:00
+last_updated: 2026-08-21T09:40:00+07:00
 session: 242
-current_batch: "s242 — TWO PRs merged (#1237, #1238). Cray REVERSED PLAN-0110 SD-E, so the Tab I→Tab H link is commissioned and recorded in Active TODOs; PLAN-0107 AC-10 CLOSED — the eleven expressible gold cases are now graded against the real engine instead of against themselves."
+current_batch: "s242 — FIVE PRs merged (#1237–#1241), 0 open. PLAN-0107 AC-10 CLOSED (the eleven expressible gold cases are graded against the real engine, register empty and measured); FOUR Cray rulings — PLAN-0110 SD-E REVERSED, PLAN-0112 SD-1 = (b), ADR-0035's L1 re-read a second time, and OQ-7 = (b)."
 current_actor: code
-blocked_on: "Nothing blocks repo work; main green, 0 open PRs. PLAN-0107 AC-9 is BLOCKED on a Cray ruling (three options on the PLAN); PLAN-0109's three ruled-content defects need a drafter round before its Step 5."
-next_action: "PLAN-0107 AC-10 is CLOSED, so the Tab I→Tab H build is next per Cray's typed s242 sequencing. It needs a NEW PLAN (docs/plans/ = G2-gated for Code → drafter dispatch), and its first Step is closing run_procedure_endpoint's missing fail-closed principal check — the prerequisite recorded in Active TODOs. PLAN-0107 AC-9 still awaits a Cray ruling."
-head_commit: b453bef
-recent_commits: [b453bef, 6cc6676, 30b9488, a94e2c5, 6a2e34c, ccbd04a, 2e52ac4, 4ae6728, 34c498b, 5cdbf68]
+blocked_on: "Nothing blocks repo work; main green, 0 open PRs. PLAN-0112 Step 2 is blocked on SIX Cray rulings (SD-2…SD-7) — SD-3 decides whether the promise is deliverable on the published surface at all. PLAN-0107 AC-9 is still BLOCKED on a Cray ruling; PLAN-0109's three ruled-content defects still need a drafter round before its Step 5."
+next_action: "Cray's pick — rule PLAN-0112 SD-2…SD-7 (SD-3 first: it decides deliverability); or build PLAN-0112 Step 1, the auth-asymmetry fix at run_procedure_endpoint, which is unruled-gated and startable now; or write the identity-capture AC now that ADR-0035 ratifies the read half (and fix the PLAN's validated-vs-read sentence in the same PR); or the MEMORY.md consolidation the s242 snapshot unblocked."
+head_commit: bf2771e
+recent_commits: [bf2771e, 8796810, e4eaf78, b453bef, 6cc6676, 30b9488, a94e2c5, 6a2e34c, ccbd04a, 2e52ac4]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,35 @@ recent_commits: [b453bef, 6cc6676, 30b9488, a94e2c5, 6a2e34c, ccbd04a, 2e52ac4, 
 ---
 
 ## Current Focus
+
+> **Session 242, 2026-08-21 (head_commit `30b9488` → `bf2771e`) — FIVE PRs
+> MERGED ([#1237](https://github.com/CrayJThiemsert/vero-lite/pull/1237)–[#1241](https://github.com/CrayJThiemsert/vero-lite/pull/1241)),
+> 0 open. PLAN-0107 AC-10 CLOSED, and FOUR Cray rulings landed — two of them
+> re-opened settled ground.**
+>
+> ✅ **AC-10 closed the last gold-versus-gold oracle.** `nl-01…nl-11` were checked
+> only against themselves — a shape that reddens on a malformed file and **cannot
+> redden on a wrong value**. All eleven now grade against the real engine; a probe
+> run BEFORE the test returned `VERDICT=ALL_ELEVEN_REPRODUCE`, so **no gold value
+> was edited** and the register shipped EMPTY, measured.
+>
+> 🔴 **Cray REVERSED PLAN-0110 SD-E — and grounding it corrected the commission
+> itself, three times:** quote-acceptance rather than case creation is the
+> governable moment; a SECOND door is excluded from the published allowlist by
+> design; and a no-principal firing does not leave a run *ungoverned* — it mints
+> one **nobody can ever approve**.
+>
+> 🔴 **Cray re-read L1 a SECOND time** — *"one gate, no app code"* becomes *"app
+> code may READ the gate's verdict for provenance, never perform gating itself."*
+> That pass read **126 insertions, 0 deletions**: a LOCKED ruling is not edited.
+> Its trigger was Cray's own reasoning failing a measurement — SD-1(b) rested
+> partly on *"use the email they logged in with"*, **measured FALSE at the app
+> layer**; the ruling stands and the amendment is what makes that half true later.
+>
+> ⚠️ **Five times a report disagreed with the tree, and the tree won every time** —
+> two drafter claims, hook #19 firing on this session's own STATUS edit, guard R7,
+> and **three greps of mine that returned 0 on text that was present but
+> line-wrapped**. Nothing but opening the file separated instrument from subject.
 
 > **Session 241, 2026-08-20→21 (head_commit `8fd3848` → `6a2e34c`) — FIVE PRs
 > MERGED ([#1229](https://github.com/CrayJThiemsert/vero-lite/pull/1229),
@@ -58,91 +87,6 @@ recent_commits: [b453bef, 6cc6676, 30b9488, a94e2c5, 6a2e34c, ccbd04a, 2e52ac4, 
 > over 647, `mypy --strict` clean over 201 files; every PR `sha=MATCH` across
 > local HEAD, PR head and the run's own `head_sha`.
 
-> **Session 240, 2026-08-19 (head_commit `dbb3e58` → `8fd3848`) — THREE PRs
-> MERGED (#1225–#1227), 0 open. PLAN-0107 AC-11 CLOSED, `DEPLOY.md` gained a
-> pre-ship check, and PLAN-0111 was drafted with all six of its SDs ruled in the
-> same session.**
->
-> 🔴 **The organising finding: three losses of correct work, two of them mine
-> this session — each caught by a discipline, none by re-reading a summary.**
->
-> 🔴 **(1) A `git merge` reported success and silently reverted a merged PR.** It
-> first died with `Unable to write index` although the two sides touched disjoint
-> files; `git status` then read *"All conflicts fixed but you are still merging"*
-> with **no `index.lock` on disk**. Concluding it produced a merge commit whose
-> tree **dropped #1225's entire `DEPLOY.md` change** — while `git merge-base
-> --is-ancestor origin/main HEAD` answered **YES**. **Ancestry is not content.**
-> Caught by grepping the merged tree for a string only the incoming side
-> introduces; recovered by `git reset --hard` to my own commit and re-merging,
-> which reported the expected `53 insertions(+)`.
->
-> 🔴 **(2) The first non-vacuity probe proved the wrong thing.** The scenario's
-> `assert status_code == 422` sat *before* the month-end read, so disarming the
-> guard reddened **that** line and returned — the money assertion, the claim the
-> module exists to make, never executed. Reordered so the ฿ assertions fire
-> first; the RED now reads `assert Decimal('-15000.00') == Decimal('20000.00')`,
-> the export holding one row carrying the credit note's document date.
->
-> ⚠️ **(3) Two ACs in the first-pushed PLAN-0111 draft named test files that do
-> not exist** — corrected to grep-verified paths. Separately, swapping a stale
-> line citation for a symbol produced a *wrong symbol* (`get_case` for
-> `get_closeout`) until the enclosing function was grepped rather than assumed.
->
-> ✅ **PLAN-0107 AC-11 CLOSED — negative money refused at the close-out producer**
-> (#1226), plus a four-test scenario module. 🔴 **Why a refusal and not `sum()`:**
-> `repair_case_closeout` is append-only with **latest-wins** — `latest_closeout`
-> returns one row per case and both consumers read it, so a credit note keyed
-> there does not join the invoice, it **REPLACES** it. Measured: month-end moves
-> `20,000.00` → `-15,000.00` with every row still looking perfectly filled in.
-> Admitting the negative is the **silent** option, not the lenient one. 🔴 **It
-> closes an asymmetry rather than adding a rule** — the quote side already refused
-> negative money on the same reasoning
-> (`tests/api/test_cases_endpoint.py::test_a_negative_quote_is_refused`, *"Not a
-> discount — a typo or a credit note"*); the close-out was the outlier, and it is
-> the end that feeds the month-end figure. A credit note is internally
-> **coherent** (`-14,018.69 + -981.31 = -15,000.00`), so it passes the existing
-> totals check — the sign check is its own door, and the scenario pins that
-> discriminator. The refusal is **INTERIM**, says so in the handler docstring, and
-> names its lift condition: only with a schema holding invoice and credit as two
-> coexisting facts.
->
-> ✅ **`DEPLOY.md` §2a Pre-ship** (#1225) — build locally, then compare a
-> `sha256sum` taken **inside the freshly built image** against the working tree,
-> before the host is touched at all.
->
-> ✅ **PLAN-0111 drafted and all six SDs RULED** (Cray, typed 2026-08-19, #1227);
-> `Status: Draft` — the SDs were ratified, not the PLAN. **SD-E: multiple partial
-> credits may coexist** (ทยอยลด; over-credit refused 422), **which forces SD-A to
-> (b), a separate `repair_case_credit_note` table** — latest-per-kind would re-arm
-> the replacement trap one level down. SD-B (b) one composite reader · SD-C (b)
-> two lines matching real documents · SD-D (a) credit inherits the case's `RC-`
-> number · SD-F (a) KPI counts repairs, not documents. Newly load-bearing from
-> those rulings, each verified against code: the new table must join retention's
-> `_FK_CHILD_MODELS`; 🔴 **`load_monthly_export`'s ungoverned branch enumerates
-> cases only from `RepairCaseCloseout.entered_at`, so a credit-only month would
-> emit no row at all** and must union a second source; and 🔴 **AV-2 stopped being
-> hypothetical** — a table FK'd to the close-out with no `case_id` column is
-> invisible to both retention walks, prohibited without a guard extension
-> witnessed RED first. ⚠️ **AV-1 is the one thing this repo cannot answer** — what
-> Express/accounting reconciles a ใบลดหนี้ against; SD-C is provisional on it, and
-> the PLAN requires confirming it before Step 4, not before merge.
->
-> **Gates: 4174 passed / 8 skipped** (4170 baseline + 4), `mypy --strict services/
-> verticals/` clean over **201** files, bare `ruff check .` + `ruff format
-> --check .` clean over **643**. Three non-vacuity probes witnessed RED: the
-> `DEPLOY.md` operator-path guard naming `DEPLOY.md:111` · the guard-disarm
-> reddening the ฿ assertion · the `< 0` → `<= 0` tightening reddening **only** the
-> zero-VAT positive control — disjoint sets, which is what makes the control a
-> control. **No host-state action this session; MS-S1 was not touched.**
->
-> ⚠️ **CARRIED FORWARD from s239's `next_action` — recorded here because the
-> frontmatter cap cannot hold them and nothing else in this file does; none was
-> touched this session, none is resolved:** (i) the **font-size decision still
-> gates re-measuring every geometry number in the beat-4 mockup**; (ii) the
-> **run-list backlog badge on the host is still unmeasured** (a host-state read,
-> so it needs its own typed §8 go); (iii) the **three Advisory-proposal
-> candidates are still unnamed**, so the gate panel still reads as unfinished.
-
 _[Current-Focus rotation ledger. The sessions-233–234 and 235/236 blocks rotated
 to `docs/status-archive/2026-h1d-current-focus.md` at earlier reconciles; the
 **sessions-237–238 and session-239** blocks rotated there this reconcile —
@@ -152,7 +96,7 @@ reconcile report). Rotated with them: s237's video-rulings carried risk, since
 DISCHARGED s239 to `docs/strategy/public/intro-video-production-rulings.md`, and
 s239's headline — eight PRs, two host-state deploys, and *"a summary that is
 ACCURATE about what it cites still shrinks"*; s239's two host records survive
-tracked at `docs/logs/2026-08-18-s239-*` and `docs/logs/2026-08-19-s239-*`.]_
+tracked at `docs/logs/2026-08-18-s239-*` and `docs/logs/2026-08-19-s239-*`. The **session-240** block rotated there at the s242 reconcile — it measured ~5,800–5,900 B against R2's 4,096 B per-block cap, and rotating it is the runbook's own prescribed response to STATUS sitting over R1's soft target (fix the voice, do not raise the ceiling). Its live residue is not lost: the three s240 items that were open when it rotated (the font-size decision gating the beat-4 geometry re-measure, the unmeasured host-side run-list backlog badge, and the three unnamed Advisory-proposal candidates) are carried in §Active TODOs rather than left only in the archive.]_
 
 ## Prior focus (archived)
 
@@ -198,6 +142,10 @@ _[The oldest row (s231) rotated to `docs/status-archive/2026-h1-status.md` this 
 
 ## Active TODOs
 
+- [ ] **🆕 PLAN-0112 — the visitor case that becomes a governed run (Tab I→Tab H): `Draft`, MERGED, SD-1 RULED, SD-2…SD-7 UNRULED.** SD-1 = **(b)** (Cray, typed, s242): the S1/S2 headless service principal with a declared owning person as SoD requester. 🔴 **Six decisions still gate Step 2**, and **SD-3 is the one that decides whether the promise is deliverable at all** — the accepted-quote route is excluded from the published allowlist by design, so without an ingress ruling a published visitor cannot reach the governable moment. ⚠️ **A tracked correction is owed inside the PLAN:** its dependency note names the mechanism as `Cf-Access-Jwt-Assertion` **validated** in a FastAPI dependency (`0112:359-360`), but ADR-0035's s242 amendment ratifies the **read** half only — validation-with-rejection is gating and stays pilot-era. The boundary is recorded from the ADR end; **the PLAN's own sentence is not yet fixed** and belongs with the identity-capture AC PR, which must edit that same block anyway. **Read the PLAN, never a restatement:** `docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`.
+- [ ] **🆕 ADR-0035 — L1 re-read a SECOND time, and OQ-7 ruled, both Cray-typed s242.** L1's intent moves from *"one gate, no app code"* to *"one gate at the edge; app code may READ the gate's verdict for provenance, never perform gating itself"*, which unblocks phase-2 identity **capture** on the published demo surface while leaving **validation** pilot-era. **OQ-7 RULED (b)**: when the edge identity is absent, the app proceeds and **stamps the absence** — never fabricates a principal, never claims provenance by omission. ⚠️ **Two costs Cray accepted, recorded so neither is rediscovered as a surprise:** the demo survives dashboard drift, **and runs stay unattributed until someone reads the stamps — nothing alerts on it**; and the concrete stamp shape is deliberately NOT fixed in the ADR — it is the PLAN-0112 identity-capture AC's to specify. **Read the ADR, never a restatement:** `docs/adr/0035-hosting-and-exposure-model.md` (§LOCKED L1 · §OQ-7 · the s242 amendment-pass note).
+- [ ] **🆕 The three live items the rotated s240 block carried — carried here so the rotation ledger's claim is true, not merely stated.** Measured at s240, none resolved since: (i) the **font-size decision still gates re-measuring every geometry number in the beat-4 mockup**; (ii) the **run-list backlog badge on the host is still unmeasured** — a host-state read, so it needs its own typed §8 go; (iii) the **three Advisory-proposal candidates are still unnamed**, so the gate panel still reads as unfinished. The full s240 narrative is at `docs/status-archive/2026-h1d-current-focus.md`.
+- [ ] **🆕 The Tier-0 auto-memory store is a git repo that DRIFTS — snapshotted s242, recorded here because nothing tracked carried it.** The private store at `~/.claude/projects/.../memory/` has its own git with **no remote**, and nothing auto-commits it: at s242 it tracked **91 files while 163 sat on disk** — 73 memories had never been committed at all, so a wrong deletion during a consolidation pass would have been **unrecoverable**. Now snapshotted (164 tracked, tree clean; the safety net was verified by the pair *witness resolves at HEAD* **and** *fails at HEAD~1*). ⚠️ **A snapshot guards against a wrong deletion, NOT against disk loss — there is still no remote.** The `MEMORY.md` consolidation pass this unblocks is owed and deliberately not done here.
 - [ ] **🆕 PLAN-0110 SD-E is REVERSED — Cray ruled (typed, s242, 2026-08-21): BUILD the Tab I→Tab H link that SD-E declined.** The original ruling stands as history and is **NOT** edited — `done/0110` ruled **(d) "accept and re-scope the promise; build nothing"** and named **(b) "server-side firing on case creation"** as *"the NAMED follow-on build"*; that follow-on is now **COMMISSIONED**. 🔴 **Everything the build needs is already in tracked files — read them, never a restatement:** the three-part break (`open_case` fires no procedure · the firing route is tunnel-excluded **by design** · an already-parked gate cannot adopt a later case, its proposals frozen in the suspended step's artifact) is stated in full at `verticals/fleet_maintenance/operate_seed.py:10-19`; option (b)'s three riders — the RoPA/AC-11 description update, **who is the accountable requester for an unkeyed visitor** (`services/api/routers/cases.py:206` falls back to `_UNATTRIBUTED`), and the joint rewrite of G4's population-bound tripwire plus AC-4/AC-5's *"exactly two runs"* reset assertions — are at `docs/plans/done/0110-fleet-demo-run-markers-filter-and-deploy-reset.md` (§SD-E, `:761-823`). ⚠️ **Two consequences fall out the moment it lands, both named in that PLAN's Out of Scope:** `/runs` filtering is client-side only *because* the population is pinned at two, and the Monitor "all" filter has no cap. 🔴 **PREREQUISITE — recorded here because no PLAN carries it as a prerequisite:** `run_procedure_endpoint` (`services/api/routers/runs.py:370-419`) has **no fail-closed principal check** while resolve/cancel do (`:444-451`, `:553-560`) — the asymmetry is PLAN-0110's own G10.6 finding (`:196-205`); close it **before** admitting any visitor-reachable firing path. **SEQUENCING (Cray, typed): execution follows PLAN-0107 AC-10.** A new PLAN is owed and `docs/plans/` is **G2-gated for Code → drafter dispatch**.
 - [ ] **🆕 The four s235 audit findings ADR-0038 did NOT absorb — REHOMED s235 out of a gitignored handoff into `docs/logs/2026-08-17-s235-audit-findings-outside-adr-0038.md`.** The **retrieval-reliability ranking** · **"pruning never reclaims storage"** (so never argue a rotation on disk grounds) · **`docker build` in CI, rated YES and owned by no PLAN** · **the 11-class vacuity taxonomy**. 🔴 **One live obligation in there: ADR-0038's three-strike counter has NO OWNER** — three items sit at two firings and no artifact records a count. PLAN-0108 is the natural owner and does not claim it. _[s241, two labels. `was an error (naming only)`: **"ADR-0037 SD-1" does not exist** — the genuinely-unruled item is the **D2.1 authorship fork** (`0037:229-249`), still open. `superseded by new info`: the counter has DRIFTED — the s235 log names **three** items at two firings while **ADR-0038's own D4 names only TWO** (`0038:441-447` W-1/W-2); `#0042` was added by the s235 audit and D4 was never amended.]_
 - [ ] **🆕 PLAN-0111 — the fleet close-out record that can hold a credit note (ใบลดหนี้): `Draft`, and all six SDs RULED in the same session** (Cray, typed 2026-08-19, [#1227](https://github.com/CrayJThiemsert/vero-lite/pull/1227)). **Cray ratified the SDs, not the PLAN; nothing gates execution.** 🔴 **SD-E (partial credits may coexist; over-credit refused 422) FORCES SD-A to (b), a separate `repair_case_credit_note` table** — a latest-per-kind row would re-arm the replacement trap one level down. ⚠️ **AV-1 is owed before Step 4, not before merge:** what Express/accounting reconciles a ใบลดหนี้ against is the one thing this repo cannot answer, and SD-C is provisional on it. The three code-verified obligations the rulings created (`_FK_CHILD_MODELS`, the `load_monthly_export` union, the AV-2 prohibition) are in the s240 Current Focus block above and in the PLAN. **Read the PLAN, never a restatement:** `docs/plans/0111-fleet-closeout-credit-note-record.md`.

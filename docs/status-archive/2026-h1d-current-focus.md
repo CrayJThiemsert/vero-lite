@@ -946,3 +946,88 @@ lesson 0043.]_
 **deploy.py dead-compose-path row (discharged, rotated for good):**
 
 - [x] **`deploy.py`'s dead compose path — FIXED s235 ([#1193](https://github.com/CrayJThiemsert/vero-lite/pull/1193)).** Found s232 and live on `main` for three commits; Phase 1 would have died on the next `--execute`. The path is now the module constant `_LOCAL_COMPOSE`, guarded by a test that walks the module's own path constants, so a future straggler reddens by construction. **Read the code and the guard, never a restatement:** `deploy/published/deploy.py` · `tests/deploy/test_deploy.py`. ⚠️ **That guard's first draft masked its own oracle** — homed in [`docs/lessons/0043-*.md`](lessons/0043-a-probes-red-must-name-what-broke.md), now binding via `CLAUDE.md` §8's witnessed-RED rule.
+
+> **Session 240, 2026-08-19 (head_commit `dbb3e58` → `8fd3848`) — THREE PRs
+> MERGED (#1225–#1227), 0 open. PLAN-0107 AC-11 CLOSED, `DEPLOY.md` gained a
+> pre-ship check, and PLAN-0111 was drafted with all six of its SDs ruled in the
+> same session.**
+>
+> 🔴 **The organising finding: three losses of correct work, two of them mine
+> this session — each caught by a discipline, none by re-reading a summary.**
+>
+> 🔴 **(1) A `git merge` reported success and silently reverted a merged PR.** It
+> first died with `Unable to write index` although the two sides touched disjoint
+> files; `git status` then read *"All conflicts fixed but you are still merging"*
+> with **no `index.lock` on disk**. Concluding it produced a merge commit whose
+> tree **dropped #1225's entire `DEPLOY.md` change** — while `git merge-base
+> --is-ancestor origin/main HEAD` answered **YES**. **Ancestry is not content.**
+> Caught by grepping the merged tree for a string only the incoming side
+> introduces; recovered by `git reset --hard` to my own commit and re-merging,
+> which reported the expected `53 insertions(+)`.
+>
+> 🔴 **(2) The first non-vacuity probe proved the wrong thing.** The scenario's
+> `assert status_code == 422` sat *before* the month-end read, so disarming the
+> guard reddened **that** line and returned — the money assertion, the claim the
+> module exists to make, never executed. Reordered so the ฿ assertions fire
+> first; the RED now reads `assert Decimal('-15000.00') == Decimal('20000.00')`,
+> the export holding one row carrying the credit note's document date.
+>
+> ⚠️ **(3) Two ACs in the first-pushed PLAN-0111 draft named test files that do
+> not exist** — corrected to grep-verified paths. Separately, swapping a stale
+> line citation for a symbol produced a *wrong symbol* (`get_case` for
+> `get_closeout`) until the enclosing function was grepped rather than assumed.
+>
+> ✅ **PLAN-0107 AC-11 CLOSED — negative money refused at the close-out producer**
+> (#1226), plus a four-test scenario module. 🔴 **Why a refusal and not `sum()`:**
+> `repair_case_closeout` is append-only with **latest-wins** — `latest_closeout`
+> returns one row per case and both consumers read it, so a credit note keyed
+> there does not join the invoice, it **REPLACES** it. Measured: month-end moves
+> `20,000.00` → `-15,000.00` with every row still looking perfectly filled in.
+> Admitting the negative is the **silent** option, not the lenient one. 🔴 **It
+> closes an asymmetry rather than adding a rule** — the quote side already refused
+> negative money on the same reasoning
+> (`tests/api/test_cases_endpoint.py::test_a_negative_quote_is_refused`, *"Not a
+> discount — a typo or a credit note"*); the close-out was the outlier, and it is
+> the end that feeds the month-end figure. A credit note is internally
+> **coherent** (`-14,018.69 + -981.31 = -15,000.00`), so it passes the existing
+> totals check — the sign check is its own door, and the scenario pins that
+> discriminator. The refusal is **INTERIM**, says so in the handler docstring, and
+> names its lift condition: only with a schema holding invoice and credit as two
+> coexisting facts.
+>
+> ✅ **`DEPLOY.md` §2a Pre-ship** (#1225) — build locally, then compare a
+> `sha256sum` taken **inside the freshly built image** against the working tree,
+> before the host is touched at all.
+>
+> ✅ **PLAN-0111 drafted and all six SDs RULED** (Cray, typed 2026-08-19, #1227);
+> `Status: Draft` — the SDs were ratified, not the PLAN. **SD-E: multiple partial
+> credits may coexist** (ทยอยลด; over-credit refused 422), **which forces SD-A to
+> (b), a separate `repair_case_credit_note` table** — latest-per-kind would re-arm
+> the replacement trap one level down. SD-B (b) one composite reader · SD-C (b)
+> two lines matching real documents · SD-D (a) credit inherits the case's `RC-`
+> number · SD-F (a) KPI counts repairs, not documents. Newly load-bearing from
+> those rulings, each verified against code: the new table must join retention's
+> `_FK_CHILD_MODELS`; 🔴 **`load_monthly_export`'s ungoverned branch enumerates
+> cases only from `RepairCaseCloseout.entered_at`, so a credit-only month would
+> emit no row at all** and must union a second source; and 🔴 **AV-2 stopped being
+> hypothetical** — a table FK'd to the close-out with no `case_id` column is
+> invisible to both retention walks, prohibited without a guard extension
+> witnessed RED first. ⚠️ **AV-1 is the one thing this repo cannot answer** — what
+> Express/accounting reconciles a ใบลดหนี้ against; SD-C is provisional on it, and
+> the PLAN requires confirming it before Step 4, not before merge.
+>
+> **Gates: 4174 passed / 8 skipped** (4170 baseline + 4), `mypy --strict services/
+> verticals/` clean over **201** files, bare `ruff check .` + `ruff format
+> --check .` clean over **643**. Three non-vacuity probes witnessed RED: the
+> `DEPLOY.md` operator-path guard naming `DEPLOY.md:111` · the guard-disarm
+> reddening the ฿ assertion · the `< 0` → `<= 0` tightening reddening **only** the
+> zero-VAT positive control — disjoint sets, which is what makes the control a
+> control. **No host-state action this session; MS-S1 was not touched.**
+>
+> ⚠️ **CARRIED FORWARD from s239's `next_action` — recorded here because the
+> frontmatter cap cannot hold them and nothing else in this file does; none was
+> touched this session, none is resolved:** (i) the **font-size decision still
+> gates re-measuring every geometry number in the beat-4 mockup**; (ii) the
+> **run-list backlog badge on the host is still unmeasured** (a host-state read,
+> so it needs its own typed §8 go); (iii) the **three Advisory-proposal
+> candidates are still unnamed**, so the gate panel still reads as unfinished.
