@@ -157,7 +157,7 @@ itself is confirmed as stated.
   reddens to a 200 **and** the zero-rows assertion reddens to 1 — both directions
   witnessed. **[offline/DB]**
 - [ ] **AC-2 — the governable moment fires exactly one new run, idempotently
-  [contingent on SD-1/SD-2/SD-5].** After a case crosses its governable moment
+  [contingent on SD-2/SD-5; SD-1 RULED (b), s242 — see SD-1].** After a case crosses its governable moment
   (accepted quote whose amount breaches the truck's ceiling — G-4), exactly **one** new
   `PipelineRun` exists attributable to that case-event; repeating the trigger action
   (re-accept, projection re-refresh) creates **no second run**. Pass read: scenario
@@ -184,24 +184,28 @@ itself is confirmed as stated.
   disable the firing seam (scratch-revert the hook call at the accept path) → the
   "run exists in `GET /runs`" assertion reddens from 1 to 0 — the exact break the
   feature closes, re-witnessed. **[offline/DB]**
-- [ ] **AC-4 — no reachable intake path mints a dead-end run [contingent on SD-1].**
-  Whatever SD-1 rules, the invariant holds: every run a visitor-reachable path can
-  fire has a gate the declared approvers can actually resolve. Pass read (recommended
-  shape, SD-1(b)): every fired run's SoD requester is the declared owning person
-  holding `requester`; a resolve by `appr-fleet-manager-wirat` succeeds. Pass read
-  (shape (a)): an unkeyed or non-`requester`-keyed intake fires **nothing** (case
-  writes succeed; run count unchanged) and the fired-run path exists only for the
-  `requester`-role persona. Non-vacuity probe: force the seam's principal/owning-person
-  to `None` in a scratch copy and fire → assert the resolve attempt 403s with
-  `UNRESOLVED_PRINCIPAL` (G-7) — witnessing the dead-end the invariant excludes, in
-  the direction (approvable → unapprovable) it guards. **[offline/DB]**
+- [ ] **AC-4 — no reachable intake path mints a dead-end run [SD-1 RULED (b), s242 —
+  pass read re-fixed against the ruling; the shape-(a) read is retired].** The
+  invariant: every run a visitor-reachable path can fire has a gate the declared
+  approvers can actually resolve. Pass read: every fired run's SoD requester is the
+  declared owning person holding `requester` (the service-principal fire, G-9 shape);
+  its `run_started` audit names `actor_kind: "service"` (the scheduled path's
+  precedent, `procedures.yaml:73-74`); and a resolve by `appr-fleet-manager-wirat`
+  succeeds. Non-vacuity probe: force the seam's owning person to `None` in a scratch
+  copy and fire → assert the resolve attempt 403s with `UNRESOLVED_PRINCIPAL` (G-7)
+  — witnessing the dead-end the invariant excludes, in the direction (approvable →
+  unapprovable) it guards. **[offline/DB]**
 - [ ] **AC-5 — the demo copy claims exactly what the ruled shape delivers [contingent
-  on SD-1/SD-3].** The sentences PLAN-0110 Step 6 re-scoped (`deploy/published/
+  on SD-3; SD-1 RULED (b), s242 — its clause below is now fixed].** The sentences
+  PLAN-0110 Step 6 re-scoped (`deploy/published/
   oct-fleet-maintenance/card-copy.md:26-27` TH / `:58-59` EN, per `done/0110:174-180`)
   are re-instated **only to the extent the ruled build makes true** — e.g. under
   SD-3(b) the promise text stays scoped to where acceptance is reachable. Pass read:
   each re-instated claim maps to a green AC-3 assertion; no sentence promises a surface
-  the allowlist does not serve. Non-vacuity: this AC's reads are RED today by
+  the allowlist does not serve; and — fixed by SD-1(b) — no sentence implies the run
+  record names the visitor: per-visitor attribution language is confined to the case
+  rows (`opened_by`/`accepted_by`) unless the ADR-0035 amendment recorded in SD-1's
+  ruling lands first. Non-vacuity: this AC's reads are RED today by
   construction — the current copy deliberately does *not* make the promise
   (PLAN-0110 AC-10 re-scoped it), so any re-instatement flips them. **[offline/no-DB]**
   (grep-based) plus **[published]** eyes-on at Step 7.
@@ -320,6 +324,55 @@ coexistence. Evidence, never the gate.
 
 ### SD-1 — who is the accountable requester for a visitor-fired run? (the commissioned decision)
 
+**RULED (Cray, typed, s242, 2026-08-21): (b)** — the S1/S2 headless service principal
+with a declared owning person as the SoD requester; the recommendation was taken.
+Cray's stated reasoning, two halves: **(1)** someone who can get through to Tab I
+already holds some level of authorization to use the system; **(2)** we can use the
+email name they logged in with to track who opened the case.
+
+**The measured state of each half, recorded with the ruling (re-verified on disk,
+s242):**
+
+- **Half 1 is consistent with what the app already tells its users:** the published
+  D6 notice states "Access is gated by Cloudflare, which processes your email
+  address" (`services/api/static/assets/app.js:170`). One caveat travels with it:
+  the tunnel config in this repo carries no Access configuration (Access policies
+  are dashboard-side, outside the repo), and `app.js`'s own comment calls the vendor
+  gate page "capability this repo cannot verify" (`app.js:154-156`).
+- **Half 2 does not hold at the app layer today — a measured fact, not a doubt:**
+  `Person` has only `person_id`/`name`/`roles` — no email column
+  (`services/db/person.py:14-16`); the only occurrence of "email" anywhere under
+  `services/` is the D6 disclosure sentence itself (`app.js:160`, `:170`) — a
+  sentence, not a datum; `open_case` sets `opened_by = auth.person_id or
+  (req.opened_by or "").strip() or _UNATTRIBUTED` (`cases.py:206`) — a person_id,
+  else a **client-supplied string**, else unattributed; the browser credential is an
+  operator API key whose display identity is "what the operator typed" —
+  self-asserted (`services/api/static/assets/auth.js:13-15`); and **zero code under
+  `services/` reads any `Cf-Access-*` header** (0 grep hits; every hit in the repo
+  is in ADRs and handoffs). **Plainly, for the later reader: under (b) as ruled, a
+  visitor-fired run's requester is the declared role-holder, and the visitor's own
+  identity survives only in the case rows' `opened_by`/`accepted_by` — which, for an
+  unkeyed caller, is a client-supplied string no one authenticated.**
+
+**Dependency recorded, per Cray's directed sequence (record this ruling first, then
+amend ADR-0035):** Cray wants the per-visitor attribution and has directed that we
+get it. The mechanism is ADR-0035's phase-2 recipe — an IdP behind Access, with
+`Cf-Access-Jwt-Assertion` validated in a FastAPI dependency. It may **not** land in
+this PLAN: ADR-0035 (Accepted, s200) places that recipe in the pilot era, "out of
+L1's phase-1 posture," named "so it is neither forgotten nor smuggled in early," and
+reserves the per-route decision for "the pilot's own governance artifact — it may
+not ride in on demo precedent." An identity-capture AC here would be exactly that
+smuggling; CLAUDE.md §1 makes the Accepted ADR binding. **Therefore SD-1(b) ships
+without per-visitor attribution unless and until an ADR-0035 amendment ratifies the
+phase-2 identity capture for the published demo surface.** Noted in passing and
+deliberately unresolved here, because the amendment is Cray's to make: ADR-0035's
+own pilot-era criterion — "a pilot's users are known principals, not anonymous
+visitors" — is the substance of Cray's half 1, i.e. the ground such an amendment
+would stand on.
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why.
+
 The question PLAN-0110 left open (`done/0110:768-775`), now measured (G-7, G-8, G-9):
 
 - **(a) Fire as the authenticated persona; fire nothing otherwise.** Fail-closed:
@@ -419,8 +472,11 @@ a declared decision, and the bridge needs a new invocation seam from the accept 
 either way (G-9 — today only `actions.py` calls it, behind `event_bridge_enabled`).
 **Recommendation:** (b) if SD-1 = (b) (the shapes compose; the idempotency is free);
 (a) if SD-1 = (a) (the bridge's service-principal actor contradicts firing as the
-persona). **Why Cray:** with SD-1 it fixes which precedent (manual-door vs
-S1/S2-headless) this surface extends — an architecture-lineage call.
+persona). **SD-1 is now RULED (b) (s242), so the condition holds: the live
+recommendation is (b) — the bridge's service-principal + owning-person actor is
+exactly the ruled SD-1 shape. SD-5 itself remains UNRULED.** **Why Cray:** with SD-1
+it fixes which precedent (manual-door vs S1/S2-headless) this surface extends — an
+architecture-lineage call.
 
 ### SD-6 — the dissolved population bound: cap and server-side filtering
 
@@ -460,7 +516,10 @@ posture call (PDPA framing in §8), not an implementation detail.
    seam; a PR that lands both in one diff fails review by this line.
 3. **Live (evidence, not the gate):** Step 7 under an explicit typed Cray go — §8
    host-state rules; every fleet redeploy is the by-hand path (PLAN-0110 G11).
-4. **Rulings:** no SD is ruled at drafting time. This PLAN stays `Draft`; each ruling
-   is stamped in place per SD (`RULED (Cray, typed, date, session): …`) the moment it
-   lands, and the contingent ACs are re-fixed in the same edit (drafter dispatch —
-   `docs/plans/` stays G2-gated for Code).
+4. **Rulings:** SD-1 is **RULED and stamped in place** (Cray, typed, s242 — with the
+   measured state of its premises and the ADR-0035 amendment dependency recorded in
+   the same stamp); AC-4 was re-fixed and AC-2/AC-5's contingency brackets narrowed
+   in that edit. SD-2 … SD-7 remain **unruled**. This PLAN stays `Draft`; each
+   further ruling is stamped in place per SD (`RULED (Cray, typed, date, session):
+   …`) the moment it lands, and the contingent ACs are re-fixed in the same edit
+   (drafter dispatch — `docs/plans/` stays G2-gated for Code).
