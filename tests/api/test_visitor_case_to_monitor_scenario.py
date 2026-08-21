@@ -368,17 +368,21 @@ async def test_a_visitor_case_lands_in_the_monitor_beside_the_seed_not_instead_o
 
     case_id = await _visitor_opens_a_case(client_with_db)
 
-    fired = await client_with_db.post(f"/procedures/{_HERO}/run", json={}, headers=_HEADERS)
-    assert fired.status_code == 200, fired.text
-    run_id: str = fired.json()["run_id"]
-
+    # No manual fire any more, and its absence is the point. Until PLAN-0112 Step 3 this
+    # test had to POST /procedures/{id}/run itself to stand in for a seam that did not
+    # exist; the acceptance inside `_visitor_opens_a_case` now fires the governed run on
+    # its own. The claim below is unchanged — a visitor's case ADDS a waiting run beside
+    # the seed — it is simply met by the product instead of by the test.
     after = await _monitor(client_with_db)
     assert after["waiting_human_count"] == baseline["waiting_human_count"] + 1, (
         "the visitor's case must ADD a waiting run — an assertion that H is merely "
         "non-empty passes with the visitor removed entirely, because the seed is there"
     )
     new_ids = {r["run_id"] for r in after["runs"]} - baseline_ids
-    assert new_ids == {run_id}, "exactly one new run, and it is the one the visitor fired"
+    assert (
+        len(new_ids) == 1
+    ), f"exactly one new run, fired by the acceptance itself — got {sorted(new_ids)}"
+    run_id: str = next(iter(new_ids))
     assert DEMO_RUN_ID in {r["run_id"] for r in after["runs"]}, (
         "beside the seed, not instead of it — a visitor run that displaced the seed "
         "would leave the next visitor's first paint empty again"

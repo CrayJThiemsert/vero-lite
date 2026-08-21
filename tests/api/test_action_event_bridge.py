@@ -22,6 +22,7 @@ from services.api.routers import actions
 from services.db.audit_log import AuditLog
 from services.db.base import Base
 from services.engine.actions import AuditMetadata, EntityRef, RecommendedAction
+from services.engine.procedures import event_bridge
 from services.engine.procedures.event_bridge import EventFireResult
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
 from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
@@ -181,13 +182,20 @@ async def _audit_rows(engine: AsyncEngine, action: str) -> list[AuditLog]:
         return list(rows.scalars().all())
 
 
+# NOTE: `load_procedures` is patched on `event_bridge`, not on `actions`. The loader
+# moved into the bridge at PLAN-0112 Step 3 once the case-acceptance seam became its
+# second caller; `actions._load_event_bridge` is now a thin alias, so a patch aimed at
+# the `actions` namespace no longer intercepts it. `actions.registry` and
+# `actions.fire_event` are still patched where they are: the registry is the same
+# singleton object either module holds, and `fire_event` is still called through
+# `actions`' own namespace.
 # --- _load_event_bridge -----------------------------------------------------------------------
 
 
 async def test_load_event_bridge_non_event_vertical_returns_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _manual_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _manual_spec())
     assert await actions._load_event_bridge("energy") is None
 
 
@@ -195,14 +203,14 @@ async def test_load_event_bridge_missing_yaml_returns_none(monkeypatch: pytest.M
     def _boom(v: str) -> VerticalProcedures:
         raise FileNotFoundError(v)
 
-    monkeypatch.setattr(actions, "load_procedures", _boom)
+    monkeypatch.setattr(event_bridge, "load_procedures", _boom)
     assert await actions._load_event_bridge("nope") is None
 
 
 async def test_load_event_bridge_no_factory_returns_none(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.engine.registry import RegistryError
 
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(
         actions.registry,
         "get_procedure_executors",
@@ -214,7 +222,7 @@ async def test_load_event_bridge_no_factory_returns_none(monkeypatch: pytest.Mon
 async def test_load_event_bridge_event_vertical_returns_resolver(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
     resolve = await actions._load_event_bridge("procurement")
     assert resolve is not None
@@ -235,7 +243,7 @@ async def test_fire_event_for_record_unmapped_kind_is_loud(
     monkeypatch.setattr(
         actions, "async_session", async_sessionmaker(db_engine, expire_on_commit=False)
     )
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
     resolve = await actions._load_event_bridge("procurement")
     assert resolve is not None
@@ -256,7 +264,7 @@ async def test_fire_event_for_record_fire_error_is_loud(
     monkeypatch.setattr(
         actions, "async_session", async_sessionmaker(db_engine, expire_on_commit=False)
     )
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
 
     async def _boom(session: object, request: object, *, now: object) -> None:
@@ -283,7 +291,7 @@ async def test_fire_event_for_record_maps_and_fires(
     monkeypatch.setattr(
         actions, "async_session", async_sessionmaker(db_engine, expire_on_commit=False)
     )
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
     resolve = await actions._load_event_bridge("procurement")
     assert resolve is not None
@@ -370,7 +378,7 @@ async def test_populate_store_flag_on_non_event_vertical_no_fire(
     monkeypatch.setattr(actions.settings, "event_bridge_enabled", True)
     monkeypatch.setattr(actions.settings, "oct_vertical", "energy")
     monkeypatch.setattr(actions.registry, "get_adapter", lambda v: _FakeAdapter([{"e": 1}]))
-    monkeypatch.setattr(actions, "load_procedures", lambda v: _manual_spec())
+    monkeypatch.setattr(event_bridge, "load_procedures", lambda v: _manual_spec())
 
     async def _fake_recommend(event: dict[str, Any], vertical: str) -> ActionRecord:
         return _record()
