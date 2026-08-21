@@ -33,12 +33,11 @@ from services.engine.procedures.event_bridge import (
     EventBridgeError,
     EventFireOutcome,
     EventRunRequest,
-    build_event_resolver,
     fire_event,
+    load_event_resolver,
 )
-from services.engine.procedures.spec import load_procedures
 from services.engine.recommender import ActionRecord, ApprovalError, approve, execute, recommend
-from services.engine.registry import RegistryError, registry
+from services.engine.registry import registry
 from services.notify.telegram import notify_event_fire_failed
 
 logger = logging.getLogger(__name__)
@@ -76,25 +75,13 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
 
 
 async def _load_event_bridge(vertical: str) -> Callable[..., EventRunRequest] | None:
-    """Build the event resolver for ``vertical`` once per populate, or ``None`` when the vertical
-    is not wired for the bridge (PLAN-0056 Step 6, SD-P3).
+    """The event resolver for ``vertical``, once per populate (PLAN-0056 Step 6, SD-P3).
 
-    ``None`` (a clean no-op, not a failure) when the vertical declares **no** ``event``-trigger
-    procedure — e.g. energy, the default demo vertical — or has no registered procedure-executor
-    factory (OQ-6: ``discover_and_register`` registers adapters + handlers only). Called only under
-    the ship-dark flag, so a vertical without the bridge pays nothing when the flag is off.
+    Thin alias over :func:`event_bridge.load_event_resolver` since PLAN-0112 Step 3 gave the
+    loader a second caller (the case-acceptance seam). Called only under the ship-dark flag, so
+    a vertical without the bridge pays nothing when the flag is off.
     """
-    try:
-        spec = load_procedures(vertical)
-    except FileNotFoundError:
-        return None  # the vertical ships no procedures.yaml — nothing to bridge
-    if not any(p.event_trigger is not None for p in spec.procedures):
-        return None  # not an event-bridge vertical — no fire, no alert
-    try:
-        factory = registry.get_procedure_executors(vertical)
-    except RegistryError:
-        return None  # no registered executor factory (OQ-6) — cannot fire a governed run
-    return build_event_resolver(spec, factory)
+    return await load_event_resolver(vertical)
 
 
 async def _alert_event_fire_failure(

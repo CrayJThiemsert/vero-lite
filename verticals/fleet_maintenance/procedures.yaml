@@ -141,7 +141,41 @@ procedures:
       APPROVES (SoD) — and write nothing until that human decides. The LLM drafts the summary
       (advisory); it decides nothing.
     run_by: fleet_maintenance_agent
-    trigger: manual                 # L-1: only manual runs in Phase 1 (the PLAN-0019 precedent)
+    trigger: event                  # SD-5 RULED (b) (Cray, typed, s243): the governable moment — a
+                                    # visitor ACCEPTING a quote — fires this procedure through the
+                                    # shipped ADR-0029 bridge, so the vertical's behaviour stays
+                                    # DECLARED (CLAUDE.md §3). This REPLACES the former `manual` +
+                                    # `# L-1: only manual runs in Phase 1` comment, which had gone
+                                    # stale twice over: L-1 is a real PLAN-0019 LOCKED decision
+                                    # (done/0019:52,:65) whose substance was already lifted by
+                                    # `scheduled_pm_service_round`'s `trigger: schedule` in THIS
+                                    # file (:496, Cray-ratified typed s163) and by ADR-0029 /
+                                    # PLAN-0056 making `event` runnable. Manual firing SURVIVES the
+                                    # flip: `_RUNNABLE_TRIGGERS` admits all three triggers and the
+                                    # run endpoint never reads the DECLARED trigger — it reads how
+                                    # THIS run was fired (orchestrator.py:149,:169-174; runs.py:239-242).
+    event_trigger:
+      event_kind: repair_quote_accepted   # unique across this vertical's event procedures (cross-ref
+                                          # validated at load). Named for the moment it fires on, not
+                                          # for case creation: G-4 measured that a just-opened case
+                                          # projects NOTHING — a case joins the event stream only once
+                                          # it carries an accepted quote, so accept IS the seam.
+      owning_person_id: req-mechanic-tom  # SD-1 RULED (b) (Cray, typed, s242): the run fires as the
+                                          # agent's service principal ON BEHALF OF a declared human,
+                                          # recorded as the SoD requester. G-8: `req-mechanic-tom` is
+                                          # the ONLY principal holding the `requester` role (:102-111)
+                                          # — forced, not chosen. `None` here would mint a run that
+                                          # parks and can NEVER be resolved by anyone (G-7).
+      dedup_window_seconds: 3153600000    # 🔴 G-14 — a DELIBERATE build choice, not a default left
+                                          # alone. `event_key` hashes the detection-window BUCKET
+                                          # alongside the sorted entity ids (event_bridge.py:41-69).
+                                          # This event is human-driven, NOT a polled steady-state
+                                          # detection, so a bucket that ROLLS would spuriously
+                                          # re-fire a same-quote re-accept made after the window.
+                                          # 100 years holds bucket 0 across 1970..2069 — effectively
+                                          # constant — reducing the key to
+                                          # (vertical, event_kind, case_id, quote_id), which is
+                                          # SD-2(b) as ruled and nothing more.
     steps:
       - step_id: intake
         name: Read the latest quoted repair per truck

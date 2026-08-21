@@ -30,8 +30,9 @@ from services.engine.procedures.spec import (
     ServicePrincipal,
     StepKind,
     VerticalProcedures,
+    load_procedures,
 )
-from services.engine.registry import ExecutorFactory
+from services.engine.registry import ExecutorFactory, RegistryError, registry
 
 _KEY_HEX_LEN = 16
 """sha256 hexdigest truncated to 16 chars (64 bits) — ample for per-vertical event dedup,
@@ -216,6 +217,31 @@ def build_event_resolver(
     return resolve
 
 
+async def load_event_resolver(vertical: str) -> Callable[..., EventRunRequest] | None:
+    """Build ``vertical``'s event resolver, or ``None`` when it is not wired for the bridge.
+
+    ``None`` is a clean no-op, not a failure: the vertical ships no ``procedures.yaml``, declares
+    no ``event``-trigger procedure (e.g. energy), or has no registered procedure-executor factory
+    (``discover_and_register`` registers adapters + handlers only — PLAN-0112 G-10).
+
+    Lives here rather than beside either caller because there are now TWO — the recommender feed
+    (``routers/actions.py``, PLAN-0056 Step 6) and the case-acceptance seam
+    (``routers/cases.py``, PLAN-0112 Step 3). Two copies of a three-branch loader is the shape
+    that drifts.
+    """
+    try:
+        spec = load_procedures(vertical)
+    except FileNotFoundError:
+        return None  # the vertical ships no procedures.yaml — nothing to bridge
+    if not any(p.event_trigger is not None for p in spec.procedures):
+        return None  # not an event-bridge vertical — no fire, no alert
+    try:
+        factory = registry.get_procedure_executors(vertical)
+    except RegistryError:
+        return None  # no registered executor factory — cannot fire a governed run
+    return build_event_resolver(spec, factory)
+
+
 # --- Step 5: the in-process fire function (SD-1 FEED-INTO; SD-4; SD-P4 skip-if-in-flight) ---
 
 
@@ -280,7 +306,11 @@ async def _audit_event_skipped(
 
 
 async def fire_event(
-    session: AsyncSession, request: EventRunRequest, *, now: datetime
+    session: AsyncSession,
+    request: EventRunRequest,
+    *,
+    now: datetime,
+    skip_if_in_flight: bool = True,
 ) -> EventFireOutcome:
     """Fire ONE event-triggered governed run in-process (ADR-0029 SD-1 FEED-INTO / SD-4;
     PLAN-0056 Step 5).
@@ -295,6 +325,20 @@ async def fire_event(
       ``running``/``waiting_human`` (a gated run legitimately parks for days) → skip
       (``SKIPPED_IN_FLIGHT``).
 
+    ``skip_if_in_flight`` opts OUT of the second skip only, and defaults to ``True`` so every
+    caller that predates PLAN-0112 keeps its exact behaviour. SD-P4 was written for a POLLED
+    detector — its own docstring says "a steady-state anomaly re-detected each poll" — where a
+    pile of runs means the poller is running hot. A HUMAN-driven event is not that, and for a
+    GATED procedure the two are in direct contradiction: a gated run parks for days by design
+    (PLAN-0112 G-12), so the first such run blocks every later one for the same procedure. Measured
+    on fleet (session 244): with the demo's parked run present, a visitor's quote-acceptance
+    returned ``SKIPPED_IN_FLIGHT`` and wrote no row at all; and with no seed, a visitor's SECOND
+    acceptance — a genuinely different ``event_key``, verified distinct — was skipped by its own
+    first run. That is PLAN-0112 SD-2(b) as Cray ruled it ("re-fire on every projection-material
+    change") defeated silently, so the accept seam passes ``False``. **The SD-2 idempotency skip
+    above is NOT affected** — the event-keyed ``run_id`` still makes a re-detected event a no-op,
+    which is the half SD-2(b) requires.
+
     ``now`` is injected (no wall-clock read) so the ``fired_at`` stamp + tests are deterministic.
     The service-actor audit (AC-7), the gated-park posture (AC-8), and the write-ahead durability
     are inherited verbatim from :func:`run_procedure_persisted` — the bridge is a pure client of
@@ -303,7 +347,7 @@ async def fire_event(
     if await _event_run_exists(session, request.run_id):
         await _audit_event_skipped(session, request, "already_fired")
         return EventFireOutcome(request.run_id, EventFireResult.ALREADY_FIRED)
-    if await _procedure_in_flight(session, request.procedure.procedure_id):
+    if skip_if_in_flight and await _procedure_in_flight(session, request.procedure.procedure_id):
         await _audit_event_skipped(session, request, "in_flight")
         return EventFireOutcome(request.run_id, EventFireResult.SKIPPED_IN_FLIGHT)
     result = await run_procedure_persisted(
