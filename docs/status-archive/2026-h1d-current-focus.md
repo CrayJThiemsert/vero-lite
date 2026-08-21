@@ -1031,3 +1031,43 @@ lesson 0043.]_
 > **run-list backlog badge on the host is still unmeasured** (a host-state read,
 > so it needs its own typed §8 go); (iii) the **three Advisory-proposal
 > candidates are still unnamed**, so the gate panel still reads as unfinished.
+
+> **Session 241, 2026-08-20→21 (head_commit `8fd3848` → `6a2e34c`) — FIVE PRs
+> MERGED ([#1229](https://github.com/CrayJThiemsert/vero-lite/pull/1229),
+> [#1231](https://github.com/CrayJThiemsert/vero-lite/pull/1231)–#1234), 0 open:
+> it opened as *"rank the next work"* and became a MECHANISM change.**
+>
+> 🔴 **The grounded fan-out found the backlog was RETRIEVAL debt, not technical
+> debt** — eight measured facts `git grep` could not find, because they lived
+> only in a gitignored handoff and would have died with it. So the work became
+> two guards that make such debt findable: `tools/check_retired_claims.py`
+> (hook #18) and `tools/check_ac_consistency.py` (#19); the row below states
+> the limits each one declares about itself.
+>
+> 🔴 **Both caught real defects before they could merge — neither was built from
+> a hypothetical.** The retired-claim guard **blocked its own first commit**,
+> exposing a real design flaw: a file exempted from *declaring* could not exempt
+> *its own examples* either (fixed with `Marker.local_only`). It then flagged
+> **this file** — STATUS's own narrative quoted a dead claim. The AC-ledger
+> guard's first run named PLAN-0108's live duplicate label, and a second nobody
+> knew about in `docs/plans/done/0042-at2-managerial-build.md`.
+>
+> 🔴 **The tempting wrong fix, recorded because it will recur:** narrowing the
+> retired text until STATUS's quote stopped matching would have silenced the
+> guard — **that is editing the artifact to satisfy the instrument.** A marker
+> went beside the quote instead, so on a surface an agent reads every session a
+> dead claim carries a label saying so — *"`ms-s1-max` has no WSL DNS entry"*.
+> <!-- retired: "`ms-s1-max` has no WSL DNS entry" -->
+>
+> ⚠️ **One honest failure, recorded not dropped: findings were reported from a
+> subagent that never returned.** Four of five grounding agents came back; the
+> fifth failed silently and its notice arrived much later. **Two rows of the
+> ranking's claim-vs-code table were written with no source** and were RETRACTED
+> on measurement (a `/runs` docstring citation, a scenario-marker census) —
+> items ranked #8 and below only, not the #1/#2 picks. The memory rule *"verify
+> a subagent delivered"* existed and was not applied.
+>
+> ✅ **The documentation debts then landed** — #1232 PLAN-0107's five, #1233
+> PLAN-0108's duplicate label; the rows below own them. Gate on `6a2e34c`: **4206 passed / 8 skipped**, `ruff` + format clean
+> over 647, `mypy --strict` clean over 201 files; every PR `sha=MATCH` across
+> local HEAD, PR head and the run's own `head_sha`.
