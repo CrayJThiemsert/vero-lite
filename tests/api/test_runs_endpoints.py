@@ -222,29 +222,34 @@ async def test_unwired_vertical_is_409(client: AsyncClient, runs_auth: None) -> 
 # --- PLAN-0053 Phase A: ADR-016 S2 RF-1 (broad gate-approver) + actor_kind ------
 
 
-@pytest.fixture
-def runs_no_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Authn OFF (the per-deployment dev/demo escape) -> get_current_principal
-    returns ``AuthContext(None, None)``: no accountable human identity."""
-    monkeypatch.setattr(settings, "api_auth_enabled", False)
-
-
 async def test_resolve_rejects_when_no_authenticated_approver(
-    wired_client: AsyncClient, runs_no_auth: None
+    wired_client: AsyncClient, runs_auth: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """AC-1 (ADR-016 S2 RF-1): with ``api_auth_enabled`` off there is NO
     accountable human approver, so gate-resolve fails closed (403) BEFORE any
     decision is applied — INDEPENDENT of the authn toggle. This closes the
     amendment's motivating hole: an authn-off resolve silently applying decisions
     with no human. The gate is left intact (``waiting_human``), retryable once a
-    human authenticates."""
-    run_response = await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={})
+    human authenticates.
+
+    **Arrangement changed by PLAN-0112 AC-1**, which closed the run endpoint's own
+    RF-1 hole: a parked run can no longer be minted with authn off, so the run is
+    fired by a real keyed principal and authn is revoked only for the ACT. That is
+    also the truthful shape — a run parked by a legitimate actor, then an
+    unauthenticated caller trying to resolve it. Note what must NOT be done instead:
+    leaving authn ON and omitting the header yields a **401 from the dependency**,
+    which never reaches this 403 and would silently retire the RF-1 coverage."""
+    run_response = await wired_client.post(
+        f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS
+    )
     assert run_response.status_code == 200
     body = run_response.json()
     assert body["status"] == "waiting_human"
     run_id = body["run_id"]
     action_id = body["proposals"][0]["action_id"]
 
+    # ACT with no accountable human — the condition this test exists to cover.
+    monkeypatch.setattr(settings, "api_auth_enabled", False)
     resolve_response = await wired_client.post(
         f"/runs/{run_id}/gate/resolve",
         json={"step_id": _GATED_STEP, "decisions": {action_id: "approve"}},
@@ -342,11 +347,18 @@ async def test_cancel_waiting_human_run_records_audit(
 
 
 async def test_cancel_requires_authenticated_human(
-    wired_client: AsyncClient, runs_no_auth: None
+    wired_client: AsyncClient, runs_auth: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """AC-5 (RF-1): with `api_auth_enabled` off there is no accountable canceller →
-    cancel fails closed (403) and the run is left untouched (`waiting_human`)."""
-    run_id = (await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={})).json()["run_id"]
+    cancel fails closed (403) and the run is left untouched (`waiting_human`).
+
+    Arrangement keyed for the same reason as the resolve guard above (PLAN-0112
+    AC-1): the run endpoint now fails closed too, so the parked run is minted by a
+    real principal and authn is revoked only for the cancel attempt."""
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+    monkeypatch.setattr(settings, "api_auth_enabled", False)
     cancel = await wired_client.post(f"/runs/{run_id}/cancel")
     assert cancel.status_code == 403
     assert (await wired_client.get(f"/runs/{run_id}")).json()["status"] == "waiting_human"
