@@ -242,3 +242,187 @@ async def test_gold_nl13_agrees_with_what_the_real_engine_produces(
     assert case["expected_aggregate"]["groups"]
     assert ans.aggregate is not None
     assert len(ans.aggregate.groups) == 4
+
+
+# --- PLAN-0107 AC-10: every expressible gold case, graded by the real engine ---
+#
+# Until this block existed, nl-01..nl-11 were checked only for internal
+# self-consistency (`test_gold_set_is_well_formed_and_consistent` above, e.g.
+# `expected_count == len(expected_ids)`) — gold compared to gold. That reddens on
+# a malformed file and CANNOT redden on a wrong value, so it closed nothing about
+# the system. nl-13 already had the real-engine treatment; these eleven now do
+# too. Same shape as nl-13: real engine, real adapter, real scorer, only the model
+# transport stubbed.
+#
+# nl-12 is excluded because it is the gold set's only `ceiling: true` case, and
+# nl-13 is excluded because it keeps its own dedicated test above. The partition
+# test below derives both exclusions from the file rather than restating them, so
+# a twelfth expressible case cannot be added without landing here.
+
+_AC10_OWN_TEST = "nl-13"
+"""Expressible, but graded by its own test above — not this parametrized set."""
+
+_HAND_AUTHORED_TRANSLATIONS: dict[str, dict[str, Any]] = {
+    "nl-01": {
+        "object_type": "Asset",
+        "operation": "list",
+        "filters": [{"property": "asset_type", "op": "eq", "value": "battery"}],
+    },
+    "nl-02": {"object_type": "OperationalEvent", "operation": "count", "filters": []},
+    "nl-03": {
+        "object_type": "OperationalEvent",
+        "operation": "list",
+        "filters": [{"property": "measured_value", "op": "gt", "value": "80"}],
+    },
+    "nl-04": {
+        "object_type": "OperationalEvent",
+        "operation": "list",
+        "filters": [{"property": "severity", "op": "eq", "value": "critical"}],
+    },
+    "nl-05": {
+        "object_type": "OperationalEvent",
+        "operation": "count",
+        "filters": [{"property": "severity", "op": "eq", "value": "warn"}],
+    },
+    "nl-06": {
+        "object_type": "Asset",
+        "operation": "list",
+        "filters": [{"property": "name", "op": "eq", "value": "Battery Bank A"}],
+    },
+    "nl-07": {
+        "object_type": "Site",
+        "operation": "list",
+        "filters": [{"property": "site_type", "op": "eq", "value": "microgrid"}],
+    },
+    # nl-08 and nl-11 are the SAME structured query on purpose — two different
+    # operator phrasings of one grouped max. They differ in what gold asserts:
+    # nl-08 pins the value AND the top group, nl-11 pins only the top group.
+    "nl-08": {
+        "object_type": "OperationalEvent",
+        "operation": "max",
+        "aggregate_property": "measured_value",
+        "group_by": "asset_id",
+        "measured_kind": "temperature",
+    },
+    "nl-09": {
+        "object_type": "OperationalEvent",
+        "operation": "count",
+        "resolve": {
+            "name": "Battery Bank A",
+            "target_type": "Asset",
+            "filter_property": "asset_id",
+        },
+    },
+    "nl-10": {
+        "object_type": "OperationalEvent",
+        "operation": "avg",
+        "aggregate_property": "measured_value",
+        "measured_kind": "temperature",
+        "resolve": {
+            "name": "Battery Bank B",
+            "target_type": "Asset",
+            "filter_property": "asset_id",
+        },
+    },
+    "nl-11": {
+        "object_type": "OperationalEvent",
+        "operation": "max",
+        "aggregate_property": "measured_value",
+        "group_by": "asset_id",
+        "measured_kind": "temperature",
+    },
+}
+"""Case id -> the hand-authored StructuredQuery the translate stage must stand in for.
+
+These are NOT read from gold: gold states what the ANSWER should be, this states
+how the question is posed to the engine. If they were derived from each other the
+comparison would be circular.
+"""
+
+_INEXPRESSIBLE: dict[str, str] = {}
+"""Case id -> written reason it cannot be posed as ONE StructuredQuery.
+
+Empty today: all eleven were measured to round-trip. An entry here is a standing
+admission, so it must carry a reason a reader can weigh — an empty or whitespace
+reason fails `test_ac10_every_inexpressibility_entry_carries_a_written_reason`.
+"""
+
+
+def _expressible_gold_ids() -> set[str]:
+    """The ids this AC is answerable for, derived from gold — never restated."""
+    _vertical, cases = load_gold()
+    return {c["id"] for c in cases if not c["ceiling"]} - {_AC10_OWN_TEST}
+
+
+def test_ac10_translation_table_and_register_partition_every_expressible_case() -> None:
+    """No expressible case may sit outside BOTH the table and the register.
+
+    This is the load-bearing half of AC-10's coverage claim. Without it, the
+    parametrized test below would silently grade whatever happens to be in the
+    table — adding a twelfth expressible gold case would leave it ungraded and
+    every test would stay green. Here it reddens until that case is either
+    translated or explicitly registered as inexpressible with a reason.
+    """
+    covered = set(_HAND_AUTHORED_TRANSLATIONS) | set(_INEXPRESSIBLE)
+    expressible = _expressible_gold_ids()
+    assert covered == expressible, (
+        "every non-ceiling gold case must be either translated or registered as "
+        f"inexpressible; ungraded={sorted(expressible - covered)}, "
+        f"unknown={sorted(covered - expressible)}"
+    )
+    # Non-vacuity: an empty gold set would satisfy the equality above.
+    assert len(expressible) == 11, f"expected eleven expressible cases, got {len(expressible)}"
+
+
+def test_ac10_every_inexpressibility_entry_carries_a_written_reason() -> None:
+    """An entry with no reason is an undocumented escape hatch, so it fails."""
+    blank = sorted(cid for cid, reason in _INEXPRESSIBLE.items() if not reason.strip())
+    assert not blank, f"inexpressibility entries with no written reason: {blank}"
+
+
+def test_ac10_a_registered_case_is_not_also_translated() -> None:
+    """The register and the table must not overlap.
+
+    A case in both would be graded AND excused — the excuse would read as covering
+    a gap that no longer exists, and the partition test's set-union would hide it.
+    """
+    both = sorted(set(_HAND_AUTHORED_TRANSLATIONS) & set(_INEXPRESSIBLE))
+    assert not both, f"cases both translated and registered as inexpressible: {both}"
+
+
+@pytest.mark.parametrize("case_id", sorted(_HAND_AUTHORED_TRANSLATIONS))
+async def test_ac10_gold_case_agrees_with_what_the_real_engine_produces(
+    case_id: str,
+    energy_adapter: None,
+) -> None:
+    """Grade one gold case against the ENGINE rather than against itself.
+
+    A mismatch here is a SURFACED FINDING for Cray — per AC-10 it is never a
+    silent xfail and never a reason to edit gold. Which side drifted (the gold
+    value or the engine) is the finding's subject, not this test's to decide.
+    """
+    _vertical, cases = load_gold()
+    case = next(c for c in cases if c["id"] == case_id)
+
+    client = TranslateOnlyStub(_HAND_AUTHORED_TRANSLATIONS[case_id])
+    ans = await answer_question(case["text"], "energy", client=client)
+
+    # Non-vacuity, before the grade: score_case reads expected_count / expected_ids /
+    # expected_aggregate, so a case carrying none of them would be graded on nothing.
+    assert (
+        case.get("expected_count") is not None
+        or case.get("expected_ids")
+        or case.get("expected_aggregate")
+    ), f"{case_id} carries no deterministic expectation for score_case to grade"
+    assert (
+        ans.grounded is case["expected_grounded"]
+    ), f"{case_id}: engine grounded={ans.grounded}, gold expects {case['expected_grounded']}"
+
+    assert score_case(case, ans) == "correct", (
+        f"{case_id} SURFACED FINDING — gold and the real engine disagree. "
+        f"gold count={case.get('expected_count')} aggregate={case.get('expected_aggregate')}; "
+        f"engine count={ans.result_count} "
+        f"aggregate={None if ans.aggregate is None else ans.aggregate.value} "
+        f"groups={None if ans.aggregate is None else dict(ans.aggregate.groups)}. "
+        "Do NOT edit gold to make this pass — raise it with Cray."
+    )
