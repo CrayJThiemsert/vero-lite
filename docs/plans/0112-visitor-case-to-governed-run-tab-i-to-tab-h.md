@@ -134,6 +134,32 @@ itself is confirmed as stated.
   resolving it parks again at the gated terminal `fulfill` (`done/0110:106-112`,
   measured there at `operate_seed.py:518-525`). A visitor-fired run needs **two**
   resolves to complete; Tab H shows it `waiting_human` after the first.
+- **G-13 — the accepted-quote exclusion is load-bearing PROSE at two further tracked
+  sites (measured s243, on `docs/plan-0112-sd3-ruled` @ `b4ccd04` — postdates this
+  section's header stamp).** Beyond the set-equality guard SD-3 already named
+  (`tests/deploy/test_published_profiles.py:589-594`, `assert
+  set(_ingress_paths(profile)) == expected`), two tracked sites carry the exclusion
+  as a justifying claim — invisible to a call-graph review because neither *calls*
+  the endpoint; each *asserts that it is unreachable*: (1)
+  `verticals/fleet_maintenance/operate_seed.py:478-486` —
+  `seed_settled_history_case`'s docstring, the reason the seed exists at all: no
+  close-out UI anywhere in `services/api/static/`, "`/api/cases/{id}/closeout` is
+  **not on the system's ingress allowlist**. Neither is `/accepted-quote`. So no
+  visitor-created case can reach the gate, and no amount of visitor activity can
+  ever put money on the report… the KPI is **structurally ฿0 forever**"; (2)
+  `tests/api/test_operate_seed_spend_scenario.py:224-228` — the same claim inside
+  `test_the_settled_history_case_opens_the_kpi_on_a_real_figure`'s docstring. The
+  consequence under SD-3(a), split precisely — do not overstate it: the
+  gate-reachability clause ("no visitor-created case can reach the gate") becomes
+  **FALSE** and must be corrected in the same PR as the ingress row, or the repo
+  carries a false statement a test's stated rationale rests on; the ฿-report clause
+  ("no amount of visitor activity can ever put money on the report") stays **TRUE**,
+  because `/closeout` remains excluded — the published config admits exactly four
+  case rows (`config.yml:176`, `:180`, `:183`, `:186`) and `accepted` appears in
+  that file only inside the exclusion comment (`:173-175`) — and the ฿ column comes
+  from a close-out. **`seed_settled_history_case` remains necessary; only its reason
+  sentence needs splitting** — nothing in this finding implies the seed becomes
+  redundant.
 
 ## Acceptance Criteria
 
@@ -195,12 +221,14 @@ itself is confirmed as stated.
   copy and fire → assert the resolve attempt 403s with `UNRESOLVED_PRINCIPAL` (G-7)
   — witnessing the dead-end the invariant excludes, in the direction (approvable →
   unapprovable) it guards. **[offline/DB]**
-- [ ] **AC-5 — the demo copy claims exactly what the ruled shape delivers [contingent
-  on SD-3; SD-1 RULED (b), s242 — its clause below is now fixed].** The sentences
+- [ ] **AC-5 — the demo copy claims exactly what the ruled shape delivers [SD-3
+  RULED (a), s243 — pass read re-fixed, the (b) example clause retired; SD-1 RULED
+  (b), s242 — its clause below is now fixed].** The sentences
   PLAN-0110 Step 6 re-scoped (`deploy/published/
   oct-fleet-maintenance/card-copy.md:26-27` TH / `:58-59` EN, per `done/0110:174-180`)
-  are re-instated **only to the extent the ruled build makes true** — e.g. under
-  SD-3(b) the promise text stays scoped to where acceptance is reachable. Pass read:
+  are re-instated with the **full promise** — under SD-3(a) the published surface
+  serves the whole walk (open → quote → accept → watch the run in Tab H), so the
+  re-instated copy may make it. Pass read:
   each re-instated claim maps to a green AC-3 assertion; no sentence promises a surface
   the allowlist does not serve; and — fixed by SD-1(b) — no sentence implies the run
   record names the visitor: per-visitor attribution language is confined to the case
@@ -243,13 +271,14 @@ itself is confirmed as stated.
   lift the bound in scratch → the count assertion reddens. If (a)-unbounded is ruled:
   the pass read becomes the recorded acceptance note + a rewritten tripwire condition
   in AC-7(ii)'s amendment, and no endpoint change ships. **[offline/DB]**
-- [ ] **AC-9 — full gates + the ingress guard moves only as ruled.** `uv run --extra dev
+- [ ] **AC-9 — full gates + the ingress guard moves only as ruled [SD-3 RULED (a),
+  s243 — the (b)/no-ingress-change/byte-identical branch is retired].** `uv run --extra dev
   pytest tests/ -q 2>&1`, `uv run mypy services/ 2>&1`, bare `ruff check . 2>&1` — all
   green (offline gate matches CI scope). `tests/deploy/test_published_profiles.py`:
-  under SD-3(b)/no-ingress-change the expected route table is **byte-identical** —
-  the strongest posture preserved is itself asserted; under SD-3(a) the accepted-quote
-  row is added to the expected table **in the same PR with its written basis** (the
-  file's P12 convention, `done/0110:748-751`). `POST /procedures/{id}/run` stays
+  the `^/api/cases/[^/]+/accepted-quote$` row is added to the expected table
+  (`:114`, case rows `:137-140`) **in the same PR with its written basis** (the
+  file's P12 convention, `done/0110:748-751`), and that same PR corrects the two
+  G-13 prose sites (the Step 5 obligation). `POST /procedures/{id}/run` stays
   excluded under **every** ruling — any diff touching its exclusion or comments
   (`config.yml:110-112`, `:199-204`) fails this AC. **[offline/DB]**
 
@@ -300,11 +329,16 @@ The §8-binding scenario lands with the seam in the same PR, plus the AC-4 invar
 tests. Non-vacuity probes witnessed RED from scratch copies before the green is
 claimed (probes restore from the scratchpad, never from git).
 
-### Step 5: The published surface (AC-5, AC-6) — per SD-3
-If SD-3(a): the `^/api/cases/[^/]+/accepted-quote$` ingress row + the Tab I accept
-control + the `test_published_profiles.py` expected-table change with written basis +
-copy re-instatement. If SD-3(b): copy scoped to the reachable surface; no ingress
-change. Either way the RoPA rider (AC-6) lands here.
+### Step 5: The published surface (AC-5, AC-6) — SD-3 RULED (a), s243
+The `^/api/cases/[^/]+/accepted-quote$` ingress row + the Tab I accept control + the
+`test_published_profiles.py` expected-table change with written basis + copy
+re-instatement, one PR. **The same PR corrects the two G-13 prose sites**
+(`operate_seed.py:478-486`, `test_operate_seed_spend_scenario.py:224-228`): the
+gate-reachability clause ("no visitor-created case can reach the gate") is fixed as
+no longer true; the ฿-report clause is preserved as still-true (`/closeout` stays
+excluded, and the ฿ column comes from a close-out); and the seed's necessity is
+restated — split its reason sentence, never remove the seed. The RoPA rider (AC-6)
+lands here.
 
 ### Step 6: Population-bound follow-through (AC-7, AC-8) — per SD-6/SD-7
 The reset-coexistence scenario, the `done/0110` post-archival amendment, the cap (or
@@ -356,15 +390,33 @@ s242):**
 
 **Dependency recorded, per Cray's directed sequence (record this ruling first, then
 amend ADR-0035):** Cray wants the per-visitor attribution and has directed that we
-get it. The mechanism is ADR-0035's phase-2 recipe — an IdP behind Access, with
-`Cf-Access-Jwt-Assertion` validated in a FastAPI dependency. It may **not** land in
+get it. *[Corrected s243, per Cray's typed same-round ruling (recorded in SD-3's
+stamp); the ADR-0035 s242 amendment-pass note cites these very lines as the
+sentence to fix. This note originally named the mechanism as the full phase-2
+recipe — "an IdP behind Access, with `Cf-Access-Jwt-Assertion` validated in a
+FastAPI dependency" — which the amendment does NOT ratify.]* The mechanism is the
+**capture half only**, which ADR-0035's s242 amendment ratifies — in the ADR's own
+words, app code "is permitted solely to READ the gate's verdict for provenance,
+never to perform gating itself"; "reading the identity the edge asserts (the
+`Cf-Access-Authenticated-User-Email` / `Cf-Access-Jwt-Assertion` material Access
+injects) to stamp provenance on a record = **permitted**; performing or
+supplementing the gate — any `Depends(...)` that rejects, any 401/403 the app
+issues from that material, any per-visitor key lifecycle — = **still forbidden**"
+(the L1 s242 annotation); "what is ratified here is capture, not validation", and
+the s172 **validating** FastAPI dependency "remains pilot-era (D8, as amended
+there)" (the amendment-pass note). The **validating** recipe may **not** land in
 this PLAN: ADR-0035 (Accepted, s200) places that recipe in the pilot era, "out of
 L1's phase-1 posture," named "so it is neither forgotten nor smuggled in early," and
 reserves the per-route decision for "the pilot's own governance artifact — it may
-not ride in on demo precedent." An identity-capture AC here would be exactly that
-smuggling; CLAUDE.md §1 makes the Accepted ADR binding. **Therefore SD-1(b) ships
+not ride in on demo precedent." An identity-capture AC would have been exactly that
+smuggling before the s242 amendment drew the capture-not-validation line; a
+**validating** dependency still would be. CLAUDE.md §1 makes the Accepted ADR
+binding. **Therefore SD-1(b) ships
 without per-visitor attribution unless and until an ADR-0035 amendment ratifies the
-phase-2 identity capture for the published demo surface.** Noted in passing and
+phase-2 identity capture for the published demo surface.** *(That amendment has
+since landed, s242 — capture, not validation, is ratified; the identity-capture
+AC, when written, "must sit inside" that line, per the amendment-pass note.)*
+Noted in passing and
 deliberately unresolved here, because the amendment is Cray's to make: ADR-0035's
 own pilot-era criterion — "a pilot's users are known principals, not anonymous
 visitors" — is the substance of Cray's half 1, i.e. the ground such an amendment
@@ -423,6 +475,65 @@ used SD-E's wording.
 
 ### SD-3 — the second excluded door: how a published visitor reaches the governable moment
 
+**RULED (Cray, typed, s243, 2026-08-21): (a)** — admit `POST
+/api/cases/{id}/accepted-quote` to the published allowlist AND ship the Tab I accept
+interaction. **Cray typed the pick only — no reasoning was given, and none is
+recorded here.** (Contrast SD-1, whose stamp records Cray's typed "two halves"
+reasoning because Cray typed it; SD-3 has no such text — everything below this
+ruling line is the PLAN's record, not Cray's.) In the same turn Cray ruled that the
+incorrect `Cf-Access` sentence in SD-1's dependency note is fixed **in this same
+round** rather than deferred to the identity-capture AC PR — done, stamped `s243`
+in that note. The PLAN's own recorded rationale for why (a) satisfies the
+commission is the **Recommendation** paragraph retained below, unchanged — drafter
+reasoning, never Cray's.
+
+**The measured state recorded with the ruling (Code, s243, on this branch @
+`b4ccd04` — each re-checkable):**
+
+- **Correction to retained option (b)'s own text — do not inherit its false
+  clause.** (b) asserts the firing seam "is real on the **dev console** and for any
+  keyed flow that reaches accept". The dev-console half is **measured FALSE**: a
+  grep for `accepted-quote|acceptedQuote|accepted_quote` over
+  `services/api/static/` returns **zero hits**, with a positive control on the same
+  tree (the identical grep for `photos` hits
+  `services/api/static/assets/view-case.js:107`). The UI's complete case-route
+  surface is `view-case.js:71, 92, 107, 201, 224` — list, create, `/photos`,
+  `/evidence`, `/quotes` — exactly the four admitted rows, and **no accept call in
+  any view**. So under (b) the governable moment would have been reachable only by
+  an API client, a test, or the seed writing ORM rows directly — not by anyone
+  using any shipped UI on any surface, published or local.
+- **Correction narrowing (a)'s cost.** This SD frames (a) as reversing "a named
+  default-deny row". True, but `accepted-quote` is **not** on `_UNIVERSALLY_DENIED`
+  (`tests/deploy/test_published_profiles.py:150-161` — ten routes: `/warm`,
+  `/sleep`, the three `/intake/*`, the three `/procedures/draft/*`,
+  `/demo/hero/event`, `/insights/query`). It is a per-system omission under
+  default-deny, not the cross-system floor that "cannot be lowered by adding a
+  directory" (`:147-149`). The ruling class stays Cray's; the invariant it touches
+  is one system's expected table (`:114`, case rows `:137-140`), not the shared
+  floor. `POST /procedures/{id}/run` is likewise not on that floor — it stays
+  excluded by fleet's own written basis (`config.yml:199-204`), and AC-9 guards it.
+- **The blast radius this SD under-counted (now G-13).** SD-3 named only the
+  set-equality guard (`test_published_profiles.py:589-594`). Two further tracked
+  sites carry the exclusion as load-bearing prose — each *asserts the endpoint is
+  unreachable*, so neither surfaces in a call-graph review: G-13. Under (a) the
+  gate-reachability clause there becomes FALSE and is corrected in the same PR
+  (Step 5); the ฿-report clause stays TRUE and **`seed_settled_history_case`
+  remains necessary** — see G-13 for the precise split.
+- **The exposure (a) opens, which this SD did not name — the cost accepted with
+  the ruling.** `accept_quote` (`cases.py:639-716`) refuses a non-lowest acceptance
+  without a reason with **422** (`:690-697`) — by design, because the audit
+  question is "why did you not take the cheapest one" (`:654-656`). Attribution is
+  `accepted_by = auth.person_id or (req.accepted_by or "").strip() or
+  _UNATTRIBUTED` (`:704`). So under (a) on the published profile, an
+  **unauthenticated visitor authors the audit answer to that question, recorded as
+  `unattributed`**. This is the same `_UNATTRIBUTED` posture SD-1 already governs
+  for `opened_by` — but this datum is a governance justification (the reason the
+  DOA ladder's audit trail keeps), not an intake field.
+
+The options below are **retained deliberately** (the PLAN-0111 convention): a future
+reader must see what was rejected and why. Option (b) carries the correction above,
+marked inline where its false clause sits.
+
 New finding (G-5): `POST /api/cases/{id}/accepted-quote` is deliberately off the
 published allowlist, and Tab I ships no accept control — the promise currently fails
 before any firing seam is reached. **(a)** Admit the route + ship the Tab I accept
@@ -432,7 +543,9 @@ precedent) and puts a spend-accepting write on the public surface (bounded by th
 same app-auth posture as the other admitted case writes — `accepted_by` falls back to
 `_UNATTRIBUTED` at `cases.py:704`, the same intake-attribution question SD-1 governs).
 **(b)** Keep it excluded: the firing seam still ships and is real on the dev console
-and for any keyed flow that reaches accept; the published copy scopes the promise to
+*[measured FALSE, s243 — no shipped UI on any surface drives accept; see the
+correction block above]* and for any keyed flow that reaches accept; the published
+copy scopes the promise to
 "your case enters the queue; the governed round you watch is driven from the console"
 — an honest partial delivery, close to what PLAN-0110's re-scope already says.
 **Recommendation:** (a), because the commission is "delivered rather than re-scoped"
@@ -519,7 +632,12 @@ posture call (PDPA framing in §8), not an implementation detail.
 4. **Rulings:** SD-1 is **RULED and stamped in place** (Cray, typed, s242 — with the
    measured state of its premises and the ADR-0035 amendment dependency recorded in
    the same stamp); AC-4 was re-fixed and AC-2/AC-5's contingency brackets narrowed
-   in that edit. SD-2 … SD-7 remain **unruled**. This PLAN stays `Draft`; each
+   in that edit. SD-3 is **RULED and stamped in place** (Cray, typed, s243 — a pick
+   with no typed reasoning, recorded as such; the measured state M-corrections and
+   G-13 recorded with the stamp, AC-5/AC-9 re-fixed and Step 5 made unconditional
+   in the same edit, and the SD-1 dependency note's `Cf-Access` sentence corrected
+   per Cray's same-turn ruling). SD-2 and SD-4 … SD-7 remain **unruled**. This PLAN
+   stays `Draft`; each
    further ruling is stamped in place per SD (`RULED (Cray, typed, date, session):
    …`) the moment it lands, and the contingent ACs are re-fixed in the same edit
    (drafter dispatch — `docs/plans/` stays G2-gated for Code).
