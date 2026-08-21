@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
-from typing import Any, cast
+from typing import Any
 
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.gate_advisory import GateAdvisoryBuilder
@@ -320,19 +320,16 @@ class GovernanceActionExecutor:
             for entity in input_set
         ]
         base_outcome = await self.base.execute(step, input_set, ctx)
-        # PLAN-0073 (SD-1a): the base ActionStepExecutor builds the advisory Box-4 economic_impact
-        # facet into each RecommendedAction's reasoning_trace (ADR-0030 / PLAN-0071). This method
-        # REPLACES base_outcome.output below (dropping those action envelopes to thread the selected
-        # spend forward), which would discard the facet — so lift it onto the STEP trace here, where
-        # it persists on the governed run. Advisory + never-raise: an empty list when no producer is
-        # registered or the event does not ground a ฿ figure (it never changes the action).
-        economic_steps: list[dict[str, Any]] = [
-            cast("dict[str, Any]", trace_step)
-            for entry in base_outcome.output
-            if isinstance(entry, Mapping)
-            for trace_step in (entry.get("action") or {}).get("reasoning_trace", [])
-            if isinstance(trace_step, Mapping) and trace_step.get("kind") == "economic_impact"
-        ]
+        # PLAN-0073 (SD-1a) USED to lift the Box-4 economic_impact facet off the action envelopes
+        # here, because this method REPLACES base_outcome.output below (dropping those envelopes to
+        # thread the selected spend forward) and the facet would otherwise be discarded. It no
+        # longer needs to: the base ActionStepExecutor now emits the facet onto its OWN step trace
+        # as well as into the action (``_unseen_economic``), and ``base_outcome.reasoning_trace`` is
+        # carried through untouched below — so the facet survives the output replacement for free.
+        #
+        # The lift had to move down because it could never be complete up here: ``aquaculture`` and
+        # ``energy`` bind the BARE ActionStepExecutor with no governance wrapper at all, so their ฿
+        # was unreachable no matter what this class did.
         # PLAN-0078 PR-4 (the ratified SD-8 = (a) one derivation home): stamp the two FACTORS of
         # the spend, never their product — the declared `derive_spend` transform downstream
         # multiplies them into `amount`, so the derivation lives ONCE, as governed data.
@@ -358,35 +355,31 @@ class GovernanceActionExecutor:
             }
             for entity, v in zip(input_set, verdicts, strict=True)
         ]
-        trace = (
-            list(base_outcome.reasoning_trace)
-            + economic_steps
-            + [
-                {
-                    "kind": "scored_rule_selected",
-                    "selected_supplier_id": v.selected_supplier_id,
-                    "selected_quote_id": v.selected_quote_id,
-                    "selected_unit_price": str(v.selected_unit_price),
-                    "qty": str(v.qty),
-                    "currency": v.currency,
-                    # the FACTORS, not the product: the trace renders what this step decided (the
-                    # winner + its price + the resolved quantity); the spend itself is the declared
-                    # transform's output. Formatting `unit_price x qty` here would re-derive the
-                    # spend in code — SD-8's rejected (b), where the derivation lives in two homes.
-                    "summary": (
-                        f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
-                        f"(quote '{v.selected_quote_id}', {v.selected_unit_price} {v.currency}"
-                        f"/unit x {v.qty}"
-                        + (
-                            ", off-contract exception -- logged justification required)"
-                            if v.override_required
-                            else ", on-contract default)"
-                        )
-                    ),
-                }
-                for v in verdicts
-            ]
-        )
+        trace = list(base_outcome.reasoning_trace) + [
+            {
+                "kind": "scored_rule_selected",
+                "selected_supplier_id": v.selected_supplier_id,
+                "selected_quote_id": v.selected_quote_id,
+                "selected_unit_price": str(v.selected_unit_price),
+                "qty": str(v.qty),
+                "currency": v.currency,
+                # the FACTORS, not the product: the trace renders what this step decided (the
+                # winner + its price + the resolved quantity); the spend itself is the declared
+                # transform's output. Formatting `unit_price x qty` here would re-derive the
+                # spend in code — SD-8's rejected (b), where the derivation lives in two homes.
+                "summary": (
+                    f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
+                    f"(quote '{v.selected_quote_id}', {v.selected_unit_price} {v.currency}"
+                    f"/unit x {v.qty}"
+                    + (
+                        ", off-contract exception -- logged justification required)"
+                        if v.override_required
+                        else ", on-contract default)"
+                    )
+                ),
+            }
+            for v in verdicts
+        ]
         audit = {
             **(base_outcome.audit or {}),
             "governed_kind": "scored_rule",

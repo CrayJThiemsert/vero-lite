@@ -39,7 +39,7 @@ executed effects straight to the next step.
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal
 
@@ -349,6 +349,63 @@ class ActionStepExecutor:
     # the disclosed configuration was not the operative one. An explicit
     # constructor value still wins (the nl_query.answer_question idiom).
     retry_budget: int | None = None
+    # The run-scoped ฿-facet ledger read by :meth:`_unseen_economic`. Every vertical factory
+    # constructs this executor inside its per-run ``factory()`` (the registry Step-2 contract —
+    # a stateful executor must never leak across requests) and the orchestrator hands that one
+    # instance to EVERY ``action`` step of the run, so a plain instance set is exactly
+    # run-scoped. ``compare=False`` keeps a mutable set out of the frozen dataclass' generated
+    # ``__eq__`` / ``__hash__``; ``init=False`` keeps it off the constructor signature every
+    # factory already calls.
+    _emitted_economic: set[tuple[str, str]] = field(
+        default_factory=set, init=False, compare=False, repr=False
+    )
+
+    def _unseen_economic(
+        self, action_id: str, economic_steps: list[ReasoningStep]
+    ) -> list[dict[str, Any]]:
+        """The facets of this action not yet emitted on a step trace in this run.
+
+        **Why the facet needs a home on the step trace at all.** :func:`build_economic_steps`
+        composes the advisory Box-4 facet into the ``RecommendedAction``'s OWN
+        ``reasoning_trace`` (ADR-0030 / PLAN-0071), which persists inside
+        ``StepResult.artifact["output_set"]``. ``services/db/run_analytics.py`` reads facets off
+        ``StepResult.reasoning_trace`` instead (its S2 extract-on-read contract), so a facet that
+        only ever rides the envelope is present in the run and invisible to the ฿ rollup behind
+        Tab J. Two adjacent JSONB columns, one contract. Emitting here puts every vertical's ฿ on
+        the contracted surface — measured session 244, this was silently zero for
+        ``fleet_maintenance`` (฿7,200), ``aquaculture`` (2 x ฿247,000), ``energy`` (฿405,000) and
+        ``supply_chain``'s sweep (2 x ฿2,120,000).
+
+        **Why this seam and not the governance wrapper.** ``GovernanceActionExecutor._scored_rule``
+        already lifted the facet, and mirroring that into its authority-gate branches looks like
+        the smaller change. It cannot work: ``aquaculture`` and ``energy`` bind this executor
+        BARE, with no governance wrapper (their ``procedures_factory``), so a wrapper-level lift
+        can never reach them. This is the one seam every action path shares — bare,
+        ``GovernanceActionExecutor``-wrapped, and ``ColdChainAssessExecutor``-wrapped alike.
+
+        **Why the run-scoped ledger.** The facet is rebuilt at EVERY action step, so a procedure
+        running two action steps over one event carries the SAME figure twice — measured on
+        ``procurement/emergency_sourcing_round`` (``source`` + ``approve``) and
+        ``supply_chain/cold_chain_excursion_disposition`` (``assess`` + ``approve``), each pair
+        the identical ledger value under the identical ``action_id``. Emitting both would DOUBLE
+        those verticals' ฿ sums, which is a worse defect than the one being fixed and a quieter
+        one. The ledger keys on ``(action_id, facet kind)`` and NOT on the figure, because two
+        DISTINCT entities can legitimately ground equal ฿:
+        ``aquaculture/morning_pond_health_round``'s ``aerate`` step carries two ฿247,000 facets
+        under different ``action_id``s, and a value-keyed ledger would silently drop one.
+
+        Advisory + never-raise, like the facet itself. ``model_dump(mode="json")`` matches what
+        the envelope already persists, so the step-trace copy and the action's own copy are the
+        same bytes — money stays a JSON string, never a float.
+        """
+        fresh: list[dict[str, Any]] = []
+        for economic_step in economic_steps:
+            key = (action_id, str((economic_step.detail or {}).get("kind", "")))
+            if key in self._emitted_economic:
+                continue
+            self._emitted_economic.add(key)
+            fresh.append(economic_step.model_dump(mode="json"))
+        return fresh
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         """Build + route one RecommendedAction per entity in ``input_set``.
@@ -367,6 +424,9 @@ class ActionStepExecutor:
         auto = step.autonomy is Autonomy.AUTO
         output: list[Any] = []
         trace: list[dict[str, Any]] = []
+        # Collected across the loop and appended AFTER every action entry, so the trace keeps the
+        # [actions..., facets...] grouping the governance wrapper's lift used to produce.
+        economic_trace: list[dict[str, Any]] = []
         for entity in input_set:
             event = dict(entity) if isinstance(entity, Mapping) else {"value": entity}
             judgment = await generate_judgment(
@@ -379,6 +439,9 @@ class ActionStepExecutor:
             action = _compose_action(
                 event, ctx.vertical, judgment, handler=step.handler, economic_steps=economic_steps
             )
+            # ...and onto the STEP trace, which is the surface the ฿ rollup reads. See
+            # :meth:`_unseen_economic` for why here, and why once per run.
+            economic_trace.extend(self._unseen_economic(action.id, economic_steps))
             record = ActionRecord(action=action)
             if auto:
                 approve(record)
@@ -403,6 +466,7 @@ class ActionStepExecutor:
                         ),
                     }
                 )
+        trace.extend(economic_trace)
         audit = {
             "actor": ctx.agent.agent_id,
             "actor_kind": "engine",
