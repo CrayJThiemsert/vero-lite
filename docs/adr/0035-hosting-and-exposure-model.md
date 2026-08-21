@@ -94,20 +94,28 @@ CLAUDE.md §8 (host-state gate; residency; assistive-AI posture). Prior-art hand
 > place — the LOCKED wording itself untouched, exactly as the first re-reading
 > left it), the D3 costs paragraph, D8's Identity bullet (binding — the delta is
 > stated precisely there), and an OQ-1 lineage note; a new **OQ-7** (what the app
-> does when the edge identity is absent) is surfaced **open, deliberately not
-> ruled**. What survives untouched, so this cannot be read as a general licence:
+> does when the edge identity is absent) was surfaced in this pass and **RULED
+> (b) the same session (Cray, typed, s242): proceed, stamp the absence** — the
+> ruling and its retained rejected options are recorded at the OQ-7 entry. What
+> survives untouched, so this cannot be read as a general licence:
 > one gate at the edge; no per-route **authentication**; no per-visitor key
 > lifecycle; the app never decides admission — reading the edge's verdict is
 > permitted, performing or supplementing the gate is still forbidden, and
-> Alternative 2's rejection is unchanged. Provenance caveat, stated once here:
+> Alternative 2's rejection is unchanged. Provenance record, stated once here:
 > the ruling's first consumer is PLAN-0112
-> (`docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`), whose SD-1
-> is **RULED (b)** (Cray, typed, s242). At this amendment's drafting the PLAN
-> sits on **open PR #1240, unmerged to `main`** — present in the repo, not yet
-> visible in the drafting tree (which branched from `main`). Because it is
-> unmerged it may still change before it lands, so this ADR cites it as the
-> consumer and restates none of its contents; nothing in this amendment turns
-> on it — the re-reading stands on Cray's typed ground alone. `Status:` is
+> (`docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`), **merged
+> to `main` as `8796810` (PR #1240) and re-verified firsthand in this tree
+> during this pass**: its SD-1 is **RULED (b)** (Cray, typed, s242 — the PLAN's
+> own stamp, `0112:327-331`), and it deliberately carries **no identity-capture
+> AC**, shipping SD-1(b) "without per-visitor attribution unless and until an
+> ADR-0035 amendment ratifies the phase-2 identity capture for the published
+> demo surface" (`0112:357-371`) — this amendment is that ratification, **for
+> the read half only**: the PLAN's dependency note names the full phase-2
+> recipe ("validated in a FastAPI dependency", `0112:359-360`), and what is
+> ratified here is capture, not validation — the D3/D8 amendments draw that
+> line, and the PLAN-0112 identity-capture AC, when written, must sit inside
+> it. This ADR cites the PLAN and restates none of its contents; the
+> re-reading itself stands on Cray's typed ground alone. `Status:` is
 > unchanged: this is an amendment to an Accepted ADR, not a re-ratification.
 > Author≠reviewer separation: **INTACT** (drafter authored; Code R2 + Cray
 > review at PR).
@@ -300,9 +308,10 @@ Round 1 (s200):
    > any per-visitor key lifecycle — = **still forbidden**. One gate for the
    > whole published surface, enforced at the edge, stands verbatim. Consequence:
    > phase-2 identity **capture** may land on the published demo surface — first
-   > consumer PLAN-0112 SD-1(b), cited per the pass note's provenance caveat —
+   > consumer PLAN-0112 SD-1(b), cited per the pass note's provenance record —
    > while the s172 phase-2 **validating** dependency remains pilot-era (D8, as
-   > amended there). The absent-identity failure mode is **OQ-7 — open**.
+   > amended there). The absent-identity failure mode is **OQ-7 — RULED (b)
+   > the same session** (proceed, stamp the absence — recorded there).
 
 2. **L2 — App runs ON the LAN, published outward through a tunnel (B1a).** No
    inbound ports opened; MS-S1 stays LAN-only; LLM traffic never traverses the
@@ -817,8 +826,10 @@ over:
   > `Cf-Access-Authenticated-User-Email`) solely to stamp provenance on a
   > record — is now permitted on the **published demo surface**, not only in
   > the pilot era; first consumer PLAN-0112 SD-1(b) (cited per the
-  > amendment-pass note's provenance caveat), whose identity AC consumes
-  > OQ-7's answer. **What does not change:** the recipe as written in this
+  > amendment-pass note's provenance record), whose identity-capture AC —
+  > deliberately deferred pending this amendment, per its SD-1 dependency
+  > note (`0112:357-371`) — will specify the stamp shape and consume OQ-7's
+  > ruling, (b). **What does not change:** the recipe as written in this
   > bullet — `Cf-Access-Jwt-Assertion` **validated in a FastAPI dependency**,
   > i.e. code that can reject — remains pilot-era and out of the demo posture:
   > validation-with-rejection is gating, and the app still never gates
@@ -910,8 +921,8 @@ the recommendation stated, and each is now binding. **OQ-4 stays open by design.
 _[2026-08-11 (s222): a sixth question, **OQ-6**, was surfaced post-ratification
 and is **open** — it was not part of the ratification pass.]_
 _[2026-08-21 (s242): a seventh, **OQ-7**, was surfaced by the second L1
-re-reading (the amendment-pass note of that date) and is **open** — surfaced,
-not ruled.]_
+re-reading (the amendment-pass note of that date) and **RULED (b) the same
+session** — Cray, typed; the rejected options are retained at the entry.]_
 
 - **OQ-1 — D3's reading of L1 (letter → intent): RATIFIED as drafted → Cloudflare
   Access + one-time-PIN email allowlist.** L1's letter said "one shared credential";
@@ -1012,36 +1023,45 @@ not ruled.]_
   asserts their absence, and whether **new** evidence records may add
   occurrences is exactly this question — unruled.
 - **OQ-7 — the absent-identity failure mode of the second L1 re-reading:
-  SURFACED 2026-08-21 (s242) — OPEN, deliberately not ruled.** The second
-  re-reading (the L1 annotation, §LOCKED) permits app code to read the identity
-  Cloudflare Access establishes and stamp it on a record. It does not say what
-  the app does when there is nothing to read: Access off, misconfigured, or the
-  identity header absent on a request that reached the app anyway. That state
-  is reachable by a vendor-dashboard drift no test in this repo would catch —
-  the repo's own UI code already records the epistemic position that the vendor
-  gate is *"capability this repo cannot verify"*
+  SURFACED 2026-08-21 (s242) — RULED the same session (Cray, typed, s242) →
+  (b), proceed and stamp the absence.** The second re-reading (the L1
+  annotation, §LOCKED) permits app code to read the identity Cloudflare Access
+  establishes and stamp it on a record. It does not say what the app does when
+  there is nothing to read: Access off, misconfigured, or the identity header
+  absent on a request that reached the app anyway. That state is reachable by
+  a vendor-dashboard drift no test in this repo would catch — the repo's own
+  UI code already records the epistemic position that the vendor gate is
+  *"capability this repo cannot verify"*
   (`services/api/static/assets/app.js:154-156`; OQ-5 and D6 rest on the same
-  admission). The question, Cray's to rule — options stated neutrally:
-  **(a) refuse the write (fail-closed)** — the record can never claim
-  provenance it lacks, and a gate drift is *detected* by the demo visibly
-  breaking (cost: the demo dies on exactly the surface the wedge shares, from
-  a vendor-side setting this repo cannot check or repair);
-  **(b) proceed, stamping the absence explicitly** — the write goes through
-  carrying an explicit absence marker (e.g. `identity: absent-at-edge`), never
-  a fabricated principal; the demo survives and the drift is visible in the
-  record itself (cost: an attribution-bearing feature silently runs
-  unattributed until someone reads the stamps);
-  **(c) proceed unattributed, no marker** — the demo survives (cost: the
-  record then claims, by omission, provenance it lacks — the class of
-  dishonesty D6's notice discipline exists to prevent).
-  Drafter's recommendation, labelled as such and **not ruled**: **(b)** — it is
-  the shape this codebase already ships for exactly this class of problem (the
+  admission). **The ruling, and its principle:** when the edge identity is
+  absent, the app **proceeds with the write and stamps the absence
+  explicitly** — it never fabricates a principal, and never lets the record
+  claim provenance it lacks by omission. What (b) buys and what it costs, both
+  accepted in the ruling: the demo survives dashboard drift, and runs stay
+  unattributed until someone reads the stamps. **Deliberately NOT fixed
+  here:** the concrete stamp shape — field name, value vocabulary, where it
+  lives on the record — is the PLAN-0112 identity-capture AC's to specify
+  (the AC that PLAN deliberately deferred pending this amendment — its SD-1
+  dependency note, `0112:357-371`); the `identity: absent-at-edge` spelling in
+  this entry's drafting was the drafter's illustration, not Cray's words, and
+  pins nothing. The options, retained so a future reader sees what was
+  rejected and why (the PLAN-0111 convention; this file's own ratified OQs
+  keep their declined variants the same way):
+  **(a) refuse the write (fail-closed) — not taken** — the record could never
+  claim provenance it lacks, and a gate drift would be *detected* by the demo
+  visibly breaking; declined because the demo dies on exactly the surface the
+  wedge shares, from a vendor-side setting this repo cannot check or repair;
+  **(b) proceed, stamping the absence explicitly — TAKEN** — never a
+  fabricated principal; the drift is visible in the record itself; the shape
+  this codebase already ships for exactly this class of problem (the
   PLAN-0093 degrade disclosure rides every NL answer and names its arm; a
-  backfilled value is marked reconstructed), and it converts a silent
-  vendor-side drift into an on-record fact instead of a dead demo or a false
-  implication. PLAN-0112's identity AC consumes whichever answer Cray types
-  (per the amendment-pass note's provenance caveat); until then nothing may
-  treat (b) as decided.
+  backfilled value is marked reconstructed), converting a silent vendor-side
+  drift into an on-record fact instead of a dead demo or a false implication;
+  **(c) proceed unattributed, no marker — not taken** — the demo survives;
+  declined because the record then claims, by omission, provenance it lacks —
+  the class of dishonesty D6's notice discipline exists to prevent.
+  The drafter's recommendation was (b), labelled as such; Cray's typed pick
+  confirmed it.
 
 ## Alternatives Considered
 
