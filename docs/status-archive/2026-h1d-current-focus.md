@@ -1114,3 +1114,74 @@ PLAN-0107 AC-10 is recorded in that PLAN.
 > two drafter claims, hook #19 firing on this session's own STATUS edit, guard R7,
 > and **three greps of mine that returned 0 on text that was present but
 > line-wrapped**. Nothing but opening the file separated instrument from subject.
+
+
+## Rotated this reconcile — session 246 (2026-08-22)
+
+Rotated out of `docs/STATUS.md` while reconciling **PLAN-0112 Steps 6 and 7 —
+AC-7(ii), AC-8 and AC-9 closed, and the visitor flow proven on the live published
+system** (#1256–#1258). This is the **session-243** block, moved byte-exact by
+slice rather than retyped, and verified present here and absent from STATUS after
+the move. Its live remainder is not lost: G-13/G-14/G-15 are defined in
+`docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, which the
+Active-TODO entry points at — the very fact the s245 reconcile measured when it
+discharged the trim prerequisite.
+
+> **Session 243, 2026-08-21 (head_commit `bf2771e` → `0b5c333`) — TWO PRs
+> MERGED ([#1243](https://github.com/CrayJThiemsert/vero-lite/pull/1243),
+> [#1244](https://github.com/CrayJThiemsert/vero-lite/pull/1244)), 0 open. All
+> SEVEN of PLAN-0112's Surfaced Decisions are RULED and its Step-2 gate is
+> DISCHARGED — and measuring before each ruling corrected EIGHT things the PLAN
+> asserted, two of which would have contradicted each other silently at build
+> time. Both PRs are rulings + measurements; the build is still owed.**
+>
+> 🔴 **G-14 — two of Cray's own rulings did not compose, and the failure would
+> have been SILENT.** SD-2(b) says a changed accepted amount fires a new run;
+> SD-5(b) fires through the event bridge, whose `event_key` hashes vertical,
+> event kind, sorted entity ids and a time bucket — **the amount is not in the
+> key** — and `fire_event_run` returns `ALREADY_FIRED` without starting
+> anything when the derived run id already exists. The ruled re-fire would have
+> been swallowed by the ruled mechanism's own idempotency: **no error, no log,
+> nothing to see.** Constraint recorded for the build: key `entity_ids` on
+> `[case_id, quote_id]`. Two traps measured with it — `accept_quote` mints a
+> fresh `accepted_id` on **every** call, so keying on it would let a
+> double-click mint two runs; and the dedup window's time bucket would
+> spuriously re-fire a same-quote accept once it elapses, so the window must be
+> authored wide for a **human-driven, not polled** event.
+>
+> 🔴 **AC-2 carried a pass read that is FALSE in the shipped demo** — *"a
+> sub-ceiling acceptance fires and completes with no gate"*. `reshape` consumes
+> only the breach subset while intake is a **fleet-wide population scan**, and
+> the seeded demo pair stays OPEN with breaching accepted quotes, so **every**
+> visitor-fired run gates, sub-ceiling or not. Re-fixed to: the run exists, and
+> the visitor's case appears in **none** of the gate's proposals.
+>
+> 🔴 **G-13 — the accepted-quote exclusion is load-bearing PROSE at two tracked
+> sites SD-3 never counted** (`seed_settled_history_case`'s docstring in
+> `verticals/fleet_maintenance/operate_seed.py`, and the same claim inside
+> `tests/api/test_operate_seed_spend_scenario.py`) — invisible to a call-graph
+> review because **neither calls the endpoint; each asserts it is
+> unreachable**. Under SD-3(a) the gate-reachability clause goes FALSE **and
+> must be corrected in the same PR that adds the ingress row** (still owed —
+> both sites read as written today); the ฿-report clause stays TRUE
+> (`/closeout` is still excluded) and `seed_settled_history_case` **remains
+> necessary** — only its reason sentence splits.
+>
+> ⚠️ **Two corrections made a ruling CHEAPER, not more expensive** — recorded
+> because the reflex is the opposite. The accepted-quote route is absent from
+> the published config's admitted rows but is on **no** cross-system deny list,
+> so SD-3(a) reverses a per-system omission, not a floor. And flipping SD-5's
+> *declared* trigger does not break manual firing (the runnable-trigger
+> allowlist admits all three; the run endpoint never reads the declared
+> trigger) — while the *"only manual runs in Phase 1"* comment **already
+> misdescribes its own file**, which ships a `schedule` trigger. (b) corrects a
+> stale comment, not a live lock.
+>
+> ⚠️ **SD-2's ruling is NOT the option the PLAN recommended** (it recommended
+> once-per-case); the stamp says so plainly. SD-2(b) + SD-6(b) + SD-7(a)+(c)
+> compose as a deliberate posture: audit completeness, a bounded *display*, and
+> manual operator cleanup.
+>
+> **Method, worth one clause:** the G-13 corrections came from reading code —
+> **G-14 came from laying two rulings on top of each other and asking what the
+> code would do if both were true.** Per-decision review cannot see that class.
