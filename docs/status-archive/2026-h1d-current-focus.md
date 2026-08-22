@@ -1185,3 +1185,47 @@ discharged the trim prerequisite.
 > **Method, worth one clause:** the G-13 corrections came from reading code —
 > **G-14 came from laying two rulings on top of each other and asking what the
 > code would do if both were true.** Per-decision review cannot see that class.
+
+### Current Focus block — Session 243 cont. (PLAN-0112 Step 1 executed, AC-1 CLOSED, #1246) [rotated 2026-08-23, session-247 reconcile — 4-newest-sessions CF window; the OLDEST of exactly four, evicted because a new block forces a rotation]
+
+⚠️ It rotated on the **window rule alone**. The session-247 reconcile recorded at #1263 that this block was *"the single Current Focus block over R2's 4,096 B per-block cap (4,936 B)"*; that figure is **retired as an error**. Measured with a parser bounded by the block's own contiguous blockquote run it is **2,567 B — under cap**. The 4,936 B reading came from bounding blocks header-to-header, so the LAST block swallowed the `_[Current-Focus rotation ledger]_` paragraph that belongs to no block — session 246's instrument failure #1, repeating verbatim.
+
+> **Session 243 cont., 2026-08-21 (head_commit `0b5c333` → `f52dbdc`) — ONE PR
+> MERGED ([#1246](https://github.com/CrayJThiemsert/vero-lite/pull/1246)), 0
+> open. PLAN-0112's FIRST real code: Step 1 executed and AC-1 CLOSED —
+> `run_procedure_endpoint` now fails closed without an authenticated human, 403
+> before spec loading and before any DB write.**
+>
+> 🔴 **The asymmetry is closed, and the door that was open was the widest one.**
+> `gate/resolve` and `cancel` both already 403 on a `None` principal; firing a
+> governed run — the act that *creates* the thing those two guard — accepted an
+> unauthenticated caller and recorded `triggered_by: null`. PLAN-0110's **G10(6)**
+> found it and PLAN-0112 hard-ordered it FIRST. The guard now sits above the spec
+> load, so a principal-less request can never leave a row behind.
+>
+> 🔴 **Non-vacuity needed TWO probes on DIFFERENT assertions, and the second is
+> the one that mattered.** Deleting the guard reddens the 403 assertion —
+> **presence**. Only *relocating* it past the write reddens the zero-rows
+> assertion while the 403 still passes — **placement**, which is the half AC-1's
+> own *"before spec loading or any DB write"* clause rests on. A delete-only
+> battery would have reported success with that clause **unevidenced**.
+>
+> 🔴 **The new guard broke the tests that prove the SIBLING guards — by
+> ARRANGEMENT, not assertion.** They deliberately run with authn off and minted
+> their parked run through the very door this change closes, so their setup
+> failed while their claim stood. ⚠️ **The trap that was avoided is now recorded
+> in their own docstrings:** leaving authn ON and omitting the header yields a
+> **401 from the dependency**, which never reaches the 403 — green, and silently
+> no longer proving RF-1.
+>
+> ⚠️ **Blast radius was measured BEFORE the change (green baseline, 45 passed)
+> and again after, so every red was attributable — and it arrived in TWO waves.**
+> Arming authn in the scenario fixture reddened two *further* tests, because the
+> fixture governs every request in that module, not only the run POST.
+>
+> ✅ **Gate on `f52dbdc`:** `pytest tests/` **4222 passed / 8 skipped** (4220 at
+> session start — **+2 exactly**) · bare `ruff check .` clean · `ruff format
+> --check .` **648 files already formatted**, so no file was touched after the
+> probes were witnessed · `mypy --strict services/ verticals/` clean over 201.
+> ✅ Cray ruled the missing **s242 Recent Decisions row** be backfilled at this
+> reconcile — done below.
