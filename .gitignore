@@ -121,3 +121,27 @@ var/
 # in a STATUS Active-TODO row (the R2 carve-out, session 231). The fact is now a
 # mechanism, so that row can be trimmed on its normal schedule.
 .claude/benchmark-results/
+
+# Personal brand marks (the Cray.J wordmark + mascot) — NOT a vero-lite asset.
+# This repo is PUBLIC and Apache 2.0, so an image committed here inherits that
+# licence grant. A personal wordmark is not something to hand out under it by
+# accident, and nothing in the product needs it.
+#
+# `docs/design/Cray_J_v1_small.png` sat UNTRACKED-BUT-PRESENT for six sessions
+# (first seen 2026-08-06). It was an orphan by measurement, not by impression:
+# `git grep -i Cray_J_v1` over the whole tree returned rc=1, zero hits — nothing
+# tracked referenced it, and `docs/design/` otherwise holds only .md files. What
+# it did cost was a line of attention at every session close — notice the dirty
+# tree, confirm it is not this session's work, then write a "do not commit"
+# warning into the handoff, six times over.
+#
+# Same FILE CLASS as `.claude/benchmark-results/` above: an un-ignored artifact
+# one careless `git add -A` from a public commit. The ignore rule is the guard;
+# whoever remembers is not. A clean `git status` is also what lets the NEXT
+# unexpected file actually read as unexpected.
+#
+# Ruled by Cray (typed, session 247): ignore rather than commit or delete — the
+# file stays where it is on disk and simply stops being the repo's problem. The
+# pattern is family-wide rather than filename-exact because `v1_small` implies
+# siblings (other versions, other sizes) that would otherwise land right back here.
+docs/design/Cray_J_*
