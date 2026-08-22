@@ -3,8 +3,8 @@ last_updated: 2026-08-22T00:35:00+07:00
 session: 244
 current_batch: "s244 — THREE PRs merged (#1248, #1249, #1250), 0 open. PLAN-0112 Steps 3 AND 4 BUILT: a visitor's accepted quote fires the governed run, and AC-2/AC-3/AC-4's specified reads are written. NO AC ticked yet — one AC-3 clause needs a Cray reading. #1249 is a standalone ฿-facet wiring fix, not a PLAN-0112 step."
 current_actor: code
-blocked_on: "Main green, 0 open PRs. PLAN-0112 blocks on nothing — Steps 5-7 startable. Awaiting Cray: whether AC-3's case-list / evidence-surface clause is satisfied by the link row (the evidence pack is verdict-free by design). Still open: PLAN-0107 AC-9, PLAN-0109 drafter round."
-next_action: "Tick PLAN-0112 AC-2/AC-3/AC-4 + record Steps 3-4 once Cray reads the AC-3 clause; then Step 5 (the published surface, SD-3(a) — must correct G-13's two prose sites in the same PR). Carried: PLAN-0107 AC-9, PLAN-0109 drafter round, the STATUS Active-TODOs carve-out (rehome G-13/14/15 before trimming)."
+blocked_on: "Main green, 0 open PRs. PLAN-0112 blocks on nothing — AC-1 through AC-4 are CLOSED and Steps 1/3/4 recorded; Steps 5-7 startable. Still open: PLAN-0107 AC-9 (Cray ruling) and PLAN-0109 three ruled-content defects (drafter round before Step 5)."
+next_action: "PLAN-0112 Step 5 — the published surface (SD-3(a)): the accepted-quote ingress row + the Tab I accept control + the expected-table change, and the SAME PR must correct G-13 two prose sites. Carried: PLAN-0107 AC-9, PLAN-0109 drafter round, the STATUS Active-TODOs carve-out (rehome G-13/14/15 before trimming)."
 head_commit: a8c42b7
 recent_commits: [a8c42b7, 6fce826, 8cc365f, d207af2, f52dbdc, 8a370b7, 0b5c333, 4913a80, b4ccd04, bf2771e]
 ---
