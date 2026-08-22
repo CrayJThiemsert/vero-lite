@@ -1392,3 +1392,10 @@ Moved byte-exact to hold the table at its ten-row window while adding the
 session-245 row.
 
 | 2026-08-18 | **s237 — the video pivot: measuring the LIVE demo REFUTED beat 4.** Tab G is not on the published profile **by ruling**; the storyboard was verified on a dev profile. Cray ruled (A) shoot published; Tab H replaces three shots with ONE frame, no scrolling. 🔴 **A real fleet defect found on live** — a settled repair in the visitor's approval queue, root cause in TWO layers (the terminal step is itself gated, so one resume is not enough). PLAN-0109 + PLAN-0110 drafted, all five SDs ruled. ⚠️ **Video rulings live only in a gitignored handoff.** | `b906193` / [#1208](https://github.com/CrayJThiemsert/vero-lite/pull/1208)–[#1212](https://github.com/CrayJThiemsert/vero-lite/pull/1212) / `docs/conventions/local-first-published-parity.md` |
+
+### Rotated 2026-08-22, session-246 reconcile — Recent Decisions s238
+
+Moved byte-exact to hold the table at its ten-row window while adding the
+session-246 row.
+
+| 2026-08-18 | **s238 — PLAN-0110 BUILT and DEPLOYED; COMPLETE 7/7, ARCHIVED.** Tab A run markers + a three-mode filter + a deploy-time demo reset. 🔴 **The gate's three proposals ALL name a `case_id`; two resolve to no row** — reading the truck off the event instead of the case table stamps nothing forever, green. ✅ Live: `CONSUMED` → `PRISTINE`, subjects landed, #1209's fix finally live, audit rows 9 → 17. 🔴 **The deploy found `DEMO-RESET.md`'s bootstrap gap** — the tool ships in the image it must run before. | `32854ab` / [#1213](https://github.com/CrayJThiemsert/vero-lite/pull/1213) / [#1214](https://github.com/CrayJThiemsert/vero-lite/pull/1214) / `docs/logs/2026-08-18-plan0110-*.md` |
