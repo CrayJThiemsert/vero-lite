@@ -469,7 +469,7 @@ itself is confirmed as stated.
     that shrank with the page would under-report decisions still pending — a governed
     action nobody is told about. The list is a view; the count is a fact about the
     system. Cray may overrule; the probe N-5 pins the current behaviour either way.
-- [ ] **AC-9 — full gates + the ingress guard moves only as ruled [SD-3 RULED (a),
+- [x] **AC-9 — full gates + the ingress guard moves only as ruled [SD-3 RULED (a),
   s243 — the (b)/no-ingress-change/byte-identical branch is retired].** `uv run --extra dev
   pytest tests/ -q 2>&1`, `uv run mypy services/ 2>&1`, bare `ruff check . 2>&1` — all
   green (offline gate matches CI scope). `tests/deploy/test_published_profiles.py`:
@@ -479,6 +479,26 @@ itself is confirmed as stated.
   G-13 prose sites (the Step 5 obligation). `POST /procedures/{id}/run` stays
   excluded under **every** ruling — any diff touching its exclusion or comments
   (`config.yml:110-112`, `:199-204`) fails this AC. **[offline/DB]**
+  - ✅ **CLOSED s246.** Offline gate at CI scope: `pytest tests/` **4267 passed / 8
+    skipped**, bare `ruff check .` clean, `ruff format --check .` 654 files,
+    `mypy --strict services/ verticals/` clean over 201. The ingress row and its
+    written basis landed with the four G-13 prose corrections in one PR
+    ([#1255](https://github.com/CrayJThiemsert/vero-lite/pull/1255)).
+    🔴 **The exclusion invariant was checked on the LIVE host, not only in the repo:**
+    reading `cloudflared/config.yml` as the deployed system holds it — 21 ingress rows,
+    with a positive control proving the reader had the real file rather than an error
+    string — `^/api/cases/[^/]+/accepted-quote$` is present and **`POST
+    /procedures/{id}/run` is still absent**.
+  - **Live evidence (never the gate), under Cray's typed per-phase go:** the published
+    system was redeployed to `ee41b55` and a full visitor walk was driven through
+    Cloudflare Access. Non-cheapest accept → 422 with the reason box scoped to that
+    quote; reason submitted → `governed_repair_approval@cbc5677f9fdef75a` fired with
+    `trigger: event`; Tab H moved 2 → 3 runs and its badge 1 → 2; the gate reasoned on
+    *"Spend 62000.0 THB"* — the visitor's own amount; SoD refused the requester and the
+    DOA ladder resolved to `appr-owner`, who approved; the run parked again at
+    `fulfill`; and the demo still read **`PRISTINE`** beside it. Full record with the
+    rollback point:
+    `docs/logs/2026-08-22-s246-plan0112-step7-fleet-deploy-and-live-walk.md`.
 
 ## Out of Scope
 
@@ -692,6 +712,27 @@ retain (a), an operator cancels stale parked runs manually through the existing
 `waiting_human` runs (the SD-7 stamp). No sweep ships.
 
 ### Step 7: Full gates + live evidence (AC-9)
+
+**EXECUTED (Code, 2026-08-22, s246) — AC-9 CLOSED.** Offline gates first, then the live
+walk under Cray's typed go. 🔴 **The pre-flight reads changed the shape of the deploy
+and are why the go was asked TWICE:** the host checkout was a week stale at `205ba4b`,
+so the accepted-quote ingress row **had never reached production** — Step 5's promise
+was unreachable there — and the demo read `CONSUMED`, routing the sequence through
+`DEMO-RESET.md`'s reset-before-boot ordering. Cray's advance go predated both facts, so
+Phase D was re-asked with them on the table and re-granted.
+
+The deploy carried its own evidence at every step: six file hashes identical between
+image and working tree; `:prev` tagged to the exact baseline id as the rollback point;
+image id identical across machines; `config --quiet` at zero bytes; only `app`
+recreated, then only `cloudflared`; postgres untouched at `Up 3 days`. Full record:
+`docs/logs/2026-08-22-s246-plan0112-step7-fleet-deploy-and-live-walk.md`.
+
+🔴 **Production data corroborated AC-7(i)'s finding twice.** The reset deleted **six**
+link rows for **two** demo runs — the excess written by visitor-fired runs against demo
+case ids — and the live gate then reported *"3 candidates reached this gate"*. Both say
+the same thing the coexistence test measured offline: one gate resolution writes one
+link row per decided case, so a visitor's demo-scoped links cannot survive a reset.
+
 Offline gates first (the gate). Then, under an explicit typed Cray go (§8 host-state;
 every fleet redeploy is by-hand per PLAN-0110 G11): one live walk of the visitor flow
 on the published system — open, quote, accept (per SD-3's ruling), watch the run
