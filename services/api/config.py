@@ -459,6 +459,23 @@ class Settings(BaseSettings):
         ),
     )
 
+    runs_list_default_limit: int = Field(
+        default=200,
+        ge=1,
+        description=(
+            "Newest-N ceiling on GET /runs (env RUNS_LIST_DEFAULT_LIMIT). PLAN-0112 "
+            "SD-6 RULED (b): the endpoint was unbounded and returned every run ever on "
+            "each Tab H load (G-15), which was structurally safe only while a visitor "
+            "could not mint runs. PLAN-0112 Step 3 gave them a way, so the bound is "
+            "now a real one. 200 is chosen to clear any plausible pilot-era Tab H by a "
+            "wide margin while still bounding the scan; it is configurable so the "
+            "bound can be exercised by a test at a small N rather than by seeding 201 "
+            "rows. NOTE: this bounds the LIST only — waiting_human_count is counted "
+            "over the FULL population on purpose (runs.py), because a 'waiting on me' "
+            "badge that shrank with the page would under-report pending decisions."
+        ),
+    )
+
     # Telegram notify + LLM warm control (PLAN-0014). The notifier pings the
     # operator when an OCT local-LLM call fails because MS-S1 is unreachable;
     # the /warm + /sleep routes load/unload the model. Tokens come from env
