@@ -1071,3 +1071,46 @@ lesson 0043.]_
 > PLAN-0108's duplicate label; the rows below own them. Gate on `6a2e34c`: **4206 passed / 8 skipped**, `ruff` + format clean
 > over 647, `mypy --strict` clean over 201 files; every PR `sha=MATCH` across
 > local HEAD, PR head and the run's own `head_sha`.
+
+
+## Rotated this reconcile — session 245 (2026-08-22)
+
+Rotated out of `docs/STATUS.md` while reconciling **PLAN-0112 Step 5 SHIPPED,
+AC-5/AC-6 CLOSED** (#1252–#1255). This is the **session-242** block, moved
+byte-exact by slice rather than retyped, and verified present here and absent
+from STATUS after the move. It rotates one session below R2's four-session
+window — **deliberately**, the same call the s244 reconcile recorded: STATUS
+stood at 61,636 B, 12,484 B over R1's 48 KB soft target, and a new block cannot
+be written without either this rotation or a trim that would delete facts. Its
+live remainders were already carried elsewhere before the move: PLAN-0110 SD-E's
+reversal and ADR-0035's L1 re-read each hold an Active-TODO entry, and
+PLAN-0107 AC-10 is recorded in that PLAN.
+
+> **Session 242, 2026-08-21 (head_commit `30b9488` → `bf2771e`) — FIVE PRs
+> MERGED ([#1237](https://github.com/CrayJThiemsert/vero-lite/pull/1237)–[#1241](https://github.com/CrayJThiemsert/vero-lite/pull/1241)),
+> 0 open. PLAN-0107 AC-10 CLOSED, and FOUR Cray rulings landed — two of them
+> re-opened settled ground.**
+>
+> ✅ **AC-10 closed the last gold-versus-gold oracle.** `nl-01…nl-11` were checked
+> only against themselves — a shape that reddens on a malformed file and **cannot
+> redden on a wrong value**. All eleven now grade against the real engine; a probe
+> run BEFORE the test returned `VERDICT=ALL_ELEVEN_REPRODUCE`, so **no gold value
+> was edited** and the register shipped EMPTY, measured.
+>
+> 🔴 **Cray REVERSED PLAN-0110 SD-E — and grounding it corrected the commission
+> itself, three times:** quote-acceptance rather than case creation is the
+> governable moment; a SECOND door is excluded from the published allowlist by
+> design; and a no-principal firing does not leave a run *ungoverned* — it mints
+> one **nobody can ever approve**.
+>
+> 🔴 **Cray re-read L1 a SECOND time** — *"one gate, no app code"* becomes *"app
+> code may READ the gate's verdict for provenance, never perform gating itself."*
+> That pass read **126 insertions, 0 deletions**: a LOCKED ruling is not edited.
+> Its trigger was Cray's own reasoning failing a measurement — SD-1(b) rested
+> partly on *"use the email they logged in with"*, **measured FALSE at the app
+> layer**; the ruling stands and the amendment is what makes that half true later.
+>
+> ⚠️ **Five times a report disagreed with the tree, and the tree won every time** —
+> two drafter claims, hook #19 firing on this session's own STATUS edit, guard R7,
+> and **three greps of mine that returned 0 on text that was present but
+> line-wrapped**. Nothing but opening the file separated instrument from subject.
