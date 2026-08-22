@@ -39,6 +39,11 @@
     selected: null,    // case_id whose evidence pack is expanded (Step 3)
     pack: null,        // the fetched evidence pack, or {error}
     packMsg: null,     // {kind, text} for the quote form
+    // PLAN-0112 Step 5 — the accept control. `reasonFor` holds the quote_id the
+    // SERVER has demanded a reason for; null the rest of the time. It is set from a
+    // 422 and never from a client-side comparison — see acceptQuote().
+    reasonFor: null,
+    accepting: null,   // quote_id of an in-flight acceptance; disables the buttons
     busy: false,
     msg: null,        // {kind:'ok'|'err', text}
     els: null
@@ -195,6 +200,14 @@
   async function selectCase(caseId) {
     state.selected = state.selected === caseId ? null : caseId;
     state.pack = null;
+    // A pack message belongs to the pack that produced it. Measured in the browser
+    // (s245): press ตกลงใบนี้ with no persona -> the "ยังไม่ได้เลือกบทบาท" refusal; pick a
+    // persona; re-open the case -> the refusal was STILL on screen, telling a
+    // now-authenticated operator they are not signed in. The same applies to a
+    // reason box left open for a quote on a case nobody is looking at any more.
+    // Callers that want a message AFTER a refetch set it after awaiting this.
+    state.packMsg = null;
+    state.reasonFor = null;
     renderCases();
     if (!state.selected) return;
     try {
@@ -237,6 +250,111 @@
     renderCases();
   }
 
+  /* ---- PLAN-0112 Step 5: ตกลงใบนี้ — the governable moment ----------------
+     Quoting is not a decision; ACCEPTING is. This is the only control in Tab I
+     that starts a governed run: the server's accept handler fires it (SD-5(b)),
+     so the visitor never touches `POST /procedures/{id}/run`, which stays off the
+     allowlist under every ruling.
+
+     🔴 THE NON-LOWEST REASON IS THE SERVER'S RULE, ASKED FOR ONLY WHEN THE SERVER
+     ASKS. `accept_quote` refuses a non-lowest acceptance without a written reason
+     (422). This view does NOT re-derive that rule: it posts, and if the server
+     refuses it surfaces the server's own message and opens a reason box for THAT
+     quote. The alternative — comparing amounts here and pre-emptively demanding a
+     reason — is a second copy of a rule that already exists, exactly what the
+     quote panel above refuses to do with the three-quote verdict. A drifting copy
+     would either nag for a reason nobody owed or, worse, stay silent when the
+     server would have demanded one and hand เมย์ an unexplained 422.
+
+     Re-accepting is deliberate and supported: the acceptance table is append-only,
+     and a DIFFERENT quote accepted mints a new governed run (SD-2(b)), while the
+     SAME quote re-accepted does not (the event key carries case + quote, G-14).
+     ---------------------------------------------------------------------- */
+  async function acceptQuote(quoteId, reason) {
+    if (state.accepting) return;
+    state.accepting = quoteId;
+    state.packMsg = null;
+    renderCases();
+    const body = { quote_id: quoteId };
+    if (reason) body.reason = reason;
+    try {
+      const res = await fetch(
+        `/api/cases/${encodeURIComponent(state.selected)}/accepted-quote`,
+        {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeader()),
+          body: JSON.stringify(body)
+        }
+      );
+      if (res.status === 422) {
+        // The server demanded a reason (or refused the quote id). Show ITS words —
+        // it names the two figures, which is what makes the demand answerable.
+        //
+        // `detail` is a STRING for the two HTTPExceptions this route raises, but a
+        // LIST of error objects when FastAPI's own request validation rejects the
+        // body. Rendering a list would print "[object Object]" at the operator, so
+        // only a string is trusted and anything else falls back.
+        let detail = 'ระบบขอเหตุผลก่อนบันทึก';
+        try {
+          const got = (await res.json()).detail;
+          if (typeof got === 'string' && got) detail = got;
+        } catch (_) { /* keep default */ }
+        state.reasonFor = quoteId;
+        state.accepting = null;
+        setPackMsg('err', detail);
+        return;
+      }
+      if (res.status === 401 || res.status === 403) {
+        // Fail-closed authn: the accept route resolves a real principal. On the
+        // published profile that means "pick a persona first", which is a fixable
+        // situation and must not read as a system fault.
+        state.accepting = null;
+        // 🔴 Names the picker by the noun IT uses and says where it is. Measured in
+        // the browser (s245): the control on Tab H calls itself
+        // "เลือกบทบาทเพื่อดำเนินการ" (view-monitor.js), and Tab I has no persona
+        // control at all — so "เลือกตัวตน" with no location left ต้อม, on the hard
+        // shoulder, refused and with nowhere to go.
+        setPackMsg('err', 'ยังไม่ได้เลือกบทบาท — ไปเลือกที่แท็บ Monitor แล้วกลับมากดใหม่ (ระบบต้องลงชื่อคนที่เคาะราคา)');
+        return;
+      }
+      if (!res.ok) {
+        state.accepting = null;
+        setPackMsg('err', `บันทึกใบที่ตกลงไม่สำเร็จ (HTTP ${res.status})`);
+        return;
+      }
+      const caseId = state.selected;
+      state.reasonFor = null;
+      state.accepting = null;
+      state.selected = null;
+      await selectCase(caseId);       // refetch: the pack is the server's answer
+      // 🔴 Says a ROUND RAN, never "it is awaiting approval". A sub-ceiling
+      // acceptance fires the run and is then dropped before the gate
+      // (`test_a_sub_ceiling_acceptance_fires_but_never_reaches_the_gate`), so
+      // promising an approval here would be false for exactly the cases the ฿5,000
+      // ceiling is meant to keep OUT of the chain — the same over-claim card-copy.md
+      // was corrected for.
+      // 🔴 "แท็บ Monitor", not "หน้าติดตามงาน". Measured in the browser (s245): all
+      // six published tab labels are ENGLISH — Operational Map / Ask / Procedures /
+      // Monitor / Open a Case / Month-End KPI — so the Thai name pointed at a tab
+      // that does not exist on screen, on the one string that hands the operator
+      // from the acceptance to the payoff. card-copy.md carried the same false name
+      // and is corrected in this commit.
+      setPackMsg('ok', 'บันทึกใบที่ตกลงแล้ว — ระบบเดินรอบตรวจให้แล้ว ดูรอบนี้ได้ที่แท็บ Monitor');
+    } catch (_) {
+      state.accepting = null;
+      setPackMsg('err', 'ต่อกับระบบไม่ได้');
+    }
+  }
+
+  function submitReason(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const quoteId = state.reasonFor;
+    const reason = ev.target.querySelector('[name=areason]').value.trim();
+    if (!reason) { setPackMsg('err', 'ใส่เหตุผลด้วยครับ ระบบต้องบันทึกว่าทำไมไม่เอาใบที่ถูกที่สุด'); return; }
+    acceptQuote(quoteId, reason);
+  }
+
   function renderEvidence() {
     const pack = state.pack;
     if (!pack) return h('div', { class: 'case-pack' }, 'กำลังโหลดหลักฐาน…');
@@ -262,7 +380,24 @@
       ].filter(Boolean))
     ];
 
+    // ใบที่ตกลง, read from the SERVER's pack — never from what this view just
+    // posted. `accepted_quote_id` is the latest acceptance on an append-only table.
+    const acceptedId = pack.accepted_quote_id || null;
+    if (acceptedId) {
+      children.push(h('div', { class: 'pack-accepted' }, [
+        h('span', null, 'ใบที่ตกลง'),
+        h('b', null, pack.accepted_vendor || acceptedId),
+        h('b', { class: 'mono' }, Number(pack.accepted_amount_thb || 0).toLocaleString('th-TH', {
+          minimumFractionDigits: 2, maximumFractionDigits: 2
+        })),
+        // Present only when the cheapest was NOT taken — the write path refuses a
+        // non-lowest acceptance without one, so showing it is showing a record.
+        pack.accepted_reason ? h('span', { class: 'pack-reason' }, pack.accepted_reason) : null
+      ].filter(Boolean)));
+    }
+
     (pack.quotes || []).forEach(q => {
+      const isAccepted = acceptedId && q.quote_id === acceptedId;
       children.push(h('div', { class: 'pack-quote' }, [
         h('span', null, q.vendor),
         // Always two decimals. The stored value is exact Decimal; a display that
@@ -271,8 +406,30 @@
         h('b', { class: 'mono' }, Number(q.amount_thb).toLocaleString('th-TH', {
           minimumFractionDigits: 2, maximumFractionDigits: 2
         })),
-        h('span', { class: 'pack-doc' }, q.attachment ? 'มีเอกสาร' : 'ยังไม่มีเอกสาร')
+        h('span', { class: 'pack-doc' }, q.attachment ? 'มีเอกสาร' : 'ยังไม่มีเอกสาร'),
+        // The accepted quote shows a STATE, not a disabled button: re-accepting the
+        // same quote is a no-op the server dedups (G-14), so offering it would
+        // promise an action that produces nothing.
+        isAccepted
+          ? h('span', { class: 'pack-agreed' }, 'ตกลงใบนี้แล้ว')
+          : h('button', {
+              class: 'pack-accept',
+              type: 'button',
+              disabled: state.accepting ? 'disabled' : null,
+              onClick: (e) => { e.stopPropagation(); acceptQuote(q.quote_id, null); }
+            }, state.accepting === q.quote_id ? 'กำลังบันทึก…' : 'ตกลงใบนี้')
       ]));
+
+      // The reason box appears under the quote the SERVER refused, and only there.
+      if (state.reasonFor === q.quote_id) {
+        children.push(h('form', { class: 'pack-form', onSubmit: submitReason }, [
+          h('input', {
+            class: 'case-input', name: 'areason',
+            placeholder: 'ทำไมไม่เอาใบที่ถูกที่สุด (เช่น รออะไหล่ไม่ได้)'
+          }),
+          h('button', { class: 'case-submit', type: 'submit' }, 'ยืนยันตกลงใบนี้')
+        ]));
+      }
     });
 
     if (state.packMsg) {

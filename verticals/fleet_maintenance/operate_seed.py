@@ -8,20 +8,36 @@ nothing being governed. This closes that, without removing the visitor path: the
 supplies the first paint, and a case opened at Tab I still reaches the case list and
 the evidence surfaces.
 
-🔴 **AC-8's second clause — "the visitor still gets to watch their *own* case enter the
-loop" — is UNREACHABLE on the published profile, and this docstring used to claim it
-outright.** Measured 2026-08-18 (PLAN-0110 G10): ``POST /api/cases`` writes the row and
-fires no procedure (`routers/cases.py:183-219`); ``POST /procedures/{id}/run`` is
-excluded from the published ingress allowlist **by design**, so no visitor can start a
-run; and the already-parked gate cannot adopt a later case, because its proposals are
-frozen in the suspended step's persisted artifact. The visitor's case therefore sits
-OPEN and ungoverned. The clause was authored against the DEV CONSOLE, where the firing
-route is reachable — it holds there and only there.
+✅ **AC-8's second clause — "the visitor still gets to watch their *own* case enter the
+loop" — is REACHABLE on the published profile as of PLAN-0112** (Steps 3-5, s244-s245).
+The route in is ``POST /api/cases/{id}/accepted-quote``: the accept handler fires the
+governed run SERVER-side (``cases.py accept_quote`` ->
+``_fire_governed_run_for_acceptance``), and Step 5 put that one case-scoped route on the
+published ingress allowlist under SD-3(a) (Cray, typed s243).
 
-Cray ruled SD-E = (d) (typed, s237): re-scope the promise now, and build **(b)
-server-side firing on case creation** as the named follow-on. Until that lands, what
-the published demo governs is the SEEDED round — which is a real run through the real
-spine, not a mock — and the card copy says so.
+_[Classified ``superseded by new info``, not ``was an error``: everything the previous
+version of this paragraph measured was TRUE when measured (2026-08-18, PLAN-0110 G10),
+and the reasoning is why the fix took the shape it did. It read: ``POST /api/cases``
+fires no procedure; ``POST /procedures/{id}/run`` is excluded by design so no visitor
+can start a run; the already-parked gate cannot adopt a later case; therefore the
+visitor's case sits OPEN and ungoverned, and the clause holds only on the DEV CONSOLE.
+Three of those four facts SURVIVE unchanged — and they are why the promise is delivered
+at ACCEPT rather than at open:_
+
+* _``POST /api/cases`` **still** writes the row and fires nothing. Opening a case is not
+  the governable moment; agreeing a price is._
+* _``POST /procedures/{id}/run`` is **still** excluded from the published allowlist, under
+  every ruling in PLAN-0112. The visitor never gets a bare "start any procedure" door._
+* _The parked seeded gate **still** cannot adopt a later case. The visitor's case gets a
+  NEW run, which was always the only shape that could work (G10(3))._
+
+_What changed is the fourth: there is now a governed way in that is neither of the two
+doors G10 examined. Cray ruled SD-E = (d) at s237 — re-scope the promise then, and build
+**(b) server-side firing** as the named follow-on. PLAN-0112 is that follow-on, landed.]_
+
+The seeded round is still seeded, and still a real run through the real spine rather
+than a mock: it is what makes Tab H non-empty on FIRST paint, before any visitor acts
+(SD-5(a)). The visitor's own case now lands BESIDE it, not instead of it.
 
 **Why this is not a copy of procurement's seeder, and the difference is the point.**
 ``verticals.procurement.hero_demo.run.seed_operate_waiting_human_run`` must hand-build
@@ -480,10 +496,23 @@ async def seed_settled_history_case(session: AsyncSession) -> bool:
     = closeout.total_thb if closeout else None``), and on the published surface a
     close-out **cannot be created by anyone**: there is no close-out UI anywhere in
     ``services/api/static/``, and ``/api/cases/{id}/closeout`` is **not on the
-    system's ingress allowlist**. Neither is ``/accepted-quote``. So no visitor-created
-    case can reach the gate, and no amount of visitor activity can ever put money on
+    system's ingress allowlist**. So no amount of visitor activity can ever put money on
     the report. Without this seed the KPI is **structurally ฿0 forever** — not empty
     until someone acts, but empty by construction.
+
+    ⚠️ **This claim used to rest on a second exclusion, and that half is now FALSE.**
+    It read *"Neither is ``/accepted-quote``. So no visitor-created case can reach the
+    gate"*. PLAN-0112 Step 5 admitted ``/accepted-quote`` to the published allowlist
+    (SD-3(a)), so a visitor-created case **can** now reach the gate — that clause is
+    gone. The ฿ clause above is untouched and still true, because the two doors are not
+    interchangeable: reaching the GATE is an approval decision, and putting money on the
+    REPORT needs an INVOICE keyed through ``/closeout``, which stays excluded. A governed
+    visitor case therefore appears in the export as an APPROVED row with a blank ฿ —
+    the shape ``test_approving_the_seeded_gate_puts_a_substantive_row_on_the_report``
+    already pins (``assert ours.total_thb is None``), and the honest report, not a gap.
+
+    **So this seed is not made redundant by PLAN-0112 — it is the only writer of the ฿
+    column on this surface, exactly as before.**
 
     **It is still not a fabricated number.** This drives the same path a real repair
     takes — case, quotes, acceptance, a REAL run through the shipped procedure, a REAL
