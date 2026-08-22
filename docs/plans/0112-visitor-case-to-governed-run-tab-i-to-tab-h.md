@@ -374,7 +374,7 @@ itself is confirmed as stated.
   > Non-vacuity: the AC's own specified probe — removing
   > `event_trigger.owning_person_id` — reddens the requester assertion, witnessing
   > G-7's dead end in the approvable -> unapprovable direction.
-- [ ] **AC-5 — the demo copy claims exactly what the ruled shape delivers [SD-3
+- [x] **AC-5 — the demo copy claims exactly what the ruled shape delivers [SD-3
   RULED (a), s243 — pass read re-fixed, the (b) example clause retired; SD-1 RULED
   (b), s242 — its clause below is now fixed].** The sentences
   PLAN-0110 Step 6 re-scoped (`deploy/published/
@@ -390,7 +390,7 @@ itself is confirmed as stated.
   construction — the current copy deliberately does *not* make the promise
   (PLAN-0110 AC-10 re-scoped it), so any re-instatement flips them. **[offline/no-DB]**
   (grep-based) plus **[published]** eyes-on at Step 7.
-- [ ] **AC-6 — the RoPA rider: intake's write-side effects are described where the
+- [x] **AC-6 — the RoPA rider: intake's write-side effects are described where the
   compliance record lives.** `docs/compliance/ropa-change-statement-fleet.md` (and the
   Tab-I description surface PLAN-0110 called "the RoPA / AC-11 description",
   `done/0110:767-768`) gains the line that quote acceptance now also fires a governed
@@ -535,6 +535,85 @@ no longer true; the ฿-report clause is preserved as still-true (`/closeout` st
 excluded, and the ฿ column comes from a close-out); and the seed's necessity is
 restated — split its reason sentence, never remove the seed. The RoPA rider (AC-6)
 lands here.
+
+**EXECUTED (Code, 2026-08-22, s245) — AC-5 and AC-6 CLOSED.** The ingress row landed
+with its written basis and the `:173-175` exclusion comment was corrected to say which
+door moved and which did not; the expected table gained the row under the P12
+convention; Tab I gained the ตกลงใบนี้ control (`view-case.js`, `views.css`, `?v=`
+bumped on both); the card copy re-instated the full promise in TH and EN; and the RoPA
+gained §3.3.
+
+🔴 **MEASURED CORRECTION — G-13's prose-site set is FOUR, not two.** G-13 named two
+sites; a sweep before editing (`git grep` over `ingress allowlist`, `ungoverned`,
+`unreachable on the published`, `Neither is`) found two more, both **module-level
+docstrings**, invisible for exactly G-13's own stated reason — neither *calls* the
+endpoint, each *asserts it is unreachable*:
+
+1. 🆕 `verticals/fleet_maintenance/operate_seed.py:11-21` — the MODULE docstring:
+   *"AC-8's second clause … is UNREACHABLE on the published profile"*, *"no visitor can
+   start a run"*, *"the visitor's case therefore sits OPEN and ungoverned"*, *"Until
+   that lands … the card copy says so."* Goes false **because of Step 5** — the ingress
+   row is precisely what makes a published visitor able to fire — which is why Steps 3
+   and 4 correctly did not touch it.
+2. `operate_seed.py:478-486` — G-13 site (1), as named.
+3. 🆕 `tests/api/test_operate_seed_spend_scenario.py:12-16` — the MODULE docstring,
+   carrying the same *"neither `/closeout` nor `/accepted-quote`"* basis as site (2).
+4. `test_operate_seed_spend_scenario.py:224-228` — G-13 site (2), as named.
+
+All four corrected under G-13's own split, which held at every one: the
+**gate-reachability** half is FALSE and retired; the **฿-report** half is TRUE and kept;
+`seed_settled_history_case` stays, and stays the only writer of the ฿ column on this
+surface. Retirements are marked with the repo's `superseded by new info` convention
+rather than deleted, so the reasoning lineage survives.
+
+⚠️ **The probe that verified this failed its own first criterion, and the INSTRUMENT was
+what was wrong** (CLAUDE.md §8). A bare `grep -c` for each retired clause cannot
+distinguish *"X is true"* from *"it used to read X, and X is now false"*, so it scored a
+correctly-retired site as a failure — and, worse, silently scored **0** for site (1),
+whose clause wraps across a line break. The repaired probe scans whole-file text and
+classifies each match as `asserting` vs `quoted-inside-a-retirement`, reporting the two
+separately and never summed. Verdict `PE_NEGATIVE_PASSES`: 3 matches, 3 quoted, 0
+asserting. The criterion was not relaxed.
+
+**Verified in the browser, and a three-way UX review run on the result.** The walk was
+driven end to end on the published fleet profile — no persona → 401; signed in as ต้อม;
+a non-cheapest accept → 422 with the reason box scoped to that quote; reason submitted →
++1 run, `trigger: event`, `waiting_human`; the cheapest accept → no reason demanded, +1
+run (SD-2(b) live). That found three defects the lexical guards cannot see (a stale
+refusal surviving a case re-selection, a success toast promising approval for a
+sub-ceiling acceptance, and FastAPI's list-shaped validation `detail` rendering as
+`[object Object]`), all fixed here.
+
+A subsequent UX review (interaction order · visual hierarchy · Thai microcopy) found
+more. 🔴 **Cray ruled (typed, s245): fix the factually-FALSE strings in this PR, chip the
+rest.** Two qualified, and both are the same defect class this PLAN exists to fix, so
+neither could be deferred: the success toast named **`หน้าติดตามงาน`**, a tab that does
+not exist — measured in the browser, all six published tab labels are English
+(*Operational Map · Ask · Procedures · **Monitor** · Open a Case · Month-End KPI*) — and
+`card-copy.md` carried the same false name; and the auth refusal said **`เลือกตัวตน`**
+where the picker calls itself `เลือกบทบาทเพื่อดำเนินการ`, on another tab, with no
+location given. Both corrected.
+
+Deferred to tracked chips **with their measurements attached**, never silently dropped:
+the accept button is **4.59×** smaller in area than the routine add-quote button (7.31×
+at desktop); `--accent` sits on `.pack-agreed`, the one element that is *not* pressable,
+against `theme.css`'s own stated contract; `--fg` and `--panel` are used in `views.css`
+and **defined nowhere** (verified at runtime); accept results render far from the button
+that produced them; any pack message **wipes a half-typed quote** (measured live, and it
+contradicts `view-case.js`'s own header comment); the English 422 shown to a Thai
+operator; plus four defects that predate Step 5 entirely.
+
+**Two things Step 5 deliberately did NOT touch, each with its reason:**
+- **The in-app Tab I persistence banner** (`view-case.js`, PLAN-0106 / ADR-0037 D2.4).
+  Still TRUE after this change — it promises that case *text and photos* are erased
+  within 90 days, and the run rows the accept now writes hold no visitor text (measured
+  by `test_visitor_case_to_monitor_scenario.py`'s sentinel + key allowlist). Its wording
+  is **Cray-reviewed in PLAN-0106 SD-1** and the RoPA's own §6.1 puts it out of this
+  document's scope, so re-wording it is a ruling, not a build step.
+- **`docs/plans/0111-*.md` F14**, which cites `test_published_profiles.py:141-143` by
+  line number — those numbers moved when the row landed. `/closeout`'s exclusion, which
+  is what F14 actually claims, is unchanged and still true. Surfaced, not silently
+  edited: PLAN-0111 is another PLAN's ruled content.
 
 ### Step 6: Population-bound follow-through (AC-7, AC-8) — SD-6(b) + SD-7(a)+(c), s243
 Now unconditional: the reset-coexistence scenario; the `done/0110` post-archival

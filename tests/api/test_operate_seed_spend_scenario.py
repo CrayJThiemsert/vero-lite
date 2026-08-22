@@ -11,8 +11,15 @@ sourcing basis — which scores against the KPI it appears on.
 Two things follow, and this module pins both. A seeded run about a REAL case makes
 the approval produce a **substantive** row. And the ฿ column can only ever come from
 a close-out, which **nothing on the published surface can create** — no close-out UI
-exists, and neither ``/closeout`` nor ``/accepted-quote`` is on the ingress
-allowlist — so without a settled case the money column is zero by construction.
+exists, and ``/closeout`` is not on the ingress allowlist — so without a settled case
+the money column is zero by construction.
+
+⚠️ **This basis named TWO excluded routes until PLAN-0112 Step 5; now it names one.**
+``/accepted-quote`` **is** on the published allowlist as of Step 5 (SD-3(a), Cray typed
+s243), so a published visitor can now drive a case to the GATE. The conclusion above is
+unaffected: an approval is not an invoice, and the ฿ column needs the close-out that
+``/closeout`` still guards. A governed visitor case lands in the export as an approved
+row with a blank ฿ — which is what ``assert ours.total_thb is None`` below already pins.
 
 Nothing is stubbed on either side. The producer is the real shipped seed
 (``seed_repair_gate_waiting_human_run``, the same coroutine ``lifespan`` calls); the
@@ -223,9 +230,14 @@ async def test_the_settled_history_case_opens_the_kpi_on_a_real_figure(
 
     Why this must exist at all, measured: on the published surface **nothing can ever
     produce a close-out** — there is no close-out UI in ``services/api/static/``, and
-    neither ``/closeout`` nor ``/accepted-quote`` is on the ingress allowlist. So
-    without a settled case the ฿ column is structurally zero forever, and the tab whose
-    entire subject is money would open empty on every visit for all time.
+    ``/closeout`` is not on the ingress allowlist. So without a settled case the ฿
+    column is structurally zero forever, and the tab whose entire subject is money would
+    open empty on every visit for all time.
+
+    ⚠️ ``/accepted-quote`` used to be named here as a second excluded route. It was
+    admitted by PLAN-0112 Step 5 (SD-3(a)), so that half is gone — a visitor CAN now
+    drive a case to the gate. It buys them an approval, not an invoice, so this test's
+    subject is untouched: the money still arrives only through a close-out.
 
     The figure is still not fabricated: a real round, a real gate resolution by the
     owner, then the invoice. What is asserted is the reader's output, not the seed's

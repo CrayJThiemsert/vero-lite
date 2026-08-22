@@ -171,8 +171,12 @@ ingress:
   # a warning. Committing these rows does not discharge it.
   #
   # Only what the UI actually drives is admitted. The cases router exposes more
-  # (tasks, justifications, accepted-quote, closeout, GET /{id}); under default-deny
-  # an unexercised route earns no row.
+  # (tasks, justifications, closeout, GET /{id}); under default-deny an unexercised
+  # route earns no row.
+  #
+  # 🔴 `accepted-quote` LEFT this list at PLAN-0112 Step 5 and is now admitted below,
+  # on its own written basis. `closeout` did NOT — and the difference is load-bearing
+  # for the Tab J ฿ column, which comes only from a close-out. See that row.
   - path: ^/api/cases$
     service: http://app:8000
   # Photo upload — the roadside evidence beat. A visitor-supplied FILE, so it is
@@ -184,6 +188,37 @@ ingress:
     service: http://app:8000
   # The quotes on a case — the ฿ figures the ladder routes on.
   - path: ^/api/cases/[^/]+/quotes$
+    service: http://app:8000
+
+  # 🔴 (5) THE GOVERNABLE MOMENT — admitted by PLAN-0112 SD-3, RULED (a) (Cray,
+  # typed s243). This row reverses a deliberate exclusion, so it is called on its
+  # own merits like Tab H's five and not folded into the four above.
+  #
+  # Basis: quoting is not a decision — ACCEPTING is. The accepted amount is the
+  # number the DOA ladder routes on, and until this row existed a published visitor
+  # could open a case, add quotes, and then hit a wall: the case sat OPEN and
+  # ungoverned forever, because the only other way into a run is
+  # `POST /procedures/{id}/run`, which is excluded and stays excluded. That wall is
+  # what made PLAN-0103 AC-8 clause 2 — "the visitor still gets to watch their OWN
+  # case enter the loop" — unreachable here, and it is what this row closes.
+  #
+  # Why admitting THIS door and not that one is the whole point (SD-E option (b),
+  # `done/0110:761-777`): the run is fired SERVER-side by the accept handler
+  # (`cases.py accept_quote` -> `_fire_governed_run_for_acceptance`), so the visitor
+  # never gets a bare "start any procedure" endpoint — they get one case-scoped
+  # business action whose governance the server decides. The strongest ingress
+  # posture that still delivers the promise.
+  #
+  # It is persona-AUTHENTICATED. `accept_quote` resolves `get_current_principal`,
+  # which is fail-closed under `API_AUTH_ENABLED=true` (this system's pin), so an
+  # anonymous POST here is refused by the APPLICATION with a 401, not merely by
+  # taste — the same standard as `^/runs/[^/]+/gate/resolve$` above.
+  #
+  # `[^/]+` cannot swallow a further segment, so this row admits no deeper route —
+  # in particular NOT `/closeout`, which stays excluded (there is no close-out UI
+  # anywhere in `services/api/static/`, and the Tab J ฿ column comes only from a
+  # close-out, so that column remains seeded-history-only by construction).
+  - path: ^/api/cases/[^/]+/accepted-quote$
     service: http://app:8000
 
   # --- Tab J — the month-end export: same dissolved basis --------------------- #

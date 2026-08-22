@@ -138,6 +138,23 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
         r"^/api/cases/[^/]+/photos$",
         r"^/api/cases/[^/]+/evidence$",
         r"^/api/cases/[^/]+/quotes$",
+        # 🔴 Added by PLAN-0112 Step 5 under SD-3 RULED (a) (Cray, typed s243), and
+        # written out here because this entry REVERSES a deliberate exclusion — the
+        # P12 convention: a row that re-admits gets a basis, not just a line.
+        #
+        # Basis: accepting a quote is the governable moment (the accepted amount is
+        # what the DOA ladder routes on), and the accept handler fires the governed
+        # run SERVER-side. Admitting this one case-scoped action is what makes AC-8
+        # clause 2 reachable on the published profile WITHOUT admitting
+        # `POST /procedures/{id}/run`, which stays on the universally-denied floor
+        # below under every ruling. The route is persona-authenticated (fail-closed
+        # `get_current_principal` under this system's `API_AUTH_ENABLED=true`).
+        #
+        # `/closeout` deliberately did NOT come with it: the Tab J ฿ column comes
+        # only from a close-out, so keeping that door shut is what keeps the money
+        # column seeded-history-only. `verticals/fleet_maintenance/operate_seed.py`
+        # (`seed_settled_history_case`) states the surviving half of that claim.
+        r"^/api/cases/[^/]+/accepted-quote$",
         # Tab J — the COVER only; the `.csv` sibling stays off (Cray declined it
         # at s192, and the `/cover$` anchor is what keeps that ruling in force)
         r"^/api/exports/repair-spend/[^/]+/[^/]+/cover$",

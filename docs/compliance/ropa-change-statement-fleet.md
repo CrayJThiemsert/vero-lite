@@ -84,7 +84,7 @@ becomes **incomplete** the moment fleet publishes.
 |---|---|
 | **Surface** | Tab I ("case intake") — visitor-writable |
 | **Personal data** | free text a visitor types describing a fault, plus any photo they upload |
-| **Routes** | `POST /api/cases`, `POST /api/cases/{id}/photos`; read back via `GET /api/cases/{id}/evidence` and `.../quotes` |
+| **Routes** | `POST /api/cases`, `POST /api/cases/{id}/photos`, `POST /api/cases/{id}/accepted-quote` _[added s245 — PLAN-0112 Step 5 put the accept route on this system's allowlist; it has a WRITE-SIDE EFFECT beyond the case tables, described in §3.3]_; read back via `GET /api/cases/{id}/evidence` and `.../quotes` |
 | **Storage** | fleet's own Postgres (`postgres:16-alpine`), database `vero_lite` |
 | **Volume** | `oct-fleet-maintenance-pgdata` — a **named** volume, so rows survive a container replace |
 | **Reachability** | fleet's own Docker network only; **no published port**; only fleet's `app` can reach it |
@@ -197,6 +197,49 @@ discriminator, and the reason is now positive and citable rather than an absence
 around `opened_by` would be actively wrong, not merely unhelpful.
 
 _(`unattributed` is the fallback only when authn is off — not fleet's posture.)_
+
+### 3.3 🆕 The intake surface now WRITES OUTSIDE the case tables — added s245
+
+_[Added by PLAN-0112 Step 5 (AC-6). Nothing above is retracted: every sentence in
+§3, §3.1 and §3.2 was true before this change and stays true after it. This
+subsection ADDS a write the earlier text did not describe, because it did not
+exist.]_
+
+**What changed.** Accepting a quote (`POST /api/cases/{id}/accepted-quote`, admitted
+to this system's ingress allowlist at Step 5 under SD-3(a)) now **also fires a
+governed procedure run** server-side. Tab I was previously a pure case-intake
+surface; a visitor action there now produces rows in **`pipeline_runs`** and
+**`step_results`** in the same database, in addition to the case tables §3 names.
+
+**Why this belongs in a RoPA statement at all,** stated exactly so it is neither
+under- nor over-claimed:
+
+- **The run names the CASE, not the visitor.** The run is fired by a service
+  principal with a declared owning person (`req-mechanic-tom`) as its accountable
+  requester — a ruled design decision (PLAN-0112 SD-1(b)), not an accident. The
+  `pipeline_runs` row therefore carries a **fixed demo persona id**, exactly like
+  every other governed run on this system, and gains no new handle on the visitor.
+  This does **not** weaken §3.2.1's finding — it is the same finding one layer out:
+  a persona id identifies nobody, so the run row identifies nobody either.
+- **It does carry the case id, so it carries a POINTER to visitor text.** The event
+  that fires the run is keyed on `[case_id, quote_id]`, and the run's proposals
+  reference the case. The free text itself is not copied into the run: this was
+  measured, not assumed — `tests/api/test_visitor_case_to_monitor_scenario.py`
+  asserts over **every** `audit_log` row a visitor-fired run produces, using a
+  sentinel buried in the visitor's own typed description plus a structural allowlist
+  of payload keys, with the sentinel positively controlled by first asserting it
+  PRESENT in the ingested event.
+- **What it means for erasure.** §3.1's retention sweep deletes the case row and its
+  FK children. `pipeline_runs` / `step_results` are **not** case children and are not
+  swept, so after a case is erased its run rows survive holding a **dangling case
+  id** and no visitor text. Whether the controller regards a bare surviving
+  identifier as in scope for the stated DSR path is a **wording question for the
+  controller**, not an engineering gap — the same shape as §5's audit-chain
+  question, and it is flagged here so the update does not answer it by silence.
+
+**Not owed here** (so §6's six items do not silently become seven): this adds no new
+personal-data CATEGORY, no new storage LOCATION, and no new recipient. It refines
+item 1's description of what the intake activity does.
 
 ## 4. Three scope facts, so the update stays exact
 

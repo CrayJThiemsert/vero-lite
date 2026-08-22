@@ -27,6 +27,11 @@ freely; keep the headings, or the guard reddens.
 และไปหยุดที่ระดับไหนขึ้นกับตัวเลข ไม่ใช่ความคุ้นเคย ทุกการอนุมัติและการปฏิเสธถูกบันทึกใต้ชื่อคนที่กดจริง
 และคุณกดตรวจสอบความครบถ้วนของสายโซ่หลักฐานได้เองในหน้าจอเดียวกัน
 
+และไม่ใช่แค่ดูของที่เตรียมไว้ — **เปิดเคสของคุณเองก็ได้** ใส่ใบเสนอราคา แล้วกด "ตกลงใบนี้"
+ระบบจะเดินรอบตรวจให้ทันทีตั้งแต่ตอนนั้น แล้วคุณตามดูรอบนั้นได้เองที่แท็บ Monitor
+ตัวเลขคือสิ่งที่ตัดสินว่าเคสของคุณต้องขึ้นไปถึงใคร ไม่เกินเพดาน ฿5,000 ช่างใหญ่เคาะเองได้
+ระบบจะไม่ส่งเคสนั้นไปรออนุมัติจากใครเลย
+
 ### ตัวตนที่เลือกได้
 
 - **ต้อม — ช่างใหญ่** ผู้ตั้งเรื่องเบิก
@@ -60,6 +65,12 @@ already in the approval chain — and where it stops is decided by the number, n
 who you know. Every approval and every refusal is recorded under the person who
 actually made it — and you can verify the evidence chain has not been rewritten,
 from the same screen.
+
+And not only the one we prepared: **open a case of your own**, add a quote, then
+press "accept this one". The system runs a governed round from that moment, and you
+can follow that round yourself in the monitor. The number is what decides how far up
+your case has to go — at or below the ฿5,000 ceiling the head mechanic settles it,
+and the system puts it in front of nobody for approval.
 
 ### Who you can be
 
