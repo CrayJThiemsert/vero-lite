@@ -29,7 +29,7 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -292,8 +292,19 @@ async def list_runs(
     # order is approximate. Tolerated because the projection is display-only; the root fix
     # (a monotonic sequence column) is deferred, and why it stands is recorded in
     # tests/services/db/test_load_run_ordering_guard.py.
+    # Bounded newest-N (PLAN-0112 AC-8; SD-6 RULED (b), Cray typed s243). Unbounded was
+    # structurally safe only while `POST /procedures/{id}/run` stayed off the published
+    # allowlist and runs came from the boot seed alone — `done/0110` G4's population
+    # bound, whose own tripwire named the day a visitor could mint runs. Step 3 was that
+    # day, so the cap is now load-bearing rather than theoretical.
     runs = (
-        (await session.execute(select(PipelineRun).order_by(PipelineRun.started_at.desc())))
+        (
+            await session.execute(
+                select(PipelineRun)
+                .order_by(PipelineRun.started_at.desc())
+                .limit(settings.runs_list_default_limit)
+            )
+        )
         .scalars()
         .all()
     )
@@ -326,7 +337,19 @@ async def list_runs(
         )
         for r in runs
     ]
-    waiting_human_count = sum(1 for r in runs if r.status == PipelineRunStatus.WAITING_HUMAN.value)
+    # Counted over the FULL population, NOT over the bounded page above — deliberately.
+    # This is the "waiting on me" badge Tab H paints (`operate_seed.py`'s own docstring
+    # names it). Summing the page instead would make the badge shrink as the list filled
+    # with newer runs, under-reporting decisions that are genuinely still pending: a
+    # governed action nobody is told about is the one failure this surface exists to
+    # prevent. The list is a view; the count is a fact about the system.
+    waiting_human_count = (
+        await session.execute(
+            select(func.count())
+            .select_from(PipelineRun)
+            .where(PipelineRun.status == PipelineRunStatus.WAITING_HUMAN.value)
+        )
+    ).scalar_one()
     return RunsListResponse(runs=summaries, waiting_human_count=waiting_human_count)
 
 

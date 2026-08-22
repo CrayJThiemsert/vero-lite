@@ -828,3 +828,68 @@ holds as current fact; the tripwire stays.
 2. **Pass/fail reads were fixed above, per AC — the run confirms them, never rewrites them.** A green whose assertion was not witnessed red on its own mutation is not evidence (CLAUDE.md §8).
 3. **Live (evidence, not the gate; host-state → explicit Cray go):** Step 7's checks on the published system — two subjects in `/runs`, one default marker, mode switching, and the play-then-redeploy pristine cycle.
 4. Rulings: **all five SDs are RULED** (Cray, typed, 2026-08-18 s237) and stamped in place — SD-A (a), SD-B as recommended, **SD-C = deploy-script step, against the drafter recommendation** (chosen to make the crash-restart mid-session wipe impossible; its cost — a consumed demo stays degraded until the next deploy — is priced in SD-C with the AC-11 observable check and the runbook line as the mitigations), SD-D as recommended, SD-E (d) with (b) the named follow-on. The implementing PR executes the ruled shapes; no SD remains open.
+
+## Post-archival amendment — 2026-08-22 (session 245): G4's tripwire FIRED, and the bound it held is now a measured one
+
+**Why this section exists.** G4 above records the run population as structurally
+bounded at two, and carries its own instruction for the day that stops being true:
+*"Rewrite this paragraph then; never delete the tripwire."* This is that rewrite,
+written **additively** — the ruled history above is not edited and the tripwire text
+stays exactly where it stood, because a tripwire that vanishes when it fires cannot
+tell the next reader that it ever did.
+
+**Which trigger fired, and in what shape.** G4 named two: (i) `POST /procedures/{id}/run`
+being admitted to the allowlist, or (ii) SD-E's named follow-on build (b), server-side
+firing **on case creation**. Trigger (i) did **not** fire and must not — that route is
+still excluded, under every ruling, on every path. Trigger (ii) fired in a **reversed**
+form: Cray reversed SD-E at session 242 so that **quote acceptance**, not case creation,
+is the governable moment, and PLAN-0112 Step 3 shipped that seam.
+`POST /api/cases/{id}/accepted-quote` joined the published allowlist at PLAN-0112 Step 5
+and mints a governed run through the event bridge. A visitor can now create runs, so the
+bound this paragraph rested on is gone as a *structural consequence* and has to be
+replaced by a *mechanism*.
+
+**The new bound, in the SD-6(b) shape as ruled (Cray, typed, s243).** "Exactly two runs"
+becomes **"exactly two runs bearing the fixed demo ids among N visitor runs"**, and the
+axis G4 left open is closed by a cap rather than by an assumption: the Monitor's
+`GET /runs` carries a **bounded newest-N default** (`settings.runs_list_default_limit`,
+shipped default 200), with the client filter unchanged and **both demo runs asserted
+within bound**. PLAN-0112 AC-8 owns that pass read;
+`tests/api/test_runs_list_bounded_scenario.py` is the code half — including the
+demo-runs-within-bound assertion driven through the REAL boot seed, because the demo runs
+are the OLDEST rows on a fresh system and therefore exactly what a newest-N bound drops
+first.
+
+**One thing the cap deliberately does NOT bound.** `waiting_human_count` — the "waiting
+on me" badge Tab H paints — is counted over the whole population, never over the returned
+page. A badge that shrank with the page would under-report decisions that are genuinely
+still pending, and a governed action nobody is told about is the one failure this surface
+exists to prevent. The list is a view; the count is a fact about the system. Both halves
+carry their own non-vacuity probe.
+
+**The AC-4/AC-5 framing above is narrowed the same way.** Where those criteria read as
+though every run on the system is a demo run, the correct reading after this amendment is
+*every run bearing a fixed demo id*. Visitor-fired runs coexist with the demo and stay out
+of the reset's reach by run-id scoping — measured in
+`tests/api/test_fleet_demo_reset_coexistence_scenario.py` (PLAN-0112 AC-7(i)).
+
+🔴 **That module also recorded a bound AC-7(i)'s own wording missed, and it belongs
+here.** Because fleet's `intake` step is a **fleet-wide scan** rather than a lookup of the
+accepted case, a visitor-fired run's `approve` gate also decides the seeded demo case, and
+the `on_resolved` hook writes one link row per decided case. Measured: a run fired from a
+visitor's own case wrote link rows keyed on `['case-<visitor>', 'case-demo-truck03-gearbox',
+'case-fleet-operate-demo']`. The reset clears link rows on **both** keys — `run_id` in the
+demo ids **or** `case_id` in them — so **every** visitor-fired run loses its
+`case-fleet-operate-demo` link row to a reset, whatever case its visitor accepted on. That
+is correct rather than defective: the reset erases and re-seeds that case, so a surviving
+link would point at a different case reusing the id. The surviving bound is therefore:
+the visitor's **run** survives, its **step results** survive, its **non-demo link rows**
+survive, and its **demo-scoped link rows do not**.
+
+**Still true and unchanged:** the run-side deletion is id-scoped to `DEMO_RUN_IDS`; the
+audit chain is never touched, so an approval stays provable after its link row goes; and
+`read_demo_state` reads `PRISTINE` after a reset and one re-boot even with a visitor's run
+parked alongside.
+
+**Owning PLAN:** `docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`
+(§SD-6, §SD-7, §AC-7, §AC-8).

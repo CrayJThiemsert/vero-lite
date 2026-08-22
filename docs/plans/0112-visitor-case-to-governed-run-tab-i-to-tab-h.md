@@ -419,12 +419,56 @@ itself is confirmed as stated.
   the amendment section exists, the tripwire text survives verbatim, and
   `test_fleet_demo_reset_scenario.py`'s id-scoped assertions are cited as the code
   half. **[offline/DB]** for (i); doc-read for (ii).
-- [ ] **AC-8 — the reopened cap/filtering question is answered, not dodged [SD-6
+  - ✅ **(ii) BUILT and its pass read MET (s245).** `done/0110` carries the additive
+    `## Post-archival amendment — 2026-08-22 (session 245)`; the tripwire sentence and
+    its "never delete the tripwire" instruction both survive verbatim (checked with
+    whitespace normalised — the sentence wraps, and a single-line literal reports a
+    false 0); the ruled history above is unedited; all three code-half modules are
+    cited by name and exist on disk. `VERDICT=AC7II_VERIFIED`, 18 criteria.
+  - 🔴 **(i) BUILT and PROVEN, but the criterion's own wording is MEASURED FALSE —
+    left UNTICKED pending a Cray ruling on the narrowing.** The build is complete:
+    `tests/api/test_fleet_demo_reset_coexistence_scenario.py`, 4 tests, with **three**
+    non-vacuity probes (one per assertion, each mutating the production
+    `demo_run_reset.py`, each restored byte-identically and sha256-verified, each
+    shown to redden THAT assertion) — `VERDICT=AC7I_NONVACUITY_PROVEN`. What does not
+    hold is *"its link rows **survive**"*. Measured: fleet's `intake` is a
+    **fleet-wide scan**, so a visitor-fired run's `approve` gate also decides the
+    seeded demo case, and `on_resolved` writes **one link row per decided case** —
+    a run fired from a visitor's own case wrote three, keyed on
+    `['case-<visitor>', 'case-demo-truck03-gearbox', 'case-fleet-operate-demo']`.
+    The reset clears link rows on **both** keys, so **every** visitor-fired run loses
+    its `case-fleet-operate-demo` link row, whatever case its visitor accepted on.
+    **That deletion is correct, not a defect** — the reset erases and re-seeds that
+    case, so a surviving link would point at a different case reusing the id.
+    **The measured bound, which the tests assert:** the visitor's run survives
+    field-for-field, its step results survive, its **non-demo** link rows survive, and
+    its **demo-scoped** link rows do not. ⚠️ **Owed to Cray:** ratify narrowing (i)'s
+    third clause to the measured bound, then tick. Nothing in the build changes with
+    the answer — only the wording. Recorded in `done/0110`'s amendment too, so the
+    finding is not carried only here.
+- [x] **AC-8 — the reopened cap/filtering question is answered, not dodged [SD-6
   RULED (b), s243 — pass read fixed as ruled; the (a)-unbounded branch is retired].**
   `GET /runs` — unbounded today (G-15) — gains a bounded newest-N default with the
   client filter unchanged; pass read = a test seeds N+1 runs and reads N back, plus
   the two demo runs always present within bound; non-vacuity = lift the bound in
   scratch → the count assertion reddens. **[offline/DB]**
+  - ✅ **CLOSED s245.** `settings.runs_list_default_limit` (default **200**, env
+    `RUNS_LIST_DEFAULT_LIMIT`) bounds `list_runs`; the client filter is untouched.
+    `tests/api/test_runs_list_bounded_scenario.py`, 4 tests: seed N+1 → read N back
+    **and prove they are the NEWEST N** (a length-only assertion passes just as
+    happily on the oldest page); both demo runs within bound against the **real** boot
+    seed — they are the oldest rows on a fresh system and so exactly what a newest-N
+    bound drops first; and a guard on the shipped default itself (≥ 50), which no
+    other test reads. Two non-vacuity probes on the production router —
+    `VERDICT=AC8_NONVACUITY_PROVEN`; N-5 additionally holds the bounded-list assertion
+    GREEN while reddening the badge, proving the two are independent.
+  - 🔴 **A build choice SD-6(b) did not specify, recorded rather than left implicit:
+    `waiting_human_count` is NOT bounded.** It is counted over the whole population
+    with its own `select(count())`, never over the returned page. It is the "waiting
+    on me" badge Tab H paints (`operate_seed.py`'s docstring names it), and a badge
+    that shrank with the page would under-report decisions still pending — a governed
+    action nobody is told about. The list is a view; the count is a fact about the
+    system. Cray may overrule; the probe N-5 pins the current behaviour either way.
 - [ ] **AC-9 — full gates + the ingress guard moves only as ruled [SD-3 RULED (a),
   s243 — the (b)/no-ingress-change/byte-identical branch is retired].** `uv run --extra dev
   pytest tests/ -q 2>&1`, `uv run mypy services/ 2>&1`, bare `ruff check . 2>&1` — all
@@ -616,6 +660,30 @@ operator; plus four defects that predate Step 5 entirely.
   edited: PLAN-0111 is another PLAN's ruled content.
 
 ### Step 6: Population-bound follow-through (AC-7, AC-8) — SD-6(b) + SD-7(a)+(c), s243
+
+**EXECUTED (Code, 2026-08-22, s246) — AC-8 CLOSED; AC-7(ii) met; AC-7(i) built and
+proven but left UNTICKED on a wording question.** Three pieces shipped and each was
+witnessed RED before being trusted: the coexistence scenario
+(`tests/api/test_fleet_demo_reset_coexistence_scenario.py`, 4 tests, 3 probes,
+`VERDICT=AC7I_NONVACUITY_PROVEN`); the `done/0110` additive post-archival amendment
+(`VERDICT=AC7II_VERIFIED`, 18 criteria); and the bounded newest-N default on
+`GET /runs` (`settings.runs_list_default_limit`, 4 tests, 2 probes,
+`VERDICT=AC8_NONVACUITY_PROVEN`). Gate: full `pytest tests/` **4267 passed / 8
+skipped** (4259 baseline + the 8 added), bare `ruff check .` clean, `ruff format
+--check .` 654 files, `mypy --strict services/ verticals/` clean over 201.
+
+🔴 **The one finding that outgrew its criterion.** AC-7(i) asserts a visitor-fired
+run's *"link rows survive"* a reset. Measured, they do not — fleet's `intake` is a
+fleet-wide scan, so every visitor-fired run's gate also decides the seeded demo case,
+and the reset reaches that link row by `case_id`. The deletion is correct; the AC's
+wording is not. The measured bound is recorded at AC-7 above and in `done/0110`'s
+amendment, and the criterion stays unticked until Cray rules on the narrowing.
+
+**SD-7 needed no build, as ruled:** visitor runs are retained (a) and an operator
+cancels stale parked ones through the existing `cancel_run_endpoint` (c). **No sweep
+ships**, and none was written — recorded here so a later reader does not mistake the
+absence for an omission.
+
 Now unconditional: the reset-coexistence scenario; the `done/0110` post-archival
 amendment (its new bound stated in the SD-6(b) shape — AC-7(ii)); the bounded
 newest-N default on `GET /runs` (AC-8); and the ruled visitor-run disposition —
