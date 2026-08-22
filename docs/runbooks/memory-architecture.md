@@ -374,13 +374,32 @@ entirely; see Lesson #23 §3.)
     still governs the **`-status.md`** chain, whose base is the live append target
     and whose header says so. It does **not** govern the **`-current-focus.md`**
     chain: that base reached **190,527 B** — hard against the ~192 KB bar — and
-    stopped taking appends on 2026-07-29 (s189). Every Current-Focus rotation
-    **since s196 (`d28d9ce`, 2026-07-31) has landed in `2026-h1c-current-focus.md`**
-    — five reconciles before this ruling and this one. Cray ruled the **practice
-    correct and this text stale**: for the Current-Focus chain the newest letter
-    holds the newest content, and the base is legacy. The rationale is contiguity —
-    `h1c` already carries s192…s206 unbroken, and re-pointing appends at the base
-    would scatter one continuous run across two files. **Consequence to accept
+    stopped taking appends on 2026-07-29 (s189). Cray ruled the **practice correct
+    and the then-current text stale**: for the Current-Focus chain the newest
+    **OPEN** letter holds the newest content, and everything earlier is legacy. The
+    rationale is contiguity — re-pointing appends at the base would scatter one
+    continuous run across two files.
+    🔴 **Resolve the letter every time; never memorise it — and this bullet is the
+    cautionary example.** It used to name `2026-h1c-current-focus.md` as the live
+    target, *"since s196 (`d28d9ce`)"*. That was true for s196…s238 and **false from
+    s239 on**: `h1c` reached **193,007 B**, past the same ~192 KB bar that had closed
+    the base, and every rotation since — `a17c79b`, `44a0ec9`, `34c498b`, `a94e2c5`,
+    `b4ccd04`, `ed6a713` — has landed in **`2026-h1d-current-focus.md`**. That is the
+    corollary ten lines above (*"never cite a continuation by name from outside the
+    archive"*) violated by this very bullet, which then rotted exactly as the
+    corollary predicts. It misdirected a real reconcile: at s244 the agent's own
+    memory carried the same stale letter and was corrected only because the
+    resolution command was run anyway. **The binding half is therefore the command,
+    not the letter:**
+    `git log --oneline -8 --name-only -- docs/status-archive/` names the files recent
+    `docs(status):` reconciles actually touched; then `wc -c docs/status-archive/*.md`
+    against the ~192 KB warning, because a chain within a few KB of the bar is one
+    reconcile away from needing a new letter.
+    **Dated snapshot — expires by design (measured s244, 2026-08-22):**
+    `2026-h1d-current-focus.md` **72,857 B** (live) · `2026-h1c-current-focus.md`
+    **193,007 B** (closed) · `2026-h1-current-focus.md` **191,387 B** (closed s189) ·
+    `2026-h1-status.md` **187,756 B** — ⚠️ ~4.4 KB of headroom, so the `-status`
+    chain is the next to need a letter. **Consequence to accept
     openly:** for this chain the letters no longer encode "older", so the corollary
     above is suspended *here* and holds *only* for `-status.md`. Anyone extending
     either chain reads this bullet first.
