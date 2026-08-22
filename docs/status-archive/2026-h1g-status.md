@@ -1,7 +1,7 @@
 # STATUS.md rotation archive — 2026 H1 (continuation `g`)
 
 > **Period covered:** 2026-07-17 (session-142) → 2026-07-24 (session-171)
-> **Sibling chain (letters ascend with time; the base file holds the RECENT window):** [`2026-h1b-status.md`](2026-h1b-status.md) (2026-05-10 → 2026-06-09) → [`2026-h1c-status.md`](2026-h1c-status.md) → [`2026-h1d-status.md`](2026-h1d-status.md) → [`2026-h1e-status.md`](2026-h1e-status.md) → [`2026-h1f-status.md`](2026-h1f-status.md) → [`2026-h1g-status.md`](2026-h1g-status.md) (this file) → [`2026-h1-status.md`](2026-h1-status.md) (base, newest — rotations append THERE). The separate `2026-h1-current-focus.md` (sessions ≤46, ratified as-is) is a Current-Focus-only artifact predating this chain.
+> **Sibling chain (letters ascend with time; the base file holds the RECENT window):** [`2026-h1b-status.md`](2026-h1b-status.md) (2026-05-10 → 2026-06-09) → [`2026-h1c-status.md`](2026-h1c-status.md) → [`2026-h1d-status.md`](2026-h1d-status.md) → [`2026-h1e-status.md`](2026-h1e-status.md) → [`2026-h1f-status.md`](2026-h1f-status.md) → [`2026-h1g-status.md`](2026-h1g-status.md) (this file) → [`2026-h1h-status.md`](2026-h1h-status.md) → [`2026-h1-status.md`](2026-h1-status.md) (base, newest — rotations append THERE). The separate `2026-h1-current-focus.md` (sessions ≤46, ratified as-is) is a Current-Focus-only artifact predating this chain.
 
 Rotated out of `docs/STATUS.md` per the **STATUS.md Rotation Policy**
 (`docs/runbooks/memory-architecture.md`, Lesson #23). Tier-3: **grep + windowed reads

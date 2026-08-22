@@ -12,6 +12,7 @@
 > [`2026-h1e-status.md`](2026-h1e-status.md) (→ 2026-07-11) →
 > [`2026-h1f-status.md`](2026-h1f-status.md) (→ 2026-07-16) →
 > [`2026-h1g-status.md`](2026-h1g-status.md) (2026-07-17 → 2026-07-24) →
+> [`2026-h1h-status.md`](2026-h1h-status.md) (2026-07-25 → 2026-08-12) →
 > [`2026-h1-status.md`](2026-h1-status.md) (base, newest — rotations append
 > there). _[Updated 2026-07-17, session 144: this line used to name
 > `2026-h1-status.md` alone as "the recent half", with a window ending
