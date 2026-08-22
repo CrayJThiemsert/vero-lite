@@ -78,6 +78,19 @@ Auto Memory is **complementary**, never authoritative. The repository is the sin
 - **Lifetime:** Ephemeral, may be cleared/migrated by CLI updates
 - **Use:** In-session scratchpad, recent context, working hypotheses
 - **Anti-pattern:** Storing decisions or workflow rules here (use Tier 1-2 instead)
+- **Durability — measured s242, and weaker than "Ephemeral" above suggests.** The
+  store is itself a **git repo with no remote**, and nothing auto-commits it: at
+  session 242 it tracked **91 files while 163 sat on disk** — 73 memories had never
+  been committed at all, so a wrong deletion during a `MEMORY.md` consolidation pass
+  would have been **unrecoverable**. It has since been snapshotted (164 tracked, tree
+  clean; the safety net verified by the pair *witness resolves at `HEAD`* **and**
+  *fails at `HEAD~1`*, so the snapshot was shown to be able to fail).
+  ⚠️ **A snapshot guards against a wrong deletion, NOT against disk loss — there is
+  still no remote.** Snapshot before any consolidation pass. This is the one tier the
+  repository deliberately does not back up (see §Approach — Auto Memory is
+  complementary, never authoritative), so the guard has to be local and manual.
+  _[Rehomed here at session 247 under the R2 carve-out: the fact had lived only in
+  `docs/STATUS.md`'s Active TODOs, which is not a home.]_
 
 ### Tier 1 — Hot Context
 
