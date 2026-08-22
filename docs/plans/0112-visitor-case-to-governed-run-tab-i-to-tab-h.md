@@ -260,7 +260,7 @@ itself is confirmed as stated.
   > **per assertion**, each naming its mutation and direction — and prefer
   > mutations under which the *other* assertion stays green, because that green
   > is what rules out "something unrelated broke."
-- [ ] **AC-2 — the governable moment fires runs per SD-2(b), idempotent per quote
+- [x] **AC-2 — the governable moment fires runs per SD-2(b), idempotent per quote
   identity [SD-2 RULED (b) + SD-5 RULED (b), s243 — pass read re-fixed; the
   once-per-case read is retired; SD-1 RULED (b), s242 — see SD-1].** The accept seam
   fires through the declared event trigger (SD-5(b)) under the G-14 key constraint:
@@ -283,7 +283,27 @@ itself is confirmed as stated.
   `ALREADY_FIRED`; the count stays 1 where 2 is asserted); key on `accepted_id` in
   a scratch copy → assertion (i) reddens (the same-quote re-accept mints a second
   run; the count reads 2 where 1 is asserted). **[offline/DB]**
-- [ ] **AC-3 — the binding scenario test: real producer into real consumer (CLAUDE.md
+  > **CLOSED (Code, 2026-08-21) — PRs [#1248](https://github.com/CrayJThiemsert/vero-lite/pull/1248)
+  > (the seam) + [#1250](https://github.com/CrayJThiemsert/vero-lite/pull/1250) (the
+  > remaining clause).** The seam is `cases.py::_fire_governed_run_for_acceptance`,
+  > invoked from `accept_quote` AFTER `_refresh_case_events`, keyed
+  > `entity_ids=[case_id, quote_id]` with `dedup_window_seconds: 3153600000`
+  > (bucket 0 across 1970..2069 — asserted, not assumed). Tests:
+  > `tests/api/test_case_acceptance_fires_governed_run_scenario.py` — the count clauses
+  > and both SD-2(b) directions in #1248, the sub-ceiling clause in #1250. Probes,
+  > one per assertion, every mutation on production code: `entity_ids=[case_id]`
+  > reddens (ii); keying on the per-call `accepted_id` reddens (i); removing
+  > `reshape`'s `where: {verdict: breach}` reddens the sub-ceiling clause. 🔴 **The
+  > sub-ceiling negative carries a positive control** — "not in the proposals" is
+  > vacuously true of an EMPTY list, so the breaching demo case must be found in the
+  > same list first. 🔴 **A SECOND composition failure, beyond G-14 and unreachable
+  > by any key design:** SD-P4's `_procedure_in_flight` selects on `procedure_id` and
+  > status alone, so the published profile's parked seed made every acceptance a
+  > silent `SKIPPED_IN_FLIGHT`, and with no seed a visitor's second acceptance was
+  > skipped by their own first parked run. `fire_event` gained
+  > `skip_if_in_flight: bool = True`; the default is unchanged and already pinned by
+  > `test_skip_if_in_flight`. Full record in #1248's body.
+- [x] **AC-3 — the binding scenario test: real producer into real consumer (CLAUDE.md
   §8).** Producer, concretely: the **Tab I HTTP intake flow** — `POST /api/cases` →
   `POST /api/cases/{id}/quotes` → `POST /api/cases/{id}/accepted-quote`
   (`cases.py:183`, `:450`, `:639`) driving the real server-side firing seam on realistic
@@ -300,7 +320,34 @@ itself is confirmed as stated.
   disable the firing seam (scratch-revert the hook call at the accept path) → the
   "run exists in `GET /runs`" assertion reddens from 1 to 0 — the exact break the
   feature closes, re-witnessed. **[offline/DB]**
-- [ ] **AC-4 — no reachable intake path mints a dead-end run [SD-1 RULED (b), s242 —
+  > **CLOSED (Code, 2026-08-21) — PRs [#1250](https://github.com/CrayJThiemsert/vero-lite/pull/1250)
+  > + the outcome-surface follow-up.** `test_the_full_walk_both_gates_the_link_row_and_the_case_surface`
+  > drives `POST /api/cases` -> `/quotes` -> `/accepted-quote` into the real seam and
+  > resolves BOTH gates through `POST /runs/{id}/gate/resolve` as keyed
+  > `appr-fleet-manager-wirat` (G-12: the first resolve parks the run again at
+  > `fulfill`; only the second completes it). The module contains **no**
+  > `POST /procedures/{id}/run` — the clause separating it from
+  > `test_visitor_case_to_monitor_scenario.py`.
+  > 🔴 **RULING (Cray, typed, s244) — the "case list / evidence surfaces showing the
+  > outcome" clause resolves to the `RepairCaseRunLink` row + the repair-spend
+  > export, option (a).** The clause as written pointed at two surfaces that
+  > deliberately carry no verdict: the case row stops at the accepted quote, and the
+  > evidence pack is verdict-free BY DESIGN ("as FACTS — deliberately not a verdict")
+  > because the sourcing threshold can move and a frozen verdict would rot into a
+  > confident wrong answer. Rejected: (b) adding a decision field to the case surface
+  > — real work, its own PLAN, not a Step-4 addendum; (c) re-scoping the clause —
+  > declined in favour of measuring what the system genuinely shows.
+  > **Measured, not interpreted:** the structured export ties case -> run -> outcome
+  > -> approver, then the REAL CSV endpoint is parsed and this repair is found by
+  > plate carrying ผู้อนุมัติ. Two probes, because the halves fail independently —
+  > forcing `_approver_of` to `None` reddens the derivation; blanking only the
+  > rendered cell reddens the file while the structured read stays green.
+  > ⚠️ The row count is deliberately NOT asserted: the gate is a fleet-wide scan
+  > (G-6) and this walk approves every proposal at it, so other cases are
+  > legitimately decided too — SD-4(a) as ruled. An "exactly one row" assertion was
+  > written, measured FALSE, and replaced; it was a claim about the population, not
+  > about this outcome being shown.
+- [x] **AC-4 — no reachable intake path mints a dead-end run [SD-1 RULED (b), s242 —
   pass read re-fixed against the ruling; the shape-(a) read is retired. SD-5 RULED
   (b), s243 — the ruled mechanism supplies exactly this G-9 actor shape: the
   `event_trigger` descriptor's `owning_person_id` is recorded as the SoD requester
@@ -314,6 +361,19 @@ itself is confirmed as stated.
   copy and fire → assert the resolve attempt 403s with `UNRESOLVED_PRINCIPAL` (G-7)
   — witnessing the dead-end the invariant excludes, in the direction (approvable →
   unapprovable) it guards. **[offline/DB]**
+  > **CLOSED (Code, 2026-08-21) — PR [#1250](https://github.com/CrayJThiemsert/vero-lite/pull/1250).**
+  > `test_a_visitor_fired_run_is_never_a_dead_end` asserts three facts SEPARATELY,
+  > because they fail independently: `step_principals["intake"] == req-mechanic-tom`
+  > (the declared owning person recorded as the SoD requester at fire time, the G-9
+  > shape SD-5(b) supplies); the `run_started` audit naming `actor_kind: "service"`
+  > with the SP-5 `on_behalf_of.owning_person_id` lineage; and a resolve by
+  > `appr-fleet-manager-wirat` actually succeeding. The amount is ฿12,000 — over
+  > every truck's ฿5,001 ceiling so it reaches the gate, and inside วิรัช's
+  > ฿5,001-30,000 rung (Q9), which he holds cumulatively while NOT holding
+  > `เจ้าของกิจการ`; the ฿62,000 case the other tests use would have routed past him.
+  > Non-vacuity: the AC's own specified probe — removing
+  > `event_trigger.owning_person_id` — reddens the requester assertion, witnessing
+  > G-7's dead end in the approvable -> unapprovable direction.
 - [ ] **AC-5 — the demo copy claims exactly what the ruled shape delivers [SD-3
   RULED (a), s243 — pass read re-fixed, the (b) example clause retired; SD-1 RULED
   (b), s242 — its clause below is now fixed].** The sentences
@@ -424,6 +484,16 @@ SD-3 s243; SD-2/SD-4/SD-5/SD-6/SD-7 s243), and the contingent pass reads are
 re-fixed in the same edits — the gate on Steps 3+ is lifted (§Verification item 4).
 
 ### Step 3: Build the firing seam (AC-2) — SD-1(b) s242; SD-2(b) + SD-5(b) s243
+**EXECUTED (Code, 2026-08-21) — PR #1248, merged `8cc365f`.** The declared trigger
+flipped to `event` with the `event_trigger` descriptor authored on procurement's
+template (`event_kind: repair_quote_accepted`, `owning_person_id: req-mechanic-tom`
+— G-8 makes it forced, not chosen), the stale `# L-1` comment corrected in the same
+edit, and the accept seam hooked after `_refresh_case_events` with the G-14 key.
+🔴 **The build carried a constraint this Step did not know about:** SD-P4's
+in-flight guard defeats SD-2(b) on a gated procedure, so `fire_event` gained
+`skip_if_in_flight` (default unchanged). 🔴 **Ordering is load-bearing and fails
+silently:** firing before the projection refresh yields a run that fires, parks and
+gates — about another truck's case. Evidence in AC-2's stamp.
 The mechanism as ruled — the event bridge. In
 `verticals/fleet_maintenance/procedures.yaml`: flip `governed_repair_approval` to
 `trigger: event`; author the `event_trigger` descriptor on procurement's live
@@ -444,6 +514,13 @@ procurement's operate seed, `main.py:507-515`, the citation correction recorded 
 the SD-2 stamp).
 
 ### Step 4: The scenario test + dead-end guard (AC-3, AC-4)
+**EXECUTED (Code, 2026-08-21) — PR #1250, plus the AC-3 outcome-surface follow-up.**
+⚠️ **Deviation, recorded rather than glossed:** this Step says the scenario "lands
+with the seam in the same PR". It did not — #1248 shipped the seam with the AC-2
+count clauses, and #1250 followed with the sub-ceiling clause, both gates, the link
+row and AC-4. The ordering requirement that WAS honoured is the one that matters
+(no firing path existed before AC-1 closed); splitting these two cost nothing but a
+CI round, and #1248 was already large. AC-3 and AC-4 carry the evidence.
 The §8-binding scenario lands with the seam in the same PR, plus the AC-4 invariant
 tests. Non-vacuity probes witnessed RED from scratch copies before the green is
 claimed (probes restore from the scratchpad, never from git).

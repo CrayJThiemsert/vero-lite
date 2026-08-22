@@ -30,8 +30,11 @@ DB-backed — SKIPS when Postgres is unreachable, and a skip is never satisfacti
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 from collections.abc import Iterator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -42,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.api.config import settings
 from services.db.audit_log import AuditLog
 from services.db.repair_case_run_link import RepairCaseRunLink
+from services.db.repair_spend_export import CSV_ENCODING, load_monthly_export
 from services.engine import demo_events
 from services.engine.procedures import gate_hooks
 from services.engine.procedures.persistence import load_run
@@ -73,6 +77,9 @@ _WIRAT_HEADERS = {"Authorization": f"Bearer {_WIRAT_KEY}"}
 #: ฿4,500 is UNDER the ceiling, so the judge bands it `ok` and `reshape` — which
 #: consumes only the breach subset — must drop it before the gate ever sees it.
 _MID_BAND_THB = "12000.00"
+#: truck-01's registration, the discriminator on the rendered export — the file
+#: carries no case_id column, so the plate is how a human finds their own repair.
+_PLATE = "80-1234 กรุงเทพมหานคร"
 _SUB_CEILING_THB = "4500.00"
 _APPROVE, _FULFILL = "approve", "fulfill"
 
@@ -370,10 +377,18 @@ async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
     A test that stopped after one resolve would report a delivered promise while the
     run sat in the visitor's queue.
 
-    The outcome surface asserted here is the `RepairCaseRunLink` row, not the
-    evidence pack: the pack is verdict-free BY DESIGN ("a case's sourcing evidence
-    as FACTS — deliberately not a verdict"), so the row the real
-    `link_resolved_cases` hook writes is what carries the decision.
+    **The outcome surface is the link row and the month-end export — Cray's ruling
+    (a), s244, and it is asserted rather than assumed.** AC-3's wording ("the case
+    list / evidence surfaces showing the outcome") pointed at two surfaces that
+    deliberately carry no verdict: the case row stops at the accepted quote, and the
+    evidence pack is verdict-free BY DESIGN — "a case's sourcing evidence as FACTS —
+    deliberately not a verdict", because the sourcing threshold can move and a
+    verdict frozen beside the facts would rot into a confident wrong answer. The
+    decision therefore lives in the row `link_resolved_cases` writes, and the
+    operator-facing surface that renders it is the repair-spend export, which is a
+    case list carrying ผู้อนุมัติ and วันที่อนุมัติ. Both are read below — the
+    structured export for the case↔run↔approver tie, then the real CSV endpoint,
+    because a consumer that cannot render it has not shown the outcome to anyone.
 
     No `POST /procedures/{id}/run` anywhere — that is the clause separating this
     test from `test_visitor_case_to_monitor_scenario.py`'s older shape.
@@ -423,6 +438,40 @@ async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
     served = await client_with_db.get(f"/api/cases/{case_id}", headers=_HEADERS)
     assert served.status_code == 200, served.text
     assert served.json()["case_id"] == case_id
+
+    # --- the outcome surface (Cray's ruling (a), s244) ------------------------
+    now = datetime.now(UTC)
+    export = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    mine = [r for r in export.rows if r.case_id == case_id]
+    assert len(mine) == 1, f"one governed case, one export row — got {len(mine)}"
+    assert mine[0].governed is True, "the case must read as GOVERNED, not as escaped money"
+    assert mine[0].run_id == run_id, "the row must name the run that actually decided it"
+    assert mine[0].outcome == "approved"
+    assert mine[0].approver == _WIRAT, (
+        "the surface must name the human who resolved the gate, read from the audit "
+        f"row rather than the request body — got {mine[0].approver!r}"
+    )
+
+    rendered = await client_with_db.get(
+        f"/api/exports/repair-spend/{now.year}/{now.month}.csv", headers=_HEADERS
+    )
+    assert rendered.status_code == 200, rendered.text
+    csv_rows = list(csv.DictReader(io.StringIO(rendered.content.decode(CSV_ENCODING))))
+    assert len(csv_rows) == len(export.rows), (
+        "the rendered file and the structured read must agree on how many repairs the "
+        f"month holds — got {len(csv_rows)} vs {len(export.rows)}"
+    )
+    # Identified by plate, not by count: the gate is a fleet-wide population scan
+    # (G-6) and this walk approves every proposal at it, so the visitor's run
+    # legitimately decides other cases too — SD-4(a) as ruled. Asserting "exactly one
+    # row" would have been a claim about the population, not about this outcome
+    # being shown to anyone.
+    ours = [r for r in csv_rows if r["ทะเบียนรถ"] == _PLATE]
+    assert len(ours) == 1, f"this case's repair must appear on the rendered file — got {ours}"
+    assert ours[0]["ผู้อนุมัติ"] == _WIRAT, (
+        "the rendered row must name the human who resolved the gate — a decision only "
+        f"the database knows has not been SHOWN to anyone; got {ours[0]}"
+    )
 
 
 async def test_a_visitor_fired_run_is_never_a_dead_end(
