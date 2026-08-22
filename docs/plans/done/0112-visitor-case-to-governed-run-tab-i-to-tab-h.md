@@ -1,6 +1,8 @@
 # PLAN-0112: A Visitor's Case Fires a Governed Run — Tab I → Tab H
 
-**Status:** Draft
+**Status:** **COMPLETE 9/9** — closed session 246, 2026-08-22, on Cray's typed
+ratification of AC-7(i)'s narrowing. All seven SDs ruled; Steps 1–7 executed; the
+visitor flow is live on the published system (`docs/logs/2026-08-22-s246-plan0112-step7-fleet-deploy-and-live-walk.md`).
 **Owner:** both — Code executes; Cray rules the SDs before any build past Step 1
 **Created:** 2026-08-21
 **Related ADRs:** ADR-016 (S2 service principals / RF-1), ADR-0026 (principal SoD), ADR-0029 (event bridge, deterministic run ids), ADR-0035 (published-exposure rulings)
@@ -402,11 +404,24 @@ itself is confirmed as stated.
   s241 record: `docs/STATUS.md` §Active TODOs). Non-vacuity: the grep is RED today
   (0 matches — verified: no compliance text mentions run-firing on the accept path).
   **[offline/no-DB]**
-- [ ] **AC-7 — the reset and the population bound survive contact [rider 3].**
+- [x] **AC-7 — the reset and the population bound survive contact [rider 3].**
   (i) A new reset-coexistence scenario: with one visitor-fired run parked and one of
   its link rows written, `reset_demo_runs` deletes only demo-scoped artifacts; the
-  visitor run, its step results, and its link rows **survive**; `read_demo_state`
-  still reads `PRISTINE` after re-boot (G-11). Non-vacuity probe: widen the reset's
+  visitor run, its step results, and its **non-demo** link rows **survive**, while its
+  **demo-scoped** link rows are deleted; `read_demo_state`
+  still reads `PRISTINE` after re-boot (G-11).
+  _[**NARROWED (Cray, typed, s246, 2026-08-22)** — the clause previously read "and its
+  link rows **survive**" without qualification, which was **measured FALSE** three
+  independent ways before the narrowing was proposed: the scenario test (a run fired
+  from the visitor's OWN case wrote three link rows, keyed on the visitor's case AND
+  two others including `case-fleet-operate-demo`); the live reset (six link rows
+  deleted for two demo runs — the excess written by visitor-fired runs); and the live
+  gate (*"3 candidates reached this gate"*). Cause: fleet's `intake` is a **fleet-wide
+  scan**, so every visitor-fired run's gate also decides the seeded demo case and
+  `on_resolved` writes one link row **per decided case**, which the reset then reaches
+  by `case_id`. **The deletion is correct, not a defect** — the reset erases and
+  re-seeds that case, so a surviving link would point at a different case reusing the
+  id. Only the sentence was wrong; no code changed with the ruling.]_ Non-vacuity probe: widen the reset's
   run-id scoping to all fleet runs in a scratch copy → the survival assertion reddens
   (visitor run gone). (ii) G4's population-bound paragraph and the AC-4/AC-5 framing
   in `done/0110` are rewritten **via an additive `§Post-archival amendment`** (the
@@ -425,8 +440,11 @@ itself is confirmed as stated.
     whitespace normalised — the sentence wraps, and a single-line literal reports a
     false 0); the ruled history above is unedited; all three code-half modules are
     cited by name and exist on disk. `VERDICT=AC7II_VERIFIED`, 18 criteria.
-  - 🔴 **(i) BUILT and PROVEN, but the criterion's own wording is MEASURED FALSE —
-    left UNTICKED pending a Cray ruling on the narrowing.** The build is complete:
+  - ✅ **(i) CLOSED s246, after Cray ratified the narrowing its own measurement
+    forced.** The criterion was written asserting that a visitor-fired run's link rows
+    survive a reset; that was measured false and the clause is now narrowed in place
+    above, with the ruling stamped beside it. The build never changed — it asserted the
+    measured bound from the day it was written. The build is complete:
     `tests/api/test_fleet_demo_reset_coexistence_scenario.py`, 4 tests, with **three**
     non-vacuity probes (one per assertion, each mutating the production
     `demo_run_reset.py`, each restored byte-identically and sha256-verified, each
@@ -442,10 +460,10 @@ itself is confirmed as stated.
     case, so a surviving link would point at a different case reusing the id.
     **The measured bound, which the tests assert:** the visitor's run survives
     field-for-field, its step results survive, its **non-demo** link rows survive, and
-    its **demo-scoped** link rows do not. ⚠️ **Owed to Cray:** ratify narrowing (i)'s
-    third clause to the measured bound, then tick. Nothing in the build changes with
-    the answer — only the wording. Recorded in `done/0110`'s amendment too, so the
-    finding is not carried only here.
+    its **demo-scoped** link rows do not. ✅ **RATIFIED (Cray, typed, s246,
+    2026-08-22)** — the clause is narrowed in place above and AC-7 is ticked. Nothing
+    in the build changed with the answer; only the wording did. Recorded in
+    `done/0110`'s amendment too, so the finding is not carried only here.
 - [x] **AC-8 — the reopened cap/filtering question is answered, not dodged [SD-6
   RULED (b), s243 — pass read fixed as ruled; the (a)-unbounded branch is retired].**
   `GET /runs` — unbounded today (G-15) — gains a bounded newest-N default with the
