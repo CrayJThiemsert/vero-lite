@@ -1229,3 +1229,58 @@ discharged the trim prerequisite.
 > probes were witnessed · `mypy --strict services/ verticals/` clean over 201.
 > ✅ Cray ruled the missing **s242 Recent Decisions row** be backfilled at this
 > reconcile — done below.
+
+### Current Focus block — Session 244 (PLAN-0112 Steps 3 and 4 BUILT; #1248/#1249/#1250) [rotated 2026-08-23, session-248 reconcile — 4-newest-sessions CF window; the OLDEST of exactly four, evicted because a new block forces a rotation]
+
+⚠️ **Window eviction, NOT a cap overage** — the block measures 3,405 B against R2's 4,096 B per-block cap. Recorded explicitly because #1263 once misread a rotating block as over-cap (a header-to-header measurer swallowing the rotation ledger), and #1264 retired that claim; every rotation note here now states which of the two rules did the evicting.
+
+> **Session 244, 2026-08-21 (head_commit `f52dbdc` → `a8c42b7`) — THREE PRs
+> MERGED ([#1248](https://github.com/CrayJThiemsert/vero-lite/pull/1248),
+> [#1249](https://github.com/CrayJThiemsert/vero-lite/pull/1249),
+> [#1250](https://github.com/CrayJThiemsert/vero-lite/pull/1250)), 0 open.
+> PLAN-0112 Steps 3 and 4 BUILT: a visitor's accepted quote now fires the
+> governed run, and the reads AC-2/AC-3/AC-4 specify are written. No AC ticked
+> yet — see §Active TODOs.**
+>
+> 🔴 **A SECOND composition failure, and no key design could have routed around
+> it.** G-14 recorded that SD-2(b) and SD-5(b) do not compose on the bridge's
+> dedup KEY. They also do not compose on its SD-P4 in-flight guard, which selects
+> on `procedure_id` and status alone. Measured: fleet's published profile pins
+> `OCT_DEMO_SEED_OPERATE=true` and that seed RAISES unless its run parks at
+> `waiting_human`, so a visitor's acceptance returned `SKIPPED_IN_FLIGHT` and
+> wrote nothing — the whole promise failing with only an `event_skipped` audit
+> row. With no seed at all, a visitor's SECOND acceptance was skipped by their
+> own first parked run, so the blocker is inherent to SD-2(b) on a gated
+> procedure. Cray ruled the opt-out; the default is unchanged and is pinned by a
+> test that already existed.
+>
+> 🔴 **Ordering is the claim, not a detail — and it fails with no error.** The
+> seam must fire AFTER `_refresh_case_events`. Fire before the projection catches
+> up and the run still fires, still parks, still shows a healthy gate — about
+> ANOTHER truck's case, with the visitor's own absent from every proposal.
+> Measured: a run whose single proposal resolved to `case-demo-truck03-gearbox`.
+> No count assertion can see that, so every new test asserts the visitor's
+> `case_id` is among the proposals, and the probe that reverses the two lines
+> reddens that assertion while the count stays green.
+>
+> 🔴 **Opting out of SD-P4 makes two runs able to approve ONE case — measured,
+> and left in place on Cray's ruling.** Two `RepairCaseRunLink` rows result, from
+> different runs, with `hook_failures` empty: designed behaviour, not a swallowed
+> error. Both ฿ readers were measured NOT to double-count — the month-end export
+> collapses them via a `case_id`-keyed latest-wins dict (฿62,000 once, not twice)
+> and Tab J's rollup takes no input from this procedure at all. **Unmeasured and
+> owed:** WHICH of the two runs the report names.
+>
+> ✅ **#1249, from the parallel strand: the Box-4 ฿ facet was UNREACHABLE, not
+> missing.** Four of five ฿-producing verticals wrote `economic_impact` only into
+> the action envelope while `benefit_rollup` reads `StepResult.reasoning_trace`,
+> so Tab J read ฿0 for all of them. Emission moved down to `ActionStepExecutor`
+> — the only seam `aquaculture`/`energy` share, since they bind it bare — with a
+> run-scoped ledger, without which procurement reported ฿16,215,000 for a run
+> worth ฿8,107,500. NOT a PLAN-0112 step.
+>
+> ✅ **Gate on `a8c42b7`: 4243 passed / 8 skipped** (+3 exactly over `6fce826`,
+> the diff touching one file whose test count goes 4 → 7) · bare `ruff check .`
+> clean · `ruff format --check .` 651 files · `mypy --strict` clean over 201.
+> Ten non-vacuity probes across the two PRs, every mutation on production code,
+> each source restored byte-identically from the scratchpad and sha256-verified.
