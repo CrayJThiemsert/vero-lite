@@ -117,6 +117,26 @@ attempt aborted, second committed with every hook green. **Never delete the
 lock file** to "fix" it; confirm via `git log` that no commit happened and let
 the retry take a fresh lock.
 
+⚠️ **If the retry keeps working but the lock keeps coming back, stop trusting
+the recipe above and `ps` before retrying again.** Measured session 245: an
+`index.lock` persisted for **four days** because a **SIGSTOP-suspended** git
+process still held it — `STAT=T` (corroborated by `WCHAN=do_signal_stop`). A
+suspended process is **not running**, so it never releases the lock and never
+looks busy, while the retry above took a *fresh* lock and succeeded every single
+time — which is exactly what hid the cause for four days. **A recurring lock is
+a process problem, not a timing one.** The tell is the `T` state:
+
+```bash
+ps -o pid,stat,wchan:20,cmd -C git
+```
+
+`STAT=T` is the decisive signal; `WCHAN` corroborates but is not always
+populated. Exit 1 with only a header means no git process is alive — then the
+plain retry above really is the right move. _[Rehomed here s250 from
+`docs/STATUS.md`, where the cause had survived only as state, not procedure —
+the reader who needs it is whoever is staring at a stuck lock, and that reader
+loads this skill, not the status archive.]_
+
 ⚠️ **Do not reach for Lesson #3's fallbacks here.** Its trap A3 has the *same*
 `pre-commit not found` symptom but a different cause (a stale POSIX-path hook
 vs a Windows-layout venv) and a different fix (inline `PATH=`). And its Branch-4
