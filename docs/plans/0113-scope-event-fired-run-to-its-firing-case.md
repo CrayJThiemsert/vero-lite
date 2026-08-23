@@ -134,8 +134,8 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   `verticals/fleet_maintenance/procedures.yaml:348-357`): an always-present field moves
   every vertical's hash and makes in-flight runs fail closed on pin mismatch.
   Non-vacuity: make the field always-present in a scratch copy → the hash test reddens.
-  Load-gate half: a `scope_by` on a non-query step, or without `reads`, or (per SD-1
-  below, if ratified) without an explicit `when_absent`, refuses at load — each refusal
+  Load-gate half: a `scope_by` on a non-query step, or without `reads`, or (per SD-1,
+  **RULED required-explicit**) without an explicit `when_absent`, refuses at load — each refusal
   witnessed RED by a spec fixture. **[offline/no-DB]**
 - [ ] **AC-2 — the wire works, three ways.** Unit-level, on `QueryStepExecutor` with a
   fake adapter (unit tests here; the real-seam proof is AC-3): (i) scope value present
@@ -229,13 +229,25 @@ Full `pytest tests/`, `mypy --strict services/ verticals/`, bare `ruff check .`,
 Capture procurement's hero-run observable(s) for the AC-4 comparison. The offline gate
 must match CI scope — no path-scoped shortcuts.
 
+### Step 0b — ADR-016 amendment (PREREQUISITE, added at review after OQ-2 was RULED)
+
+OQ-2 is ruled YES, and `CLAUDE.md` §8 states plainly: **"All ADRs: must be merged before
+related implementation PR."** So the amendment is a *prerequisite of Step 1*, not
+parallel work: the new grammar member (`scope_by` / `when_absent`) plus SD-2's
+governance classification, as a lightweight ADR-016 amendment following the PLAN-0061
+Q4 precedent. Authoring a new/amended ADR is **G1/G2-gated for Code** (CLAUDE.md §6) —
+route it Cowork/`plan-drafter` drafts → Code commits via PR. Pass read: the ADR is
+merged to `main` before the Step-1 PR opens.
+
 ### Step 1 — Grammar (`spec.py`), consuming nothing yet
 
 `scope_by: {field: <name>, from: trigger.entity_ids}` (D2 — `from` is a closed
 `Literal["trigger.entity_ids"]`, the only source in v1) + `when_absent: sweep | refuse`
 (D1 — per-step) on the query step's input model, `extra="forbid"` like its siblings.
-Load-gate validation: query-step-with-`reads` only; the SD-1 posture on `when_absent`
-if ratified. 🔴 Only-when-supplied serialization (AC-1). Pass read: all 6 verticals
+Load-gate validation: query-step-with-`reads` only; `when_absent` **required-explicit**
+whenever `scope_by` is present (SD-1, RULED). Classification per SD-2 (RULED): H-governed,
+generator never emits, stripped at lift, pinned in the governance snapshot when supplied.
+🔴 Only-when-supplied serialization (AC-1). Pass read: all 6 verticals
 load; hash test byte-identical; the scratch always-present mutation reddens it.
 
 ### Step 2 — Wire `trigger_context` → `query_step`
@@ -335,9 +347,21 @@ Do not treat this list as complete — the s202 lesson (an inherited defect list
 enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
 `fleet-wide` before closing AC-4.
 
-## Surfaced decisions (for Cray — recommended, not decided)
+## Surfaced decisions
 
-- **SD-1 — is `when_absent` REQUIRED whenever `scope_by` is present, or defaulted?**
+- **SD-1 — RULED (Cray, typed, s249, 2026-08-23): required-explicit.** A `scope_by`
+  without an explicit `when_absent` is a **load-gate refusal**. Cray took the
+  recommendation; the reasoning recorded below is the PLAN's, not Cray's. This is now
+  LOCKED for Step 1 and AC-1.
+- **SD-2 — RULED (Cray, typed, s249, 2026-08-23): mirror `join`/`project` exactly.**
+  `scope_by`/`when_absent` are H-governed values the generator may never emit, stripped
+  at lift, pinned in the governance snapshot when supplied. Cray took the
+  recommendation. LOCKED for Step 1 and AC-1.
+
+_The original option texts are retained verbatim below (the PLAN-0111 convention): a
+future reader must see what was rejected and why._
+
+- **SD-1 (as posed) — is `when_absent` REQUIRED whenever `scope_by` is present, or defaulted?**
   Cray's D1 fixes that the policy is per-step YAML; it does not fix whether omitting it
   is a load error or picks a default. **Recommendation: required-explicit** (load-gate
   refusal when `scope_by` is present without `when_absent`) — a silent default is
@@ -347,7 +371,7 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
   but silently breaks any future `sweep`-intending author) or default `sweep`
   (fail-open — worst). Why Cray: it sets the authoring contract every future vertical
   inherits.
-- **SD-2 — governance classification of `scope_by`/`when_absent`.** `join`/`project`
+- **SD-2 (as posed) — governance classification of `scope_by`/`when_absent`.** `join`/`project`
   are "H-governed values the generator may never emit — stripped at lift, pinned in the
   governance snapshot" (`spec.py:346-351`). Scope changes **what population reaches a
   gate**, which is governance behaviour. **Recommendation: mirror join/project exactly**
@@ -358,17 +382,56 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
 
 ## Open questions — record, do not resolve here
 
-- 🔴 **OQ-1 (BLOCKS Step 7 / AC-7): may Code edit files under `docs/plans/done/`?**
-  Measured **NOT DECIDED** — asked three sessions running; it is the worked negative
-  example in `.claude/skills/decision-lookup/SKILL.md:54,:130`. Blast-radius sites 7, 8,
-  9 and 13 all require it. Candidate mechanism if YES: the additive
-  `§Post-archival amendment` convention (PLAN-0100/0102; precedent executed at
-  `done/0110` by 0112 AC-7(ii)). The PLAN does not assume an answer.
-- **OQ-2: does this need an ADR?** The change extends the shared query grammar —
-  ADR-016 territory; PLAN-0061's join/project grammar went through an ADR-016 (Q4)
-  amendment. **Recommendation: yes, a lightweight ADR-016 amendment** (grammar member +
-  the SD-2 classification), consistent with precedent. Cray decides; if yes, the ADR
-  merges before the implementation PR (CLAUDE.md §8).
+- 🔴 **OQ-1 (BLOCKS Step 7 / AC-7): how may Code record a supersession inside
+  `docs/plans/done/`?** _[**Re-posed at review (Code, s249)** — the question as first
+  drafted ("may Code edit `done/` at all?") was **too broad, and measurement narrowed
+  it**. It is still the worked negative example in
+  `.claude/skills/decision-lookup/SKILL.md:54,:130`, but that entry is about the absence
+  of a **general** ruling, not about the absence of practice.]_
+
+  **Measured s249 — the additive form already has six precedents, all merged:**
+  `git grep -ln 'Post-archival amendment' -- docs/plans/done/` returns **6 files**
+  (`0008`, `0035`, `0100`, `0102`, `0110`, `0112`). The most recent, `done/0110`'s
+  `## Post-archival amendment — 2026-08-22 (session 245)`, landed in PR #1257 at
+  `ee41b55` — **the commit currently deployed to production** — executing PLAN-0112
+  AC-7(ii), whose pass read was verified at s245.
+
+  🔴 **But the two forms are NOT equally precedented, and the distinction is the
+  question:**
+  - **Additive `## Post-archival amendment` section, appended, ruled history untouched**
+    → **6 precedents.** Sanctioned in practice.
+  - **Inline bracketed marker written into `done/` post-archive** → **zero precedents.**
+    `done/0112` carries exactly one inline marker (AC-7(i)'s `_[NARROWED (Cray, typed,
+    s246)...]_`), and `git log --follow` shows it was written in `2095e6e` — *the very
+    commit that archived the file*, i.e. while it was still an active PLAN. No commit
+    has ever added an inline marker to an already-archived PLAN.
+
+  **The tension this creates.** CLAUDE.md §6 and the `decision-lookup` skill's Step 4
+  both require correcting **in place**, "so a reader who stops at the old text is
+  stopped *by* it". An appended section alone does not stop that reader — but the
+  in-place form is exactly the one with no precedent in `done/`. Sites 7, 9 and 13 are
+  in-place-shaped; site 8 is additive-shaped.
+
+  **Recommendation: (b) — additive section carries the full record, PLUS a one-line
+  inline pointer at each superseded site** (e.g. `_[Superseded s249 by PLAN-0113 — see
+  §Post-archival amendment below]_`), with ruled history otherwise untouched verbatim.
+  It satisfies §6's stopped-by-it requirement with the smallest possible extension to a
+  convention that already exists, and it never rewrites a ruling. Alternatives:
+  **(a) additive section only** — precedent-perfect, but the archive's old text still
+  reads as live to anyone who stops there; **(c) touch `done/` not at all** — record the
+  supersessions in this PLAN and STATUS only, which leaves four archived artifacts
+  asserting a behaviour the code no longer has.
+
+  **Still Cray's call — a recommendation is not a ruling.** The PLAN gates Step 7 and
+  does not assume an answer.
+- **OQ-2 — RULED (Cray, typed, s249, 2026-08-23): YES, a lightweight ADR-016 amendment**
+  (the new grammar member + the SD-2 classification), consistent with the PLAN-0061
+  join/project precedent (ADR-016 Q4, Accepted 2026-07-09). Cray took the
+  recommendation. 🔴 **Consequence, binding: `CLAUDE.md` §8 requires the ADR to be
+  MERGED before the related implementation PR.** The ADR is therefore a prerequisite of
+  Step 1, not a parallel task — and authoring a new ADR is itself G2-gated for Code
+  (CLAUDE.md §6), so it routes Cowork/`plan-drafter` drafts → Code commits. Add it to
+  the execution order ahead of Step 1.
 - **OQ-3: should procurement's `emergency_sourcing_round` adopt `scope_by`?** Out of
   scope here; named so it is not lost. Its firing entity is an asset, so D2's
   field-name-in-YAML shape covers it without engine change.
