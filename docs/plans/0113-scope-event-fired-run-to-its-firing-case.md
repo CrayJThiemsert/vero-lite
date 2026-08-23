@@ -188,8 +188,9 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   (`demo_run_reset.py:179-205`). Witnessed RED: flip fleet to `when_absent: refuse` in
   a scratch copy → the seed's run refuses at intake and the state reads `CONSUMED`.
   **[offline/DB]**
-- [ ] **AC-7 — the governance record is complete** *(GATED on OQ-1 — do not start the
-  `done/` edits before Cray answers)*: the SD-4 reversal recorded beside the ruling
+- [ ] **AC-7 — the governance record is complete** *(OQ-1 RULED (b), s249 — UNBLOCKED;
+  every `done/` edit is an appended `## Post-archival amendment` section **plus** the
+  fixed one-line inline pointer at its site, nothing rewritten)*: the SD-4 reversal recorded beside the ruling
   with lineage intact; `done/0112` AC-7(i)'s narrowing and AC-2's s243 correction
   marked `superseded by new info` with pointers to this PLAN (never erased);
   `done/0110`'s post-archival amendment updated for the new population bound; STATUS's
@@ -298,12 +299,24 @@ population-claim comments.
 Boot the operate seed against a disposable DB; assert `PRISTINE`; the scratch
 `refuse`-flip RED.
 
-### Step 7 — Governance records (AC-7) — **blocked on OQ-1**
+### Step 7 — Governance records (AC-7) — **UNBLOCKED (OQ-1 RULED (b), Cray typed s249)**
 
-The four record sites, additive-only, lineage intact. If OQ-1 resolves against editing
-`done/`, fall back to recording the supersessions in THIS PLAN + STATUS and leaving
-pointers unwritten in `done/` — surface that outcome to Cray rather than improvising a
-third mechanism.
+The four record sites (blast radius 7, 8, 9, 13), each in the ruled two-part form: an
+appended `## Post-archival amendment — 2026-XX-XX (session NNN)` section carrying the
+full record, plus the fixed one-line inline pointer
+(`_[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_`) at the
+superseded site. **Ruled history is never rewritten** — the pointer is inserted beside
+the original words, which stay verbatim.
+
+Pass read, per site: (i) the appended section exists; (ii) the inline pointer exists at
+the superseded site; (iii) 🔴 **the original ruling's text is byte-identical to its
+pre-edit state** — diff each `done/` file against `git show HEAD~1:<path>` and confirm
+the ONLY changes are the appended section and the inserted pointer lines. That third
+check is the one that makes this ruling's forbidding half enforceable rather than
+aspirational; without it "nothing rewritten" is an intention, not a measurement.
+
+⚠️ Do not extend the pointer form or invent a variant per site — the string is fixed
+above precisely so a future `git grep` finds all four.
 
 ### Step 8 — Live verification on MS-S1 (AC-9) — **gated**
 
@@ -382,8 +395,31 @@ future reader must see what was rejected and why._
 
 ## Open questions — record, do not resolve here
 
-- 🔴 **OQ-1 (BLOCKS Step 7 / AC-7): how may Code record a supersession inside
-  `docs/plans/done/`?** _[**Re-posed at review (Code, s249)** — the question as first
+- ✅ **OQ-1 — RULED (Cray, typed, s249, 2026-08-23): (b)** — the additive
+  `## Post-archival amendment` section carries the full record, **plus a one-line inline
+  pointer at each superseded site**, with ruled history otherwise untouched verbatim.
+  Cray took the recommendation; the reasoning below is the PLAN's, not Cray's.
+  **Step 7 and AC-7 are UNBLOCKED.**
+
+  The authored form of the inline pointer, fixed here so all four sites match:
+
+  ```
+  _[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_
+  ```
+
+  🔴 **The binding half of this ruling is what it forbids:** the pointer is *additive at
+  its site* — one line inserted, nothing rewritten. A superseded ruling's own words are
+  never edited, reworded, or deleted; the reader still meets the original text, and is
+  stopped by the pointer sitting beside it. This is the smallest extension that satisfies
+  CLAUDE.md §6 / `decision-lookup` Step 4 ("a reader who stops at the old text is stopped
+  *by* it") without inventing a second mechanism.
+
+  ⚠️ **This ruling extends a convention that had zero precedent in this exact form**
+  (see the measurement below). It is scoped to *supersession pointers*, not to editing
+  `done/` generally — the broad question stays open, and a future reader should not read
+  this as licence for arbitrary archive edits.
+
+  _[**Re-posed at review (Code, s249)** — the question as first
   drafted ("may Code edit `done/` at all?") was **too broad, and measurement narrowed
   it**. It is still the worked negative example in
   `.claude/skills/decision-lookup/SKILL.md:54,:130`, but that entry is about the absence
