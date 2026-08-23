@@ -1284,3 +1284,62 @@ discharged the trim prerequisite.
 > clean · `ruff format --check .` 651 files · `mypy --strict` clean over 201.
 > Ten non-vacuity probes across the two PRs, every mutation on production code,
 > each source restored byte-identically from the scratchpad and sha256-verified.
+
+> **Session 245, 2026-08-22 (head_commit `a8c42b7` → `9d0c3ff`) — FOUR PRs
+> MERGED ([#1252](https://github.com/CrayJThiemsert/vero-lite/pull/1252), [#1253](https://github.com/CrayJThiemsert/vero-lite/pull/1253),
+> [#1254](https://github.com/CrayJThiemsert/vero-lite/pull/1254), [#1255](https://github.com/CrayJThiemsert/vero-lite/pull/1255)), 0 open.
+> PLAN-0112 Step 5 SHIPPED — the governable moment now reaches the published
+> visitor — and PLAN-0112 AC-2 through AC-6 are CLOSED. It stands at six ACs
+> of nine, with Steps 6 and 7 blocked on nothing.**
+>
+> 🔴 **THREE guards written this session passed while protecting nothing, and
+> every time the INSTRUMENT was wrong rather than the artifact.** A
+> client-side-comparison ban that ENUMERATED `Math\.min\s*\(` reported 7
+> passed with an ordinary `Math.min.apply(null, …)` planted in the shipped
+> view. A control-wiring guard reported 16 passed with the button un-wired:
+> `"acceptQuote(" in source` is satisfied by the function's own definition,
+> and `"ตกลงใบนี้" in source` by the SUBSTRING inside `'ยืนยันตกลงใบนี้'`. A bare
+> `grep -c` returned 0 for a retired clause that wraps across a line break —
+> and that was precisely the site the audit had missed. **Enumerating syntax
+> is not asserting a property, and a substring check over a file that also
+> contains longer strings asserts almost nothing.** That is what promoted
+> `CLAUDE.md` §8's witnessed-RED discipline from a PLAN stamp to a binding
+> rule ([#1253](https://github.com/CrayJThiemsert/vero-lite/pull/1253)).
+>
+> 🔴 **G-13's prose-site set was FOUR, not the two it named** — the two extra
+> sites are docstrings, invisible for exactly G-13's own stated reason: neither
+> *calls* the endpoint, each *asserts it is unreachable*. All four corrected
+> under G-13's own split, with the ฿-report half left TRUE and
+> `seed_settled_history_case` still necessary.
+>
+> 🔴 **A leftover process fooled TWO sessions for four days, and the recipe
+> that always worked is what hid it.** `git diff --stat`, pid 1843083, held
+> `.git/index.lock` intermittently since 2026-08-18; the prescribed recovery
+> (*verify HEAD → `pgrep -a git` → retry, never blind-delete*) succeeded every
+> time, so nobody looked further. Measured under Cray's typed go: `STAT=T`,
+> `WCHAN=do_signal_stop` — **SIGSTOP-suspended, never executing**, which
+> explains the un-finishing diff, the ignored `SIGTERM` and the four-day lock
+> together. **A workaround that always succeeds is how a root cause stays
+> invisible.**
+>
+> ✅ **Live evidence on the published profile, not a gate:** no persona → 401 ·
+> non-cheapest accept → 422 with the reason box scoped to that quote · reason
+> submitted → +1 run, `trigger: event`, `waiting_human` · cheapest accept →
+> no reason demanded. SD-2(b) observed live.
+>
+> ✅ **Gate on `9d0c3ff`: 4259 passed / 8 skipped** · bare `ruff check .` clean ·
+> `ruff format --check .` 652 files · `mypy --strict` clean over 201. Five
+> non-vacuity probes, every mutation on a production artifact, each restored
+> byte-identically from the scratchpad and sha256-verified. A post-merge
+> re-verification against 11 criteria fixed BEFORE the run returned
+> `VERDICT=STEP5_REVERIFY_PASSES`, 18/18 — recorded `confirmed — prior intact`
+> per §6, **not** a finding that anything was wrong.
+>
+> ⚠️ **Four UX chips were spawned BEFORE the commit existed and were stopped.**
+> Their findings survive in the PLAN's §Steps Step 5 (WCAG contrast 3.29:1 on
+> `.case-submit`; the accept button 4.59× smaller in area than the routine
+> add-quote button; `--fg`/`--panel` used in `views.css` and defined nowhere).
+> They must be re-spawned SEQUENTIALLY — `view-case.js` is in all four
+> write-sets.
+
+_[Rotated 2026-08-23 (s249 reconcile) out of `docs/STATUS.md` §Current Focus — window rule (4 most-recent sessions), not a cap overage.]_

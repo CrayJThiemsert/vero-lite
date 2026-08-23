@@ -395,3 +395,20 @@ encoded in `.claude/skills/fan-out-dispatch/SKILL.md`; s244's ฿ double-count l
 ⚠️ **This is the TRIMMED form of the row, and that is deliberate.** Its full pre-trim original was already archived verbatim by #1265 under the `## Rotated this fold — session 248 ... Recent Decisions compliance trim` heading earlier in this file — a *different* event. The fact is therefore preserved twice and lost zero times; the duplication is by design, not drift. The row's one sole-carried fact (*ancestry is not content*) was rehomed to `.claude/skills/git-workflow/SKILL.md` before either move, so nothing here is the last copy of anything.
 
 | 2026-08-19 | **s240 — THREE PRs (#1225–#1227): PLAN-0107 AC-11 CLOSED; PLAN-0111 drafted, six SDs ruled (Cray).** 🔴 **A `git merge` reported success and silently reverted #1225: ancestry is not content** (REHOMED s248). 🔴 **A probe proved the wrong thing** — the `422` assert sat before the money read. 🔴 **Latest-wins means a credit note REPLACES the invoice** (`20,000.00` → `-15,000.00`); SD-E forces SD-A to its own `repair_case_credit_note` table. | `8fd3848` / [#1226](https://github.com/CrayJThiemsert/vero-lite/pull/1226) / `.claude/skills/git-workflow/SKILL.md` / `docs/plans/0111-*.md` |
+
+## Rotated this reconcile — session 249 (2026-08-23), Recent Decisions 10-row window
+
+### Recent Decisions row — s241, evicted by the 10-row window
+
+⚠️ **This is the TRIMMED form of the row, and that is deliberate.** Its full pre-trim
+original (749 B) was already archived verbatim earlier in this file by #1265 under the R2
+compliance fold. What follows is the 600 B post-trim form that lived in `docs/STATUS.md`
+until the s249 reconcile evicted it by the 10-row window. **Both forms are kept on
+purpose** — the pre-trim one is the original record, this one is what the file actually
+said at the moment it rotated. So a search for this row will match more than once in this
+file and none of the matches is a duplicate; the same pattern already holds for s240
+above. _(This note deliberately does not quote the row opening verbatim: a note that
+embeds the string it is counting changes that count — measured here at s249, where an
+earlier draft of this very paragraph made its own tally wrong.)_
+
+| 2026-08-21 | **s241 — FIVE PRs (#1229, #1231–#1234): the backlog measured as RETRIEVAL debt, not technical debt, so the session shipped two pre-commit guards.** 🔴 **Both caught real defects before merge**, the retired-claim guard blocking its own first commit. 🔴 **The wrong fix was to narrow the retired text until the quote stopped matching** — editing the artifact to satisfy the instrument. ⚠️ **A subagent that never returned was cited; two rows RETRACTED.** | `6a2e34c` / [#1234](https://github.com/CrayJThiemsert/vero-lite/pull/1234) / `docs/conventions/retired-claims.md` |
