@@ -412,3 +412,57 @@ embeds the string it is counting changes that count — measured here at s249, w
 earlier draft of this very paragraph made its own tally wrong.)_
 
 | 2026-08-21 | **s241 — FIVE PRs (#1229, #1231–#1234): the backlog measured as RETRIEVAL debt, not technical debt, so the session shipped two pre-commit guards.** 🔴 **Both caught real defects before merge**, the retired-claim guard blocking its own first commit. 🔴 **The wrong fix was to narrow the retired text until the quote stopped matching** — editing the artifact to satisfy the instrument. ⚠️ **A subagent that never returned was cited; two rows RETRACTED.** | `6a2e34c` / [#1234](https://github.com/CrayJThiemsert/vero-lite/pull/1234) / `docs/conventions/retired-claims.md` |
+
+
+## Rotated this reconcile — session 250 (2026-08-23), In-Flight Discussions cap + rotation-ledger cap (R2, Cray s250)
+
+Rotated out of `docs/STATUS.md` while enacting the **s250 R2 extension** (Cray, typed):
+*In-Flight Discussions* is capped (pointer ≤ ~600 chars · OPEN-only · ≤ 6 entries) and the
+Current-Focus **rotation ledger** keeps only the rotations of the four sessions in the
+current window. Policy: `docs/runbooks/memory-architecture.md` §"STATUS.md Rotation
+Policy" → R2; the caps also reached their enforcer, `.claude/agents/status-scribe.md`.
+
+⚠️ **The R2 carve-out was CHECKED before rotating, not assumed.** Each entry below was
+verified to have a tracked home first — the archived PLAN it points at, on disk, by grep:
+`docs/plans/done/0096-*.md` (RR-1 ×2, `latest_per` ×4), `done/0092-*.md:64-66` (the
+Sonnet-backend option, recorded there as deferred by Cray's A′ pick, with its API-key /
+org fail-closed probe unrun), `done/0036-*.md:74` (the procurement pitch framing),
+`done/0088-*.md:272/554/1069` (the AC-wording handling), and all eight named PLANs present
+in `docs/plans/done/`. ⚠️ **Two live remainders were CARRIED first, not after** — RR-1 and
+`latest_per` now sit in the PLAN-0096 Active-TODO entry in `docs/STATUS.md`, because
+Active TODOs did not surface either of them and the entry below was their only live home.
+
+_(This note deliberately does not quote any entry's opening verbatim — a note that embeds
+the string it is counting changes that count.)_
+
+### Three In-Flight entries that announced their own closure — rotated by the OPEN-only rule
+
+- **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193); FOUR RESIDUAL RISKS OUTLIVE IT** (which is why this entry is a pointer and not a deletion): **RR-1** (per-baht approver→case attribution is INFERENCE, not data — silently wrong the day two approvers share a gate resolution), **RR-3** (concurrency-race coverage — both named gaps CLOSED s195 by #995), **ศูนย์ต้นทุน ships EMPTY** (partner granularity unanswered — also an open Active TODO below), and **`latest_per`** still collapsing two open cases on one truck (**Cray typed (ค) defer** — the older case reports as *ungoverned*, indistinguishable from a governance failure). Read the archived PLAN, not a restatement: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`).
+- **COMPLETE-and-ARCHIVED, no live remainder here — read the archived PLAN, never a restatement:** **PLAN-0095** (Docker image boot, s177 — its OQ-1 hosting model CLOSED by ADR-0035) · **PLAN-0094** (L1 loop-detect restructure, s183 — its OQ-4 is ANSWERED; see the PLAN-0102 row in Active TODOs) · **PLAN-0093** (LLM-arm degrade disclosure, s172 — **no follow-on owed**) · **PLAN-0091** (narrative→vertical scaffolder, s168 — two named follow-ons, **neither scheduled**, both greenfield/human-call) · **PLAN-0088** (cross-run read substrate + the four run-insight readers, s171 — **three AC-WORDING debts, none a code defect**) · **PLAN-0036 + PLAN-0037** (Fastenal procurement vertical Stage 1 + the Stage-2 facet retrofit, s76 — `Status: Done`; demo target = Fastenal Thailand, **pitch = asset-ontology-triggered governed sourcing**, NOT the commoditized "governed"/"cross-vertical" claims). Each record is in `docs/plans/done/`; the s168→s193 retrospectives these bullets used to carry are rotated to `docs/status-archive/`.
+- **The autonomy fork — Stop-hook misfires: CLOSED s167.** Resolved by **option A′** (Cray, typed) and shipped the same session — the `dispatch` verdict is a **suggestion, not an order** (#870/#871). Final ledger: **14 misfires / 0 valid fires**. **The whole argument is settled history in `docs/plans/done/0092-stop-hook-dispatch-arm-demotion-to-suggestion.md` — do not restate it here.** Live remainder: only **option (e)** (flip the classifier backend from local Ollama `gpt-oss:20b` to Sonnet), **deferred**, its API-key/org fail-closed probe unrun.
+
+### The one surviving In-Flight entry that exceeded the pointer cap — full pre-trim original
+
+The post-trim 594-char form stands in `docs/STATUS.md`; this is the 858-char original, kept
+because R4 requires the full original before a trim lands. A search will therefore match
+the question in both places and neither match is a duplicate.
+
+- **OPEN QUESTION for Cray — does a skill's registry table *bind*? (raised by s210's closing notice, recorded here s209 cont.; Code's observation, NOT a ruling and NOT a defect.)** The notice asserted that the four-work-stream registry table in `.claude/skills/stream-status/SKILL.md` (#1062) is **canonical**, and that a carrier-artifact change must update it **in the same PR**. The registry as *reference* is unobjectionable; the **same-PR obligation** is the part that would have to live in `CLAUDE.md` or an ADR to bind — `CLAUDE.md` §1 places `.claude/skills/` at **Tier 2.6, derived, carrying no independent precedence (ADR-0017 D6)**, and §4 draws the bright line that *"a binding rule never moves into a skill (a skill that fails to trigger would silently drop it)"*. Cray's call: promote the obligation into a canonical, or keep the table advisory.
+
+### Current-Focus rotation ledger — the pre-s246 half
+
+Rotations recorded at the s241–s245 reconciles, covering the session-233 → session-242
+blocks. Each block it describes already lives in
+[`2026-h1d-current-focus.md`](2026-h1d-current-focus.md); this is the ledger text that
+explained them. The s246–s249 half stays in `docs/STATUS.md`.
+
+_[Current-Focus rotation ledger. The sessions-233–234 and 235/236 blocks rotated
+to `docs/status-archive/2026-h1d-current-focus.md` at earlier reconciles; the
+**sessions-237–238 and session-239** blocks rotated there this reconcile —
+**one session below the four-session window, deliberately**, because the s241
+Active-TODO corrections had to land without growing this file (SD-1 in the s241
+reconcile report). Rotated with them: s237's video-rulings carried risk, since
+DISCHARGED s239 to `docs/strategy/public/intro-video-production-rulings.md`, and
+s239's headline — eight PRs, two host-state deploys, and *"a summary that is
+ACCURATE about what it cites still shrinks"*; s239's two host records survive
+tracked at `docs/logs/2026-08-18-s239-*` and `docs/logs/2026-08-19-s239-*`. The **session-240** block rotated there at the s242 reconcile — it measured ~5,800–5,900 B against R2's 4,096 B per-block cap, and rotating it is the runbook's own prescribed response to STATUS sitting over R1's soft target (fix the voice, do not raise the ceiling). Its live residue is not lost: the three s240 items that were open when it rotated (the font-size decision gating the beat-4 geometry re-measure, the unmeasured host-side run-list backlog badge, and the three unnamed Advisory-proposal candidates) are carried in §Active TODOs rather than left only in the archive. The **session-241** block rotated there at the s244 reconcile, holding the window at four; its retired-claim marker travelled with the quote it labels, so the guard stays satisfied on both surfaces. The **session-242** block rotated there at THIS (s245) reconcile — again one session below the four-session window and again deliberately: STATUS stood at 61,636 B, 12,484 B over R1's soft target, and a new block could not be written without either this rotation or a trim that would delete facts. Its live remainders were carried before the move, not after — PLAN-0110 SD-E's reversal and ADR-0035's L1 re-read each hold their own Active-TODO entry, and PLAN-0107 AC-10 is recorded in that PLAN. ]_
