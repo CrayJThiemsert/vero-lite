@@ -402,12 +402,20 @@ class Settings(BaseSettings):
     oct_demo_seed_operate: bool = Field(
         default=False,
         description=(
-            "When True (env OCT_DEMO_SEED_OPERATE) AND the active vertical is "
-            "procurement, seed ONE waiting_human 'emergency_sourcing_round' run at "
-            "startup so the Control-leg operate demo (View H) has a real gate to "
-            "act on (PLAN-0054 Step 6). Idempotent (a fixed demo run_id, skipped if "
-            "present) + fail-soft (a seed error logs, never blocks boot). Off by "
-            "default so no non-demo startup writes to the DB."
+            "When True (env OCT_DEMO_SEED_OPERATE), seed the active vertical's "
+            "operate demo at startup so its Monitor opens with a real gate to act "
+            "on. TWO branches, selected by vertical: fleet_maintenance seeds a "
+            "waiting_human repair-approval run plus case-list and settled-case "
+            "history (PLAN-0103 Step 7, SD-5(a)); procurement seeds ONE "
+            "waiting_human 'emergency_sourcing_round' run 'run-operate-demo' for "
+            "the Control-leg demo at View H (PLAN-0054 Step 6c). Both are "
+            "idempotent (a fixed demo run_id, skipped if present) + fail-soft (a "
+            "seed error logs, never blocks boot). Off by default so no non-demo "
+            "startup writes to the DB. NOTE the published profiles pin "
+            "fleet_maintenance true and procurement/energy false "
+            "(deploy/published/*/published.env), so in production this flag drives "
+            "the FLEET branch — naming only procurement, as this text did until "
+            "session 248, points a reader at the branch that is switched off."
         ),
     )
     case_retention_enabled: bool = Field(
