@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`). **Amendment (2026-07-09)** → join/projection grammar for multi-read query steps (Q4) (**Accepted** 2026-07-09 — Cray-ratified, session 115; SD-A Hybrid surface / SD-B two-shape v1 scope / SD-C co-exist + parity migration; OQ-1 = typed `StepInput` `join`/`project` construct, OQ-2 = no repair loop in v1, OQ-3 = join+projection only (computation stays downstream/seed), OQ-4 = warn-first override validation — all as-recommended). **Amendment (2026-07-11)** → per-entity `threshold_field` on evaluate steps (same-row v1) (**Accepted** 2026-07-11 — Cray-ratified after Code R2, the TF-1 at-most-one validator defect was the R2 catch; OQ-1..OQ-4 ratified as-recommended). **Amendment (2026-07-12)** → FK-parent-column `threshold_field`, the join extension (per-entity bands, v2) (**Accepted** 2026-07-12 — Cray-ratified, typed via AskUserQuestion, session 121, after Code R2 with no R2 defect; SD-1..SD-5 ratified as-recommended, SD-4 explicitly narrowed to a supply_chain-only build scope). _[Both backfilled s249 (2026-08-23): shipped Accepted into the body but were never appended to this running list. Index-only correction — neither amendment's own text was touched, and nothing is re-decided.]_ **Amendment (2026-08-23)** → trigger-scoped reads for event-fired query steps (`scope_by` + `when_absent`) (**Proposed** — awaiting Cray ratification; direction Cray-typed s249, 2026-08-23: the PLAN-0112 SD-4 reversal + the D1 / D2 / SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`). **Amendment (2026-07-09)** → join/projection grammar for multi-read query steps (Q4) (**Accepted** 2026-07-09 — Cray-ratified, session 115; SD-A Hybrid surface / SD-B two-shape v1 scope / SD-C co-exist + parity migration; OQ-1 = typed `StepInput` `join`/`project` construct, OQ-2 = no repair loop in v1, OQ-3 = join+projection only (computation stays downstream/seed), OQ-4 = warn-first override validation — all as-recommended). **Amendment (2026-07-11)** → per-entity `threshold_field` on evaluate steps (same-row v1) (**Accepted** 2026-07-11 — Cray-ratified after Code R2, the TF-1 at-most-one validator defect was the R2 catch; OQ-1..OQ-4 ratified as-recommended). **Amendment (2026-07-12)** → FK-parent-column `threshold_field`, the join extension (per-entity bands, v2) (**Accepted** 2026-07-12 — Cray-ratified, typed via AskUserQuestion, session 121, after Code R2 with no R2 defect; SD-1..SD-5 ratified as-recommended, SD-4 explicitly narrowed to a supply_chain-only build scope). _[Both backfilled s249 (2026-08-23): shipped Accepted into the body but were never appended to this running list. Index-only correction — neither amendment's own text was touched, and nothing is re-decided.]_ **Amendment (2026-08-23)** → trigger-scoped reads for event-fired query steps (`scope_by` + `when_absent`) (**Accepted** 2026-08-23 — Cray-ratified, typed, session 249; direction Cray-typed s249: the PLAN-0112 SD-4 reversal + the D1 / D2 / SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113; this amendment's OQ-1..OQ-3 all resolved as-recommended).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -2110,12 +2110,13 @@ now reads as the ratified disposition):
 
 ### Amendment (2026-08-23): trigger-scoped reads for event-fired query steps (scope_by)
 
-> **Status:** **Proposed** (awaiting Cray ratification — the *direction* is
-> already Cray-typed, s249, 2026-08-23: the PLAN-0112 SD-4 reversal to
-> scope-to-firing-case, classified `superseded by new info`, plus the D1 / D2 /
-> SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113
+> **Status:** **Accepted** (Cray-ratified, Proposed → Accepted, 2026-08-23 /
+> session 249, typed — OQ-1..OQ-3 all resolved as-recommended). The
+> *direction* was already Cray-typed, s249, 2026-08-23: the PLAN-0112 SD-4
+> reversal to scope-to-firing-case, classified `superseded by new info`, plus
+> the D1 / D2 / SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113
 > (`docs/plans/0113-scope-event-fired-run-to-its-firing-case.md`); this
-> amendment renders those rulings as spec surface). **Date:** 2026-08-23.
+> amendment renders those rulings as spec surface. **Date:** 2026-08-23.
 > **Deciders:** Jirachai Thiemsert (founder). **Amends:** D2 (the `StepInput`
 > read grammar) — **extends, does not reverse or renumber**; mirrors the
 > **D2 Amendment (2026-06-25)** typed-`facet:`, the **D2 + D3 Amendment
@@ -2337,22 +2338,33 @@ deliberately — and only — that vertical's hash.
 #### Open Questions (amendment — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
 
 The direction is Cray-typed (SD-4 reversal, D1, D2, SD-1, SD-2 — rulings, not
-OQs). Three boundary confirmations are genuinely open at Proposed:
+OQs). The three boundary confirmations below were surfaced genuinely open at
+Proposed and are now **RESOLVED — all three as-recommended, Cray-ratified
+2026-08-23 (session 249, typed)**; each OQ keeps its deliberation text as the
+record:
 
-- **OQ-1 (closed `when_absent` vocabulary):** v1 ships exactly two members —
+- **OQ-1 (closed `when_absent` vocabulary) — RESOLVED (Cray-ratified
+  2026-08-23, session 249): closed at two members (`sweep | refuse`); a third
+  posture is a future amendment under the catalog-growth convention.**
+  *Surfaced as:* v1 ships exactly two members —
   `sweep | refuse` — as a closed enum. *Recommendation:* **confirm closed at
   two** — no third posture (e.g. warn-then-sweep) without a future amendment
   under the catalog-growth convention; a warn variant is provenance's job
   (every applied scope is counted), not a third policy. *Why Cray's call:* it
   fixes the authoring contract every future vertical inherits.
-- **OQ-2 (join-path scope target):** in the join path, `scope_by` scopes the
+- **OQ-2 (join-path scope target) — RESOLVED (Cray-ratified 2026-08-23,
+  session 249): base read only in v1; a joined side keeps its per-join static
+  `where`.** *Surfaced as:* in the join path, `scope_by` scopes the
   **base read only** (SB-4's attachment point). A joined side gets no scope in
   v1 — its narrowing remains the per-join static `where`. *Recommendation:*
   **confirm base-only** — no shipped shape needs a scoped joined side, and
   adding one later is additive surface under this same amendment discipline.
   *Why Cray's call:* it bounds what the grammar member means inside the
   Q4-pinned pipeline.
-- **OQ-3 (provenance as a decided property):** SB-4 REQUIRES a counted
+- **OQ-3 (provenance as a decided property) — RESOLVED (Cray-ratified
+  2026-08-23, session 249): contractual — every applied scope and every
+  refusal records a counted provenance entry, never best-effort.**
+  *Surfaced as:* SB-4 REQUIRES a counted
   provenance entry for every applied scope and every refusal — "never a silent
   narrowing" is amendment-level contract, with only the literal entry shape
   left to the build. *Recommendation:* **confirm required** — a scoped read
