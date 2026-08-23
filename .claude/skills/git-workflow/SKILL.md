@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, recover a corrupted PR body, and commit from a Windows-created (UNC-gitdir) worktree where plain `wsl bash -lc "git …"` fails outright. Use whenever committing, pushing, or creating/editing a PR, issue, or release — and whenever a commit fails with `fatal: not a git repository: //wsl.localhost/...` or `` `pre-commit` not found ``. Encodes Lessons #4/#10/#11.
+description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, recover a corrupted PR body, and commit from a Windows-created (UNC-gitdir) worktree where plain `wsl bash -lc "git …"` fails outright. Use whenever committing, pushing, merging, or creating/editing a PR, issue, or release — whenever a commit fails with `fatal: not a git repository: //wsl.localhost/...` or `` `pre-commit` not found ``, and whenever about to trust that a `git merge` landed its content (a merge can report success while dropping the incoming change, with `merge-base --is-ancestor` still answering YES). Encodes Lessons #4/#10/#11.
 ---
 
 # Git workflow mechanics (vero-lite)
@@ -48,6 +48,34 @@ and silently corrupt the submitted markdown body (Lesson #11).
 
 *Why:* a chained command denied as a whole creates rework; auto-mode's classifier
 guards direct push to the default branch unconditionally (Lesson #10).
+
+## Verify a merge by content, not by ancestry
+
+A `git merge` can report success and still hand you a tree that **dropped the
+incoming change**. Measured session 240 merging `origin/main` before #1226:
+
+1. The merge first died with `Unable to write index` — although the two sides
+   touched **disjoint** files.
+2. `git status` then read *"All conflicts fixed but you are still merging"*,
+   with **no `index.lock` on disk**.
+3. Concluding it produced a merge commit whose tree had silently dropped
+   **all** of #1225's `DEPLOY.md` change.
+4. `git merge-base --is-ancestor origin/main HEAD` answered **YES** throughout.
+
+**Ancestry is not content.** Reachability says the commit sits in your history;
+it never says its lines are in your tree. So check the tree, not the graph —
+grep the merged tree for a string only the incoming side introduces:
+
+```bash
+git show HEAD:path/to/file | grep -F 'a string only the incoming side adds'
+```
+
+**Recovery:** `git reset --hard` to your own pre-merge commit, then re-merge.
+The second attempt reported the expected `53 insertions(+)` — a diffstat that
+matches the incoming change is the positive signal the first merge never gave.
+
+*Measured session 240 (2026-08-19), #1225 / #1226. Rehomed here session 248
+under the R2 carve-out: this was tracked nowhere outside `docs/STATUS.md`.*
 
 ## Toolchain note — which git, and from where
 
