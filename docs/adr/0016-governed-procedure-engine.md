@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`). **Amendment (2026-07-09)** → join/projection grammar for multi-read query steps (Q4) (**Accepted** 2026-07-09 — Cray-ratified, session 115; SD-A Hybrid surface / SD-B two-shape v1 scope / SD-C co-exist + parity migration; OQ-1 = typed `StepInput` `join`/`project` construct, OQ-2 = no repair loop in v1, OQ-3 = join+projection only (computation stays downstream/seed), OQ-4 = warn-first override validation — all as-recommended).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`). **Amendment (2026-07-09)** → join/projection grammar for multi-read query steps (Q4) (**Accepted** 2026-07-09 — Cray-ratified, session 115; SD-A Hybrid surface / SD-B two-shape v1 scope / SD-C co-exist + parity migration; OQ-1 = typed `StepInput` `join`/`project` construct, OQ-2 = no repair loop in v1, OQ-3 = join+projection only (computation stays downstream/seed), OQ-4 = warn-first override validation — all as-recommended). **Amendment (2026-07-11)** → per-entity `threshold_field` on evaluate steps (same-row v1) (**Accepted** 2026-07-11 — Cray-ratified after Code R2, the TF-1 at-most-one validator defect was the R2 catch; OQ-1..OQ-4 ratified as-recommended). **Amendment (2026-07-12)** → FK-parent-column `threshold_field`, the join extension (per-entity bands, v2) (**Accepted** 2026-07-12 — Cray-ratified, typed via AskUserQuestion, session 121, after Code R2 with no R2 defect; SD-1..SD-5 ratified as-recommended, SD-4 explicitly narrowed to a supply_chain-only build scope). _[Both backfilled s249 (2026-08-23): shipped Accepted into the body but were never appended to this running list. Index-only correction — neither amendment's own text was touched, and nothing is re-decided.]_ **Amendment (2026-08-23)** → trigger-scoped reads for event-fired query steps (`scope_by` + `when_absent`) (**Accepted** 2026-08-23 — Cray-ratified, typed, session 249; direction Cray-typed s249: the PLAN-0112 SD-4 reversal + the D1 / D2 / SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113; this amendment's OQ-1..OQ-3 all resolved as-recommended).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -2107,6 +2107,312 @@ now reads as the ratified disposition):
 - ADR-006 (Rule-of-Three) — MET at N=3 for the FK-parent shape; ADR-0019 /
   ADR-010 IN-3 — the determinism invariant carried; ADR-008 — the ontology
   grammar untouched by a plain new property.
+
+### Amendment (2026-08-23): trigger-scoped reads for event-fired query steps (scope_by)
+
+> **Status:** **Accepted** (Cray-ratified, Proposed → Accepted, 2026-08-23 /
+> session 249, typed — OQ-1..OQ-3 all resolved as-recommended). The
+> *direction* was already Cray-typed, s249, 2026-08-23: the PLAN-0112 SD-4
+> reversal to scope-to-firing-case, classified `superseded by new info`, plus
+> the D1 / D2 / SD-1 / SD-2 / OQ-2 rulings recorded in PLAN-0113
+> (`docs/plans/0113-scope-event-fired-run-to-its-firing-case.md`); this
+> amendment renders those rulings as spec surface. **Date:** 2026-08-23.
+> **Deciders:** Jirachai Thiemsert (founder). **Amends:** D2 (the `StepInput`
+> read grammar) — **extends, does not reverse or renumber**; mirrors the
+> **D2 Amendment (2026-06-25)** typed-`facet:`, the **D2 + D3 Amendment
+> (2026-07-01)** read-binding (Q3), the **D2 + D3 Amendment (2026-07-05)**
+> service-principal, the **Amendment (2026-07-09)** join/projection (Q4), and
+> the **Amendment (2026-07-11 / 2026-07-12)** `threshold_field` in-place
+> precedents. Required by the L-4 tripwire — "no spec / grammar change without
+> an ADR-016 amendment" (cited in-file at `:1391`, `:1807`, `:1974`): `scope_by`
+> / `when_absent` are new `extra="forbid"` keys, exactly the surface the
+> tripwire exists for. CLAUDE.md §8 requires this amendment MERGED before the
+> implementation PR — it is PLAN-0113's Step 0b prerequisite, not parallel work.
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Code —
+> the session-249 verified fact pack + PLAN-0113, whose direction forks were
+> adjudicated by Cray (typed, s249): the SD-4 reversal, D1 (per-step
+> absent-scope policy), D2 (YAML names the field), SD-1 (`when_absent`
+> required-explicit), SD-2 (mirror `join`/`project` governance classification),
+> OQ-2 (yes, this amendment). Drafter = the in-harness `plan-drafter` subagent
+> (ADR-013 D1 phased authoring / ADR-009 D1 interim authoring); every
+> `file:line` cited below was re-read against the tree at `857767c` during
+> drafting. Independent reviewers = Code R2 (commits per ADR-009 D2) + Cray at
+> ratification (Proposed → Accepted). Drafter ≠ ratifier — separation
+> **intact**. The genuinely-open boundary confirmations are surfaced as
+> OQ-1..OQ-3 below — none silently resolved by the drafter.
+
+#### Context
+
+**The behaviour being scoped.** An event-fired run's query step today reads
+fleet-wide: fleet's `governed_repair_approval` (`trigger: event`,
+`verticals/fleet_maintenance/procedures.yaml:144`) sweeps every truck's
+readings, so a visitor who accepts one quote gets a gate proposing every
+breaching case — 3 candidates, of which one is theirs. PLAN-0112 SD-4 ruled
+(a), accept the multi-case gate; **Cray has typed the reversal (s249): re-scope
+to its rejected (b) — scope the run to the firing case** — classified
+`superseded by new info`, NOT `was an error` ((b) genuinely was outside
+PLAN-0112's scope; the full lineage record is PLAN-0113's).
+
+**The value to scope on is already stamped — and never read.**
+`trigger_context["entity_ids"]` is engine-stamped on every event-fired run:
+fleet stamps `[case_id, quote_id]` (`services/api/routers/cases.py:148`;
+rationale `:126-131`), procurement stamps `[asset_id]`
+(`verticals/procurement/hero_demo/run.py:544`). It reaches `RunContext`
+(`services/engine/procedures/orchestrator.py:898,905-912`) — but
+`services/engine/procedures/query_step.py` contains **ZERO** references to
+`trigger_context` (grounded negative, re-verified s249). The missing wire is
+the whole gap. **The two event verticals stamp different KINDS of entity — a
+case vs an asset — which is the whole justification for D2's
+field-name-in-YAML shape: the engine must never learn the token `case_id`.**
+
+**The grammar today narrows on static literals only.** `StepInput.where`
+(`services/engine/procedures/spec.py:361-363`), the per-join `JoinSpec.where`
+(`spec.py:265-268`), one shared `matches_where` predicate (LOCKED-3,
+`spec.py:241-242`). Nothing in the read grammar can reference a run-time
+trigger value. (There is no `QueryInput` class — the read grammar's one
+cohesive home is `StepInput`, the Q4 amendment's ratified OQ-1 placement; this
+amendment keeps it there.)
+
+**Why `when_absent` is load-bearing, not decoration.** Only 2 of the 13
+procedures across the 6 shipped verticals declare `trigger: event`
+(`verticals/fleet_maintenance/procedures.yaml:144`,
+`verticals/procurement/procedures.yaml:861`); the other 11 are
+`manual`/`schedule` with no firing entity at all. And the seeded fleet demo
+run fires with **no entity ids BY DESIGN**
+(`verticals/fleet_maintenance/operate_seed.py:266-278` — the breaching truck
+"is not knowable at trigger time"; it is chosen by the declared query DURING
+the run). A fail-closed absent-scope default would make `DEMO-STATE: PRISTINE`
+unreachable (`services/db/demo_run_reset.py:179-205` requires the seeded run
+parked `waiting_human` at `approve` with a non-empty `output_set`). The absent
+case is a real, shipped population — its policy must be authored, per step.
+
+#### Change surface (the build contract — this amendment DECIDES; a follow-up build PLAN builds)
+
+PLAN-0113 owns the build. This amendment decides SB-1..SB-6:
+
+**SB-1 — the grammar member.** `StepInput` gains a typed `scope_by` construct:
+
+```yaml
+# ILLUSTRATIVE authoring shape — the build PLAN owns the literal schema.
+input:
+  reads: [OperationalEvent]
+  scope_by: { field: case_id, from: trigger.entity_ids }
+  when_absent: sweep
+```
+
+`from` is a **closed `Literal["trigger.entity_ids"]` in v1** — the only
+source. Match semantics: keep a base-read row iff `row[field]` is a **string
+member of** `trigger_context["entity_ids"]` (a list — fleet's carries the
+quote id too, which matches no `case_id` value and is harmless). A row missing
+the field, or whose value is not a string in the list, never matches —
+mirroring `matches_where`'s non-mapping posture (`spec.py:328-337`). The YAML
+names the field; the engine resolves membership and **never learns any
+vertical's field token** (D2, Cray-typed s249).
+
+**SB-2 — the `when_absent` companion, required-explicit.** `when_absent:
+sweep | refuse`, declared **per-step in the YAML** (D1, Cray-typed s249 — NOT
+an engine-wide policy), and **REQUIRED whenever `scope_by` is present**: a
+`scope_by` without an explicit `when_absent` refuses at load (SD-1, RULED
+s249). "Absent" = no usable `entity_ids` list on the run's trigger context
+(missing key, non-list, or empty). `sweep` → the read behaves byte-identically
+to today's unscoped read. `refuse` → a **typed refusal** at the step, never a
+silent empty set (the Q4 `ReadRefusal` additive-member precedent; the literal
+enum member is the build's). Absent-vs-no-match are distinct: scope present
+and applied with zero surviving rows is an empty result, not a refusal —
+`when_absent` fires only when there is nothing to scope on.
+
+**SB-3 — load-gate posture.** `scope_by` is valid only on a `query` step that
+declares `reads`. A `scope_by` on a non-query step, or without `reads`, or
+without `when_absent`, is a **load-gate refusal** — the spec fails loudly at
+`load_procedures`, never mid-run (the D2 fail-loud posture, carried).
+
+**SB-4 — attachment point, pinned here (not left to the build).** Scope
+applies to the **base read's rows, post-`where`, pre-join, pre-`latest_per`**:
+single-read path alongside the existing `matches_where` narrowing
+(`query_step.py:434-439`); join path with the base `where` (`query_step.py:486-491`),
+ahead of the per-join `where` / joins / `latest_per` (`:509-510`) in the
+Q4-pinned pipeline order (`:460-470`). The order is semantics, not
+implementation detail: applied *before* `latest_per` the result is "the firing
+case's own latest reading" (1 row); applied *after*, it is "the fleet's latest
+reading iff it happens to be the firing case's" (possibly 0 rows) — one
+proposal at the gate vs none. `plan_read` stays pure: the compiled plan
+carries the *declaration*; the executor resolves it against
+`ctx.trigger_context` at execute time. Every applied scope (and every
+refusal) records a counted provenance entry — **never a silent narrowing**
+(shape = build detail; the property is decided, see OQ-3).
+
+**SB-5 — governance classification: mirror `join`/`project` EXACTLY (SD-2,
+RULED s249).** `scope_by` and `when_absent` are **H-governed values the
+generator may never emit — stripped at lift, pinned in the governance snapshot
+when supplied** (the stated `join`/`project` posture, `spec.py:346-351`; they
+join `STEP_GOVERNANCE_FIELDS` + `build_governance_snapshot`). Scope changes
+**what population reaches a gate** — that is governance behaviour: the pin
+records whether a run was approved scoped or sweeping, and a mid-flight
+grammar edit fails CLOSED at resume (the Q4 / PLAN-0048 SD-5(b) precedent).
+
+**SB-6 — only-when-supplied serialization (ADR-0034 D6).** Both fields are
+**dropped from the dump when absent** — the authored precedent is
+`emergency_waiver.ratification_window_days`
+(`verticals/fleet_maintenance/procedures.yaml:348-357`). An always-present
+field would move **every** vertical's governance config hash and make every
+in-flight run fail closed on pin mismatch; only-when-supplied keeps the five
+non-authoring verticals byte-identical, and authoring the clause moves
+deliberately — and only — that vertical's hash.
+
+#### Alternatives considered (amendment-scope)
+
+- **Engine-wide absent-scope policy** (one global default instead of
+  per-step). **Rejected — D1, Cray-typed:** the shipped population needs
+  opposite answers (the seeded demo run MUST sweep; a strict future author
+  wants refuse), and a global default is exactly the fail-open/fail-closed
+  ambiguity the per-step declaration removes.
+- **Defaulted `when_absent`** (omission picks `sweep` or `refuse`).
+  **Rejected — SD-1, RULED:** default `sweep` is fail-open (worst); default
+  `refuse` silently breaks any `sweep`-intending author and would have killed
+  the seeded demo had fleet omitted the clause. Required-explicit makes the
+  policy authored, visible spec surface — the project already retired one
+  fail-open default at this same load gate (the PLAN-0096 `compliance`
+  retirement).
+- **Hard-code the scoping field in the engine** (the engine learns
+  `case_id`). **Rejected — D2, Cray-typed:** procurement's firing entity is an
+  asset, not a case; 11 of 13 procedures have no firing entity at all. The
+  field name is vertical knowledge; the YAML declares it.
+- **Overload `where` with a dynamic value source** (e.g. a template token
+  resolving to trigger context). **Rejected:** `where` is the static-literal
+  field-equality filter (LOCKED-3 posture) — making its values potentially
+  dynamic would poison the declared==dispatched reading of every existing
+  `where`; a separate typed member keeps `extra="forbid"` honest and the
+  dynamic surface explicitly enumerable.
+- **Push the scope down to the adapter** (filter at fetch). **Rejected:**
+  narrowing is engine-side post-fetch by decision (LOCKED-3, carried by the Q4
+  amendment); the `DataAdapter` contract is untouched surface.
+- **Classify as plain read config, not H-governed.** **Rejected — SD-2,
+  RULED:** nothing would pin the scoped-vs-sweeping distinction a run was
+  approved under; scope determines the gate's population, which is precisely
+  what the governance snapshot exists to pin.
+- **Per-case procedure authoring** (SD-4(b)'s other rendering — one procedure
+  per case). **Rejected:** unbounded, unauthorable, and un-governed; the
+  grammar member is the declared, load-gated form.
+- **A new standalone ADR.** **Rejected:** this directly extends the D2
+  `StepInput` read grammar under `extra="forbid"` — the in-place amendment
+  precedent (2026-06-25 → 2026-07-12, six prior read/evaluate-grammar
+  amendments) applies.
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the grammar member + its match semantics (SB-1), the `when_absent`
+  companion (SB-2), the load-gate posture (SB-3), the attachment point (SB-4),
+  the governance classification (SB-5), the only-when-supplied serialization
+  (SB-6). Nothing else.
+- **OUT — the build (PLAN-0113 owns it, gated on this amendment MERGED per
+  CLAUDE.md §8):** the literal schema + validators; the
+  `trigger_context` → `query_step` wire; fleet's authored clause; the literal
+  refusal-kind member + provenance shape; every test and every
+  governance-record edit.
+- **OUT:** adopting `scope_by` in procurement or any other vertical
+  (PLAN-0113 OQ-3); any additional `from:` source beyond
+  `trigger.entity_ids` — a future source is a future amendment under this same
+  discipline (the D2-Amendment OQ-A1 catalog-growth convention); any change to
+  `where` / `join` / `project` semantics; any UI work.
+- **Inherited LOCKs (carried — must-not-violate):**
+  - `extra="forbid"` on `StepInput` — `scope_by` / `when_absent` are new typed
+    KEYS, which is exactly why this is an ADR-016 amendment and not a build
+    call (the L-4 tripwire).
+  - **NO LLM anywhere in the read path** (LOCKED-6 / ADR-0024 D3/D6) — scope
+    resolution is deterministic list membership against an engine-stamped
+    value; nothing proposes, selects, or reshapes.
+  - `where` stays the engine-side post-fetch static-literal filter (LOCKED-3);
+    `scope_by` is a sibling, not a change to it.
+  - The shared `read_bound_violation` predicate and the Q3 load gate are
+    untouched: `scope_by` narrows **rows within an already-bound read** — it
+    names no object_types, so it opens no side door around the read bound.
+  - New grammar fields are **H-governed + pinned** (SB-5) — the standing
+    grammar-field posture, not an exception to it.
+- **UNCHANGED:** the ADR-0029 event-trigger bridge (its `entity_ids` stamp is
+  *consumed*, not altered); the `DataAdapter` contract; `from_step` intra-run
+  threading; the behaviour of every procedure that authors no `scope_by` —
+  all 11 `manual`/`schedule` procedures and procurement's event path are
+  byte-identical (proven by PLAN-0113 AC-4's positive-controlled comparison).
+
+#### Open Questions (amendment — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
+
+The direction is Cray-typed (SD-4 reversal, D1, D2, SD-1, SD-2 — rulings, not
+OQs). The three boundary confirmations below were surfaced genuinely open at
+Proposed and are now **RESOLVED — all three as-recommended, Cray-ratified
+2026-08-23 (session 249, typed)**; each OQ keeps its deliberation text as the
+record:
+
+- **OQ-1 (closed `when_absent` vocabulary) — RESOLVED (Cray-ratified
+  2026-08-23, session 249): closed at two members (`sweep | refuse`); a third
+  posture is a future amendment under the catalog-growth convention.**
+  *Surfaced as:* v1 ships exactly two members —
+  `sweep | refuse` — as a closed enum. *Recommendation:* **confirm closed at
+  two** — no third posture (e.g. warn-then-sweep) without a future amendment
+  under the catalog-growth convention; a warn variant is provenance's job
+  (every applied scope is counted), not a third policy. *Why Cray's call:* it
+  fixes the authoring contract every future vertical inherits.
+- **OQ-2 (join-path scope target) — RESOLVED (Cray-ratified 2026-08-23,
+  session 249): base read only in v1; a joined side keeps its per-join static
+  `where`.** *Surfaced as:* in the join path, `scope_by` scopes the
+  **base read only** (SB-4's attachment point). A joined side gets no scope in
+  v1 — its narrowing remains the per-join static `where`. *Recommendation:*
+  **confirm base-only** — no shipped shape needs a scoped joined side, and
+  adding one later is additive surface under this same amendment discipline.
+  *Why Cray's call:* it bounds what the grammar member means inside the
+  Q4-pinned pipeline.
+- **OQ-3 (provenance as a decided property) — RESOLVED (Cray-ratified
+  2026-08-23, session 249): contractual — every applied scope and every
+  refusal records a counted provenance entry, never best-effort.**
+  *Surfaced as:* SB-4 REQUIRES a counted
+  provenance entry for every applied scope and every refusal — "never a silent
+  narrowing" is amendment-level contract, with only the literal entry shape
+  left to the build. *Recommendation:* **confirm required** — a scoped read
+  that leaves no trace is invisible governance, the exact failure mode the
+  reasoning-trace surface exists to prevent. *Why Cray's call:* it decides
+  whether observability of scoping is contractual or best-effort.
+
+#### Amendment references
+
+- `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md` — the build
+  PLAN this amendment gates (Step 0b names this document); the Cray-typed
+  rulings (SD-4 reversal, D1, D2, SD-1, SD-2, OQ-2) with the full lineage
+  record, including `done/0112:1002-1039` (SD-4 as originally ruled).
+- `services/api/routers/cases.py:148` (rationale `:126-131`) — fleet stamps
+  `entity_ids=[case_id, quote_id]` on every acceptance-fired run.
+- `verticals/procurement/hero_demo/run.py:544` — procurement stamps
+  `[asset_id]`: the cross-vertical kind divergence behind D2.
+- `services/engine/procedures/orchestrator.py:898,905-912` —
+  `trigger_context` reaches `PipelineRun` + `RunContext`.
+- `services/engine/procedures/query_step.py` — ZERO `trigger_context`
+  references (the grounded-negative gap); `:434-439` single-read `where`
+  application; `:460-470` the pinned join pipeline; `:486-491` base `where`;
+  `:509-510` `latest_per` (SB-4's anchors).
+- `services/engine/procedures/spec.py:361-363` (`StepInput.where`),
+  `:265-268` (`JoinSpec.where`), `:241-242` (`matches_where` / LOCKED-3),
+  `:328-337` (non-mapping never matches — the posture SB-1 mirrors),
+  `:346-351` (the `join`/`project` H-governed classification SB-5 mirrors).
+- `verticals/fleet_maintenance/procedures.yaml:144` +
+  `verticals/procurement/procedures.yaml:861` — the only two `trigger: event`
+  procedures (of 13, across 6 verticals; re-verifiable with
+  `git grep -n 'trigger: event' -- verticals/`).
+- `verticals/fleet_maintenance/operate_seed.py:266-278` — the seeded demo run
+  carries no firing entity BY DESIGN; `services/db/demo_run_reset.py:179-205`
+  — the `PRISTINE` read a fail-closed default would break (why D1 = per-step
+  and fleet authors `sweep`).
+- `verticals/fleet_maintenance/procedures.yaml:348-357` — the
+  `ratification_window_days` only-when-supplied authored precedent (SB-6).
+- ADR-0029 — the event-trigger bridge that stamps `entity_ids` (consumed,
+  unchanged).
+- ADR-0034 D6 — only-when-supplied serialization (SB-6's governing decision).
+- ADR-0024 D3/D6 — governed ≠ generated; no LLM in the read path (carried).
+- The Q4 amendment (2026-07-09, this file, above) — `StepInput` as the
+  grammar home (OQ-1), the pinned pipeline order, the `ReadRefusal` additive
+  posture, the H-governed + pinned field precedent; the 2026-06-25 /
+  2026-07-01 / 2026-07-05 / 2026-07-11 / 2026-07-12 in-place,
+  extends-not-reverses precedents.
+- The L-4 tripwire (in-file at `:1391`, `:1807`, `:1974`) — the standing rule
+  this amendment satisfies; CLAUDE.md §8 — merged-before-implementation.
 
 ### D3: Autonomy model + safe-agentic posture
 
