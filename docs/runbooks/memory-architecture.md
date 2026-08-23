@@ -330,6 +330,42 @@ measured 2026-06-10), not the 256 KB byte cap.
     the standing, guard-enforced form for **any** tracked artifact is **R7**.)
   - **R4 still applies:** the full original is appended to `docs/status-archive/`
     before the trim lands — move, never drop.
+- **Ratified extension (Cray, 2026-08-23 — session 250): *In-Flight
+  Discussions* is capped — and so is the Current-Focus *rotation ledger*.**
+  Until s250 both were **ungoverned**: every count and byte rule in R2 named
+  Current Focus, Recent Decisions or Active TODOs, so these two grew unbounded
+  while STATUS sat **3,896 B over R1's soft target** (measured s250: 53,048 B).
+  Neither cap is a size ruling dressed as policy — each enforces the section's
+  own stated purpose.
+  - **In-Flight Discussions — three rules.** (i) An entry is a **pointer, not a
+    narrative: ≤ ~600 chars** — the rule Recent Decisions rows and Active TODOs
+    already obey. (ii) The section holds **only discussions still OPEN**; an
+    entry that announces its own closure (`CLOSED`, `COMPLETE`, `ARCHIVED`) has
+    stopped being in flight and rotates out. (iii) A **count cap of 6**, so the
+    section stays bounded even when every entry is legitimately open. Measured
+    at s250: **9 entries / 5,153 B**, of which **3 announced their own closure**
+    and 3 exceeded the pointer cap — the OPEN-only rule alone recovers ~2,410 B
+    and leaves exactly 6.
+  - **The Current-Focus rotation ledger — keep only the CURRENT window.** The
+    trailing `_[Current-Focus rotation ledger …]_` paragraph belongs to no block,
+    so the s194 per-block cap never reached it; every reconcile appended another
+    sentence and by s250 it stood at **4,445 B — one line of it 3,723 B**, larger
+    than any block it describes. It keeps the rotation record for the **4
+    sessions currently in the window**; an entry whose block has already rotated
+    travels **with that block** into the archive, where the block it explains
+    actually lives.
+  - **The R2 carve-out binds on both**, unchanged: an entry is rotated or
+    trimmed **only after** verifying its substance has a tracked home, and **R4
+    still applies** — the full original is appended to `docs/status-archive/`
+    before the trim lands.
+  - **Consumer note (`CLAUDE.md` §4).** Both caps are structural and
+    Grep-countable, so `status-scribe` enforces them — and they are written into
+    `.claude/agents/status-scribe.md`, not only here. s250 measured why that
+    sentence is necessary: the **s194 per-block cap and the s141 Active TODOs
+    pointer rule had never reached the scribe** (zero hits, with a positive
+    control proving the grep finds a rule that *is* there). Both sections happen
+    to be compliant today — but not because the enforcer was enforcing them. A
+    rule absent from its enforcer's input is, for that enforcer, not written.
 
 ### R3 — Frontmatter terseness (binding)
 

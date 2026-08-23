@@ -132,9 +132,22 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
    under `## Current Focus`, newest at top, in the same terse-but-specific
    voice as the existing entries (what shipped, why, test delta, verification,
    any known minor artifact). **Retain blocks within the rotation window** —
-   Current Focus keeps the **4 most-recent sessions, capped at 8 blocks**;
+   Current Focus keeps the **4 most-recent sessions, capped at 8 blocks**, and
+   **each block is ≤ 4,096 B** (per-block cap, Cray s194 — measure a block as
+   its **own contiguous `>` blockquote run**, NOT header-to-header: a
+   header-to-header measure makes the last block swallow the trailing rotation
+   ledger and over-report it, which is exactly how #1263 mis-measured a 2,567 B
+   block as 4,936 B before #1264 repaired it);
    Recent Decisions keeps the **newest 10 rows** (new rows ≤ ~600 chars,
-   pointer-not-narrative). Content older than the window is **rotated, not
+   pointer-not-narrative); **Active TODOs** obey that same pointer rule — an
+   open TODO is **≤ ~600 chars** naming the tracked artifact that holds the full
+   story (Cray s141); **In-Flight Discussions** holds **only discussions still
+   OPEN**, **≤ 6 entries**, each **≤ ~600 chars** — an entry announcing its own
+   closure (`CLOSED`, `COMPLETE`, `ARCHIVED`) has stopped being in flight and
+   rotates out (Cray s250); and the trailing **rotation ledger** paragraph under
+   Current Focus keeps only the rotations of the **4 sessions currently in the
+   window** — an entry whose block has already rotated travels with that block
+   into the archive (Cray s250). Content older than the window is **rotated, not
    deleted**: remove it from STATUS.md and emit it VERBATIM in your final
    message (*Rotated content* section) for the caller to append to
    `docs/status-archive/` (R4). **Deleting without archiving remains
@@ -206,8 +219,12 @@ now_iso, carried-forward next_action). If none, write "None.">
 ## Rotation report (runbook R2 — mandatory)
 
 <counts so the caller can eyeball window compliance: `CF blocks: kept N
-(sessions A–B) / rotated M` · `RD rows: kept N / rotated M` · `frontmatter:
-all 3 fields single-line ≤200 chars: yes|no`. If nothing rotated, say so.>
+(sessions A–B) / rotated M` · `CF blocks over the 4,096 B per-block cap: N`
+(measured per contiguous `>` run) · `RD rows: kept N / rotated M` · `Active
+TODOs over ~600 chars: N` · `In-Flight: N entries (cap 6), N over ~600 chars,
+N announcing their own closure (must be 0)` · `rotation ledger: covers
+sessions A–B only: yes|no` · `frontmatter: all 3 fields single-line ≤200
+chars: yes|no`. If nothing rotated, say so.>
 
 ## Rotated content (verbatim — caller appends to docs/status-archive/)
 
