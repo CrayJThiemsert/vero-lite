@@ -66,6 +66,46 @@ Replace every `--body "$(cat FILE)"` with `--body-file FILE`. Same for `--notes-
 
 If you must use `--body` (e.g. dynamically constructed content not in a file): pre-quote with `printf '%s' "$content"` into a temp file first, then `--body-file` that temp file. Do not try to escape backticks inline — the gh-native flag is one character longer (`-file`) and skips the entire failure mode.
 
+### 4.1 `--body-file` is only half of it — the file's AUTHORING is the other vector
+
+*(Added 2026-08-24, session 251, after hitting it with `--body-file` used correctly.)*
+
+Everything above is about the **submission** step. The same corruption happens one
+step earlier, at the step this lesson's own advice above points at: **building the
+file in the shell.** PR #1278 was submitted with `--body-file` — the flag this
+lesson prescribes — and arrived with **0 of its 20 backticks** and every inline code
+span replaced by nothing, because the file had been written with:
+
+```
+printf -- "... a nine-probe battery printed \`PROBE-VERDICT: PASS\` ..." > /tmp/body.md
+```
+
+A double-quoted `printf` format string is an unquoted shell context like any other.
+`bash` ran `PROBE-VERDICT: PASS` and spliced in its (empty) output before `printf`
+ever saw the text — visible only as stray `command not found` lines mixed into
+unrelated output. 2,744 bytes were delivered against ~4,200 authored, and the
+command exited **0**.
+
+Note that §4's own remediation names `printf` in the adjacent-but-safe form
+(`printf '%s' "$content"`, single-quoted format). The unsafe form is one quote
+character away, which is precisely why naming the mechanism beats naming the tool:
+**it is not heredocs, and not `$(cat)` — it is any unquoted shell context.**
+
+**So the rule has two halves, and needs both:**
+
+1. **Author** the body with the **Write tool** (or another non-shell writer) —
+   never `printf`, `echo`, or an unquoted heredoc.
+2. **Submit** it with `--body-file` / `-F body=@file` / `git commit -F`.
+
+**And verify after submitting**, because the failure is silent and partial. Compare
+the live body against the source, counting a character the shell would have eaten —
+using `chr(96)` so no backtick appears in the verifying command itself:
+
+```
+gh pr view <N> --json body --jq ".body" > /tmp/live.txt
+python3 -c "t=open('/tmp/live.txt').read(); s=open('/tmp/src.md').read(); print(t.count(chr(96))==s.count(chr(96)))"
+```
+
 ## 5. Recovery (when the PR was already created corrupted)
 
 PR-#29 recovery path, documented for next time:
