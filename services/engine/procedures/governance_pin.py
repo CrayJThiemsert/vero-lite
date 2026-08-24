@@ -65,6 +65,11 @@ def _step_governance_snapshot(step: Step) -> dict[str, Any]:
     refuses at resume. A mid-flight transform edit changes what a resumed run
     DERIVES, so a present transform is pinned canonically (``by_alias`` so
     ``rename.from`` pins as authored) and fails CLOSED at resume, like a ladder edit.
+
+    PLAN-0113 adds ``scope_by`` / ``when_absent`` under that SAME only-when-supplied
+    rule (ADR-016 Amendment 2026-08-23, SB-6): scope decides WHICH ROWS reach a gate,
+    so a mid-flight scope edit must fail closed exactly like a ladder edit — but a
+    key present on every step would move all six verticals' hashes at once.
     """
     snapshot: dict[str, Any] = {
         "step_id": step.step_id,
@@ -97,6 +102,22 @@ def _step_governance_snapshot(step: Step) -> dict[str, Any]:
     }
     if step.transform is not None:
         snapshot["transform"] = step.transform.model_dump(mode="json", by_alias=True)
+    # PLAN-0113 Step 1 (ADR-016 Amendment 2026-08-23, SB-5/SB-6): scope changes WHAT
+    # POPULATION REACHES A GATE, so the pin must record whether a run was approved
+    # scoped or sweeping. Added ONLY when the step declares a scope — the `transform`
+    # only-when-supplied precedent above, NOT the always-present `reads`/`join`/`project`
+    # shape: an always-present key would move EVERY vertical's config hash and make every
+    # in-flight run refuse at resume (ADR-0034 D6; guarded by
+    # tests/verticals/test_governance_config_hash_stability.py).
+    if step.input is not None and step.input.scope_by is not None:
+        snapshot["scope_by"] = step.input.scope_by.model_dump(mode="json", by_alias=True)
+        # when_absent is required-explicit alongside scope_by (SD-1), so it is never None
+        # here; pinned defensively rather than asserted. It is pinned as part of the same
+        # only-when-supplied block because the two are one governance datum: "scoped, and
+        # this is what happens when there is nothing to scope on".
+        snapshot["when_absent"] = (
+            step.input.when_absent.value if step.input.when_absent is not None else None
+        )
     return snapshot
 
 

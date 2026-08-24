@@ -56,6 +56,13 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         # reads; stripped at lift, pinned in the governance snapshot).
         "join",
         "project",
+        # PLAN-0113 Step 1 (ADR-016 Amendment 2026-08-23, SB-5): the trigger-scoping
+        # grammar is H-authored spec surface for the same reason join/project is — it
+        # decides what population reaches a gate. Both live on the nested StepInput a
+        # draft REUSES, so like `reads` they CAN physically ride a draft and are
+        # stripped at lift rather than being structurally unreachable.
+        "scope_by",
+        "when_absent",
         # PLAN-0077: the transform grammar ("declare the derivation as data") is
         # top-level authoritative H content (like governance_content) — never
         # model-emitted; a transform step owes it (derive_governance_todo), it is
@@ -199,7 +206,8 @@ class GovernanceStub(BaseModel):
 
 
 def _strip_read_binding(input_: StepInput | None) -> StepInput | None:
-    """Inject ``reads`` / ``join`` / ``project`` as ABSENT stubs (H; OQ-C C1 pattern).
+    """Inject ``reads`` / ``join`` / ``project`` / ``scope_by`` / ``when_absent`` as
+    ABSENT stubs (H; OQ-C C1 pattern).
 
     ``StepDraft`` reuses the runtime :class:`StepInput` for the G fan-out
     structure (``from``/``where``), so — unlike ``env_var``, which a draft cannot
@@ -209,10 +217,34 @@ def _strip_read_binding(input_: StepInput | None) -> StepInput | None:
     human authors ``reads`` (+ the agent's ``allowed.object_types``) later.
     PLAN-0061 Step 2 extends the same rule to the Q4 ``join``/``project``
     grammar — a skeleton may never self-declare its own join surface either.
+    PLAN-0113 Step 1 extends it once more to ``scope_by``/``when_absent``: a
+    generated skeleton may never decide which population reaches its own gate.
+
+    The two scope keys are stripped TOGETHER and unconditionally, and the reason is
+    measured, not assumed: ``model_copy(update=...)`` does NOT re-run validators
+    (pydantic v2, by design), so dropping ``scope_by`` alone would silently produce a
+    ``StepInput`` carrying a dangling ``when_absent`` — a shape ``model_validate``
+    rejects. The lift would not raise; it would hand back a skeleton that fails the
+    moment it is round-tripped through ``load_procedures``, breaking the D6
+    draft-loadable promise at a distance from its cause.
     """
-    if input_ is None or (input_.reads is None and input_.join is None and input_.project is None):
+    if input_ is None or (
+        input_.reads is None
+        and input_.join is None
+        and input_.project is None
+        and input_.scope_by is None
+        and input_.when_absent is None
+    ):
         return input_
-    return input_.model_copy(update={"reads": None, "join": None, "project": None})
+    return input_.model_copy(
+        update={
+            "reads": None,
+            "join": None,
+            "project": None,
+            "scope_by": None,
+            "when_absent": None,
+        }
+    )
 
 
 def lift_to_step(draft: StepDraft, *, autonomy: Autonomy | None = None) -> Step:
