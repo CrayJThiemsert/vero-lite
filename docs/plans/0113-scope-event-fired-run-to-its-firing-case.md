@@ -170,8 +170,11 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   found a breaching truck); **scoping made it reachable for the first time.** Shipped as
   measured, asserted by
   `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`, and surfaced as
-  **SD-3** below — the fix is an engine change to the gate shape, which is Out of Scope
-  here.*
+  **SD-3** below — **now RULED (b) (Cray, typed, s252): a gated step with an empty input set
+  COMPLETES instead of suspending.** The tripwire test above asserts today's (a) behaviour
+  and is the site that must change when (b) lands. (b) is a general `_suspends` change, not
+  the two-gate-shape change this PLAN's Out of Scope forbids — see the scope-claim
+  correction under SD-3 — so it routes to its own ADR + PLAN rather than into Step 4.*
   Scenario test (CLAUDE.md §8:
   real producer → real consumer, realistic data — no mock on either side): a visitor
   opens a case, accepts an at/above-ceiling quote, and the fired run's `approve` gate
@@ -195,7 +198,33 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   The claim the AC rests on — "more than one" — is unaffected; the number was wrong and
   is corrected rather than left to be re-derived. Restore verified byte-identical
   (`procedures.yaml` sha256 `b68f47cf7317…`).]_
-- [ ] **AC-4 — the blast radius is bounded, with a positive control.** Procurement's
+- [x] **AC-4 — the blast radius is bounded, with a positive control.** *(CLOSED s252 —
+  `feat/plan0113-step4-blast-radius`. Full evidence:
+  [`docs/logs/2026-08-24-plan0113-step4-blast-radius.md`](../logs/2026-08-24-plan0113-step4-blast-radius.md).
+  Procurement's hero observable is **byte-identical** to the Step-0 capture at `17defa0` —
+  0 of 11 pinned values differ, both key lists match, and **both sha256 digests match**,
+  reproducing the Step-0 serialisation exactly. Structural counts re-measured from the
+  PARSED spec: `event=2`, `manual+schedule=11`, as the baseline pinned. The three
+  blast-radius re-greps ran: `trigger_context` (67 hits / 13 files, `query_step.py` newly
+  present = Step 2's wire), `entity_ids` (10 files), and `fleet-wide` — the last found
+  **`docs/STATUS.md` still carrying the stale narrative in two places**, which is blast
+  radius #10 / Step 7 and is confirmed outstanding rather than assumed.)*
+  <br>🔴 **This AC's positive control could NOT be applied where its own wording says, and
+  the reason is registered rather than worked around.** It reads "apply a `scope_by` to
+  procurement"; `ScopeBySpec` requires a declared `reads` list
+  (`spec.py::StepInput._validate_scope_shape`) and **no step of `emergency_sourcing_round`
+  declares `input.reads`** — its `intake` is served by the co-existing `_SeedQuery`
+  (PLAN-0062 SD-C / PLAN-0064 SD-1). So procurement's event path is not merely unchanged,
+  it is **structurally incapable of carrying the clause today** — a stronger result,
+  registered as **inexpressible** per `CLAUDE.md` §8 rather than silently upgraded. The
+  control therefore targets the manual calm path's `read_stock` (`reads: [Part]`), the one
+  procurement step that can carry it: mutation reached the file (Δ +95 bytes, sha moved),
+  **4 tests reddened**, restore byte-identical.
+  <br>_The first run reported FAIL on all three legs and all three were the INSTRUMENT — a
+  grep counting prose in YAML comments, a baseline value hand-transcribed from a human
+  rendering (caught because two digests said it could not have moved), and a control aimed
+  at tests the mutation cannot reach. None was repaired by relaxing the check._
+  Procurement's
   event path (`emergency_sourcing_round`) and all 11 manual/schedule procedures behave
   identically to the Step 0 baseline — same tests green, and a targeted comparison for
   procurement's hero run. 🔴 Positive control (without it a green suite proves
@@ -428,21 +457,49 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
   at lift, pinned in the governance snapshot when supplied. Cray took the
   recommendation. LOCKED for Step 1 and AC-1.
 
-- **SD-3 — OPEN (raised by Code at Step 3, s252, 2026-08-24): should a gated step with an
-  EMPTY input set complete instead of suspending?** Not a design question until this PLAN
+- **SD-3 — RULED (Cray, typed, s252, 2026-08-24): (b)** — a gated step with an EMPTY input
+  set **completes** instead of suspending. Cray's stated reason, verbatim: *"เราชอบ
+  'เหตุผล 1'"* — the artifact argument as put to him: a sub-ceiling case genuinely has
+  nothing to approve, so a **completed** run recording *"checked, ฿4,500 is inside the head
+  mechanic's own authority"* is a more valuable governance artifact than a stuck one. It is
+  the proof the spend was examined, and it is "governed ≠ generated" stated directly.
+
+  🔴 **Not ruled, and NOT to be read into the ruling:** Code's accompanying recommendation
+  that (b) also **emit a trace entry** when it skips an empty gate. That was offered as the
+  mitigation for (b)'s one real cost — see the residual below — and Cray endorsed reason 1,
+  not reason 2. It stays a Code recommendation for the implementing PLAN to surface, not a
+  ratified requirement.
+
+  **The residual (b) carries, recorded so the implementer meets it):** (b) is *silent*.
+  Today's dead-end gate is ugly but LOUD — a read that broke and returned nothing parks a
+  visible run. Under (b) that same breakage completes a run quietly. Whatever closes this
+  must keep the loudness (a trace entry, a provenance count, or an equivalent) or state in
+  writing why it need not.
+
+  **Original question, retained (the PLAN-0111 convention):** *should a gated step with an
+  EMPTY input set complete instead of suspending?* Not a design question until this PLAN
   made it reachable. Under scoping, a **sub-ceiling** acceptance fires a run whose gate
   holds zero proposals; it parks at `waiting_human` and **cannot be resolved by anyone**
   (409 `has no proposed actions to resolve`, `action_step.py:832`), so it sits in Tab H
-  forever. Measured s252; shipped as-is and asserted by
-  `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`, which is the site that
-  must change when this is ruled.
+  forever. Measured s252; shipped as (a) and asserted by
+  `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`, **which is the site that
+  must change when (b) lands** — it asserts today's behaviour deliberately, and it will
+  redden loudly rather than let the fix pass unnoticed.
 
-  **Why Code did not just fix it:** the fix is a change to `_suspends`
-  (`orchestrator.py:632-644`) — i.e. to `approve`/`fulfill`'s gate shape, which this PLAN's
-  Out of Scope explicitly forbids — and it is governance-shaped: a gate that can decline to
+  **Why Code did not just fix it:** it is governance-shaped — a gate that can decline to
   gate is the fail-open family this project keeps retiring (the PLAN-0096 `compliance`
-  default). It is defensible that zero proposals means nothing to approve, and it is Cray's
-  call, not the implementer's.
+  default) — and it is Cray's call, not the implementer's.
+
+  _[**Scope claim corrected (Code, s252, after the ruling).** Both this PLAN and the
+  session summary said the fix "changes `approve`/`fulfill`'s gate shape, which Out of Scope
+  forbids". **That is imprecise and it changed the routing question, so it is corrected
+  rather than left.** Out of Scope forbids changing the two-gate SHAPE, which is enforced by
+  `_check_no_auto_downstream_of_gate` (`orchestrator.py:669`) — a load-time check on
+  `autonomy: auto` OPERATIONAL steps downstream of a gate. (b) touches `_suspends`
+  (`:632-644`) and leaves the two-gate shape, and that check, untouched. So (b) is **not
+  literally what this PLAN forbids**; it is a general change to when ANY gated step
+  suspends, in ANY vertical — which is why it still warrants its own ADR + PLAN rather than
+  being bolted onto Step 4.]_
 
   **The options, priced.** **(a) Leave it** — a visitor who accepts a cheap quote leaves a
   permanent un-resolvable run in Tab H; costs nothing now, and the tripwire test keeps it
@@ -452,8 +509,22 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
   interacts with SD-2(b)'s "one acceptance, one run" reading. **(d) Fire, then complete the
   run at `reshape` when the breach subset is empty** — narrowest, but encodes a
   fleet-specific shape into a general step.
-  🔴 None is taken. Step 3 shipped (a) because it is the only option that changes no
-  behaviour beyond what AC-3 asked for.
+  <br>Step 3 shipped **(a)** as the interim, because it is the only option that changes no
+  behaviour beyond what AC-3 asked for. **(b) is now RULED** and supersedes it.
+
+  _[**Two corrections to the option set, made at the ruling conversation (s252) and
+  recorded because they were live when Cray chose.**_
+  - _**(c) does not address this failure and was withdrawn before the ruling.** It reads
+    "do not fire when the scoped read is empty" — but the scoped read is **not** empty here:
+    `intake` returns exactly one row, the visitor's own case. The emptiness appears one step
+    later, at `reshape`'s `where: {verdict: breach}`. (c) would close a different failure (a
+    run fired for an entity with no rows at all), not this one._
+  - _**(e) was identified late and put to Cray beside the others:** leave the parking rule
+    alone, but make an EMPTY gate **resolvable** as a no-op, so a human closes it. Not
+    chosen — it removes the dead end but manufactures a click on nothing, and reads as
+    confusing in the demo._
+  <br>_The four texts above are retained verbatim regardless: a future reader must see what
+  was rejected, including the option that turned out not to fit.]_
 
 _The original option texts are retained verbatim below (the PLAN-0111 convention): a
 future reader must see what was rejected and why._
