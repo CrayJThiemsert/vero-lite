@@ -185,6 +185,16 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   (this re-supersedes `done/0112:885-894`'s s243 correction — see Blast radius #13).
   Witnessed RED: remove the `scope_by` clause from the YAML → the exactly-one assertion
   reddens with 3 proposals. **[offline/DB]**
+  <br>_[**Cardinality corrected s252 — measured, was 3, is 2.** Removing the clause and
+  running `test_accepting_a_quote_fires_a_governed_run_about_that_case` reddens with
+  `assert 2 == 1` on
+  `['action-event-case-case-74fd71bb919d', 'action-event-reading-05']`. The "3" was
+  measured on a DEMO-SEEDED state (`:118` — both seeded demo cases plus the visitor's);
+  that test seeds no demo, so the sweep yields the visitor's own truck-01 case plus
+  truck-03's `event-reading-05` breach, and truck-02's latest reading does not breach.
+  The claim the AC rests on — "more than one" — is unaffected; the number was wrong and
+  is corrected rather than left to be re-derived. Restore verified byte-identical
+  (`procedures.yaml` sha256 `b68f47cf7317…`).]_
 - [ ] **AC-4 — the blast radius is bounded, with a positive control.** Procurement's
   event path (`emergency_sourcing_round`) and all 11 manual/schedule procedures behave
   identically to the Step 0 baseline — same tests green, and a targeted comparison for
