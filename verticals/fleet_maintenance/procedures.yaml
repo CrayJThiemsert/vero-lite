@@ -187,6 +187,27 @@ procedures:
             event_type: reading         # the quote readings; a non-reading event carries no
                                         # measured_value, so an unfiltered latest-per-group would
                                         # hand the judge an unreadable row
+          scope_by:                     # PLAN-0113 Step 3 / AC-3 (ADR-016 Amendment 2026-08-23).
+            field: case_id              # THIS vertical names the field; the engine never learns the
+            from: trigger.entity_ids    # token `case_id` (procurement's firing entity is an asset).
+                                        # Keeps a base-read row iff its `case_id` is a string member
+                                        # of the run's engine-stamped entity_ids — applied post-`where`
+                                        # and PRE-`latest_per`, so the result is "the firing case's own
+                                        # latest reading", not "the fleet's latest reading iff it
+                                        # happens to be theirs". `case_id` is stamped on every REAL
+                                        # case event by `build_event` (case_events.py:95) through
+                                        # `case_projection.apply`; the three ROUTINE fixture readings
+                                        # carry none and so never match — which is precisely why a
+                                        # scoped intake returns the firing case's row alone.
+          when_absent: sweep            # 🔴 REQUIRED-EXPLICIT whenever scope_by is present (SD-1
+                                        # RULED (Cray, typed, s249)) — a silent default is the
+                                        # fail-open/fail-closed ambiguity the per-step policy exists to
+                                        # remove. `sweep` because the SEEDED demo run fires with NO
+                                        # firing entity BY DESIGN: operate_seed.py:266-278 stamps no
+                                        # `entity_ids` at all, since its breaching truck is chosen by
+                                        # THIS query during the run. A fail-closed posture here would
+                                        # make `DEMO-STATE: PRISTINE` (demo_run_reset.py:179-205)
+                                        # unreachable and kill intro-video beat 4.
           join:
             - { with: Truck, link: event_for_truck }   # brings each truck's minor_repair_ceiling_thb onto its readings (ADR-016 FKP)
           project:

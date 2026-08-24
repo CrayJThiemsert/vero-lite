@@ -149,7 +149,30 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   provenance entry is recorded with a post-scope count (never a silent narrowing;
   check whether the trace viewer needs a label for any new `kind` — audit the
   `"kind"` counts before shipping). One probe per assertion. **[offline/no-DB]**
-- [ ] **AC-3 — fleet is scoped, proven at the real seam.** Scenario test (CLAUDE.md §8:
+- [x] **AC-3 — fleet is scoped, proven at the real seam.** *(CLOSED s252 —
+  `feat/plan0113-step3-fleet-scope-clause`. The exactly-one promise HOLDS: a visitor's
+  breaching acceptance now gates on their own case alone, measured through the real HTTP
+  surfaces. `_assert_run_is_about` asserts the COUNT and the IDENTITY separately, and each
+  is witnessed RED by its own probe — the identity claim needed a mutation to the
+  `entity_ids` stamp, because no YAML-only mutation can produce "exactly one proposal,
+  wrong case". 5-probe battery; coverage machine-checked at 47/47 claims (5 witnessed RED,
+  42 exempted with a named mechanism, 0 gaps), computed by AST via the new
+  `tools/probe_coverage.py`.*
+  <br>🔴 **This AC's sub-ceiling prediction was MEASURED WRONG and is corrected here rather
+  than quietly absorbed.** It read "a sub-ceiling acceptance fires a run that **completes
+  with no gate**". It does not. `_suspends`
+  (`services/engine/procedures/orchestrator.py:632-644`) is purely structural — a `gated`
+  action suspends on its KIND, never on whether its input set holds anything — so the run
+  fires, `judge` bands the visitor's case `ok`, `reshape` drops it, and the run **parks at
+  `approve` with an EMPTY proposal list**. Resolving that gate answers **409 "has no
+  proposed actions to resolve"** (`services/engine/procedures/action_step.py:832`), so the
+  run is a dead end. Before this PLAN the state was unreachable (the fleet-wide scan always
+  found a breaching truck); **scoping made it reachable for the first time.** Shipped as
+  measured, asserted by
+  `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`, and surfaced as
+  **SD-3** below — the fix is an engine change to the gate shape, which is Out of Scope
+  here.*
+  Scenario test (CLAUDE.md §8:
   real producer → real consumer, realistic data — no mock on either side): a visitor
   opens a case, accepts an at/above-ceiling quote, and the fired run's `approve` gate
   proposes **exactly one** proposal, the visitor's own case.
@@ -162,13 +185,47 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   (this re-supersedes `done/0112:885-894`'s s243 correction — see Blast radius #13).
   Witnessed RED: remove the `scope_by` clause from the YAML → the exactly-one assertion
   reddens with 3 proposals. **[offline/DB]**
+  <br>_[**Cardinality corrected s252 — measured, was 3, is 2.** Removing the clause and
+  running `test_accepting_a_quote_fires_a_governed_run_about_that_case` reddens with
+  `assert 2 == 1` on
+  `['action-event-case-case-74fd71bb919d', 'action-event-reading-05']`. The "3" was
+  measured on a DEMO-SEEDED state (`:118` — both seeded demo cases plus the visitor's);
+  that test seeds no demo, so the sweep yields the visitor's own truck-01 case plus
+  truck-03's `event-reading-05` breach, and truck-02's latest reading does not breach.
+  The claim the AC rests on — "more than one" — is unaffected; the number was wrong and
+  is corrected rather than left to be re-derived. Restore verified byte-identical
+  (`procedures.yaml` sha256 `b68f47cf7317…`).]_
 - [ ] **AC-4 — the blast radius is bounded, with a positive control.** Procurement's
   event path (`emergency_sourcing_round`) and all 11 manual/schedule procedures behave
   identically to the Step 0 baseline — same tests green, and a targeted comparison for
   procurement's hero run. 🔴 Positive control (without it a green suite proves
   nothing — CLAUDE.md §8): apply a `scope_by` to procurement in a scratch copy → its
   comparison reddens; restore. **[offline/DB]**
-- [ ] **AC-5 — link-row semantics follow the new bound.** A visitor-fired run's gate now
+- [x] **AC-5 — link-row semantics follow the new bound.** *(CLOSED s252, in Step 3's PR —
+  **not by choice**: Step 3 makes two of this suite's tests RED by construction, and a red
+  CI cannot merge. Skipping or deleting a tripwire was not an option, so Step 5's test work
+  came forward. Recorded so the step ordering does not read as drift.)*
+  <br>The inversion happened exactly as the old test instructed:
+  `test_a_visitor_fired_runs_gate_also_decides_the_seeded_demo_case` →
+  `test_a_visitor_fired_runs_gate_decides_only_the_visitors_own_case`, now asserting
+  `{link.case_id for link in links} == {case_id}` with the seeded demo shown present and
+  still gate-reachable as its control.
+  <br>🔴 **The re-homing target was MEASURED, not assumed.** This AC says to re-home the
+  demo-scoped precondition onto "the seeded demo run's rows" — and that is literally
+  executable: `run-fleet-demo-history` writes **three** link rows at boot, one keyed on a
+  demo case (measured s252). The visitor's run stopped writing one the moment `intake` was
+  scoped, so asserting the deletion there would have gone vacuous.
+  <br>**The both-key deletion is now witnessed in two independent halves** — `run_id` on the
+  seeded runs' rows, `case_id` on
+  `test_a_run_fired_from_the_demo_case_itself_still_survives_the_reset`, which is the only
+  remaining path putting a demo case on a NON-demo run's link row. 3-probe battery, and Q2
+  and Q3 reddened DIFFERENT claims, which is the proof the halves are separable.
+  <br>**`demo_run_reset.py` is unchanged, verified not assumed:** `_delete_run_side` and the
+  `NO_FK_REFERENCERS` map were re-read; their rationale is **id reuse**, never the
+  fleet-wide population, so no population claim needed correcting. The suite's module
+  docstring — which did rest on the fleet-wide premise — was corrected.
+  <br>Coverage: 43/43 claims (4 witnessed RED, 39 exempted with a named mechanism, 0 gaps).
+  A visitor-fired run's gate now
   decides only the visitor's case, so `on_resolved` writes **one** link row and the
   demo-scoped rows stop existing for visitor runs.
   `tests/api/test_fleet_demo_reset_coexistence_scenario.py` is re-authored per its own
@@ -370,6 +427,33 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
   `scope_by`/`when_absent` are H-governed values the generator may never emit, stripped
   at lift, pinned in the governance snapshot when supplied. Cray took the
   recommendation. LOCKED for Step 1 and AC-1.
+
+- **SD-3 — OPEN (raised by Code at Step 3, s252, 2026-08-24): should a gated step with an
+  EMPTY input set complete instead of suspending?** Not a design question until this PLAN
+  made it reachable. Under scoping, a **sub-ceiling** acceptance fires a run whose gate
+  holds zero proposals; it parks at `waiting_human` and **cannot be resolved by anyone**
+  (409 `has no proposed actions to resolve`, `action_step.py:832`), so it sits in Tab H
+  forever. Measured s252; shipped as-is and asserted by
+  `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`, which is the site that
+  must change when this is ruled.
+
+  **Why Code did not just fix it:** the fix is a change to `_suspends`
+  (`orchestrator.py:632-644`) — i.e. to `approve`/`fulfill`'s gate shape, which this PLAN's
+  Out of Scope explicitly forbids — and it is governance-shaped: a gate that can decline to
+  gate is the fail-open family this project keeps retiring (the PLAN-0096 `compliance`
+  default). It is defensible that zero proposals means nothing to approve, and it is Cray's
+  call, not the implementer's.
+
+  **The options, priced.** **(a) Leave it** — a visitor who accepts a cheap quote leaves a
+  permanent un-resolvable run in Tab H; costs nothing now, and the tripwire test keeps it
+  visible. **(b) A gated step with an empty input set completes** — engine change, smallest
+  code, but widens what "gated" means for every vertical. **(c) Do not fire at all when the
+  scoped read is empty** — moves the decision to the bridge rather than the gate, and
+  interacts with SD-2(b)'s "one acceptance, one run" reading. **(d) Fire, then complete the
+  run at `reshape` when the breach subset is empty** — narrowest, but encodes a
+  fleet-specific shape into a general step.
+  🔴 None is taken. Step 3 shipped (a) because it is the only option that changes no
+  behaviour beyond what AC-3 asked for.
 
 _The original option texts are retained verbatim below (the PLAN-0111 convention): a
 future reader must see what was rejected and why._
