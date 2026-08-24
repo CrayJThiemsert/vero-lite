@@ -267,11 +267,19 @@ async def test_positive_control_the_same_fixture_with_a_real_id_yields_rows() ->
 
 
 @pytest.mark.asyncio
-async def test_zero_matches_is_a_completed_step_not_a_refusal() -> None:
-    """Refusal != no-data (the PLAN-0048 D-N1 distinction, carried). A scope that
-    APPLIES and keeps nothing is an empty result; only an ABSENT scope can refuse."""
+async def test_zero_matches_completes_with_an_empty_output() -> None:
+    """Refusal != no-data (the PLAN-0048 D-N1 distinction, carried): a scope that
+    APPLIES and keeps nothing is an empty RESULT, not a refusal."""
     outcome = await _executor().execute(_step(scope=True), [], _ctx(["case-nobody"]))
-    assert outcome.output == [] and _scope_entries(outcome)[0]["applied"] is True
+    assert outcome.output == []
+
+
+@pytest.mark.asyncio
+async def test_zero_matches_records_the_scope_as_applied() -> None:
+    """The half that distinguishes it from a sweep. Without this, an empty output is
+    ambiguous between "the scope ran and matched nothing" and "the scope never ran"."""
+    outcome = await _executor().execute(_step(scope=True), [], _ctx(["case-nobody"]))
+    assert _scope_entries(outcome)[0]["applied"] is True
 
 
 # --------------------------------------------------------------------------- #
@@ -303,13 +311,23 @@ async def test_absent_with_sweep_matches_the_unscoped_run_exactly(
     assert swept.output == unscoped.output
 
 
+async def _sweep_entry() -> dict[str, Any]:
+    outcome = await _executor().execute(_step(scope=True, when_absent="sweep"), [], _ctx([]))
+    return _scope_entries(outcome)[0]
+
+
 @pytest.mark.asyncio
 async def test_a_sweep_is_recorded_rather_than_silent() -> None:
-    """The trace is not the output. OQ-3 makes the counted entry contractual, so
-    "the gate saw the whole fleet" must be visible rather than inferred."""
-    outcome = await _executor().execute(_step(scope=True, when_absent="sweep"), [], _ctx([]))
-    entry = _scope_entries(outcome)[0]
-    assert (entry["applied"], entry["post_scope_count"]) == (False, len(_EVENT_ROWS))
+    """The trace is not the output. OQ-3 makes the entry contractual, so "the gate saw
+    the whole fleet" must be visible rather than inferred."""
+    assert (await _sweep_entry())["applied"] is False
+
+
+@pytest.mark.asyncio
+async def test_the_sweep_entry_counts_what_the_gate_actually_saw() -> None:
+    """The COUNTED half of OQ-3. An entry that recorded the sweep without the number
+    would say a narrowing did not happen while leaving its size unstated."""
+    assert (await _sweep_entry())["post_scope_count"] == len(_EVENT_ROWS)
 
 
 @pytest.mark.asyncio
@@ -325,11 +343,29 @@ async def test_a_step_declaring_no_scope_records_no_scope_entry() -> None:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.asyncio
-async def test_absent_with_refuse_raises_a_typed_refusal() -> None:
+async def _caught_refusal() -> ReadRefusal:
+    """Run the refuse case and hand back the refusal it raised.
+
+    The claim *that* it raises belongs to exactly one test below. Everywhere else this
+    context is PLUMBING, not an assertion — which is what lets each of those tests
+    carry a single load-bearing assert, so item-level probe coverage and assert-level
+    probe coverage are the same number."""
     with pytest.raises(ReadRefusal) as caught:
         await _executor().execute(_step(scope=True, when_absent="refuse"), [], _ctx([]))
-    assert caught.value.refusal_kind is ReadRefusalKind.SCOPE_UNRESOLVED
+    return caught.value
+
+
+@pytest.mark.asyncio
+async def test_absent_with_refuse_raises_rather_than_returning_rows() -> None:
+    """The `pytest.raises` context IS this test's single assertion: a silent `[]`
+    would fall out of the context without raising and fail it."""
+    with pytest.raises(ReadRefusal):
+        await _executor().execute(_step(scope=True, when_absent="refuse"), [], _ctx([]))
+
+
+@pytest.mark.asyncio
+async def test_the_refusal_carries_the_typed_scope_kind() -> None:
+    assert (await _caught_refusal()).refusal_kind is ReadRefusalKind.SCOPE_UNRESOLVED
 
 
 @pytest.mark.asyncio
@@ -340,26 +376,32 @@ async def test_the_refusal_names_the_count_it_declined_to_hand_over() -> None:
     Asserted as a full phrase, not as ``str(count) in detail`` — a bare one-digit
     substring passes on any wrong count that happens to contain the digit, which is
     an oracle that cannot fail for the reason it claims to test."""
-    with pytest.raises(ReadRefusal) as caught:
-        await _executor().execute(_step(scope=True, when_absent="refuse"), [], _ctx([]))
-    assert f"{len(_EVENT_ROWS)} unscoped rows" in caught.value.detail
+    assert f"{len(_EVENT_ROWS)} unscoped rows" in (await _caught_refusal()).detail
+
+
+# --- OQ-3 closes through the PLAN-0048 wiring, and that route is asserted, not
+# --- inferred. `apply_scope` appends NOTHING to `provenance` on the refusal path: it
+# --- raises, and the raise discards the outcome. The count survives only because
+# --- `orchestrator._failure_trace_entry` turns a ReadRefusal into a structured
+# --- `read_refused` entry. Three separable claims, three tests.
+
+
+@pytest.mark.asyncio
+async def test_the_refusal_becomes_a_structured_trace_entry() -> None:
+    assert _failure_trace_entry(await _caught_refusal())["kind"] == "read_refused"
+
+
+@pytest.mark.asyncio
+async def test_the_trace_entry_names_the_scope_refusal_kind() -> None:
+    entry = _failure_trace_entry(await _caught_refusal())
+    assert entry["refusal_kind"] == ReadRefusalKind.SCOPE_UNRESOLVED.value
 
 
 @pytest.mark.asyncio
 async def test_the_refusals_count_reaches_the_reasoning_trace() -> None:
-    """OQ-3 closes through the PLAN-0048 wiring, and that route is asserted here.
-
-    ``apply_scope`` appends nothing to ``provenance`` on the refusal path — it raises,
-    and the raise discards the outcome. The count survives because
-    ``orchestrator._failure_trace_entry`` turns a ``ReadRefusal`` into a structured
-    ``read_refused`` entry carrying the message. Without this test, "every refusal
-    records a counted entry" would rest on an inference about code in a different
-    module rather than on a measurement."""
-    with pytest.raises(ReadRefusal) as caught:
-        await _executor().execute(_step(scope=True, when_absent="refuse"), [], _ctx([]))
-    entry = _failure_trace_entry(caught.value)
-    assert entry["kind"] == "read_refused"
-    assert entry["refusal_kind"] == ReadRefusalKind.SCOPE_UNRESOLVED.value
+    """The claim that actually closes OQ-3's "counted" half: without this, "every
+    refusal records a counted entry" rests on an inference about another module."""
+    entry = _failure_trace_entry(await _caught_refusal())
     assert f"{len(_EVENT_ROWS)} unscoped rows" in entry["summary"]
 
 
@@ -396,23 +438,43 @@ async def test_the_ordering_fixture_really_does_separate_the_two_orders() -> Non
 
     If the fleet-wide latest row happened to BE the visitor's, both orders would agree
     and the test above would pass with the scope applied in the wrong place. This pins
-    the premise: unscoped + latest_per selects ``ev-4``, which is NOT the visitor's."""
+    the premise: unscoped + latest_per selects ``ev-4``."""
     unscoped = await _executor().execute(_step(scope=False, project=True), [], _ctx([]))
     assert _ids(unscoped) == ["ev-4"]
+
+
+def test_the_fleet_wide_latest_row_belongs_to_another_case() -> None:
+    """The other half of the premise, and a pure fixture fact so it needs no run: the
+    row the unscoped pipeline selects must NOT be the visitor's, or the two orders
+    would agree and the ordering assertion would be satisfied by accident."""
     assert _EVENT_ROWS[3]["case_id"] != _VISITOR_CASE
 
 
-@pytest.mark.asyncio
-async def test_the_join_path_records_its_scope_with_counts() -> None:
-    """The counts are the BASE read's, taken at the attachment point: all 5 fetched
-    events survive the (absent) base ``where``, and 2 survive the scope. They are
-    deliberately NOT the step's final output size — ``latest_per`` reduces those 2 to
-    1 further down the pipeline, and a provenance entry that reported the END state
-    would say nothing about what the scope itself did."""
+async def _join_scope_entry() -> tuple[dict[str, Any], Any]:
     outcome = await _executor().execute(_step(scope=True, project=True), [], _ctx([_VISITOR_CASE]))
-    entry = _scope_entries(outcome)[0]
-    assert (entry["pre_scope_count"], entry["post_scope_count"]) == (len(_EVENT_ROWS), 2)
-    assert len(outcome.output) == 1  # latest_per, downstream of the counts above
+    return _scope_entries(outcome)[0], outcome
+
+
+@pytest.mark.asyncio
+async def test_the_join_path_counts_the_rows_entering_the_scope() -> None:
+    """All 5 fetched events survive the (absent) base ``where`` and reach the scope."""
+    entry, _ = await _join_scope_entry()
+    assert entry["pre_scope_count"] == len(_EVENT_ROWS)
+
+
+@pytest.mark.asyncio
+async def test_the_join_path_counts_the_rows_surviving_the_scope() -> None:
+    entry, _ = await _join_scope_entry()
+    assert entry["post_scope_count"] == 2
+
+
+@pytest.mark.asyncio
+async def test_the_scope_counts_are_not_the_steps_final_output_size() -> None:
+    """``latest_per`` reduces those 2 to 1 further down the pipeline. A provenance
+    entry reporting the END state would say nothing about what the scope itself did,
+    so this pins that the two numbers are genuinely different."""
+    _, outcome = await _join_scope_entry()
+    assert len(outcome.output) == 1
 
 
 # --------------------------------------------------------------------------- #
