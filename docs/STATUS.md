@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-23T21:40:00+07:00
-session: 249
-current_batch: "s249 — two PRs (#1268, #1269): PLAN-0113 drafted and the ADR-016 amendment Accepted, reversing PLAN-0112 SD-4 so an event-fired run is scoped to its firing case."
+last_updated: 2026-08-24T10:08:36+07:00
+session: 251
+current_batch: "s251 — one PR (#1275): PLAN-0113 Step 1 lands the `scope_by`/`when_absent` read grammar on `StepInput`, consuming nothing yet; AC-1 CLOSED."
 current_actor: code
-blocked_on: "Nothing. Main green, 0 open PRs. Owed: PLAN-0107 AC-9 re-scope, PLAN-0109's three ruled-content defects, PLAN-0108 label ordering, the `MEMORY.md` (Tier-0) consolidation."
-next_action: "PLAN-0113 Step 1 — the `scope_by` grammar in `spec.py`; unblocked because Step 0b (the ADR-016 amendment) is merged and Accepted, which CLAUDE.md §8 required first."
-head_commit: 33a4887
-recent_commits: [33a4887, 857767c, 98463e7, e05cfa3, 674a985, 2073e95, e126ebd, c169b46, 1b26fdc, 2095e6e]
+blocked_on: "Nothing. Main green, 0 open PRs, tree clean. Owed: PLAN-0107 AC-9 re-scope, PLAN-0109's three ruled-content defects, PLAN-0108 label ordering, the `MEMORY.md` (Tier-0) consolidation."
+next_action: "PLAN-0113 Step 2 — the `trigger_context` wire; Step 1 is merged with AC-1 CLOSED, and the PLAN stays `Draft` on purpose."
+head_commit: 968b34e
+recent_commits: [968b34e, 98b3cda, 17defa0, 9b16ebf, 31e5e55, 0d9b808, 33a4887, 857767c, 98463e7, e05cfa3]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,77 @@ recent_commits: [33a4887, 857767c, 98463e7, e05cfa3, 674a985, 2073e95, e126ebd, 
 ---
 
 ## Current Focus
+
+> **Session 251, 2026-08-24 (head_commit `98b3cda` → `968b34e`) — ONE PR
+> MERGED ([#1275](https://github.com/CrayJThiemsert/vero-lite/pull/1275)), 0
+> open, CI green, tree clean. **PLAN-0113 Step 1 SHIPPED and AC-1 is CLOSED:
+> the `scope_by` / `when_absent` read grammar now lives on `StepInput` and
+> consumes NOTHING yet** — it renders SB-1..SB-6 of the ADR-016 amendment
+> (2026-08-23) as schema, and the run path is untouched until Step 2.**
+>
+> 🔴 **The pin choice is the load-bearing decision, and it went AGAINST the
+> nearest-looking precedent.** `scope_by` is governance-pinned
+> **only-when-supplied** (ADR-0034 D6), following `transform` rather than the
+> always-present `reads` / `join` / `project` shape it sits beside. An
+> always-present key would have moved **all six verticals' config hashes** and
+> made **every in-flight run refuse at resume** — a migration nobody asked for,
+> bought back by one serialization decision.
+>
+> ✅ **The no-op claim was MEASURED, not asserted:** all **13 procedures across
+> all 6 verticals** are byte-identical HEAD-vs-tree — **fleet included, because
+> the named oracle guards only five**, so the sixth was checked rather than
+> assumed covered.
+>
+> 🔴 **The nine-probe non-vacuity battery FAILED ITS OWN CRITERION TWICE, and
+> the instrument was repaired both times** — never the criterion, per
+> `CLAUDE.md` §8's *"suspect the probe and control selection first"*. Judged
+> independently by the `goal-evaluator`: **J1 / J2 / J3 all PASS.**
+>
+> ⚠️ **Two Code-decided points were Cray-ratified at merge (typed, s251):**
+> `from:` is **required-explicit**, and there is a **fourth load-gate refusal
+> that SB-3 does not enumerate** — `when_absent` supplied with no `scope_by`.
+> Re-checked at this reconcile: SB-3's body still names three refusals, all of
+> them `scope_by`-present cases, so the fourth is carried by the PR and this
+> record only. Tracked as an Active TODO below.
+>
+> **Not started: PLAN-0113 Steps 2–8.** Step 2 is the `trigger_context` wire;
+> PLAN-0113 stays `Status: Draft` **on purpose**.
+
+> **Session 250, 2026-08-24 (head_commit `0d9b808` → `98b3cda`) — FOUR PRs
+> MERGED ([#1271](https://github.com/CrayJThiemsert/vero-lite/pull/1271), [#1272](https://github.com/CrayJThiemsert/vero-lite/pull/1272),
+> [#1273](https://github.com/CrayJThiemsert/vero-lite/pull/1273), [#1274](https://github.com/CrayJThiemsert/vero-lite/pull/1274)), 0 open, CI
+> green, tree clean. A governance-plumbing session — no engine code moved, and
+> what shipped is the machinery s251's build was then measured against.
+> **In-Flight Discussions and the Current-Focus rotation ledger are CAPPED
+> (Cray, typed, s250)** — the two sections R2 had never governed.**
+>
+> ✅ **The cap, in three clauses** (#1271): an In-Flight entry is a **pointer ≤
+> ~600 chars**; the section holds **only discussions still OPEN** — one
+> announcing its own closure has stopped being in flight; and it is **capped at
+> 6 entries**. The rotation ledger keeps **only the current 4-session window**,
+> each entry travelling into the archive with the block it explains. STATUS
+> **53,048 → 48,645 B**, back under R1's 48 KB soft target.
+>
+> 🔴 **The backfill is the real finding: two Cray-ratified rules had never
+> reached their enforcer at all.** The **s194 per-block 4,096 B cap** and the
+> **s141 Active-TODO pointer rule** were absent from
+> `.claude/agents/status-scribe.md` — zero hits, with a positive control
+> proving the grep finds a rule that *is* there. Both sections happened to be
+> compliant, **but not because the enforcer was enforcing them**. R2 now says
+> it out loud: *a rule absent from its enforcer's input is, for that enforcer,
+> not written* — `CLAUDE.md` §4's consumer test, measured.
+>
+> ✅ **The TODO that asked for the ruling is CLOSED** (#1272) — and at **638
+> chars it was the last Active TODO over the s141 cap**, so that section is now
+> 100% per-entry compliant.
+>
+> ✅ **The s245 block's one unhomed fact is REHOMED** (#1273): the four-day
+> `.git/index.lock` root cause — a **SIGSTOP-suspended git process (`STAT=T`)
+> holding the lock while not running** — now sits in
+> `.claude/skills/git-workflow/SKILL.md` beside the recovery it explains.
+> ✅ **PLAN-0113 Step 0's baseline is recorded** (#1274) at
+> `docs/logs/2026-08-24-plan0113-step0-baseline.md` — the pre-change
+> measurement Step 1's byte-identical claim is checked against.
 
 > **Session 249, 2026-08-23 (head_commit `674a985` → `33a4887`) — TWO PRs
 > MERGED ([#1268](https://github.com/CrayJThiemsert/vero-lite/pull/1268),
@@ -112,119 +183,8 @@ recent_commits: [33a4887, 857767c, 98463e7, e05cfa3, 674a985, 2073e95, e126ebd, 
 > 48 KB soft target**, far under the 64 KB hard ceiling that gates a commit —
 > and no rule now covers the remainder.
 
-> **Session 247, 2026-08-23 (head_commit `2095e6e` → `e126ebd`) — THREE PRs
-> MERGED ([#1261](https://github.com/CrayJThiemsert/vero-lite/pull/1261), [#1262](https://github.com/CrayJThiemsert/vero-lite/pull/1262),
-> [#1263](https://github.com/CrayJThiemsert/vero-lite/pull/1263)), 0 open, CI
-> green on each. The Active-TODOs compliance trim SHIPPED: R2's ~600-char
-> pointer cap — ratified 2026-07-17 (s141), never enforced since — went from
-> **24 of 35 rows over to zero**; Active TODOs 27,450 → **18,167 B**, STATUS
-> 60,553 → **51,270 B**.**
->
-> 🔴 **A home is what `git ls-files` says it is, not what the filesystem says.**
-> The carve-out was applied per item against the index, and 23 items had a
-> tracked home. The **one that did not** — the Tier-0 auto-memory store, whose
-> only path pointed outside the repo — was **REHOMED first** into
-> `docs/runbooks/memory-architecture.md` §Tier 0, then re-pointed, then trimmed:
-> rehome → re-point → verify → trim, never trim first. R4 checked against
-> `git show HEAD:` — **11 unchanged + 24 archived verbatim = 35, LOST = 0.**
->
-> 🔴 **A pre-committed criterion FAILED and was repaired by SCOPE, not by
-> threshold.** It demanded STATUS reach R1's 48 KB soft target and failed at
-> 51,270 B. Rather than relax a number after seeing the result (`CLAUDE.md` §8
-> forbids exactly that), the criterion was examined and found wrong **about
-> itself**: it attached a whole-file **R1** target to a section-scoped **R2**
-> task. R1's own guard agrees out loud — *"Passing, but prune harder next
-> reconcile (R2/R6)"*. Only the 64 KB hard ceiling gates a commit boundary.
->
-> ⚠️ **The remaining overage is located:** Recent Decisions is **9,193 B, 9 of
-> 10 rows over that same cap** — another section, another clause, out of scope at
-> #1263 by decision and spawned as a task.
->
-> 🔴 **A companion #1263 claim is MEASURED FALSE and retired here:** *"one CF
-> block (s243 cont.) is over R2's 4,096 B cap at 4,936 B"*. Real size **2,567 B,
-> under cap** — it was merely LAST, and the measurer bounded blocks
-> header-to-header, swallowing the ledger that belongs to no block: **s246's
-> instrument failure #1, verbatim.** Repaired: **zero** CF blocks over cap either
-> side of this reconcile. The ledger below carries the positive controls.
->
-> ✅ **The split ran FIRST, by Cray's ruling** (#1262): sections s173→s225
-> spilled to `docs/status-archive/2026-h1h-status.md`, base 189,574 →
-> **46,113 B**. A prerequisite, not a tidy-up — the trim's 21,958 B of full
-> originals would have carried the base to 211,532 B, **14,924 B past R4's
-> 196,608 B split trigger** yet still inside the hard cap, so the guard would
-> have **passed it with a warning**: the wrong outcome for a compliance PR.
->
-> 🔴 **R9 is now tracked NOWHERE — recorded rather than hidden** (#1261, on
-> Cray's typed rulings, closing the two files carried in the tree since s241).
-> The brand mark is gitignored (`docs/design/Cray_J_*`, a family pattern,
-> positive-controlled so the tracked `.md` siblings stay visible); the edit to
-> `docs/strategy/public/intro-video-production-rulings.md` was reverted after
-> confirming R9 survives at ten sites in the **gitignored** storyboard — the
-> exact failure mode that rulings file exists to prevent. Its own reverted text
-> *claimed* the gap had closed while `git show HEAD: | grep -c R9` returned
-> **0**, and had for six sessions. Cray ruled it acceptable.
->
-> ⚠️ **Two probe instruments failed SILENTLY and were repaired before their
-> results counted** — a `sed` mutation that never matched inside a `wsl bash
-> -lc` string (the probe ran unmutated code and printed green; `diff` proved the
-> file byte-identical), and a same-byte-length mutation defeated by a stale
-> `__pycache__/*.pyc`. §8's *"suspect the probe first"* held both times. The
-> strongest evidence was unstaged: the cap assertion reddened against the
-> author's own drafts **twice** (12 over cap, then 5).
 
-> **Session 246, 2026-08-22 (head_commit `9d0c3ff` → `38ef55e`) — THREE PRs
-> MERGED ([#1256](https://github.com/CrayJThiemsert/vero-lite/pull/1256), [#1257](https://github.com/CrayJThiemsert/vero-lite/pull/1257),
-> [#1258](https://github.com/CrayJThiemsert/vero-lite/pull/1258)), 0 open. PLAN-0112 Steps 6 and 7 EXECUTED;
-> PLAN-0112 AC-7, AC-8 and AC-9 CLOSED — **the PLAN is COMPLETE 9/9 and archived**
-> to `docs/plans/done/`, AC-7 after Cray ratified the narrowing its own
-> measurement forced — and the visitor flow
-> was driven end to end on the LIVE published system.**
->
-> 🔴 **The host had never received Step 5.** Its checkout stood at `205ba4b`, a
-> week behind, so the `accepted-quote` ingress row had never reached production and
-> Step 5's whole promise was unreachable there. Nothing in the repo said so; only
-> the pre-flight diff of the two files the host actually reads did. Cray's advance
-> go for Step 7 predated that fact and the demo reading `CONSUMED`, so Phase D was
-> re-asked with both on the table — `DEPLOY.md` §0 requires the go per occasion AND
-> per phase.
->
-> 🔴 **AC-7(i)'s own wording is MEASURED FALSE, and production agreed twice.** The
-> criterion says a visitor-fired run's link rows survive a reset. Fleet's `intake`
-> is a fleet-wide scan, so every visitor run's gate also decides the seeded demo
-> case and `on_resolved` writes one link row **per decided case** — three, for a run
-> fired from the visitor's own case. The reset reaches demo-scoped rows by
-> `case_id`, so those cannot survive. Confirmed independently on the live system:
-> the reset deleted **six** link rows for **two** demo runs, and the live gate
-> reported *"3 candidates reached this gate"*. The build is complete and proven;
-> the criterion is left UNTICKED pending Cray's narrowing.
->
-> ✅ **AC-8 — `GET /runs` gained a bounded newest-N default** (200, env-overridable).
-> A build choice SD-6(b) did not specify is recorded rather than left implicit:
-> `waiting_human_count` is NOT bounded, because a "waiting on me" badge that shrank
-> with the page would under-report decisions still pending.
->
-> ✅ **The live walk.** Non-cheapest accept → 422 with the reason box scoped to that
-> quote; reason submitted → a run fired with `trigger: event`; Tab H moved 2 → 3 and
-> its badge 1 → 2; the gate reasoned on *"Spend 62000.0 THB"*, an amount that
-> exists nowhere in the seed data, which is what makes it the visitor's OWN case;
-> SoD refused the requester and the ladder resolved to `appr-owner`, who approved;
-> the run parked again at `fulfill`; and the demo still read **`PRISTINE`** beside
-> it. Rollback point recorded: `oct-fleet-maintenance-app:prev` = `sha256:63c5ec37…`.
->
-> ⚠️ **Five instrument failures this session, and the artifact was right every
-> time** — a block measurer that swallowed a paragraph, a positive control that
-> moved an optimistic-lock `version`, a heredoc that ate 49 lines' worth of
-> backticks into `done/0110`, a tripwire comparison blind to a line wrap, and a
-> `docker exec … cat` against a distroless image that printed FAIL on an error
-> string. Each was repaired rather than waived; a positive control caught all five.
->
-> ✅ **Gate on `38ef55e`: 4267 passed / 8 skipped** (4259 + the 8 added) · bare
-> `ruff check .` clean · `ruff format --check .` 654 files · `mypy --strict` clean
-> over 201. Five non-vacuity probes, one per assertion, every mutation on a
-> production file, each restored byte-identically and sha256-verified.
-
-
-_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md), the full pre-trim ledger into [`2026-h1-status.md`](status-archive/2026-h1-status.md). The **session-243** block rotated there at the s246 reconcile, holding the window at four sessions; its G-13/G-14/G-15 substance lives in `docs/plans/done/0112-*.md`, which the Active-TODO entry points at — the fact the s245 reconcile measured when it discharged the trim prerequisite. The **session-243 cont.** block rotated there at THIS (s247) reconcile, holding the window at four sessions; its AC-1 substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`. ⚠️ **It rotated on the window rule alone — NOT on a cap overage.** #1263 recorded it at **4,936 B** against R2's 4,096 B per-block cap; that figure is **retired as an error** at this reconcile. Its real size is **2,567 B, under cap**: it was the LAST block, and the measurer bounded blocks header-to-header, so it swallowed this very ledger (2,368 B), which belongs to no block. The repaired measure finds **zero** CF blocks over cap on either side of this reconcile. The older figures in this ledger are **not** affected — the archived s240 block re-measures at 5,819 B against the *"~5,800–5,900 B"* recorded above. The **session-244** block rotated there at THIS (s248) reconcile, holding the window at four sessions; its PLAN-0112 Steps 3–4 substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, and the #1249 ฿-facet fix it also carried holds its own Recent Decisions row. Like the s243-cont. block before it, **it rotated on the window rule alone — NOT on a cap overage**: the repaired measure (#1264) — bounding each block by its own contiguous blockquote run rather than header-to-header — found zero CF blocks over R2's 4,096 B cap. The **session-245** block rotated there at THIS (s249) reconcile, holding the window at four sessions and again on the **window rule alone, not a cap overage**; its witnessed-RED finding is now binding in `CLAUDE.md` §8 (#1253) and its G-13 / Step-5 substance sits in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`. ⚠️ **That block's one unhomed fact is REHOMED (s250)** — the four-day `.git/index.lock` root cause now sits in `.claude/skills/git-workflow/SKILL.md` beside the recovery it explains, where the reader staring at a stuck lock will actually meet it.]_
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md), the full pre-trim ledger into [`2026-h1-status.md`](status-archive/2026-h1-status.md). The **session-244** block rotated there at the s248 reconcile, holding the window at four sessions; its PLAN-0112 Steps 3–4 substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, and the #1249 ฿-facet fix it also carried holds its own Recent Decisions row. **It rotated on the window rule alone — NOT on a cap overage**: the repaired measure (#1264) — bounding each block by its own contiguous blockquote run rather than header-to-header — found zero CF blocks over R2's 4,096 B cap. The **session-245** block rotated there at the s249 reconcile, holding the window at four sessions and again on the **window rule alone, not a cap overage**; its witnessed-RED finding is now binding in `CLAUDE.md` §8 (#1253) and its G-13 / Step-5 substance sits in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`. ⚠️ **That block's one unhomed fact is REHOMED (s250)** — the four-day `.git/index.lock` root cause now sits in `.claude/skills/git-workflow/SKILL.md` beside the recovery it explains, where the reader staring at a stuck lock will actually meet it. The **session-246 AND session-247** blocks BOTH rotated there at THIS (s251) reconcile: this is a **two-session reconcile** (s250 + s251), so two blocks enter and two leave, holding the window at four. Both rotated on the **window rule alone, not a cap overage** — s246's PLAN-0112-COMPLETE and live-walk substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md` + `docs/logs/2026-08-22-s246-*.md`, s247's trim-and-split substance in `docs/runbooks/memory-architecture.md` §R2 and the `2026-h1h-status.md` header, and each keeps its own Recent Decisions row. **The s250 reconcile rotated no CF block** (its four PRs were governance plumbing), so the ledger entries for the s246 and s247 reconciles — the ones this reconcile drops — travel into the archive with the blocks they explain.]_
 
 
 ## Prior focus (archived)
@@ -244,6 +204,8 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-24 | **s251 — ONE PR (#1275): PLAN-0113 Step 1 SHIPPED, AC-1 CLOSED — the `scope_by`/`when_absent` read grammar lands on `StepInput`, consuming nothing yet.** Governance-pinned **only-when-supplied** (ADR-0034 D6, the `transform` precedent): an always-present key would have moved all six verticals' config hashes and made every in-flight run refuse at resume. 🔴 The nine-probe battery **failed its own criterion twice** — instrument repaired, criterion never relaxed. ⚠️ Two Cray-typed ratifications at merge: `from:` required-explicit, and a **fourth load-gate refusal SB-3 does not enumerate**. | `968b34e` / [#1275](https://github.com/CrayJThiemsert/vero-lite/pull/1275) / `docs/plans/0113-*.md` |
+| 2026-08-24 | **s250 — FOUR PRs (#1271–#1274): In-Flight Discussions and the Current-Focus rotation ledger are CAPPED (Cray, typed)** — pointer ≤ ~600 chars · OPEN-only · ≤ 6 entries; the ledger keeps the current window. 🔴 **The enforcer had never received two rules Cray ratified long ago** — the s194 per-block cap and the s141 Active-TODO rule were absent from `.claude/agents/status-scribe.md` entirely; both backfilled. STATUS 53,048 → **48,645 B**. ⚠️ The four-day `index.lock` root cause (a SIGSTOP'd git process, `STAT=T`) rehomed into the git-workflow skill. | `98b3cda` / [#1271](https://github.com/CrayJThiemsert/vero-lite/pull/1271) / `docs/runbooks/memory-architecture.md` |
 | 2026-08-23 | **s249 — TWO PRs (#1268, #1269): PLAN-0112 SD-4 REVERSED (Cray, typed) — an event-fired run is scoped to its FIRING CASE**, drafted as PLAN-0113 with the ADR-016 amendment it requires Accepted the same session; `superseded by new info`, not an error. 🔴 Ten rulings, all as-recommended. 🔴 **OQ-1 closed a 3-session-old question** — Code may append `## Post-archival amendment` + one inline pointer in `done/`, **supersession pointers ONLY**. ⚠️ ADR-016's amendments index read 5 against 7 body sections; backfilled, now 8 = 8. | `33a4887` / [#1269](https://github.com/CrayJThiemsert/vero-lite/pull/1269) / `docs/adr/0016-*.md` |
 | 2026-08-23 | **s248 — ONE PR (#1265): the Recent Decisions pointer cap went 8-of-10 rows over to ZERO** (7,408 → 5,743 B), the one fact tracked nowhere else REHOMED first into the git-workflow skill, then trimmed; R4: 2 + 8 = 10, LOST = 0. 🔴 **The inherited "next place to cut" was WRONG** — R2 does not govern In-Flight Discussions, capping it is a Cray ruling, not a trim. ⚠️ `674a985` lacks its `(#1265)` suffix — `gh pr merge --subject` writes verbatim. | `674a985` / [#1265](https://github.com/CrayJThiemsert/vero-lite/pull/1265) / `docs/runbooks/memory-architecture.md` |
 | 2026-08-23 | **s247 — THREE PRs (#1261–#1263): the Active-TODOs pointer cap went 24-of-35 rows over to ZERO** (27,450 → 18,167 B), the archive split running first by Cray's ruling. 🔴 A home is what `git ls-files` says — the lone item without one was REHOMED, re-pointed, then trimmed; R4: 11 + 24 = 35, LOST = 0. 🔴 A failed pre-committed criterion was repaired by SCOPE, not threshold. 🔴 R9 is now tracked NOWHERE. | `e126ebd` / [#1263](https://github.com/CrayJThiemsert/vero-lite/pull/1263) / `docs/runbooks/memory-architecture.md` |
@@ -252,10 +214,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-21 | **s244 — TWO PRs (#1248, #1250): PLAN-0112 Steps 3 and 4 BUILT — a visitor's accepted quote fires the governed run.** 🔴 **A SECOND composition failure beyond G-14** — SD-2(b) and SD-5(b) do not compose on the bridge's SD-P4 in-flight guard, which no key design routes around: every acceptance became a silent `SKIPPED_IN_FLIGHT`. 🔴 **Ordering fails with no error** — fire before `_refresh_case_events` and the gate is about ANOTHER truck. **No AC ticked yet.** | `a8c42b7` / [#1248](https://github.com/CrayJThiemsert/vero-lite/pull/1248) / `docs/plans/done/0112-*.md` |
 | 2026-08-21 | **s244 — ONE PR (#1249): the Box-4 ฿ facet was UNREACHABLE, not missing.** Four of five ฿-producing verticals wrote `economic_impact` only into the action envelope while `benefit_rollup` reads `StepResult.reasoning_trace` — Tab J read ฿0 for all of them. Emission moved down to `ActionStepExecutor`, plus a run-scoped `(action_id, kind)` ledger without which procurement DOUBLE-COUNTED a run. **Standalone wiring fix; NOT a PLAN-0112 step.** | `6fce826` / [#1249](https://github.com/CrayJThiemsert/vero-lite/pull/1249) / `services/engine/procedures/action_step.py` |
 | 2026-08-21 | **s243 cont. — ONE PR (#1246): PLAN-0112 Step 1 EXECUTED, AC-1 CLOSED — `run_procedure_endpoint` 403s without an authenticated human, before spec load and any DB write.** 🔴 **The only producer of a `PipelineRun` was the one door of three that did not fail closed** — `triggered_by: null`; PLAN-0110's G10(6) found it. 🔴 **Non-vacuity took TWO probes on DIFFERENT assertions** — deletion proves presence, RELOCATION proves placement. | `f52dbdc` / [#1246](https://github.com/CrayJThiemsert/vero-lite/pull/1246) / `docs/plans/done/0112-*.md` |
-| 2026-08-21 | **s243 — TWO PRs (#1243, #1244): all SEVEN PLAN-0112 SDs RULED and the Step-2 gate DISCHARGED.** 🔴 **G-14 — two of Cray's own rulings did not compose:** SD-2(b)'s re-fire is swallowed by SD-5(b)'s bridge idempotency (`event_key` omits the amount) — **no error, no log**. 🔴 **AC-2's pass read was FALSE in the shipped demo.** 🔴 **G-13 — the exclusion is load-bearing PROSE at two sites.** ⚠️ SD-2 was ruled AGAINST the PLAN's recommendation. | `0b5c333` / [#1243](https://github.com/CrayJThiemsert/vero-lite/pull/1243) / `docs/plans/done/0112-*.md` |
-| 2026-08-21 | **s242 — FIVE PRs (#1237–#1241): PLAN-0107 AC-10 CLOSED; FOUR Cray rulings, two re-opening settled ground.** 🔴 **PLAN-0110 SD-E REVERSED** — quote-acceptance, not case creation, is the governable moment; a no-principal firing mints a run **nobody can approve**. 🔴 **ADR-0035's L1 re-read a SECOND time** — app code may READ the gate's verdict, never gate; **OQ-7 (b)** stamps its absence. A LOCKED ruling is amended, never edited. _[Backfilled s243 cont.]_ | `bf2771e` / [#1238](https://github.com/CrayJThiemsert/vero-lite/pull/1238) / `docs/adr/0035-hosting-and-exposure-model.md` |
 
-_[The two oldest rows (**s234, s233**) rotated to `docs/status-archive/2026-h1-status.md` at the s243 cont. reconcile, holding the table at ten. Two rows were added: the **s242 backfill** — Cray ruled it in, discharging the gap the s243 reconcile flagged, and its four rulings are no longer carried by narrative alone — and a **second s243 row**, because Step 1 is a BUILD event of a different kind from that session's rulings and folding it into the existing row would have written a row far over R2's ~600-char pointer cap. The oldest row (**s237**) rotated to the same file at the s245 reconcile, holding the table at ten; the s238 row followed at the s246 reconcile for the same reason. The **s239** row followed at THIS (s247) reconcile, again holding the table at ten. **Session 248 discharged the pointer-cap overage this table still carried: 8 of the 10 rows were over R2's ~600-char cap, and are now zero.** Each row's substance — not merely the path it named — was resolved against `git ls-files` before that row was shortened; the one fact tracked nowhere else, s240's *ancestry is not content*, was **rehomed first** into `.claude/skills/git-workflow/SKILL.md`, then re-pointed, then trimmed. All eight full originals are preserved verbatim in `docs/status-archive/2026-h1-status.md` (R4, move-never-drop). The **s240** row rotated to the same file at THIS (s248) reconcile, holding the table at ten. ⚠️ It is the one row whose fact was rehomed the session *before* it rotated — *ancestry is not content* now lives in `.claude/skills/git-workflow/SKILL.md`, and that skill's widened `description` surfaces it automatically — so its rotation drops nothing that STATUS was the sole carrier of. The **s241** row rotated to the same file at THIS (s249) reconcile, holding the table at ten. Its substance keeps two tracked homes — `docs/conventions/retired-claims.md` for the guard it shipped, and the *"the two s241 pre-commit guards are FLOORS, NOT CEILINGS"* entry in §Active TODOs for the live remainder — so it, too, rotates on the count rule alone.]_
+_[The two oldest rows (**s234, s233**) rotated to `docs/status-archive/2026-h1-status.md` at the s243 cont. reconcile, holding the table at ten. Two rows were added: the **s242 backfill** — Cray ruled it in, discharging the gap the s243 reconcile flagged, and its four rulings are no longer carried by narrative alone — and a **second s243 row**, because Step 1 is a BUILD event of a different kind from that session's rulings and folding it into the existing row would have written a row far over R2's ~600-char pointer cap. The oldest row (**s237**) rotated to the same file at the s245 reconcile, holding the table at ten; the s238 row followed at the s246 reconcile for the same reason. The **s239** row followed at THIS (s247) reconcile, again holding the table at ten. **Session 248 discharged the pointer-cap overage this table still carried: 8 of the 10 rows were over R2's ~600-char cap, and are now zero.** Each row's substance — not merely the path it named — was resolved against `git ls-files` before that row was shortened; the one fact tracked nowhere else, s240's *ancestry is not content*, was **rehomed first** into `.claude/skills/git-workflow/SKILL.md`, then re-pointed, then trimmed. All eight full originals are preserved verbatim in `docs/status-archive/2026-h1-status.md` (R4, move-never-drop). The **s240** row rotated to the same file at THIS (s248) reconcile, holding the table at ten. ⚠️ It is the one row whose fact was rehomed the session *before* it rotated — *ancestry is not content* now lives in `.claude/skills/git-workflow/SKILL.md`, and that skill's widened `description` surfaces it automatically — so its rotation drops nothing that STATUS was the sole carrier of. The **s241** row rotated to the same file at THIS (s249) reconcile, holding the table at ten. Its substance keeps two tracked homes — `docs/conventions/retired-claims.md` for the guard it shipped, and the *"the two s241 pre-commit guards are FLOORS, NOT CEILINGS"* entry in §Active TODOs for the live remainder — so it, too, rotates on the count rule alone. The two oldest rows (**s243**, **s242**) rotated to the same file at THIS (s251) reconcile — a two-session reconcile added two rows (s250, s251), so two left to hold the table at ten. Both rotate on the count rule alone: s243's G-13/G-14 substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, and s242's SD-E reversal, second L1 re-reading and OQ-7(b) each keep a live Active TODO plus `docs/adr/0035-hosting-and-exposure-model.md`, whose own amendment pass records that a LOCKED ruling is amended in place, never edited.]_
 
 ## In-Flight Discussions
 
@@ -268,8 +228,9 @@ _[The two oldest rows (**s234, s233**) rotated to `docs/status-archive/2026-h1-s
 
 ## Active TODOs
 
+- [ ] **🆕 ADR-016 SB-3 enumerates THREE load-gate refusals; the SHIPPED Step 1 has FOUR.** The fourth — `when_absent` supplied with **no `scope_by`** — was Cray-ratified at the #1275 merge (typed, s251), but SB-3's body still names only the three `scope_by`-present cases; re-checked in the ADR at the s251 reconcile. **Cray's call: amend the ADR, or leave the fourth recorded in the PLAN.** **Read:** `docs/adr/0016-governed-procedure-engine.md` §SB-3 · `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md`.
+- [ ] **🆕 CRAY'S CALL — should R2 cap the Active TODOs *COUNT*?** The s141 rule caps each entry (≤ ~600 chars — 100% compliant since #1272) and the s250 ruling caps In-Flight at 6 entries, but **nothing bounds how many TODOs this section holds** — **38 today**, and it only grows. Recorded, not acted on: adding a count cap would **author a new rule, not enforce one**. **Read:** `docs/runbooks/memory-architecture.md` §R2.
 - [x] **CRAY'S CALL — should R2 cap `In-Flight Discussions`? RULED s250 (Cray, typed): YES.** Capped at pointer ≤ ~600 chars · OPEN-only · ≤ 6 entries; the Current-Focus **rotation ledger** is capped to the current window by the same ruling. Both live in R2 (`docs/runbooks/memory-architecture.md`) **and** in their enforcer, `.claude/agents/status-scribe.md` — which s250 measured had never received the s194 per-block cap or the s141 Active TODOs rule either; both backfilled. STATUS **53,048 → 48,645 B**, under the R1 soft target ([#1271](https://github.com/CrayJThiemsert/vero-lite/pull/1271)).
-- [x] **🆕 PLAN-0112 — the visitor case that becomes a governed run (Tab I→Tab H): COMPLETE 9/9, ARCHIVED s246.** All seven SDs ruled, Steps 1–7 executed, and the flow is LIVE on the published system. AC-7(i)'s wording was **measured false** and **NARROWED (Cray, typed, s246)** — no code changed with the ruling. **Read the archived PLAN, never a restatement:** `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`; the deploy and live walk are at `docs/logs/2026-08-22-s246-*`.
 - [ ] **🆕 ADR-0035 — L1 re-read a SECOND time, and OQ-7 ruled, both Cray-typed s242.** L1 becomes *"one gate at the edge; app code may READ the verdict, never gate itself"*, unblocking phase-2 identity **capture** while **validation** stays pilot-era. **OQ-7 = (b)**: absent edge identity → proceed and **stamp the absence**. ⚠️ Two costs Cray accepted: runs stay unattributed until someone reads the stamps and **nothing alerts on it**; the stamp shape is PLAN-0112's to specify, not the ADR's. **Read the ADR:** `docs/adr/0035-hosting-and-exposure-model.md`.
 - [ ] **🆕 The three live items the rotated s240 block carried — carried here so the rotation ledger's claim is true, not merely stated.** Measured at s240, none resolved since: (i) the **font-size decision still gates re-measuring every geometry number in the beat-4 mockup**; (ii) the **run-list backlog badge on the host is still unmeasured** — a host-state read, so it needs its own typed §8 go; (iii) the **three Advisory-proposal candidates are still unnamed**, so the gate panel still reads as unfinished. The full s240 narrative is at `docs/status-archive/2026-h1d-current-focus.md`.
 - [ ] **The Tier-0 auto-memory store is a git repo that DRIFTS — REHOMED s247 to the runbook's Tier-0 section, which is where a reader about to run a consolidation actually looks.** Snapshotted s242 (164 tracked, tree clean). ⚠️ **A snapshot guards against a wrong deletion, NOT against disk loss — there is still no remote.** The `MEMORY.md` consolidation pass this unblocks is owed and deliberately not done here. **Read the runbook, never a restatement:** `docs/runbooks/memory-architecture.md` §Tier 0.

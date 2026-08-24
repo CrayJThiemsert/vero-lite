@@ -466,3 +466,21 @@ DISCHARGED s239 to `docs/strategy/public/intro-video-production-rulings.md`, and
 s239's headline — eight PRs, two host-state deploys, and *"a summary that is
 ACCURATE about what it cites still shrinks"*; s239's two host records survive
 tracked at `docs/logs/2026-08-18-s239-*` and `docs/logs/2026-08-19-s239-*`. The **session-240** block rotated there at the s242 reconcile — it measured ~5,800–5,900 B against R2's 4,096 B per-block cap, and rotating it is the runbook's own prescribed response to STATUS sitting over R1's soft target (fix the voice, do not raise the ceiling). Its live residue is not lost: the three s240 items that were open when it rotated (the font-size decision gating the beat-4 geometry re-measure, the unmeasured host-side run-list backlog badge, and the three unnamed Advisory-proposal candidates) are carried in §Active TODOs rather than left only in the archive. The **session-241** block rotated there at the s244 reconcile, holding the window at four; its retired-claim marker travelled with the quote it labels, so the guard stays satisfied on both surfaces. The **session-242** block rotated there at THIS (s245) reconcile — again one session below the four-session window and again deliberately: STATUS stood at 61,636 B, 12,484 B over R1's soft target, and a new block could not be written without either this rotation or a trim that would delete facts. Its live remainders were carried before the move, not after — PLAN-0110 SD-E's reversal and ADR-0035's L1 re-read each hold their own Active-TODO entry, and PLAN-0107 AC-10 is recorded in that PLAN. ]_
+
+## Rotated this reconcile — sessions 250 + 251 (2026-08-24), Recent Decisions 10-row window
+
+_A two-session reconcile added two rows (s250, s251), so the two oldest left to hold the
+table at ten. **Both rotate on the count rule alone, not a cap overage.** R2 carve-out
+checked before the move: s243's G-13/G-14 substance lives in
+`docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`; s242's SD-E
+reversal, second L1 re-reading and OQ-7(b) each keep a live Active TODO entry plus
+`docs/adr/0035-hosting-and-exposure-model.md`, whose own amendment pass records that a
+LOCKED ruling is amended in place, never edited._
+
+### Recent Decisions row — s243, evicted by the 10-row window
+
+| 2026-08-21 | **s243 — TWO PRs (#1243, #1244): all SEVEN PLAN-0112 SDs RULED and the Step-2 gate DISCHARGED.** 🔴 **G-14 — two of Cray's own rulings did not compose:** SD-2(b)'s re-fire is swallowed by SD-5(b)'s bridge idempotency (`event_key` omits the amount) — **no error, no log**. 🔴 **AC-2's pass read was FALSE in the shipped demo.** 🔴 **G-13 — the exclusion is load-bearing PROSE at two sites.** ⚠️ SD-2 was ruled AGAINST the PLAN's recommendation. | `0b5c333` / [#1243](https://github.com/CrayJThiemsert/vero-lite/pull/1243) / `docs/plans/done/0112-*.md` |
+
+### Recent Decisions row — s242, evicted by the 10-row window
+
+| 2026-08-21 | **s242 — FIVE PRs (#1237–#1241): PLAN-0107 AC-10 CLOSED; FOUR Cray rulings, two re-opening settled ground.** 🔴 **PLAN-0110 SD-E REVERSED** — quote-acceptance, not case creation, is the governable moment; a no-principal firing mints a run **nobody can approve**. 🔴 **ADR-0035's L1 re-read a SECOND time** — app code may READ the gate's verdict, never gate; **OQ-7 (b)** stamps its absence. A LOCKED ruling is amended, never edited. _[Backfilled s243 cont.]_ | `bf2771e` / [#1238](https://github.com/CrayJThiemsert/vero-lite/pull/1238) / `docs/adr/0035-hosting-and-exposure-model.md` |

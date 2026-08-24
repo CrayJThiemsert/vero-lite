@@ -216,6 +216,46 @@ closeout PASS/FAIL determination, or stop-and-ask trigger:
 The negative wording rules out the failure mode; the positive guidance
 in §3 keeps dispatch authors from re-inventing methods every time.
 
+## 4.1 The same quoting layer silently eats a *mutation* — two measured shapes
+
+*(Added 2026-08-24, session 251. Carried here from a rotating STATUS block: the
+s251 R2 carve-out check found these two mechanisms had **no tracked home** outside
+the block about to rotate — four search wordings across `docs/`, five across
+`.claude/`, zero relevant hits, positive-controlled. The archive preserves the
+prose either way; this section exists so the reader meets them **at the moment of
+need** rather than only when digging. Recording is not retrieval.)*
+
+The exit-code artifact has a twin that is worse, because it fails **green**. A
+non-vacuity probe mutates a file, re-runs a test, and expects RED. If the mutation
+never lands, the probe runs the **unmutated** code, the test passes, and the probe
+reports "assertion witnessed GREEN under mutation" — a meaningless result wearing
+a meaningful label.
+
+Two measured ways the mutation fails to land:
+
+1. **`sed` never matched, inside a `wsl bash -lc` string.** The pattern was
+   mangled by the same double-expansion §1.1 describes, so `sed` matched nothing
+   and exited **0**. `sed -i` reports success for zero substitutions — by design.
+   Measured s247; `diff` against a pre-probe copy proved the file byte-identical.
+2. **A stale `__pycache__/*.pyc` served the OLD code.** The mutation was
+   deliberately **same-byte-length**, so CPython's source-mtime/size invalidation
+   check saw no change and reused the cached bytecode. Measured s247.
+
+**The remedy is one line per probe: prove the mutation reached the code.**
+
+- Assert the file's bytes actually changed — compare a sha256 (or `cmp`) against
+  a pre-probe copy. Prefer a **length-changing** mutation, which defeats shape 2
+  as well.
+- Run every probe with **`PYTHONDONTWRITEBYTECODE=1`**, and never trust a
+  same-length mutation without it.
+- Write the mutation with a real editor or a Python script, not `sed` inside a
+  `wsl bash -lc` string. If `sed` is unavoidable, check its substitution count —
+  its exit code will not tell you.
+
+This is the probe-side statement of `CLAUDE.md` §8's *"every probe proving its
+mutation reached the code"*, and the reason §8 adds *"if a probe battery fails the
+criterion it fixed for itself, suspect the probe and control selection first."*
+
 ## 5. Scope
 
 **Applies to:** any tool invocation in any Code-tab dispatch in this

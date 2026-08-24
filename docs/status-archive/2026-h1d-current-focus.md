@@ -1343,3 +1343,139 @@ discharged the trim prerequisite.
 > write-sets.
 
 _[Rotated 2026-08-23 (s249 reconcile) out of `docs/STATUS.md` §Current Focus — window rule (4 most-recent sessions), not a cap overage.]_
+
+## Rotated this reconcile — sessions 250 + 251 (2026-08-24), Current Focus 4-session window
+
+_A TWO-SESSION reconcile (s250's four PRs #1271–#1274 and s251's #1275 landed against a
+STATUS still stamped `session: 249`), so two blocks entered and two left, holding the
+window at four. **Both rotated on the window rule alone — NOT on a cap overage.** Measured
+at this reconcile with each block bounded by its OWN contiguous blockquote run (the #1264
+repair, never header-to-header): every block on both sides of the rotation is under R2's
+4,096 B per-block cap. The s250 reconcile rotated no CF block of its own — its four PRs
+were governance plumbing — so the ledger entries for the s246 and s247 reconciles travel
+into this file with the blocks they explain._
+
+_R2 carve-out, checked per block BEFORE the move: s246's PLAN-0112-COMPLETE and live-walk
+substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`
+plus `docs/logs/2026-08-22-s246-*.md`; s247's trim-and-split substance in
+`docs/runbooks/memory-architecture.md` §R2 and the `2026-h1h-status.md` header; each keeps
+its own Recent Decisions row in STATUS. ⚠️ **Two facts had NO tracked home outside these
+blocks and were carried out FIRST, not after** — the `sed`-never-matched-inside-`wsl bash
+-lc` hazard and the stale-`__pycache__` same-length-mutation hazard now live in
+`docs/lessons/0007-harness-exit-code-artifact.md` §4.1, where a reader running a probe
+will meet them at the moment of need._
+
+### Current Focus block — Session 247 (the Active-TODOs pointer-cap trim, the R4 continuation split, and a retired 4,936 B measurement) [rotated 2026-08-24, sessions-250+251 reconcile — 4-newest-sessions CF window]
+
+> **Session 247, 2026-08-23 (head_commit `2095e6e` → `e126ebd`) — THREE PRs
+> MERGED ([#1261](https://github.com/CrayJThiemsert/vero-lite/pull/1261), [#1262](https://github.com/CrayJThiemsert/vero-lite/pull/1262),
+> [#1263](https://github.com/CrayJThiemsert/vero-lite/pull/1263)), 0 open, CI
+> green on each. The Active-TODOs compliance trim SHIPPED: R2's ~600-char
+> pointer cap — ratified 2026-07-17 (s141), never enforced since — went from
+> **24 of 35 rows over to zero**; Active TODOs 27,450 → **18,167 B**, STATUS
+> 60,553 → **51,270 B**.**
+>
+> 🔴 **A home is what `git ls-files` says it is, not what the filesystem says.**
+> The carve-out was applied per item against the index, and 23 items had a
+> tracked home. The **one that did not** — the Tier-0 auto-memory store, whose
+> only path pointed outside the repo — was **REHOMED first** into
+> `docs/runbooks/memory-architecture.md` §Tier 0, then re-pointed, then trimmed:
+> rehome → re-point → verify → trim, never trim first. R4 checked against
+> `git show HEAD:` — **11 unchanged + 24 archived verbatim = 35, LOST = 0.**
+>
+> 🔴 **A pre-committed criterion FAILED and was repaired by SCOPE, not by
+> threshold.** It demanded STATUS reach R1's 48 KB soft target and failed at
+> 51,270 B. Rather than relax a number after seeing the result (`CLAUDE.md` §8
+> forbids exactly that), the criterion was examined and found wrong **about
+> itself**: it attached a whole-file **R1** target to a section-scoped **R2**
+> task. R1's own guard agrees out loud — *"Passing, but prune harder next
+> reconcile (R2/R6)"*. Only the 64 KB hard ceiling gates a commit boundary.
+>
+> ⚠️ **The remaining overage is located:** Recent Decisions is **9,193 B, 9 of
+> 10 rows over that same cap** — another section, another clause, out of scope at
+> #1263 by decision and spawned as a task.
+>
+> 🔴 **A companion #1263 claim is MEASURED FALSE and retired here:** *"one CF
+> block (s243 cont.) is over R2's 4,096 B cap at 4,936 B"*. Real size **2,567 B,
+> under cap** — it was merely LAST, and the measurer bounded blocks
+> header-to-header, swallowing the ledger that belongs to no block: **s246's
+> instrument failure #1, verbatim.** Repaired: **zero** CF blocks over cap either
+> side of this reconcile. The ledger below carries the positive controls.
+>
+> ✅ **The split ran FIRST, by Cray's ruling** (#1262): sections s173→s225
+> spilled to `docs/status-archive/2026-h1h-status.md`, base 189,574 →
+> **46,113 B**. A prerequisite, not a tidy-up — the trim's 21,958 B of full
+> originals would have carried the base to 211,532 B, **14,924 B past R4's
+> 196,608 B split trigger** yet still inside the hard cap, so the guard would
+> have **passed it with a warning**: the wrong outcome for a compliance PR.
+>
+> 🔴 **R9 is now tracked NOWHERE — recorded rather than hidden** (#1261, on
+> Cray's typed rulings, closing the two files carried in the tree since s241).
+> The brand mark is gitignored (`docs/design/Cray_J_*`, a family pattern,
+> positive-controlled so the tracked `.md` siblings stay visible); the edit to
+> `docs/strategy/public/intro-video-production-rulings.md` was reverted after
+> confirming R9 survives at ten sites in the **gitignored** storyboard — the
+> exact failure mode that rulings file exists to prevent. Its own reverted text
+> *claimed* the gap had closed while `git show HEAD: | grep -c R9` returned
+> **0**, and had for six sessions. Cray ruled it acceptable.
+>
+> ⚠️ **Two probe instruments failed SILENTLY and were repaired before their
+> results counted** — a `sed` mutation that never matched inside a `wsl bash
+> -lc` string (the probe ran unmutated code and printed green; `diff` proved the
+> file byte-identical), and a same-byte-length mutation defeated by a stale
+> `__pycache__/*.pyc`. §8's *"suspect the probe first"* held both times. The
+> strongest evidence was unstaged: the cap assertion reddened against the
+> author's own drafts **twice** (12 over cap, then 5).
+
+### Current Focus block — Session 246 (PLAN-0112 COMPLETE 9/9 and archived; the visitor flow proven LIVE) [rotated 2026-08-24, sessions-250+251 reconcile — 4-newest-sessions CF window]
+
+> **Session 246, 2026-08-22 (head_commit `9d0c3ff` → `38ef55e`) — THREE PRs
+> MERGED ([#1256](https://github.com/CrayJThiemsert/vero-lite/pull/1256), [#1257](https://github.com/CrayJThiemsert/vero-lite/pull/1257),
+> [#1258](https://github.com/CrayJThiemsert/vero-lite/pull/1258)), 0 open. PLAN-0112 Steps 6 and 7 EXECUTED;
+> PLAN-0112 AC-7, AC-8 and AC-9 CLOSED — **the PLAN is COMPLETE 9/9 and archived**
+> to `docs/plans/done/`, AC-7 after Cray ratified the narrowing its own
+> measurement forced — and the visitor flow
+> was driven end to end on the LIVE published system.**
+>
+> 🔴 **The host had never received Step 5.** Its checkout stood at `205ba4b`, a
+> week behind, so the `accepted-quote` ingress row had never reached production and
+> Step 5's whole promise was unreachable there. Nothing in the repo said so; only
+> the pre-flight diff of the two files the host actually reads did. Cray's advance
+> go for Step 7 predated that fact and the demo reading `CONSUMED`, so Phase D was
+> re-asked with both on the table — `DEPLOY.md` §0 requires the go per occasion AND
+> per phase.
+>
+> 🔴 **AC-7(i)'s own wording is MEASURED FALSE, and production agreed twice.** The
+> criterion says a visitor-fired run's link rows survive a reset. Fleet's `intake`
+> is a fleet-wide scan, so every visitor run's gate also decides the seeded demo
+> case and `on_resolved` writes one link row **per decided case** — three, for a run
+> fired from the visitor's own case. The reset reaches demo-scoped rows by
+> `case_id`, so those cannot survive. Confirmed independently on the live system:
+> the reset deleted **six** link rows for **two** demo runs, and the live gate
+> reported *"3 candidates reached this gate"*. The build is complete and proven;
+> the criterion is left UNTICKED pending Cray's narrowing.
+>
+> ✅ **AC-8 — `GET /runs` gained a bounded newest-N default** (200, env-overridable).
+> A build choice SD-6(b) did not specify is recorded rather than left implicit:
+> `waiting_human_count` is NOT bounded, because a "waiting on me" badge that shrank
+> with the page would under-report decisions still pending.
+>
+> ✅ **The live walk.** Non-cheapest accept → 422 with the reason box scoped to that
+> quote; reason submitted → a run fired with `trigger: event`; Tab H moved 2 → 3 and
+> its badge 1 → 2; the gate reasoned on *"Spend 62000.0 THB"*, an amount that
+> exists nowhere in the seed data, which is what makes it the visitor's OWN case;
+> SoD refused the requester and the ladder resolved to `appr-owner`, who approved;
+> the run parked again at `fulfill`; and the demo still read **`PRISTINE`** beside
+> it. Rollback point recorded: `oct-fleet-maintenance-app:prev` = `sha256:63c5ec37…`.
+>
+> ⚠️ **Five instrument failures this session, and the artifact was right every
+> time** — a block measurer that swallowed a paragraph, a positive control that
+> moved an optimistic-lock `version`, a heredoc that ate 49 lines' worth of
+> backticks into `done/0110`, a tripwire comparison blind to a line wrap, and a
+> `docker exec … cat` against a distroless image that printed FAIL on an error
+> string. Each was repaired rather than waived; a positive control caught all five.
+>
+> ✅ **Gate on `38ef55e`: 4267 passed / 8 skipped** (4259 + the 8 added) · bare
+> `ruff check .` clean · `ruff format --check .` 654 files · `mypy --strict` clean
+> over 201. Five non-vacuity probes, one per assertion, every mutation on a
+> production file, each restored byte-identically and sha256-verified.
