@@ -195,7 +195,33 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   The claim the AC rests on — "more than one" — is unaffected; the number was wrong and
   is corrected rather than left to be re-derived. Restore verified byte-identical
   (`procedures.yaml` sha256 `b68f47cf7317…`).]_
-- [ ] **AC-4 — the blast radius is bounded, with a positive control.** Procurement's
+- [x] **AC-4 — the blast radius is bounded, with a positive control.** *(CLOSED s252 —
+  `feat/plan0113-step4-blast-radius`. Full evidence:
+  [`docs/logs/2026-08-24-plan0113-step4-blast-radius.md`](../logs/2026-08-24-plan0113-step4-blast-radius.md).
+  Procurement's hero observable is **byte-identical** to the Step-0 capture at `17defa0` —
+  0 of 11 pinned values differ, both key lists match, and **both sha256 digests match**,
+  reproducing the Step-0 serialisation exactly. Structural counts re-measured from the
+  PARSED spec: `event=2`, `manual+schedule=11`, as the baseline pinned. The three
+  blast-radius re-greps ran: `trigger_context` (67 hits / 13 files, `query_step.py` newly
+  present = Step 2's wire), `entity_ids` (10 files), and `fleet-wide` — the last found
+  **`docs/STATUS.md` still carrying the stale narrative in two places**, which is blast
+  radius #10 / Step 7 and is confirmed outstanding rather than assumed.)*
+  <br>🔴 **This AC's positive control could NOT be applied where its own wording says, and
+  the reason is registered rather than worked around.** It reads "apply a `scope_by` to
+  procurement"; `ScopeBySpec` requires a declared `reads` list
+  (`spec.py::StepInput._validate_scope_shape`) and **no step of `emergency_sourcing_round`
+  declares `input.reads`** — its `intake` is served by the co-existing `_SeedQuery`
+  (PLAN-0062 SD-C / PLAN-0064 SD-1). So procurement's event path is not merely unchanged,
+  it is **structurally incapable of carrying the clause today** — a stronger result,
+  registered as **inexpressible** per `CLAUDE.md` §8 rather than silently upgraded. The
+  control therefore targets the manual calm path's `read_stock` (`reads: [Part]`), the one
+  procurement step that can carry it: mutation reached the file (Δ +95 bytes, sha moved),
+  **4 tests reddened**, restore byte-identical.
+  <br>_The first run reported FAIL on all three legs and all three were the INSTRUMENT — a
+  grep counting prose in YAML comments, a baseline value hand-transcribed from a human
+  rendering (caught because two digests said it could not have moved), and a control aimed
+  at tests the mutation cannot reach. None was repaired by relaxing the check._
+  Procurement's
   event path (`emergency_sourcing_round`) and all 11 manual/schedule procedures behave
   identically to the Step 0 baseline — same tests green, and a targeted comparison for
   procurement's hero run. 🔴 Positive control (without it a green suite proves
