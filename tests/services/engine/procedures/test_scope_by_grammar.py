@@ -322,21 +322,31 @@ def test_flipping_when_absent_alone_changes_the_governance_hash() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# Step 1 consumes nothing — the scope boundary, asserted
+# The Step 1 -> Step 2 boundary, INVERTED rather than deleted
 # --------------------------------------------------------------------------- #
 
 
-def test_step_1_wires_nothing_the_executor_still_cannot_see_a_trigger() -> None:
-    """PLAN-0113 Step 1 is grammar-only; the ``trigger_context`` wire is Step 2.
+def test_the_executor_now_consumes_the_grammar_step_2_landed() -> None:
+    """Step 1 shipped this assertion the other way round, and Step 2 flipped it.
 
-    Asserted against the ARTIFACT (the executor module's source) rather than against
-    this test's own idea of it. The positive control is the second assertion: the
-    module must actually have been read, or a typo'd path would make the zero-count
-    claim vacuous."""
+    While Step 1 stood alone the load-bearing claim was *"the executor cannot see a
+    trigger"* — ``query_step.py`` contained zero references to ``trigger_context``,
+    which is what made "grammar only, consuming nothing" a checked property instead
+    of a promise. Step 2's entire job is to build that wire, so this test was
+    **guaranteed** to redden here.
+
+    It is INVERTED rather than deleted. The boundary is still worth asserting; only
+    its direction changed. Deleting it would have removed the one place that says
+    which side of the Step 1 / Step 2 line the executor sits on, and a later reader
+    would have no way to tell the wire was ever deliberately absent.
+
+    Asserted against the ARTIFACT (the executor module's source), never against this
+    test's own idea of it. The last assertion is the positive control: without it a
+    typo'd path would make every claim above vacuous on an empty string."""
     from pathlib import Path
 
     source = Path("services/engine/procedures/query_step.py").read_text(encoding="utf-8")
-    assert "trigger_context" not in source
-    assert "scope_by" not in source
+    assert "trigger_context" in source
+    assert "scope_field" in source
     # Positive control: the file was really read and really is the query executor.
     assert "matches_where" in source

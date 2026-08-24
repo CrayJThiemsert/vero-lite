@@ -44,7 +44,7 @@ dispatch cannot drift (AC-3).
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, cast
@@ -59,7 +59,7 @@ from services.engine.procedures.orchestrator import (
     matches_where,
     read_bound_violation,
 )
-from services.engine.procedures.spec import Agent, Step, StepKind
+from services.engine.procedures.spec import Agent, Step, StepKind, WhenAbsent
 
 
 class ReadRefusalKind(str, Enum):
@@ -78,6 +78,13 @@ class ReadRefusalKind(str, Enum):
     UNSUPPORTED_READ_SHAPE = "unsupported_read_shape"
     UNBOUND_QUERY = "unbound_query"
     JOIN_SHAPE_VIOLATION = "join_shape_violation"
+    SCOPE_UNRESOLVED = "scope_unresolved"
+    """PLAN-0113 Step 2 (ADR-016 Amendment 2026-08-23, SB-2): the step declared
+    ``scope_by`` with ``when_absent: refuse`` and the run carries no usable
+    ``entity_ids`` to scope on. Additive — every existing member is untouched, the
+    PLAN-0061 ``JOIN_SHAPE_VIOLATION`` precedent. Named for the STATE (nothing to
+    resolve the scope against), not the policy, because the same state under
+    ``sweep`` is not a refusal at all."""
 
 
 class ReadRefusal(Exception):  # noqa: N818 — a refusal is deliberately NOT an *Error (D-N1)
@@ -121,6 +128,12 @@ class ReadPlan:
     step_id: str
     object_type: str
     where: Mapping[str, Any] = field(default_factory=dict)
+    # PLAN-0113 Step 2: the DECLARATION only. `plan_read` stays pure — it never
+    # touches a RunContext — so the compiled plan carries the authored field name
+    # and absent-policy, and the executor resolves them against
+    # `ctx.trigger_context` at execute time (ADR-016 Amendment 2026-08-23, SB-4).
+    scope_field: str | None = None
+    when_absent: WhenAbsent | None = None
 
 
 @dataclass(frozen=True)
@@ -164,6 +177,13 @@ class JoinReadPlan:
     order_by: str | None = None
     tie_break: str | None = None
     fields: Mapping[str, str] = field(default_factory=dict)
+    # PLAN-0113 Step 2: scope applies to the BASE read only in v1 (the amendment's
+    # OQ-2, ratified) — a joined side keeps its per-join static `where`. Position in
+    # the pinned pipeline is SEMANTICS, not detail: before `latest_per` the result is
+    # the firing case's OWN latest row; after it, the fleet's latest row iff it
+    # happens to belong to the firing case, which is a different (often empty) answer.
+    scope_field: str | None = None
+    when_absent: WhenAbsent | None = None
 
 
 def _compile_join_plan(
@@ -259,6 +279,8 @@ def _compile_join_plan(
         order_by=order_by,
         tie_break=tie_break,
         fields=dict(project.fields) if project is not None and project.fields else {},
+        scope_field=step_input.scope_by.field if step_input.scope_by is not None else None,
+        when_absent=step_input.when_absent,
     )
 
 
@@ -345,7 +367,142 @@ def plan_read(
     if violation is not None:
         raise ReadRefusal(ReadRefusalKind(violation), step_id=step.step_id, object_type=object_type)
     where = dict(step_input.where) if step_input.where else {}
-    return ReadPlan(step_id=step.step_id, object_type=object_type, where=where)
+    return ReadPlan(
+        step_id=step.step_id,
+        object_type=object_type,
+        where=where,
+        scope_field=step_input.scope_by.field if step_input.scope_by is not None else None,
+        when_absent=step_input.when_absent,
+    )
+
+
+def scope_ids(ctx: RunContext) -> list[str] | None:
+    """The run's firing entity ids, or ``None`` when there is nothing to scope on.
+
+    ``None`` means **ABSENT** — the state ``when_absent`` governs. The amendment
+    (SB-2) enumerates exactly three absent shapes and this mirrors them literally:
+    a missing ``entity_ids`` key, a non-list value, or an empty list.
+
+    🔴 **A non-empty list holding no strings is PRESENT, not absent** — a deliberate
+    reading of the ratified text, which lists three absent shapes and not a fourth.
+    The consequence is the fail-CLOSED one: the scope applies, no row can match a
+    non-string, and the step yields zero rows rather than sweeping the fleet. Under
+    ``sweep`` the opposite reading would hand a gate every case in the vertical on
+    the strength of an upstream type bug, which is precisely the fail-open outcome
+    the per-step policy exists to remove.
+
+    Non-string members are dropped from the returned list rather than refused: they
+    can never match (SB-1 matches on string membership), so carrying them would only
+    inflate the provenance count.
+    """
+    trigger_context = ctx.trigger_context
+    if not isinstance(trigger_context, dict):
+        return None
+    raw = trigger_context.get("entity_ids")
+    if not isinstance(raw, list) or not raw:
+        return None
+    return [value for value in raw if isinstance(value, str)]
+
+
+def matches_scope(row: Any, scope_field: str, ids: Sequence[str]) -> bool:
+    """Keep ``row`` iff ``row[scope_field]`` is a string member of ``ids`` (SB-1).
+
+    A non-mapping row, or one missing the field, never matches — mirroring
+    :func:`orchestrator.matches_where`'s posture, which is what makes the three
+    ROUTINE fleet fixture events (no ``case_id`` at all) fall out of a scoped
+    intake rather than ride along.
+    """
+    if not isinstance(row, Mapping):
+        return False
+    value = row.get(scope_field)
+    return isinstance(value, str) and value in ids
+
+
+def apply_scope(
+    rows: list[dict[str, Any]],
+    *,
+    scope_field: str | None,
+    when_absent: WhenAbsent | None,
+    object_type: str,
+    step_id: str,
+    ctx: RunContext,
+    provenance: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Narrow ``rows`` to the run's firing entity, or refuse typed (PLAN-0113 AC-2).
+
+    ONE function, called from BOTH the single-read and the join path, so the two
+    attachment points cannot drift apart the way a duplicated predicate would. The
+    CALLER owns *where* it is called — that placement is the pinned semantics
+    (post-``where``, pre-join, pre-``latest_per``); this owns *what* happens.
+
+    Three outcomes, and none of them is silent (the amendment's OQ-3 makes the
+    counted provenance entry contractual, not best-effort):
+
+    - **no ``scope_field``** — the step declares no scope. Returns ``rows``
+      unchanged and records NOTHING, so a procedure that never adopted the grammar
+      produces a byte-identical trace as well as a byte-identical output.
+    - **absent** (:func:`scope_ids` returns ``None``) — ``sweep`` returns ``rows``
+      unchanged but STILL records the sweep, so "the gate saw the whole fleet" is
+      visible rather than inferred; ``refuse`` raises a typed
+      :class:`ReadRefusal`, never an empty list.
+    - **present** — keeps the matching rows and records both counts.
+    """
+    if scope_field is None:
+        return rows
+    ids = scope_ids(ctx)
+    if ids is None:
+        if when_absent is WhenAbsent.REFUSE:
+            raise ReadRefusal(
+                ReadRefusalKind.SCOPE_UNRESOLVED,
+                step_id=step_id,
+                object_type=object_type,
+                detail=(
+                    f"scope_by field '{scope_field}' declares when_absent=refuse and the "
+                    f"run carries no usable trigger entity_ids — declining to hand "
+                    f"{len(rows)} unscoped rows to the gate"
+                ),
+                # OQ-3's counted half. The count rides `detail` rather than a
+                # provenance entry because this path RAISES: the outcome (and its
+                # trace list) is discarded, and `orchestrator._failure_trace_entry`
+                # is what turns the refusal into a structured `read_refused` entry.
+                # That route is asserted, not assumed —
+                # test_the_refusals_count_reaches_the_reasoning_trace.
+            )
+        provenance.append(
+            {
+                "kind": "scope_provenance",
+                "summary": (
+                    f"scope '{scope_field}': no trigger entity_ids on this run — swept "
+                    f"{len(rows)} rows unscoped (when_absent=sweep)"
+                ),
+                "object_type": object_type,
+                "scope_field": scope_field,
+                "when_absent": WhenAbsent.SWEEP.value,
+                "applied": False,
+                "entity_id_count": 0,
+                "pre_scope_count": len(rows),
+                "post_scope_count": len(rows),
+            }
+        )
+        return rows
+    scoped = [row for row in rows if matches_scope(row, scope_field, ids)]
+    provenance.append(
+        {
+            "kind": "scope_provenance",
+            "summary": (
+                f"scope '{scope_field}' against {len(ids)} trigger entity id(s): "
+                f"{len(rows)} -> {len(scoped)} rows"
+            ),
+            "object_type": object_type,
+            "scope_field": scope_field,
+            "when_absent": when_absent.value if when_absent is not None else None,
+            "applied": True,
+            "entity_id_count": len(ids),
+            "pre_scope_count": len(rows),
+            "post_scope_count": len(scoped),
+        }
+    )
+    return scoped
 
 
 def readable_object_types(agent: Agent, object_type_names: frozenset[str]) -> frozenset[str]:
@@ -449,6 +606,18 @@ class QueryStepExecutor:
                 "post_where_count": len(output),
             }
         ]
+        # PLAN-0113 Step 2 (SB-4): POST-`where`. There is no join and no `latest_per`
+        # on this path, so the single-read attachment point is simply "after the
+        # static narrowing" — the same relative position the join path uses.
+        output = apply_scope(
+            output,
+            scope_field=plan.scope_field,
+            when_absent=plan.when_absent,
+            object_type=plan.object_type,
+            step_id=plan.step_id,
+            ctx=ctx,
+            provenance=provenance,
+        )
         read_audit: dict[str, Any] = {
             "actor": ctx.agent.agent_id,
             "actor_kind": "engine",
@@ -496,6 +665,24 @@ class QueryStepExecutor:
                 "object_type": base_type,
                 "post_where_count": len(accumulated),
             }
+        )
+
+        # PLAN-0113 Step 2 (SB-4) — THE PINNED POSITION, and it is semantics rather
+        # than sequencing taste. Here: base rows, post-`where`, BEFORE the joins loop
+        # and BEFORE `_latest_per_group`, so the result is "the firing case's OWN
+        # latest reading" — one row, one proposal at the gate. Moved below
+        # `_latest_per_group` it would read "the fleet's latest reading, iff that row
+        # happens to belong to the firing case" — usually zero rows, so the visitor's
+        # gate would propose NOTHING. Base read only in v1 (the amendment's OQ-2): a
+        # joined side keeps its per-join static `where`.
+        accumulated = apply_scope(
+            accumulated,
+            scope_field=plan.scope_field,
+            when_absent=plan.when_absent,
+            object_type=base_type,
+            step_id=plan.step_id,
+            ctx=ctx,
+            provenance=provenance,
         )
 
         for join in plan.joins:

@@ -137,7 +137,7 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   Load-gate half: a `scope_by` on a non-query step, or without `reads`, or (per SD-1,
   **RULED required-explicit**) without an explicit `when_absent`, refuses at load — each refusal
   witnessed RED by a spec fixture. **[offline/no-DB]**
-- [ ] **AC-2 — the wire works, three ways.** Unit-level, on `QueryStepExecutor` with a
+- [x] **AC-2 — the wire works, three ways.** *(CLOSED s251 — `feat/plan0113-step2-trigger-scope-wire`. All four branches asserted; the ordering (SB-4) proved on a fixture where scope-before and scope-after `latest_per` give DIFFERENT answers, so the pinned position is tested rather than incidentally satisfied. 17-probe battery, coverage machine-checked at 33/34 items witnessed RED. 🔴 **One reading recorded, not silently absorbed:** SB-2 enumerates three absent shapes and does not cover a non-empty `entity_ids` list holding no strings; taken as PRESENT → zero rows (fail-closed), because reading it as absent would SWEEP the whole vertical under `when_absent: sweep` on the strength of an upstream type bug. Reversible in one place, `scope_ids()`.)* Unit-level, on `QueryStepExecutor` with a
   fake adapter (unit tests here; the real-seam proof is AC-3): (i) scope value present
   and matching → only matching rows survive, pre-`latest_per`; (ii) scope present, no
   row matches → 0 rows — positive control: the same fixture with a matching id yields
