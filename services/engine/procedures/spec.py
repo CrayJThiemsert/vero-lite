@@ -325,6 +325,69 @@ class ProjectSpec(BaseModel):
         return self
 
 
+class WhenAbsent(StrEnum):
+    """What a scoped read does when the run carries nothing to scope on (ADR-016
+    Amendment 2026-08-23, SB-2; PLAN-0113 D1 — declared PER STEP, never engine-wide).
+
+    "Absent" means the run's trigger context carries no usable ``entity_ids`` list —
+    a missing key, a non-list, or an empty one. It is held DISTINCT from zero-match:
+    a scope that applies and keeps no row is an empty result, not a refusal.
+
+    Closed at exactly two members (the amendment's OQ-1, ratified): a third posture
+    is a future amendment under the catalog-growth convention, not a build call. A
+    warn variant is provenance's job — every applied scope is counted — not a
+    third policy.
+    """
+
+    SWEEP = "sweep"
+    """Read unscoped — byte-identical to today's unscoped read. What fleet authors:
+    the seeded demo run fires with no firing entity BY DESIGN (its breaching truck is
+    chosen by the declared query DURING the run), so a fail-closed posture there would
+    make ``DEMO-STATE: PRISTINE`` unreachable."""
+
+    REFUSE = "refuse"
+    """Refuse the read with a typed refusal — never a silent empty set."""
+
+
+class ScopeBySpec(BaseModel):
+    """Narrow a ``query`` step's BASE read to the run's firing entity (ADR-016
+    Amendment 2026-08-23, SB-1; PLAN-0113 D2).
+
+    ``field`` names the row column to match — **the YAML names it, never the engine**:
+    fleet's firing entity is a *case* and procurement's is an *asset*, so an engine
+    that learned the token ``case_id`` would be learning one vertical's vocabulary.
+    Match semantics: keep a base-read row iff ``row[field]`` is a **string member of**
+    ``trigger_context["entity_ids"]`` (a list — fleet's carries the quote id too, which
+    matches no ``case_id`` value and is harmless). A row missing the field, or whose
+    value is not a string in the list, never matches — mirroring ``matches_where``'s
+    non-mapping posture.
+
+    ``from`` is a closed ``Literal["trigger.entity_ids"]`` in v1 — the only source —
+    and is REQUIRED rather than defaulted so that every dynamic read is greppable at
+    its authoring site. A second source is a future amendment (the D2-Amendment
+    catalog-growth convention), at which point this Literal widens.
+
+    This is a SIBLING of ``where``, not a change to it: ``where`` stays the
+    static-literal field-equality filter (LOCKED-3). Keeping the run-time-valued
+    surface in its own typed member is what keeps ``extra="forbid"`` honest and the
+    dynamic surface explicitly enumerable.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    field: str = Field(
+        ...,
+        description="row column matched against the trigger's entity_ids (the vertical "
+        "names it; the engine never learns any vertical's token)",
+    )
+    from_source: Literal["trigger.entity_ids"] = Field(
+        ...,
+        alias="from",
+        description="the scope value's source — closed at trigger.entity_ids in v1; "
+        "required-explicit so every dynamic read is greppable at its authoring site",
+    )
+
+
 class StepInput(BaseModel):
     """A step's input source (ADR-016 D4; PLAN-0019 A-ζ-prep named-input).
 
@@ -349,6 +412,16 @@ class StepInput(BaseModel):
     H-governed values the generator may never emit (stripped at lift, pinned in
     the governance snapshot); both require ``reads`` and are structurally
     validated by the extended ``validate_read_bindings`` load gate.
+
+    ``scope_by`` / ``when_absent`` (PLAN-0113; the ADR-016 Amendment 2026-08-23)
+    are the read grammar's ONLY run-time-valued surface: every other narrowing
+    here (``where``, the per-join ``where``) compares against a static authored
+    literal, while ``scope_by`` resolves against the firing run's engine-stamped
+    ``trigger_context["entity_ids"]`` at execute time. The compiled plan carries
+    the *declaration* only — ``plan_read`` stays pure. Classified exactly like
+    ``join``/``project`` (H-governed, never generated, stripped at lift, pinned
+    when supplied), because scope changes WHAT POPULATION REACHES A GATE: the pin
+    records whether a run was approved scoped or sweeping.
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -377,6 +450,53 @@ class StepInput(BaseModel):
         description="declared projection (latest-per-group and/or field select/rename) — "
         "PLAN-0061 SD-1; requires reads",
     )
+    scope_by: ScopeBySpec | None = Field(
+        default=None,
+        description="narrow the base read to the run's firing entity: keep rows whose "
+        "`field` value is a member of trigger_context['entity_ids'] (ADR-016 Amendment "
+        "2026-08-23, SB-1). Requires reads AND an explicit when_absent.",
+    )
+    when_absent: WhenAbsent | None = Field(
+        default=None,
+        description="policy when the run carries no entity_ids to scope on: `sweep` (read "
+        "unscoped) or `refuse` (typed refusal). REQUIRED whenever scope_by is present — "
+        "never defaulted (ADR-016 Amendment 2026-08-23, SB-2; PLAN-0113 SD-1).",
+    )
+
+    @model_validator(mode="after")
+    def _validate_scope_shape(self) -> Self:
+        """The schema half of SB-3's load-gate posture (ADR-016 Amendment 2026-08-23).
+
+        Two of the three refusals are decidable from the input alone and live here; the
+        third — ``scope_by`` on a non-``query`` step — needs the step's ``kind`` and so
+        lives on :meth:`Step._validate_step`, mirroring how ``transform`` is bound to a
+        transform step.
+
+        A dangling ``when_absent`` (no ``scope_by``) is refused too: an absent-scope
+        policy that governs no scoped read is inert spec surface that reads as if it
+        does something. This mirrors ``project.order_by``'s latest_per requirement, and
+        strictly tightens — no authored YAML carries either key yet.
+        """
+        if self.scope_by is not None:
+            if not self.reads:
+                raise ValueError(
+                    "scope_by requires a declared reads list — it narrows the BASE read's "
+                    "rows (ADR-016 Amendment 2026-08-23, SB-3)"
+                )
+            if self.when_absent is None:
+                raise ValueError(
+                    "scope_by requires an explicit when_absent (sweep | refuse) — a silent "
+                    "default is exactly the fail-open/fail-closed ambiguity the per-step "
+                    "policy exists to remove (ADR-016 Amendment 2026-08-23, SB-2 / "
+                    "PLAN-0113 SD-1)"
+                )
+        elif self.when_absent is not None:
+            raise ValueError(
+                "when_absent is only meaningful with scope_by — an absent-scope policy "
+                "governing no scoped read is inert spec surface (ADR-016 Amendment "
+                "2026-08-23, SB-2)"
+            )
+        return self
 
     @model_validator(mode="after")
     def _validate_join_project_shape(self) -> Self:
@@ -1348,6 +1468,16 @@ class Step(BaseModel):
             raise ValueError(
                 f"step '{self.step_id}': a transform declaration applies to transform steps "
                 f"only (kind '{self.kind.value}' must not set transform) — PLAN-0077 SD-6"
+            )
+        if (
+            self.input is not None
+            and self.input.scope_by is not None
+            and self.kind is not StepKind.QUERY
+        ):
+            raise ValueError(
+                f"step '{self.step_id}': scope_by applies to query steps only (kind "
+                f"'{self.kind.value}' must not set input.scope_by) — it narrows a BASE "
+                "READ, and a non-query step has none — ADR-016 Amendment 2026-08-23, SB-3"
             )
         if self.kind is StepKind.ACTION:
             if self.autonomy is None:

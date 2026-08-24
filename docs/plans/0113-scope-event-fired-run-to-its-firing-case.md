@@ -125,7 +125,7 @@ positive control; every probe proves its mutation reached the code (prefer a
 length-changing mutation; run with `PYTHONDONTWRITEBYTECODE=1`; restore from a `/tmp`
 copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
 
-- [ ] **AC-1 — the grammar lands, only-when-supplied.** `scope_by` (+ its `when_absent`
+- [x] **AC-1 — the grammar lands, only-when-supplied.** *(CLOSED s251 — `feat/plan0113-step1-scope-by-grammar`. All six verticals' hashes measured byte-identical HEAD-vs-tree across 13 procedures — fleet included, because the named oracle guards only five. The always-present mutation was witnessed reddening that oracle; each of the three load-gate refusals witnessed RED by its own probe. **Shipped with a FOURTH refusal this AC did not enumerate:** a `when_absent` with no `scope_by`, which mirrors `project.order_by`'s `latest_per` requirement. Strictly tightening and unable to break authored YAML — no vertical carries either key yet — but recorded here so the shipped load gate and this PLAN do not read differently.)* `scope_by` (+ its `when_absent`
   companion) on the query step's input model; all 6 verticals load
   (`load_procedures`); **governance config hashes byte-identical for all 6** — oracle:
   `tests/verticals/test_governance_config_hash_stability.py` (exists, verified s249).
