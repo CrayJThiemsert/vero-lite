@@ -46,6 +46,7 @@
     "read_passthrough": { "label": "Read — passthrough (deterministic)", "cls": "s-ok", "actor": "engine" },
     "query": { "label": "Intake — seeded read (deterministic)", "cls": "s-ok", "actor": "engine" },
     "join_pipeline": { "label": "Join pipeline (deterministic)", "cls": "s-ok", "actor": "engine" },
+    "scope_provenance": { "label": "Scoped to the firing case (deterministic)", "cls": "s-ok", "actor": "engine" },
     "entity_resolution": { "label": "Entity resolution (deterministic)", "cls": "s-ok", "actor": "engine" },
     "rule_check": { "label": "Rule check (deterministic)", "cls": "s-warn", "actor": "engine" },
     "rule_gate_evaluated": { "label": "Rule gate evaluated (deterministic)", "cls": "s-warn", "actor": "engine" },
