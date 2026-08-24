@@ -873,6 +873,8 @@ though every run on the system is a demo run, the correct reading after this ame
 of the reset's reach by run-id scoping — measured in
 `tests/api/test_fleet_demo_reset_coexistence_scenario.py` (PLAN-0112 AC-7(i)).
 
+_[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_
+
 🔴 **That module also recorded a bound AC-7(i)'s own wording missed, and it belongs
 here.** Because fleet's `intake` step is a **fleet-wide scan** rather than a lookup of the
 accepted case, a visitor-fired run's `approve` gate also decides the seeded demo case, and
@@ -893,3 +895,49 @@ parked alongside.
 
 **Owning PLAN:** `docs/plans/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`
 (§SD-6, §SD-7, §AC-7, §AC-8).
+
+## Post-archival amendment — 2026-08-25 (session 252): the population bound the s245 amendment recorded is superseded
+
+**Why this section exists.** The s245 amendment above closed with a paragraph carrying the
+bound *"every visitor-fired run loses its `case-fleet-operate-demo` link row to a reset,
+whatever case its visitor accepted on"*, justified by fleet's `intake` being a
+**fleet-wide scan**. That justification is gone. Written **additively** per the OQ-1
+ruling (Cray, typed, s249): the s245 text is untouched — including its own tripwire — and
+the pointer is one inserted line beside it. A tripwire that vanishes when it fires cannot
+tell the next reader that it ever did, and neither can an amendment.
+
+**What changed.** PLAN-0113 Step 3 (`ca6133e`, PR #1279) authored
+`scope_by: {field: case_id, from: trigger.entity_ids}` + `when_absent: sweep` on fleet's
+`intake`, so an event-fired run reads only its firing case's rows.
+
+**The new population bound.** A visitor-fired run's `approve` gate decides **exactly one
+case — the visitor's own** — and `on_resolved` therefore writes **exactly one** link row.
+A visitor-fired run no longer writes a demo-scoped link row at all, so the s245 sentence
+above is now true only of the ONE remaining path that still produces that shape: a visitor
+who accepts a quote **on the demo case itself**.
+
+🔴 **What did NOT change, re-verified rather than assumed (s252).** The reset still clears
+link rows on **both** keys — `run_id` in the demo ids **or** `case_id` in them — and
+`_delete_run_side`'s rationale was never the population. It is **id reuse**: the reset
+erases and re-seeds `case-fleet-operate-demo`, so a surviving link would point at a
+different case reusing the id. `services/db/demo_run_reset.py` was re-read at s252 and no
+population claim in it needed correcting.
+
+**Where the both-key deletion is witnessed now.** Because a visitor's run stopped producing
+a demo-scoped row, asserting the deletion there would have gone vacuous. PLAN-0113 AC-5
+re-homed it, and the two halves are now witnessed **independently**:
+
+- the **`run_id`** half — on the seeded demo runs' own rows. Measured s252: the boot
+  seeder's `run-fleet-demo-history` writes **three** link rows, one of them keyed on a demo
+  case;
+- the **`case_id`** half — on `test_a_run_fired_from_the_demo_case_itself_still_survives_the_reset`,
+  now the only path putting a demo case on a NON-demo run's link row.
+
+**Still true and unchanged:** the run-side deletion is id-scoped to `DEMO_RUN_IDS`; the
+audit chain is never touched, so an approval stays provable after its link row goes; and
+`read_demo_state` reads `PRISTINE` after a reset and one re-boot with a visitor's run
+parked alongside — re-measured at s252 under the scope clause, with the `when_absent:
+refuse` flip witnessed RED to prove the check can still fail.
+
+**Owning PLAN:** `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md` (§AC-5,
+§AC-6, Step 7).

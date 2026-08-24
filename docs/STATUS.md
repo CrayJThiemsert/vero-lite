@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-24T10:08:36+07:00
-session: 251
-current_batch: "s251 — one PR (#1275): PLAN-0113 Step 1 lands the `scope_by`/`when_absent` read grammar on `StepInput`, consuming nothing yet; AC-1 CLOSED."
+last_updated: 2026-08-25T00:20:00+07:00
+session: 252
+current_batch: "s252 — four PRs merged (#1279-#1282), one open (#1283): PLAN-0113 Steps 3/4/6 shipped (AC-3, AC-4, AC-5, AC-6 CLOSED), SD-3 RULED (b), and PLAN-0114 drafted for the empty-gate continuation."
 current_actor: code
-blocked_on: "Nothing. Main green, 0 open PRs, tree clean. Owed: PLAN-0107 AC-9 re-scope, PLAN-0109's three ruled-content defects, PLAN-0108 label ordering, the `MEMORY.md` (Tier-0) consolidation."
-next_action: "PLAN-0113 Step 2 — the `trigger_context` wire; Step 1 is merged with AC-1 CLOSED, and the PLAN stays `Draft` on purpose."
-head_commit: 968b34e
-recent_commits: [968b34e, 98b3cda, 17defa0, 9b16ebf, 31e5e55, 0d9b808, 33a4887, 857767c, 98463e7, e05cfa3]
+blocked_on: "Nothing. Main green, tree clean. Owed: an R2/R6 Current-Focus ROTATION — this reconcile appended without pruning and left STATUS ~250 bytes over R1's soft target (passing, hard ceiling far off); PLAN-0107 AC-9 re-scope; PLAN-0109's three ruled-content defects; PLAN-0108 label ordering; the `MEMORY.md` (Tier-0) consolidation."
+next_action: "PLAN-0113 AC-8 — the offline gate at CI scope, measured LAST so the counts describe the tree that ships; then AC-9 (live, needs a typed Cray go per occasion AND per phase). PLAN-0114 Step 0 is the other open front."
+head_commit: a06ea2d
+recent_commits: [a06ea2d, 6ec33b3, 5871056, ca6133e, ea361a8, dc0e410, a73906f, 968b34e, 98b3cda, 17defa0]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,53 @@ recent_commits: [968b34e, 98b3cda, 17defa0, 9b16ebf, 31e5e55, 0d9b808, 33a4887, 
 ---
 
 ## Current Focus
+
+> **Session 252, 2026-08-25 (head_commit `968b34e` → `a06ea2d`) — FOUR PRs
+> MERGED ([#1279](https://github.com/CrayJThiemsert/vero-lite/pull/1279),
+> [#1280](https://github.com/CrayJThiemsert/vero-lite/pull/1280),
+> [#1281](https://github.com/CrayJThiemsert/vero-lite/pull/1281),
+> [#1282](https://github.com/CrayJThiemsert/vero-lite/pull/1282)), one open
+> ([#1283](https://github.com/CrayJThiemsert/vero-lite/pull/1283)), CI green
+> per-sha on every merge, tree clean. **PLAN-0113 Steps 3, 4 and 6 SHIPPED —
+> PLAN-0113 AC-3, AC-4, AC-5 and AC-6 CLOSED.** Fleet's `intake` now carries
+> `scope_by: {field: case_id, from: trigger.entity_ids}` + `when_absent: sweep`,
+> so a visitor who accepts a quote sees a gate proposing **exactly one case —
+> their own**.**
+>
+> 🔴 **The `intake` fleet-wide scan is GONE — every narrative above that rests
+> on it is superseded.** The s249 root-cause paragraph (*"fleet's `intake` is a
+> fleet-wide scan, so the event triggers the run but does not scope it"*) was
+> true when written and is now history. The four `done/` record sites carry the
+> ruled two-part supersession (PLAN-0113 Step 7): `done/0112` SD-4, its AC-7(i)
+> NARROWED clause and its AC-2 sub-ceiling re-fix, plus `done/0110`'s s245
+> population bound.
+>
+> 🔴 **Scoping made a dead-end run reachable for the first time, and it is
+> RULED.** A **sub-ceiling** acceptance now parks at `approve` with an EMPTY
+> proposal list; `/gate/resolve` answers 409 and only `/cancel` exits — which
+> records *abandonment* for a case that was checked and cleared. **PLAN-0113
+> SD-3 RULED (b)** (Cray, typed): such a run must reach `completed`.
+> **PLAN-0114** carries the build, with **SD-2 (dual audit)** and **SD-3 (the
+> RF-1 floor — any authenticated human)** both ruled as recommended. Grounding
+> found the engine ALREADY sanctions the completion (`resume_run`'s no-decision
+> branch); the gap is **reachability** from the product surface, so no ADR-016
+> amendment is needed.
+>
+> ✅ **Two PLAN predictions were MEASURED WRONG and corrected in place, not
+> absorbed:** the sub-ceiling run "completes with no gate" (it parks with an
+> empty one), and the witnessed-RED cardinality "3 proposals" (measured: **2**).
+> Neither changed an AC's conclusion.
+>
+> ✅ **AC-4 registered an INEXPRESSIBLE case rather than upgrading it to a
+> pass** (CLAUDE.md §8): `scope_by` requires a declared `reads` list and **no
+> step of procurement's `emergency_sourcing_round` declares one**, so its event
+> path structurally cannot carry the clause; the control was re-aimed at the
+> calm path's `read_stock`.
+>
+> ✅ **`tools/probe_coverage.py` shipped** — lesson #0047 §6's fourth clause,
+> computed from the AST. Three batteries used it (47/47, 43/43, 53/53 claims, 0
+> gaps); it caught a **vacuous assertion written the same session** and refused
+> to run until every claim owner had a named exemption mechanism.
 
 > **Session 251, 2026-08-24 (head_commit `98b3cda` → `968b34e`) — ONE PR
 > MERGED ([#1275](https://github.com/CrayJThiemsert/vero-lite/pull/1275)), 0

@@ -298,7 +298,30 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   (`demo_run_reset.py:179-205`). Witnessed RED: flip fleet to `when_absent: refuse` in
   a scratch copy → the seed's run refuses at intake and the state reads `CONSUMED`.
   **[offline/DB]**
-- [ ] **AC-7 — the governance record is complete** *(OQ-1 RULED (b), s249 — UNBLOCKED;
+- [x] **AC-7 — the governance record is complete** *(CLOSED s252 —
+  `docs/plan0113-step7-governance-records`. All four `done/` sites carry the ruled
+  two-part form, and STATUS's fleet-wide narrative is superseded by a newest-first s252
+  Current Focus entry in the same change, so no clause is left to a future reconcile.)*
+  <br>🔴 **The forbidding half of OQ-1 is MEASURED, not merely intended.** The ruling's
+  binding clause is what it *forbids* — a superseded ruling's own words are never edited.
+  `git diff --numstat` over `docs/plans/done/`: **48 / 0** and **70 / 0**. Zero deletions
+  across both files, so every original word stands and each pointer is a whole inserted
+  line rather than a split of an existing one. That distinction matters: splitting a line
+  would show as a modification and quietly break the guarantee.
+  <br>**The fixed pointer string appears exactly 4 times** in `done/` (`0110` ×1,
+  `0112` ×3) — the form was not varied per site, so the `git grep` OQ-1 designed it for
+  finds all four. A 5th hit exists and is a prose *reference* to the form inside backticks
+  with an ellipsis, not a pointer.
+  <br>🔴 **One amendment records a correction to THIS PLAN, not only to the archive.**
+  `done/0112`'s AC-2 sub-ceiling clause was superseded — but AC-3's predicted replacement
+  ("completes with no gate") was **also measured false**, so the amendment records the
+  third, measured reading (parks at an empty gate) rather than swapping one wrong sentence
+  for another. An archive amendment that propagated a fresh error would be worse than none.
+  <br>_STATUS cost, stated: this reconcile appended without pruning and left STATUS ~250
+  bytes over R1's **soft** target (passing; the hard ceiling is far off). An R2/R6
+  Current-Focus rotation is recorded as owed in STATUS `blocked_on` rather than paid for by
+  trimming load-bearing content._
+  *(OQ-1 RULED (b), s249 — UNBLOCKED;
   every `done/` edit is an appended `## Post-archival amendment` section **plus** the
   fixed one-line inline pointer at its site, nothing rewritten)*: the SD-4 reversal recorded beside the ruling
   with lineage intact; `done/0112` AC-7(i)'s narrowing and AC-2's s243 correction
@@ -308,7 +331,26 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   reconcile. Candidate mechanism: the additive `§Post-archival amendment` convention
   (PLAN-0100/0102; used at `done/0110`, executed by 0112 AC-7(ii)). Doc-read pass:
   each edit is additive, the ruled history above it untouched verbatim.
-- [ ] **AC-8 — the offline gate is green at CI scope** (the offline oracle is the gate,
+- [x] **AC-8 — the offline gate is green at CI scope.** *(CLOSED s252 —
+  `docs/plan0113-step7-governance-records`, measured **last** so the counts describe the
+  tree that ships rather than an intermediate one.)*
+
+  | Gate | Command | Result |
+  |---|---|---|
+  | Lint | bare `ruff check .` | All checks passed |
+  | Format | `ruff format --check .` | **658** files (Step 0: 654) |
+  | Types | `mypy --strict services/ verticals/` | clean over **201** files (Step 0: 201) |
+  | Tests | `pytest tests/` | **4354 passed / 8 skipped** (Step 0: 4267 / 8) |
+
+  <br>**+87 tests across the whole PLAN, every one accounted for:** Steps 1–2 (s251)
+  carried it to 4333, and s252 added 21 — 20 for the new `tools/probe_coverage.py` and 1
+  from splitting the sub-ceiling scenario test in two. The 4 new files are the two
+  `probe_coverage` files plus two `docs/logs/` records.
+  <br>⚠️ **`mypy` must name `verticals/` as well as `services/`** — the Step-0 log measured
+  that `services/` alone reports **137** files and still exits 0, a green that omits a
+  third of the surface this PLAN changed. 201 is the figure to compare; a later run
+  reporting 137 has narrowed its scope, not fixed anything.
+  (the offline oracle is the gate,
   CLAUDE.md §8): full `pytest tests/`, `mypy --strict services/ verticals/`, bare
   `ruff check .`, `ruff format --check .` — counts recorded against the Step 0
   baseline (s246 reference: 4267 passed / 8 skipped). **[offline]**
