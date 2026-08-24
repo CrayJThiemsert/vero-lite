@@ -298,9 +298,17 @@ AC-6), the stale docstring refresh, STATUS.md. Then PR per CLAUDE.md §7; this P
   mandate): shape (i), the new route + chokepoint.** Pricing recorded in §Mechanism;
   ratified by Cray with this PLAN. Re-opening (ii)/(iii) after ratification is a new
   dispatch, not an implementation choice.
-- **SD-2 — OPEN for Cray: what the completed run records.** The ruling's whole value is
-  the artifact (L-1), so its shape is Cray's call, not the implementer's.
-  **Recommendation: dual audit, no trace entry** — (1) a run-level audit action
+- **SD-2 — RULED (Cray, typed, s252, 2026-08-24): the recommendation, dual audit.**
+  Cray's words: *"เอาตามที่แนะนำ: audit สองชั้น"*. **LOCKED for Step 1 and AC-3.** Both
+  levels are required — a chain row alone fails L-1's artifact test (the reader learns
+  "completed", not "checked"), and a step-`audit` block alone is not tamper-evident.
+  🔴 The **no-trace-entry** half is ruled too: it follows from taking the recommendation
+  as posed, and L-3 already forbade pre-deciding a trace entry. If a trace entry is ever
+  wanted, it is a NEW surfaced decision — and it would need a `trace-kinds.js` registry
+  row plus a per-file `?v=` bump (house convention; the AST guard enforces the pairing
+  bidirectionally).
+  <br>_The option text as posed is retained verbatim below (the PLAN-0111 convention)._
+  <br>**Recommendation: dual audit, no trace entry** — (1) a run-level audit action
   `run_continued_no_decision` (payload: `step_id`, `proposal_count: 0`,
   `actor_kind: "human"`, actor id) on the tamper-evident chain, beside the existing
   `run_resumed`; (2) an acknowledgment block (e.g. `no_decision_continuation`:
@@ -311,7 +319,19 @@ AC-6), the stale docstring refresh, STATUS.md. Then PR per CLAUDE.md §7; this P
   cache-bust); a `governed_decision` record (dishonest — no decision was exercised);
   the bare `run_resumed` row alone (fails L-1 — the reader learns "completed", not
   "checked"). Why Cray: this is the artifact the ruling was *about*.
-- **SD-3 — OPEN for Cray: who may acknowledge.** **Recommendation: any authenticated
+- **SD-3 — RULED (Cray, typed, s252, 2026-08-24): the recommendation, the RF-1 floor.**
+  Cray's words: *"เอาตามที่แนะนำ: คนที่ authenticate แล้วคนไหนก็ได้"*. **LOCKED for Step 1
+  and AC-2(b).** `/continue` requires an authenticated human and **nothing more** — no
+  tier resolution, no SoD check. The rejected alternative (restrict to the gate's
+  resolver population) is retained verbatim below and is NOT to be reintroduced as an
+  implementation detail.
+  🔴 **The guard this ruling makes load-bearing:** with the approver population no longer
+  gating `/continue`, the ONLY thing keeping it from becoming a resolve bypass is
+  fail-closed guard 1 (`_has_decidable_proposals` true → refuse). AC-2(a) is therefore
+  not one assertion among five — it is the security boundary of the whole seam, and its
+  witnessed-RED probe is mandatory.
+  <br>_The option text as posed is retained verbatim below (the PLAN-0111 convention)._
+  <br>**Recommendation: any authenticated
   human (RF-1 floor) — the cancel posture (PLAN-0054), not the resolve posture.**
   Reasoning: no decision is exercised, no proposal is approved, and nothing operational
   can execute from an empty set on the continuation (auto steps downstream of a gate
