@@ -6,14 +6,22 @@ server-side firing seam on realistic simulated data — a breaching THB amount a
 a real seeded ``Truck`` ceiling — and the run is read back through the REAL Tab H
 surface (``GET /runs``). Nothing on either side of the seam is stubbed.
 
-**The run existing is NOT the claim; the run being ABOUT the visitor's case is.**
-The hero's ``intake`` is a fleet-wide population scan (G-6), so a run can fire, park,
-and present a perfectly healthy gate that concerns some other truck entirely — with
-the visitor's own case absent from every proposal and no error raised anywhere.
-Session 244 measured exactly that shape when the case projection had not caught up
-(a run whose single proposal resolved to ``case-demo-truck03-gearbox``). So every
-test here asserts the visitor's ``case_id`` is among the proposals, not merely that
-the count moved. A suite that only counted runs would stay green through that defect.
+**The run existing is NOT the claim; the run being ABOUT the visitor's case — and
+about NOTHING ELSE — is.** A run can fire, park, and present a perfectly healthy gate
+that concerns some other truck entirely, with the visitor's own case absent from every
+proposal and no error raised anywhere. Session 244 measured exactly that shape when the
+case projection had not caught up (a run whose single proposal resolved to
+``case-demo-truck03-gearbox``). So every test here asserts the visitor's ``case_id`` is
+the proposal, not merely that the count moved.
+
+**PLAN-0113 Step 3 tightened that from AMONG to ONLY.** ``intake`` used to be a
+fleet-wide population scan (G-6); it now carries
+``scope_by: {field: case_id, from: trigger.entity_ids}`` + ``when_absent: sweep``
+(``verticals/fleet_maintenance/procedures.yaml``), so an event-fired run reads only
+its own firing case's rows. The old ``any(case_id in pid ...)`` reading cannot tell
+"scoped to one" from "swept the fleet and mine happened to be in it" — it stays green
+through the very defect the scoping exists to remove — so :func:`_assert_run_is_about`
+now asserts the count and the identity separately.
 
 **SD-2(b) as Cray ruled it, both directions.** Re-accepting the SAME quote is not a
 material change and must NOT mint a second run; accepting a DIFFERENT quote must.
@@ -180,16 +188,30 @@ async def _proposal_case_ids(client: AsyncClient, run_id: str) -> list[str]:
 
 
 async def _assert_run_is_about(client: AsyncClient, run_id: str, case_id: str) -> None:
-    """The load-bearing half: this run's gate concerns the visitor's OWN case.
+    """The load-bearing half: this run's gate concerns the visitor's OWN case, ALONE.
 
-    Asserted separately from the count because the two fail independently — a run
-    that fires on a stale projection moves the count and proposes another truck.
+    **PLAN-0113 AC-3.** Two assertions, in this order, because they fail independently
+    and for different reasons:
+
+    1. **exactly one proposal** — the scoping claim. A fleet-wide gate (3 proposals on
+       this fixture) is now a defect, not the design.
+    2. **and it is the firing case** — the identity claim. A run that fires on a stale
+       projection produces exactly one proposal too; it is simply somebody else's.
+
+    Neither subsumes the other, and the old ``any(...)`` reading asserted neither: it
+    passed on a 3-proposal fleet-wide gate that happened to include the visitor.
     """
     proposals = await _proposal_case_ids(client, run_id)
-    assert any(case_id in pid for pid in proposals), (
-        f"run {run_id} fired but proposes {proposals} — the visitor's case {case_id} "
-        "is not among them. The seam must run AFTER _refresh_case_events, or the run "
-        "gates on whatever the stale projection still held."
+    assert len(proposals) == 1, (
+        f"run {run_id} proposes {proposals} — a scoped event-fired run gates on its "
+        f"firing case ALONE (PLAN-0113 AC-3). More than one means `intake`'s "
+        "`scope_by` clause is not narrowing the base read; zero means it narrowed to "
+        "nothing at all."
+    )
+    assert case_id in proposals[0], (
+        f"run {run_id} proposes {proposals} — the visitor's case {case_id} is not the "
+        "one proposed. The seam must run AFTER _refresh_case_events, or the run gates "
+        "on whatever the stale projection still held."
     )
 
 
@@ -278,6 +300,11 @@ async def test_the_seeded_demo_run_does_not_swallow_a_visitor_acceptance(
     await seed_demo_repair_case(db_session)
     await case_projection.refresh(db_session)
     seeded = await seed_repair_gate_waiting_human_run(db_session)
+    # Defensive, and measured NON-discriminating (s252): the seed itself fails closed —
+    # `seed_repair_gate_waiting_human_run` raises ProcedureError when the gate does not
+    # park (operate_seed.py:754) — so any change that would falsify this line kills the
+    # test at the CALL above instead. Kept as a readable statement of the premise, not
+    # counted as a witnessed claim; see the Step-3 battery's exemption for it.
     assert seeded.run.status == "waiting_human", "the premise: a parked run is in the way"
     before = len(await _hero_runs(client_with_db))
 
@@ -323,47 +350,102 @@ async def _decisions_for(
     return {str(p["action_id"]): verdict for p in got.json()["proposals"]}
 
 
-async def test_a_sub_ceiling_acceptance_fires_but_never_reaches_the_gate(
-    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
-) -> None:
-    """AC-2's sub-ceiling clause, corrected per the SD-2 stamp.
+async def _fire_sub_ceiling_with_a_breaching_control(
+    client: AsyncClient, db_session: AsyncSession
+) -> str:
+    """Seed the demo, fire a BREACHING control run, then fire the sub-ceiling one.
 
-    The old clause read "a sub-ceiling acceptance fires and completes with no gate".
-    That is FALSE in the shipped demo: intake is a fleet-wide population scan (G-6)
-    and the seeded demo pair stays OPEN with breaching accepted quotes (G-12), so
-    every visitor-fired run gates — sub-ceiling or not. What is actually true, and
-    what this asserts, is narrower: the run fires, the gate exists, and the
-    visitor's own sub-ceiling case is in NONE of its proposals, because `reshape`
-    consumes only the breach subset (`procedures.yaml`, `where: {verdict: breach}`).
+    🔴 The control is not decoration. Every claim below is about a proposal list being
+    EMPTY, and an empty list is what a `scope_by` that matches nothing *ever* would
+    also produce — the exact defect scoping can introduce. So the same fixtures, the
+    same seam and the same principals must first be shown producing a proposal.
 
-    🔴 The negative assertion carries its own positive control. "This case is not in
-    the proposals" is vacuously true of an EMPTY proposal list, which is exactly what
-    a broken intake would produce — so the demo case must be found in the same list
-    before the absence means anything.
+    Returns the sub-ceiling run's ``run_id``.
     """
-    from verticals.fleet_maintenance.operate_seed import DEMO_CASE_ID, seed_demo_repair_case
+    from verticals.fleet_maintenance.operate_seed import seed_demo_repair_case
 
     await seed_demo_repair_case(db_session)
     await case_projection.refresh(db_session)
-    before = len(await _hero_runs(client_with_db))
 
-    case_id, quotes = await _open_case_with_quotes(
-        client_with_db,
-        amounts=(("อู่ช่างเล็ก", _SUB_CEILING_THB),),
+    control_case, control_quotes = await _open_case_with_quotes(
+        client, amounts=(("อู่ริมทางปากช่อง", _MID_BAND_THB),)
     )
-    await _accept(client_with_db, case_id, quotes[0])
+    await _accept(client, control_case, control_quotes[0])
+    control_runs = await _hero_runs(client)
+    assert len(control_runs) == 1, "control: one breaching acceptance, one run"
+    await _assert_run_is_about(client, control_runs[0]["run_id"], control_case)
 
-    runs = await _hero_runs(client_with_db)
-    assert len(runs) == before + 1, "a sub-ceiling acceptance still fires — the loop DID judge it"
+    case_id, quotes = await _open_case_with_quotes(client, amounts=(("อู่ช่างเล็ก", _SUB_CEILING_THB),))
+    await _accept(client, case_id, quotes[0])
+    runs = await _hero_runs(client)
+    assert len(runs) == 2, "the sub-ceiling acceptance fires too — the loop DID judge it"
+    return str(next(r for r in runs if r["run_id"] != control_runs[0]["run_id"])["run_id"])
 
-    proposals = await _proposal_case_ids(client_with_db, runs[0]["run_id"])
-    assert any(DEMO_CASE_ID in pid for pid in proposals), (
-        "positive control: the breaching demo case must be AT the gate, or the "
-        "absence asserted below is vacuous — an empty proposal list satisfies it too"
-    )
-    assert not any(case_id in pid for pid in proposals), (
+
+async def test_a_sub_ceiling_acceptance_reaches_the_gate_with_no_proposals(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """PLAN-0113 AC-3's sub-ceiling observable — as MEASURED, which is not as predicted.
+
+    AC-3 predicted "a sub-ceiling acceptance fires a run that **completes with no
+    gate**". Measured s252 on this very suite, that is FALSE, and the divergence is
+    recorded here rather than absorbed: the run fires, `judge` bands the visitor's own
+    ฿4,500 case `ok`, `reshape` (`where: {verdict: breach}`) drops it — and the run
+    **still parks at `approve` with an EMPTY proposal list**. `_suspends`
+    (`orchestrator.py:632-644`) is purely structural: a `gated` action suspends on its
+    KIND, never on whether its input set holds anything.
+
+    Before PLAN-0113 this state was unreachable — `intake` swept the fleet and the
+    fixture always carried a breaching truck, so every gate had at least one proposal.
+    Scoping made the empty gate reachable for the first time. What that costs the
+    visitor is asserted separately, in the tripwire test below.
+
+    The claim here is the empty proposal list; its positive control is the breaching
+    run fired from the same fixtures by the helper.
+    """
+    run_id = await _fire_sub_ceiling_with_a_breaching_control(client_with_db, db_session)
+
+    assert await _proposal_case_ids(client_with_db, run_id) == [], (
         f"the ฿{_SUB_CEILING_THB} case is under every truck's ฿5,001 ceiling, so the "
-        f"judge bands it `ok` and reshape must drop it before the gate — found {proposals}"
+        "judge bands it `ok` and reshape drops it — and under PLAN-0113 scoping no "
+        "other truck's breach rides along, so the gate must hold NOTHING"
+    )
+
+
+async def test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """🔴 TRIPWIRE — the cost of the empty gate above, asserted so it cannot be lost.
+
+    A run parked at a gate with zero proposals cannot be resolved by anyone:
+    `resolve_gate` raises `has no proposed actions to resolve`
+    (`action_step.py:832`) and the route answers **409**. So a sub-ceiling acceptance
+    now leaves a run sitting in Tab H forever — the G-7 dead-end shape that
+    :func:`test_a_visitor_fired_run_is_never_a_dead_end` exists to exclude, arriving
+    by a route that test does not cover (it fires a MID-BAND amount, so its gate is
+    never empty).
+
+    **This asserts the CURRENT behaviour, not the desired one.** Whether a gated step
+    with an empty input set should complete instead of suspending is an engine change
+    to the gate shape — explicitly Out of Scope for PLAN-0113 — and is surfaced to
+    Cray as SD-3 on that PLAN. When it is ruled, this test is the site that must
+    change, and it will redden loudly rather than let the fix land unnoticed.
+    """
+    run_id = await _fire_sub_ceiling_with_a_breaching_control(client_with_db, db_session)
+
+    refused = await client_with_db.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": _APPROVE, "decisions": {}},
+        headers=_WIRAT_HEADERS,
+    )
+    # 🔴 The STATUS CODE alone does not discriminate. Measured s252: 409 is also what a
+    # gate WITH proposals answers when `decisions` omits one — so `== 409` passes on a
+    # perfectly healthy non-empty gate and asserts nothing about emptiness. The detail
+    # string names the mechanism (`action_step.py:832`), and that is the claim.
+    assert "no proposed actions to resolve" in refused.text, (
+        "if this no longer reports an EMPTY gate, the dead end has been closed (or "
+        f"moved) — re-read PLAN-0113 SD-3 before touching this test; got "
+        f"{refused.status_code} {refused.text}"
     )
 
 
@@ -461,11 +543,14 @@ async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
         "the rendered file and the structured read must agree on how many repairs the "
         f"month holds — got {len(csv_rows)} vs {len(export.rows)}"
     )
-    # Identified by plate, not by count: the gate is a fleet-wide population scan
-    # (G-6) and this walk approves every proposal at it, so the visitor's run
-    # legitimately decides other cases too — SD-4(a) as ruled. Asserting "exactly one
-    # row" would have been a claim about the population, not about this outcome
-    # being shown to anyone.
+    # Identified by plate, not by count. This was written when the gate was a
+    # fleet-wide population scan (G-6, SD-4(a)) and the walk legitimately decided other
+    # cases too. PLAN-0113 scoped the run to its firing case, so the population claim
+    # would now hold — but the discrimination is kept deliberately: the plate is what a
+    # HUMAN uses to find their own repair on this file (the export carries no case_id
+    # column), and asserting a count here would test the population instead of testing
+    # that this outcome was shown to anyone. The population is asserted at the gate,
+    # by `_assert_run_is_about`, which is where it belongs.
     ours = [r for r in csv_rows if r["ทะเบียนรถ"] == _PLATE]
     assert len(ours) == 1, f"this case's repair must appear on the rendered file — got {ours}"
     assert ours[0]["ผู้อนุมัติ"] == _WIRAT, (
@@ -479,6 +564,13 @@ async def test_a_visitor_fired_run_is_never_a_dead_end(
 ) -> None:
     """AC-4: every run a visitor-reachable path can fire has a gate a declared
     approver can actually resolve.
+
+    ⚠️ **Scope note (PLAN-0113, s252).** The name over-claims since scoping landed:
+    this covers the PRINCIPAL dead end (a run nobody holds the role to resolve), on a
+    MID-BAND amount whose gate is never empty. The second dead-end route — a
+    sub-ceiling acceptance whose gate holds zero proposals and 409s — is asserted by
+    :func:`test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end` and is
+    OPEN as PLAN-0113 SD-3.
 
     G-7 measured the failure this excludes, and it is worse than an ungoverned run:
     a `None`-principal fire mints a run that starts, parks, appears in Tab H, and can

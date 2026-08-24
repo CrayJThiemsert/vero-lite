@@ -12,32 +12,38 @@ consumer on realistic data, with no mocked seam on either side.
   entry point, in execute mode;
 * the re-boot is ``services.api.main._seed_fleet_operate_demo``, the ACTUAL boot block.
 
-🔴 **AC-7(i)'s wording is narrower than the truth, and this module is where that was
-measured.** The AC reads *"the visitor run, its step results, and its link rows
-survive"*. Measured on a real visitor-fired run whose own case was ``case-c923c43a...``,
-resolving its ``approve`` gate wrote **three** link rows::
+🔴 **The population this module was built on CHANGED under it — PLAN-0113 AC-5.**
+
+Until session 252, fleet's ``intake`` was a **fleet-wide scan**: a visitor-fired run
+gated on a proposal set that also held the seeded demo cases, and the ``on_resolved``
+hook writes one link row per proposed case, never one per run. Measured on a real
+visitor-fired run whose own case was ``case-c923c43a...``, resolving its ``approve``
+gate wrote **three** link rows::
 
     ['case-c923c43a814c', 'case-demo-truck03-gearbox', 'case-fleet-operate-demo']
 
-Two facts compose to produce that, and neither is visible from the AC's text:
+``intake`` now carries ``scope_by: {field: case_id, from: trigger.entity_ids}``
+(PLAN-0113 Step 3), so **that run would write exactly one row today** — its own. What
+did NOT change is the reset itself: it still clears link rows on BOTH keys —
+``run_id IN DEMO_RUN_IDS`` **OR** ``case_id IN DEMO_CASE_IDS``
+(``demo_run_reset._delete_run_side``) — and its rationale was never the fleet-wide
+population but **id reuse**, which scoping does not touch. Re-read s252 and confirmed
+unchanged rather than assumed.
 
-1. fleet's ``intake`` step is a **fleet-wide scan**, not a lookup of the accepted case
-   (measured s243 — it is why AC-2's original pass read was false in the shipped demo).
-   So every visitor-fired run gates on a proposal set that ALSO contains the seeded demo
-   case, and the ``on_resolved`` hook writes one link row per proposed case, never one
-   per run;
-2. the reset clears link rows on BOTH keys — ``run_id IN DEMO_RUN_IDS`` **OR**
-   ``case_id IN DEMO_CASE_IDS`` (``demo_run_reset._delete_run_side``).
-
-Therefore **every** visitor-fired run loses its ``case-fleet-operate-demo`` link row to a
-reset, whatever case the visitor accepted on. The surviving bound, asserted below, is:
+The surviving bound, asserted below, is now:
 
 * the visitor's **run** survives, field-for-field;
 * its **step results** survive;
-* its link rows for **non-demo cases** survive — including its own;
-* its link rows for **demo cases** are deleted — **by design, not by defect**: the reset
-  erases and re-seeds ``case-fleet-operate-demo``, so a surviving link would point at a
-  DIFFERENT case that merely reuses the id (``_delete_run_side``'s docstring).
+* its link rows survive — and under scoping they are all keyed on its own, non-demo
+  case;
+* link rows keyed on a demo case, or written BY a demo run, are deleted — **by design,
+  not by defect**: the reset erases and re-seeds ``case-fleet-operate-demo``, so a
+  surviving link would point at a DIFFERENT case that merely reuses the id
+  (``_delete_run_side``'s docstring). Because a scoped visitor run no longer writes such
+  a row, that deletion is witnessed on the **seeded** runs' rows, and — for the
+  ``case_id`` half — on the one path that still puts a demo case on a non-demo run's
+  link row: a visitor who accepts ON the demo case
+  (``test_a_run_fired_from_the_demo_case_itself_still_survives_the_reset``).
 
 The audit chain is untouched by any of this — ``audit_log`` is outside the reset's
 transaction entirely, so the approval itself remains provable after the link row goes.
@@ -224,6 +230,20 @@ async def _links_for(session: AsyncSession, *, run_id: str) -> list[RepairCaseRu
     return list(rows.scalars().all())
 
 
+async def _links_for_runs(session: AsyncSession, *, run_ids: tuple[str, ...]) -> list[str]:
+    """Link ids written by any of ``run_ids`` — the SEEDED demo runs' own rows.
+
+    Added by PLAN-0113 AC-5. Once ``intake`` is scoped a visitor's run writes only its
+    own case's row, so the demo-scoped deletion has to be witnessed somewhere it still
+    happens: the boot seeder's ``run-fleet-demo-history`` writes three link rows,
+    measured s252.
+    """
+    rows = await session.execute(
+        sa.select(RepairCaseRunLink).where(RepairCaseRunLink.run_id.in_(run_ids))
+    )
+    return sorted(link.link_id for link in rows.scalars().all())
+
+
 def _partition(links: list[RepairCaseRunLink]) -> tuple[list[str], list[str]]:
     """``(demo_scoped_link_ids, other_link_ids)`` — the split the reset actually makes."""
     demo = sorted(link.link_id for link in links if link.case_id in DEMO_CASE_IDS)
@@ -284,35 +304,47 @@ async def _assert_the_reset_did_its_own_job(session: AsyncSession) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# The structural fact AC-7(i)'s wording missed — asserted so it cannot regress
+# The bound PLAN-0113 replaced the fleet-wide one with — asserted so it cannot regress
 # --------------------------------------------------------------------------- #
-async def test_a_visitor_fired_runs_gate_also_decides_the_seeded_demo_case(
+async def test_a_visitor_fired_runs_gate_decides_only_the_visitors_own_case(
     client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
 ) -> None:
-    """Fleet's ``intake`` is a fleet-wide scan, so a visitor's run is never only theirs.
+    """PLAN-0113 Step 3 INVERTED this test, exactly as its previous form demanded.
 
-    This is the premise the survival bound rests on, so it is measured rather than
-    assumed: if a future intake narrowed to the accepted case, the demo-scoped link row
-    would stop being written and the deletion asserted in the next test would go vacuous
-    — silently. This test reddens first in that case, naming the reason.
+    It used to assert the OPPOSITE — that a visitor's run also decides the seeded demo
+    case — because ``intake`` was a fleet-wide scan, and it carried its own instruction
+    for this moment: *"If intake stopped sweeping fleet-wide this is good news, but
+    AC-7(i)'s bound and the deletion test below both need rewriting — do not simply
+    delete this assertion."* ``intake`` now carries
+    ``scope_by: {field: case_id, from: trigger.entity_ids}``, so the bound this guards
+    is the new one: a visitor's run decides their own case and NOTHING else.
+
+    🔴 The claim is an equality over a set, so it is not vacuously satisfiable by an
+    empty one — but "the demo case is not in there" would be satisfied by a demo that
+    was never seeded, so the seeded demo is shown PRESENT and still gate-reachable
+    first. Both controls read state the reset itself is about.
     """
     await _boot(db_session)
+    assert await db_session.get(RepairCase, DEMO_CASE_ID) is not None, (
+        "positive control: the seeded demo case must EXIST, or its absence from the "
+        "visitor's decided set below says nothing about scoping"
+    )
+    assert await _links_for_runs(db_session, run_ids=DEMO_RUN_IDS), (
+        "positive control: the seeded demo runs must have written link rows, proving a "
+        "gate still reaches the demo cases — the visitor's run simply no longer does"
+    )
+
     case_id, quotes = await _open_case_with_quotes(client_with_db)
     _, links = await _park_with_link_rows(
         client_with_db, db_session, case_id=case_id, quote_id=quotes[1]
     )
 
-    keyed_on = {link.case_id for link in links}
-    assert case_id in keyed_on, (
-        f"the visitor's own case {case_id} is not among {sorted(keyed_on)} — the run "
-        "gated on a stale projection and decided somebody else's trucks"
+    assert {link.case_id for link in links} == {case_id}, (
+        f"the visitor's run decided {sorted({link.case_id for link in links})} — under "
+        f"PLAN-0113 scoping it must decide exactly {{{case_id}}}. More means `intake`'s "
+        "`scope_by` clause stopped narrowing the base read; a different single case "
+        "means the run gated on a stale projection."
     )
-    assert DEMO_CASE_ID in keyed_on, (
-        f"the seeded demo case is NOT among {sorted(keyed_on)}. If intake stopped "
-        "sweeping fleet-wide this is good news, but AC-7(i)'s bound and the deletion "
-        "test below both need rewriting — do not simply delete this assertion."
-    )
-    assert len(keyed_on) > 1, "a fleet-wide scan must decide more than the accepted case"
 
 
 # --------------------------------------------------------------------------- #
@@ -329,16 +361,28 @@ async def test_the_reset_keeps_the_visitor_run_and_drops_only_its_demo_scoped_li
     )
 
     demo_before, other_before = _partition(links)
-    # Both halves are positive controls for the two opposite assertions below: an
-    # absence claim over an empty set and a survival claim over an empty set are each
-    # satisfied by nothing at all.
-    assert demo_before, (
-        "no demo-scoped link row exists before the reset, so the deletion asserted "
-        "below would be vacuous"
+    assert demo_before == [], (
+        "PLAN-0113 Step 3: a scoped visitor run decides its OWN case alone, so it can no "
+        f"longer write a demo-scoped link row. Finding one means the scoping regressed — "
+        f"got {demo_before}"
     )
     assert other_before, (
         "no non-demo link row exists before the reset, so the survival asserted below "
         "would be vacuous"
+    )
+
+    # 🔴 The demo-scoped DELETION is RE-HOMED onto the seeded demo runs' own rows
+    # (PLAN-0113 AC-5). It used to be witnessed on the visitor's run, which stopped
+    # writing such a row the moment `intake` was scoped — and a deletion asserted over
+    # an empty set proves nothing. The boot seeder's `run-fleet-demo-history` writes
+    # three link rows, one keyed on a demo case (MEASURED s252), which is what keeps
+    # `_delete_run_side`'s clause witnessed. Its run_id half is witnessed here; its
+    # case_id half by `test_a_run_fired_from_the_demo_case_itself_still_survives_the_reset`,
+    # now the only path that puts a demo case on a NON-demo run's link row.
+    seeded_links_before = await _links_for_runs(db_session, run_ids=DEMO_RUN_IDS)
+    assert seeded_links_before, (
+        "no seeded-demo link row exists before the reset, so the deletion asserted "
+        "below would be vacuous"
     )
 
     run_row = await db_session.get(PipelineRun, run_id)
@@ -386,14 +430,14 @@ async def test_the_reset_keeps_the_visitor_run_and_drops_only_its_demo_scoped_li
         sorted(s.step_id for s in loaded_after.step_results) == steps_before
     ), "the visitor's step results did not survive the reset"
 
-    demo_after, other_after = _partition(await _links_for(db_session, run_id=run_id))
+    _, other_after = _partition(await _links_for(db_session, run_id=run_id))
     assert other_after == other_before, (
         f"link rows keyed on non-demo cases must be out of the reset's reach: "
         f"{other_before} -> {other_after}"
     )
-    assert demo_after == [], (
-        f"link rows keyed on a demo case must NOT outlive the reset — after the re-seed "
-        f"they would point at a different case reusing the id; survivors: {demo_after}"
+    assert await _links_for_runs(db_session, run_ids=DEMO_RUN_IDS) == [], (
+        "link rows written by a demo RUN must NOT outlive the reset — after the re-seed "
+        f"they would point at a different case reusing the id; before: {seeded_links_before}"
     )
 
     await _assert_the_reset_did_its_own_job(db_session)
