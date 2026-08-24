@@ -268,7 +268,31 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   (`demo_run_reset.py:131-149`) is re-read and its comments corrected where the
   population claim narrows; the deletion code itself is expected unchanged (the
   seeded runs still write demo-case rows) — verify, don't assume. **[offline/DB]**
-- [ ] **AC-6 — the demo survives, offline.** With the fleet clause authored and
+- [x] **AC-6 — the demo survives, offline.** *(CLOSED s252 —
+  `feat/plan0113-step6-demo-integrity`. Full evidence:
+  [`docs/logs/2026-08-24-plan0113-step6-demo-integrity.md`](../logs/2026-08-24-plan0113-step6-demo-integrity.md).
+  The POSITIVE half was already carried by a shipped green test —
+  `tests/api/test_fleet_demo_reset_scenario.py` boots the REAL seed block and asserts
+  `PRISTINE`, the two standing demo runs, and the suspended STEP rather than merely the
+  status — so it was verified, not re-derived. What this step adds is the half nothing
+  witnessed: the **RED**. Flipping `when_absent: sweep` → `refuse` reddens the named
+  witness `read_demo_state(...) == STATE_PRISTINE`, exactly as predicted; restore
+  byte-identical; coverage machine-checked at **53 claims — 3 witnessed RED, 50 exempted
+  with a named mechanism, 0 gaps**.)*
+  <br>**The mechanism, recorded because it is the reason D1 chose `sweep`:**
+  `_seed_fleet_operate_demo` is **fail-soft** by contract — *"a seed error logs and never
+  blocks the demo boot"* (`services/api/main.py:253-261`) — so under `refuse` the seed's
+  `intake` refuses, the boot **swallows** it, no run parks, and the state reads `CONSUMED`.
+  The demo does not fail loudly; it fails **quietly**, which is worse and is exactly what
+  D1 exists to prevent.
+  <br>_Three instrument repairs, none on the criterion: the battery REFUSED TO RUN until
+  every owner had a named exemption mechanism (an unnamed claim is a gap, not a default
+  pass); a helper-owned red was mis-read as unpredicted because the check compared a HELPER
+  name against a set of TEST names; and one collateral prediction was WITHDRAWN with its
+  reason — `test_the_reset_cannot_reach_a_non_demo_run_or_a_visitor_case` did not fail
+  because its claims are NEGATIVE, and a missing demo pair does not falsify a "does not
+  reach" assertion._
+  With the fleet clause authored and
   `when_absent: sweep`: the operate seed boots, the seeded run parks at `approve` with
   a non-empty `output_set`, and `read_demo_state` reads `PRISTINE`
   (`demo_run_reset.py:179-205`). Witnessed RED: flip fleet to `when_absent: refuse` in
