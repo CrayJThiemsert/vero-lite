@@ -1,6 +1,15 @@
 # PLAN-0113: Scope the event-fired run to its firing case
 
-**Status:** Draft
+**Status:** **COMPLETE 8/9 — offline** — closed session 252, 2026-08-25, on Cray's typed
+instruction to archive. AC-1..AC-8 are ticked and evidenced (Steps 0–7 executed; four
+`docs/logs/` records).
+🔴 **AC-9 (live evidence on MS-S1) is NOT closed. It is deliberately CARRIED, not
+dropped** — it is *evidence, not a gate*, and requires a **typed Cray go per occasion AND
+per phase** (`CLAUDE.md` §8 Host-State Actions), which was never held in this session.
+MS-S1 received no contact of any kind. The offline oracle **is** the gate and it is green;
+the live walk adds confidence, never permission. **Its checkbox below is left unticked on
+purpose**, so a reader meets the gap instead of inferring completeness from the folder
+this file sits in.
 **Owner:** Claude Code
 **Created:** 2026-08-23 (session 249)
 **Related ADRs:** ADR-016 (query grammar; the Q4/PLAN-0061 join-projection amendment is
@@ -359,6 +368,12 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   reseed still reads `PRISTINE`. 🔴 **Requires a typed Cray go per occasion AND per
   phase (CLAUDE.md §8 Host-State Actions; `DEPLOY.md` §0). The go is NOT held at
   drafting time — Step 8 must ask, not assume.** **[live/gated]**
+  <br>_[**CARRIED at archival (s252, 2026-08-25).** Still not held, still not run: MS-S1
+  received **no contact of any kind** this session. This AC is archived OPEN rather than
+  ticked or deleted, because its own text says the go must be asked for per occasion — and
+  an archived PLAN whose live-evidence line quietly disappeared would read as though the
+  walk had happened. If the walk is ever run, its record belongs in `docs/logs/` with a
+  pointer back to this line. The offline oracle (AC-8) is the gate and it is green.]_
 
 ## Out of Scope
 

@@ -1267,6 +1267,6 @@ measured, asserted by
 and is the origin of **PLAN-0113 SD-3**, **RULED (b)** (Cray, typed, s252): such a run must
 reach `completed`. **PLAN-0114** carries the build.
 
-**Owning PLAN:** `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md` (§SD-3,
+**Owning PLAN:** `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md` (§SD-3,
 §AC-3, §AC-5, Step 7). Follow-on:
 `docs/plans/0114-empty-gate-continuation-acknowledge-and-complete.md`.
