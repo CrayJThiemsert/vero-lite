@@ -375,13 +375,33 @@ async def test_the_chain_row_records_the_acknowledgment(db_engine: AsyncEngine) 
     assert "run_continued_no_decision" in await _audit_actions(db_engine, "cnd-7")
 
 
+async def test_the_step_audit_carries_the_acknowledgment_key(db_engine: AsyncEngine) -> None:
+    """SD-2 level 2, half one: the block is stored where the readers look.
+
+    Split from the assertion below deliberately. Both facts used to ride on one
+    test, and the KEY half was carried by a bare dict subscript rather than by an
+    assertion — so a mutation of the key reddened the test with a ``KeyError``
+    raised BEFORE the tracked assertion ran, and the battery credited a claim that
+    had never executed. One claim per test; the subscript is now an assertion.
+    """
+    procedure = _procedure("cnd-key")
+    await _park(db_engine, procedure, "cnd-14")
+    await _continue(db_engine, procedure, "cnd-14")
+    assert NO_DECISION_ACK_KEY in await _step_audit(db_engine, "cnd-14", "aerate")
+
+
 async def test_the_step_block_records_the_acknowledging_human(db_engine: AsyncEngine) -> None:
-    """SD-2 level 2: the readable half, on the gate step's own audit dict."""
+    """SD-2 level 2, half two: the block names the accountable human.
+
+    ``.get`` rather than ``[]`` so this assertion can only fail as an assertion —
+    a missing key yields ``None`` and reddens the comparison, never a ``KeyError``
+    short-circuiting it (the defect the test above was split out to close).
+    """
     procedure = _procedure("cnd-block")
     await _park(db_engine, procedure, "cnd-8")
     await _continue(db_engine, procedure, "cnd-8")
-    block = (await _step_audit(db_engine, "cnd-8", "aerate"))[NO_DECISION_ACK_KEY]
-    assert block["acknowledged_by"] == _ACTOR
+    audit = await _step_audit(db_engine, "cnd-8", "aerate")
+    assert audit.get(NO_DECISION_ACK_KEY, {}).get("acknowledged_by") == _ACTOR
 
 
 async def test_the_block_records_the_upstream_shape(db_engine: AsyncEngine) -> None:
