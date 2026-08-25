@@ -252,6 +252,15 @@ named for every absence/zero claim.
   `docs/lessons/0048-…md` exists with the Step 4b text: advisory, states the
   rate-vs-cause distinction, records PLAN-0099's four moves with citations,
   and carries the below-threshold tally note instead of minting any rule.
+  **Plus (added s254, discharging Cray's SD-4 binding condition):** the file
+  also carries **W-1's three-firing tally and its `promoted → ADR-0038 C6`
+  pointer**. Assert it by grepping the shipped lesson file for both `W-1` and
+  `C6` — a **file** grep, never the PR body, which is the whole point of the
+  condition. Positive control for this presence claim: the same grep over the
+  pre-Step-4b tree finds neither token, so a pass cannot come from a
+  pre-existing copy. *Without this clause AC-10 would go green on a lesson
+  that omits the tally entirely — which is exactly the state Step 4b's
+  verbatim text was in when s254 measured it.*
 
 ## Out of Scope (explicitly cut, with reasons — Cray-ruled)
 
@@ -466,6 +475,41 @@ does). Full draft text for Code to write verbatim:
 > root-caused to per-call latency) and s253's ~10× miss on the probe-battery
 > session (session-attributed). Two < three: no rule is minted; this tally
 > exists so the third firing can promote without archaeology.
+>
+> ## W-1's tally — CROSSED THREE and promoted (the s254 binding condition)
+>
+> Recorded here because Cray's s254 ruling on PLAN-0115 SD-4 requires this
+> tally to live in a **tracked file**, not in a PR body: a promotion
+> obligation recorded somewhere `git grep` cannot reach is a debt with no
+> invoice. The canonical record is **ADR-0038 D2-C6**; this is the pointer
+> that makes it findable from the lesson surface.
+>
+> **W-1 — "a probe's RED must name what broke"** (#0043) reached **three**
+> distinct firings and **promoted → ADR-0038 C6** (amendment pass 2026-08-25,
+> s254):
+>
+> 1. **s231** — a probe reddening as `RuntimeError: no running event loop`
+>    before reaching its assertion, recorded as passing evidence
+>    (`docs/lessons/0043-a-probes-red-must-name-what-broke.md:24-49`).
+> 2. **s231** — the FK-children set comparison whose RED truncated both sides
+>    to the same string: assertion correct, output unusable (`0043:52-75`).
+>    Carried census-attributed on the watch-list; verified at source in the
+>    s254 amendment pass.
+> 3. **s253** — a `/tmp` battery driver keyed on `returncode == 0` with output
+>    discarded, crediting an `AttributeError` and a pre-assert `KeyError` as
+>    WITNESSED; published 13/13, corrected in-PR.
+>
+> Note the shape of firing 2, because it is what widened C6's predicate: the
+> assertion fired **correctly at its own site** and crediting it was right —
+> the defect was output no reader could act on. A crediting-only predicate
+> counts two and never triggers. Hence C6's second conjunct (legibility) is
+> arithmetically load-bearing, not a garnish.
+
+⚠️ **Step 4b sequencing (added s254).** The tally block above states
+"promoted → ADR-0038 C6", which becomes true only when the amendment PR
+merges. **Do not ship PR-B before that PR lands** — otherwise the lesson
+points at a class that does not yet exist. (The amendment is its own artifact
+per SD-4 (a); this PLAN does not own it.)
 
 Both files ride one small `docs/*` PR (§7 allows it; the constitutional edit
 needs no gate — it is convention-routed through a drafter, which this PLAN
