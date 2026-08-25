@@ -94,6 +94,12 @@ def gate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Any]:
     goal_file = tmp_path / "goal.json"
     monkeypatch.setenv("CLAUDE_GOAL_PATH", str(goal_file))
     monkeypatch.delenv("CLAUDE_GOAL_CHECK_BUDGET_S", raising=False)
+    # 🔴 Isolate the probe-battery lock too (PLAN-0115 Step 2). Without this every test in
+    # this file inherits the REAL lock path, so a battery running on the dev box — or one
+    # that died leaving a lock behind — would make the gate stand down and turn this whole
+    # suite green for the wrong reason. Exactly the hazard the goal path itself has.
+    battery_lock = tmp_path / "no-such-battery.lock"
+    monkeypatch.setenv("CLAUDE_PROBE_BATTERY_LOCK", str(battery_lock))
     pings: list[tuple[str, str]] = []
 
     def capture_ping(event: str, goal_text: str, detail: str) -> None:
@@ -101,7 +107,13 @@ def gate_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Any]:
 
     monkeypatch.setattr(_goal_gate, "_ping_telegram", capture_ping)
     monkeypatch.setattr(_goal_gate, "work_fingerprint", lambda: "fp-A")
-    return {"goal_file": goal_file, "pings": pings, "monkeypatch": monkeypatch}
+    return {
+        "goal_file": goal_file,
+        "pings": pings,
+        "monkeypatch": monkeypatch,
+        "battery_lock": battery_lock,
+        "tmp_path": tmp_path,
+    }
 
 
 def _seed(goal: Goal, env: dict[str, Any]) -> None:

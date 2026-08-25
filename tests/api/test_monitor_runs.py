@@ -32,7 +32,7 @@ from services.engine.procedures.runs import (
     StepResult,
     StepResultStatus,
 )
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _T0 = datetime(2026, 7, 5, 6, 0, tzinfo=UTC)
 _T1 = _T0 + timedelta(hours=1)  # the waiting run starts later -> sorts first (newest-first)
@@ -137,7 +137,7 @@ async def monitor_client() -> AsyncIterator[AsyncClient]:
         yield http
     app.dependency_overrides.clear()
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

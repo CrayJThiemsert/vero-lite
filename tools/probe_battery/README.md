@@ -180,6 +180,43 @@ Run state lives under `.claude/state/probe_battery/` (gitignored), overridable w
 `CLAUDE_PROBE_BATTERY_STATE` — the `CLAUDE_*` testability family `_goal_state.py` already
 uses.
 
+---
+
+## The goal-gate lock
+
+A battery breaks the tree on purpose, and the Axis-B Stop-hook goal gate reads that same
+tree. Left alone, every Stop event during a battery would:
+
+- run `check` criteria against deliberately-broken code and record a **false `fail`** into
+  `goal.json`'s **append-only** trail — an entry nobody can remove afterwards; and
+- read the mutation as *new work* (`fingerprint = sha256(HEAD + porcelain)`), making it
+  eligible to dispatch the `goal-evaluator` against code that is broken by design.
+
+So the driver takes `.claude/state/probe_battery.lock` **before the first mutation** and
+releases it **after the verified restore** — not after the last probe. While it is held,
+the gate returns early: no check subprocess, no fingerprint read, and **nothing written to
+`goal.json`**. Zero residue in the artifact being protected is the ruling (PLAN-0115 SD-2),
+not an implementation convenience.
+
+| | |
+|---|---|
+| Lock path | `.claude/state/probe_battery.lock`, override `CLAUDE_PROBE_BATTERY_LOCK` |
+| Defer tally | `<lock>.defers` — the **gate** appends one line per stand-down; the driver reads it once on release |
+| Staleness | 45 minutes since the lock's own heartbeat. A stale lock gates nothing and pings Telegram naming the recovery path — a dead driver must not silence the gate forever |
+
+**Why a file and not a real lock**: the driver runs WSL-side (where pytest runs), the Stop
+hook runs Windows-side. An `fcntl` lock is invisible across that boundary, so the protocol
+is a JSON file each side parses independently.
+
+⚠️ **A heartbeat stamped in the *future* reads as fresh, never stale.** WSL2's wall clock
+steps backwards, so a "too young" lock is a clock artifact, not evidence — and treating it
+as stale would wake the gate mid-battery, which is the exact failure being guarded.
+
+**Visibility is Telegram, keyed to the lock** — once on acquire, once on release *if* it
+deferred at least one Stop. Never per defer: the lock is held once per battery while Stop
+fires every turn. ADR-0018 VX-1 names Telegram the warn channel of record; stderr from a
+hook exiting 0 goes to the debug log only, so a note written there reaches nobody.
+
 ⚠️ Freshness is a **counter**, not a clock: WSL2's wall clock steps backwards, so the
 manifest carries a monotonic `heartbeat` and nothing here orders runs by time.
 

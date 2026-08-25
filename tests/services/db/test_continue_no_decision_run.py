@@ -92,7 +92,7 @@ from services.engine.procedures.spec import (
     Step,
     StepKind,
 )
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _ACTOR = "appr-fleet-manager-wirat"
 
@@ -171,14 +171,9 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
-        # BOUND THE TEARDOWN. drop_all needs ACCESS EXCLUSIVE; a session this module
-        # left `idle in transaction` holds a conflicting lock and drop_all then waits
-        # FOREVER — measured s253: a 67-minute hang whose head of the queue was one
-        # un-rolled-back session in this file, with a second pytest process queued
-        # behind it. Unbounded, that failure mode never reddens; it just stops. With a
-        # timeout it becomes a loud, ordinary test failure that names the right file.
-        await conn.execute(sa.text("SET lock_timeout = '20s'"))
-        await conn.run_sync(Base.metadata.drop_all)
+        # This module is where the s253 hang was measured; its inline bound is now the
+        # shared `drop_all_bounded` helper, which carries the incident in its docstring.
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

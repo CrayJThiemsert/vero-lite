@@ -47,7 +47,7 @@ from services.engine.procedures.scheduler_wiring import build_resolver, schedule
 from services.engine.procedures.schedules import ScheduleState
 from services.engine.procedures.spec import Person, Trigger, load_procedures
 from services.engine.registry import registry
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _VERTICAL = "procurement"
 _PROC_ID = "scheduled_emergency_sourcing_round"
@@ -70,7 +70,7 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 
