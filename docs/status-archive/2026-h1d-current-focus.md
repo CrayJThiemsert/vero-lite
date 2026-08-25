@@ -1576,3 +1576,43 @@ will meet them at the moment of need._
 > verbatim = 10, LOST = 0, in BOTH = 0.** STATUS is still **2,591 B over R1's
 > 48 KB soft target**, far under the 64 KB hard ceiling that gates a commit —
 > and no rule now covers the remainder.
+
+## Rotated this reconcile — session 254 (2026-08-25), Current Focus 4-session window
+
+### Current Focus block — Session 250 (the In-Flight + rotation-ledger caps)
+
+> **Session 250, 2026-08-24 (head_commit `0d9b808` → `98b3cda`) — FOUR PRs
+> MERGED ([#1271](https://github.com/CrayJThiemsert/vero-lite/pull/1271), [#1272](https://github.com/CrayJThiemsert/vero-lite/pull/1272),
+> [#1273](https://github.com/CrayJThiemsert/vero-lite/pull/1273), [#1274](https://github.com/CrayJThiemsert/vero-lite/pull/1274)), 0 open, CI
+> green, tree clean. A governance-plumbing session — no engine code moved, and
+> what shipped is the machinery s251's build was then measured against.
+> **In-Flight Discussions and the Current-Focus rotation ledger are CAPPED
+> (Cray, typed, s250)** — the two sections R2 had never governed.**
+>
+> ✅ **The cap, in three clauses** (#1271): an In-Flight entry is a **pointer ≤
+> ~600 chars**; the section holds **only discussions still OPEN** — one
+> announcing its own closure has stopped being in flight; and it is **capped at
+> 6 entries**. The rotation ledger keeps **only the current 4-session window**,
+> each entry travelling into the archive with the block it explains. STATUS
+> **53,048 → 48,645 B**, back under R1's 48 KB soft target.
+>
+> 🔴 **The backfill is the real finding: two Cray-ratified rules had never
+> reached their enforcer at all.** The **s194 per-block 4,096 B cap** and the
+> **s141 Active-TODO pointer rule** were absent from
+> `.claude/agents/status-scribe.md` — zero hits, with a positive control
+> proving the grep finds a rule that *is* there. Both sections happened to be
+> compliant, **but not because the enforcer was enforcing them**. R2 now says
+> it out loud: *a rule absent from its enforcer's input is, for that enforcer,
+> not written* — `CLAUDE.md` §4's consumer test, measured.
+>
+> ✅ **The TODO that asked for the ruling is CLOSED** (#1272) — and at **638
+> chars it was the last Active TODO over the s141 cap**, so that section is now
+> 100% per-entry compliant.
+>
+> ✅ **The s245 block's one unhomed fact is REHOMED** (#1273): the four-day
+> `.git/index.lock` root cause — a **SIGSTOP-suspended git process (`STAT=T`)
+> holding the lock while not running** — now sits in
+> `.claude/skills/git-workflow/SKILL.md` beside the recovery it explains.
+> ✅ **PLAN-0113 Step 0's baseline is recorded** (#1274) at
+> `docs/logs/2026-08-24-plan0113-step0-baseline.md` — the pre-change
+> measurement Step 1's byte-identical claim is checked against.
