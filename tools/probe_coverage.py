@@ -29,9 +29,21 @@ So exemptions are not free-form — each carries a written reason, and the repor
 them where a reviewer meets them rather than hiding them behind a count. If narrowing
 the denominator feels convenient, that is the moment to have someone else check.
 
-Usage is library-first (a session's battery imports :func:`enumerate_claims` and
-:func:`render_report`); the ``__main__`` path just lists a module's claims so the
-battery author can write the ``expect_red`` sets BEFORE running anything.
+**Usage is driver-first** (PLAN-0115 R-A, correcting this docstring's original framing).
+It used to say "a session's battery imports :func:`enumerate_claims` and
+:func:`render_report`" — i.e. that each session writes its own battery *script* around
+this library. Session 253 measured what that costs: a from-scratch driver re-made four
+retired defect classes at once, and **none of them is visible from here** by construction,
+because :func:`render_report` sees claim keys and credit maps and never *how* credit was
+earned. So the seam moved. The machinery — mutate, restore, classify, credit, report —
+ships in ``tools/probe_battery/``; what stays per-session is the probe *definitions*
+(which mutation, which declared claim, which expected outcome), fed to that driver as
+data. This module remains the coverage half it always was, and the driver calls it.
+
+The ``__main__`` path lists a module's claims by ``claim_id`` so a battery author can see
+the denominator before running anything; ``python -m tools.probe_battery keys <module>``
+lists the same claims by :attr:`Claim.stable_key`, which is the address a probe must
+declare.
 """
 
 from __future__ import annotations
