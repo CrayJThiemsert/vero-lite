@@ -61,6 +61,7 @@ from typing import Any
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
+from sqlalchemy.orm.exc import StaleDataError
 
 from services.db.audit_log import AuditLog
 from services.db.base import Base
@@ -170,6 +171,13 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
+        # BOUND THE TEARDOWN. drop_all needs ACCESS EXCLUSIVE; a session this module
+        # left `idle in transaction` holds a conflicting lock and drop_all then waits
+        # FOREVER — measured s253: a 67-minute hang whose head of the queue was one
+        # un-rolled-back session in this file, with a second pytest process queued
+        # behind it. Unbounded, that failure mode never reddens; it just stops. With a
+        # timeout it becomes a loud, ordinary test failure that names the right file.
+        await conn.execute(sa.text("SET lock_timeout = '20s'"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
@@ -233,6 +241,59 @@ async def _step_audit(db_engine: AsyncEngine, run_id: str, step_id: str) -> dict
         return dict(result.audit or {})
 
 
+async def _audit_payload(db_engine: AsyncEngine, run_id: str, action: str) -> dict[str, Any]:
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        row = await session.execute(
+            sa.select(AuditLog).where(AuditLog.run_id == run_id, AuditLog.action == action)
+        )
+        return dict(row.scalars().one().payload or {})
+
+
+async def _audit_step_ids(db_engine: AsyncEngine, run_id: str, action: str) -> list[str | None]:
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        rows = await session.execute(
+            sa.select(AuditLog.step_id).where(AuditLog.run_id == run_id, AuditLog.action == action)
+        )
+        return [r[0] for r in rows]
+
+
+async def _seed_parked(
+    db_engine: AsyncEngine, run_id: str, procedure_id: str, *, artifact: dict[str, Any] | None
+) -> None:
+    """Seed a waiting_human run + one suspended step with a caller-chosen artifact.
+
+    Direct seeding, because the two cases below cannot be reached by running the
+    procedure: an escalated-failure suspend (``artifact is None``) and a non-proposal
+    suspend carrying rows.
+    """
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    now = datetime.now(UTC)
+    async with maker() as session:
+        session.add(
+            PipelineRun(
+                run_id=run_id,
+                procedure_id=procedure_id,
+                agent_id="pond_agent",
+                status=PipelineRunStatus.WAITING_HUMAN.value,
+                started_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            StepResult(
+                step_result_id=f"{run_id}:aerate",
+                run_id=run_id,
+                step_id="aerate",
+                status=StepResultStatus.WAITING_HUMAN.value,
+                artifact=artifact,
+                created_at=now,
+            )
+        )
+        await session.commit()
+
+
 # --------------------------------------------------------------------------- happy path
 
 
@@ -267,31 +328,7 @@ async def test_an_escalated_failure_suspend_is_refused_as_a_retry_surface(
 ) -> None:
     """Guard 2 (OQ-1): ``artifact is None`` is a retry surface, not an acknowledgment."""
     procedure = _procedure("cnd-escalated")
-    maker = async_sessionmaker(db_engine, expire_on_commit=False)
-    now = datetime.now(UTC)
-    async with maker() as session:
-        session.add(
-            PipelineRun(
-                run_id="cnd-3",
-                procedure_id="cnd-escalated",
-                agent_id="pond_agent",
-                status=PipelineRunStatus.WAITING_HUMAN.value,
-                started_at=now,
-                updated_at=now,
-            )
-        )
-        session.add(
-            StepResult(
-                step_result_id="cnd-3:aerate",
-                run_id="cnd-3",
-                step_id="aerate",
-                status=StepResultStatus.WAITING_HUMAN.value,
-                artifact=None,
-                created_at=now,
-            )
-        )
-        await session.commit()
-
+    await _seed_parked(db_engine, "cnd-3", "cnd-escalated", artifact=None)
     with pytest.raises(ProcedureError, match="escalated FAILURE suspend"):
         await _continue(db_engine, procedure, "cnd-3")
 
@@ -360,3 +397,91 @@ async def test_the_block_records_the_upstream_shape(db_engine: AsyncEngine) -> N
     assert [(u["step_id"], u["kind"], u["output_count"]) for u in block["upstream"]] == [
         ("read", "query", 1)
     ]
+
+
+async def test_the_chain_row_names_the_acknowledged_step(db_engine: AsyncEngine) -> None:
+    """SD-2 level 1 carries the step, not just the action name."""
+    procedure = _procedure("cnd-chainstep")
+    await _park(db_engine, procedure, "cnd-10")
+    await _continue(db_engine, procedure, "cnd-10")
+    assert await _audit_step_ids(db_engine, "cnd-10", "run_continued_no_decision") == ["aerate"]
+
+
+async def test_the_chain_row_records_zero_decidable_proposals(db_engine: AsyncEngine) -> None:
+    """SD-2 level 1 carries proposal_count.
+
+    The positive control is the ``read`` step's one row: the run genuinely produced
+    output, so a zero here is a measured property of the GATE, not of an empty run.
+    """
+    procedure = _procedure("cnd-chaincount")
+    await _park(db_engine, procedure, "cnd-11")
+    await _continue(db_engine, procedure, "cnd-11")
+    payload = await _audit_payload(db_engine, "cnd-11", "run_continued_no_decision")
+    assert payload["proposal_count"] == 0
+
+
+async def test_a_non_proposal_suspend_records_zero_proposals_beside_its_row_count(
+    db_engine: AsyncEngine,
+) -> None:
+    """proposal_count counts PROPOSALS, not rows — the case where the two diverge.
+
+    A non-proposal suspend (the ``human_task`` / empty-watch-set shape) can hold rows
+    in ``output_set`` while holding nothing decidable. Recording ``len(output_set)``
+    as "proposal_count" would state a non-zero number of proposals for a gate that has
+    none. Both numbers are asserted together here because the claim IS their
+    divergence: 0 proposals beside 2 rows.
+    """
+    procedure = _procedure("cnd-nonproposal")
+    await _seed_parked(
+        db_engine,
+        "cnd-12",
+        "cnd-nonproposal",
+        artifact={"output_set": [{"id": "r1"}, {"id": "r2"}]},
+    )
+    await _continue(db_engine, procedure, "cnd-12")
+    block = (await _step_audit(db_engine, "cnd-12", "aerate"))[NO_DECISION_ACK_KEY]
+    assert (block["proposal_count"], block["output_set_size"]) == (0, 2)
+
+
+async def test_a_concurrent_writer_loses_cleanly(db_engine: AsyncEngine) -> None:
+    """The optimistic lock: a stale acknowledger never double-writes run state.
+
+    PLAN-0114 Step 1 names this explicitly. The stale session holds the run at its
+    pre-bump version, so it passes every guard on stale data and is refused at COMMIT
+    — which is the only place it can be caught.
+    """
+    procedure = _procedure("cnd-race")
+    await _park(db_engine, procedure, "cnd-13")
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+
+    async with maker() as stale, maker() as winner:
+        # KEEP `held` BOUND. SQLAlchemy's identity map holds WEAK references, so
+        # dropping this name lets the instance be collected — `load_run`'s select
+        # inside the chokepoint then returns FRESH data, the run reads `cancelled`,
+        # and the test refuses on the status guard instead of losing at the optimistic
+        # lock. Measured s253: removing this binding turned the test green-for-the-
+        # wrong-reason into an outright failure. The staleness under test IS this
+        # reference.
+        held = await stale.get(PipelineRun, "cnd-13")
+        assert held is not None
+        fresh = await winner.get(PipelineRun, "cnd-13")
+        assert fresh is not None
+        fresh.status = PipelineRunStatus.CANCELLED.value
+        await winner.commit()
+
+        with pytest.raises(StaleDataError):
+            await continue_no_decision_run(
+                stale,
+                procedure,
+                _agent(),
+                _executors(False, []),
+                "cnd-13",
+                "aerate",
+                vertical="aquaculture",
+                actor_person_id=_ACTOR,
+            )
+        # RELEASE THE LOCKS. A StaleDataError leaves this session's transaction open
+        # and holding `pipeline_runs`; without this rollback the fixture's drop_all
+        # blocks behind it indefinitely (measured s253 — see the fixture's note). The
+        # assertion above is the test; this is the cleanup it cannot skip.
+        await stale.rollback()

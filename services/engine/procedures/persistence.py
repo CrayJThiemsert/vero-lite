@@ -540,12 +540,34 @@ class NoDecisionApproverError(ProcedureError):
 NO_DECISION_ACK_KEY = "no_decision_continuation"
 
 
+def _decidable_proposal_count(artifact: dict[str, Any]) -> int:
+    """How many REAL proposals the artifact carries — the same definition
+    :func:`_has_decidable_proposals` refuses on.
+
+    Deliberately NOT ``len(output_set)``. The two agree on the shipped empty-gate case
+    and diverge on the one the design explicitly admits: a non-proposal suspend
+    (``human_task``, an empty watch set) can carry rows in ``output_set`` while holding
+    nothing decidable. Recording the raw length as "proposal_count" would state a
+    non-zero number of proposals for a gate that has none — the acknowledgment block
+    would assert something false about the very thing it exists to record. The raw
+    length is still worth keeping, so the block carries it separately as
+    ``output_set_size``.
+    """
+    output_set = artifact.get("output_set", [])
+    return sum(
+        1
+        for entry in output_set
+        if isinstance(entry, dict) and isinstance(entry.get("action"), dict)
+    )
+
+
 def _no_decision_acknowledgment(
     *,
     actor_person_id: str,
     acknowledged_at: datetime,
     step_id: str,
     proposal_count: int,
+    output_set_size: int,
     vertical: str,
     procedure: Procedure,
     governance_hash: str | None,
@@ -603,7 +625,11 @@ def _no_decision_acknowledgment(
         "acknowledged_by": actor_person_id,
         "acknowledged_at": acknowledged_at.isoformat(),
         "step_id": step_id,
+        # Real proposals — always 0 past guard 1, and recorded because a reader should
+        # not have to know that to trust the claim. `output_set_size` is the number
+        # that actually varies: rows the gate held that were not decidable.
         "proposal_count": proposal_count,
+        "output_set_size": output_set_size,
         "vertical": vertical,
         # The tie to PipelineRun.governance_snapshot — which config shape governed the
         # run this was acknowledged on. None only on a pre-pin / legacy run row.
@@ -709,7 +735,8 @@ async def continue_no_decision_run(
             "and is never a resolve bypass (PLAN-0114 fail-closed guard 1)"
         )
 
-    proposal_count = len(suspended.artifact.get("output_set", []))
+    proposal_count = _decidable_proposal_count(suspended.artifact)
+    output_set_size = len(suspended.artifact.get("output_set", []))
 
     # SD-2 level 2: the human-readable half, on the step's own audit dict. Reassign
     # rather than mutating in place — `audit` is a JSON column and an in-place mutation
@@ -722,6 +749,7 @@ async def continue_no_decision_run(
             acknowledged_at=datetime.now(UTC),
             step_id=step_id,
             proposal_count=proposal_count,
+            output_set_size=output_set_size,
             vertical=vertical,
             procedure=procedure,
             governance_hash=loaded.run.governance_hash,
@@ -739,7 +767,11 @@ async def continue_no_decision_run(
         actor_person_id=actor_person_id,
         run_id=run_id,
         step_id=step_id,
-        payload={"proposal_count": proposal_count, "actor_kind": "human"},
+        payload={
+            "proposal_count": proposal_count,
+            "output_set_size": output_set_size,
+            "actor_kind": "human",
+        },
     )
     await session.commit()
 
