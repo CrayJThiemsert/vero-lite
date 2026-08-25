@@ -516,3 +516,243 @@ async def cancel_run(
     )
     await session.commit()
     return run
+
+
+class NoDecisionApproverError(ProcedureError):
+    """RF-1 refusal from the PLAN-0114 continue seam: no identified human acknowledger.
+
+    Defined HERE, not reused from ``action_step.GateApproverError``, and not added to
+    ``orchestrator.py`` beside :class:`ProcedureError` — both of which look like the
+    tidier home and are both wrong:
+
+    * ``action_step`` already imports FROM this module (``assert_governance_pin``,
+      ``load_run``), so importing its exception back would be a circular import.
+    * ``orchestrator.py`` must stay byte-identical under PLAN-0114 AC-4, which is how
+      that AC proves ``_suspends`` was never touched. Adding a class there would
+      dirty the very diff the AC reads.
+
+    A ``ProcedureError`` subclass, so any caller already mapping ``ProcedureError``
+    keeps working; the HTTP layer maps this arm to 403 rather than 409.
+    """
+
+
+#: The gate step's own ``audit`` key carrying the PLAN-0114 acknowledgment (SD-2 level 2).
+NO_DECISION_ACK_KEY = "no_decision_continuation"
+
+
+def _no_decision_acknowledgment(
+    *,
+    actor_person_id: str,
+    acknowledged_at: datetime,
+    step_id: str,
+    proposal_count: int,
+    vertical: str,
+    procedure: Procedure,
+    governance_hash: str | None,
+    step_results: list[StepResult],
+) -> dict[str, Any]:
+    """The acknowledgment block written into the gate step's own ``audit`` dict.
+
+    SD-2 level 2 (ruled: dual audit). The chain row is tamper-evidence; THIS is the
+    half a human reads, through surfaces that already exist — the run detail
+    (``GET /runs/{run_id}``) and the monitor's "Show audit" toggle. PLAN-0113 SD-3's
+    artifact argument is the acceptance test: a later reader must be able to
+    reconstruct *"checked — nothing to approve, acknowledged by X"*, not merely
+    *"completed"*.
+
+    **Why the procedure's shape is REFERENCED, not copied (Cray, s253).** The obvious
+    way to make the block self-describing is to embed the vertical's procedure shape.
+    The engine already builds exactly that — :func:`build_governance_snapshot` pins
+    ``procedure_id``, ``separation_of_duties`` and every step's ``step_id`` / ``kind``
+    / ``autonomy`` / ``handler`` / ``governance_content`` / ``reads`` / ``join`` /
+    ``project`` (plus ``transform`` / ``scope_by`` / ``when_absent`` when supplied) —
+    and persists it per run on ``PipelineRun.governance_snapshot`` with
+    ``governance_hash`` as its fingerprint. Copying it here would duplicate a record
+    that can then disagree with itself, and would bloat every gate's step row. So the
+    block carries the HASH: the acknowledgment is tied to the exact governed shape
+    that produced it, tamper-evidently, in one string.
+
+    **But a hash is not retrieval.** ``governance_snapshot`` and ``governance_hash``
+    appear NOWHERE in ``services/api/`` (measured, s253) — the pin is recorded and not
+    fetchable over HTTP. A reader holding only the API therefore cannot resolve step
+    ids against it. That is why ``upstream`` entries are self-describing (``step_id`` +
+    declared ``kind`` + ``output_count``) rather than being left to a snapshot lookup:
+    the block must read correctly on the surface SD-2 actually chose. The hash serves
+    the reader who DOES have the run row, and this block is the first place the pin is
+    exposed on a retrievable surface at all.
+
+    Universal across verticals by construction: every field comes from data the engine
+    holds for every vertical — no per-vertical branch, nothing authored per procedure.
+    """
+    kinds = {step.step_id: step.kind.value for step in procedure.steps}
+    upstream: list[dict[str, Any]] = []
+    for result in step_results:
+        if result.step_id == step_id:
+            break
+        artifact = result.artifact or {}
+        upstream.append(
+            {
+                "step_id": result.step_id,
+                "kind": kinds.get(result.step_id),
+                "output_count": len(artifact.get("output_set", []))
+                if "output_set" in artifact
+                else None,
+            }
+        )
+    return {
+        "acknowledged_by": actor_person_id,
+        "acknowledged_at": acknowledged_at.isoformat(),
+        "step_id": step_id,
+        "proposal_count": proposal_count,
+        "vertical": vertical,
+        # The tie to PipelineRun.governance_snapshot — which config shape governed the
+        # run this was acknowledged on. None only on a pre-pin / legacy run row.
+        "governance_hash": governance_hash,
+        "upstream": upstream,
+    }
+
+
+async def continue_no_decision_run(
+    session: AsyncSession,
+    procedure: Procedure,
+    agent: Agent,
+    executors: Mapping[StepKind, StepExecutor],
+    run_id: str,
+    step_id: str,
+    *,
+    vertical: str,
+    actor_person_id: str | None,
+    principal: Person | None = None,
+) -> RunResult:
+    """Acknowledge a gate holding nothing decidable, then continue the run (PLAN-0114).
+
+    PLAN-0113 SD-3 ruled (b): a run whose gate carries nothing decidable must reach
+    ``completed`` rather than sit unresolvable. The engine already sanctions that exit
+    — :func:`resume_run`'s no-decision branch completes such a run on a plain resume
+    (PLAN-0022 parity) — but nothing on the product surface could reach it, because
+    ``/gate/resolve`` raises on an empty ``output_set`` before ``resume_run`` is called.
+    This is the missing chokepoint, and the ONLY surface PLAN-0114 exposes.
+
+    It decides nothing. It records that an accountable human LOOKED at a gate with no
+    proposals and found nothing to approve, then delegates. ``_suspends``,
+    ``resolve_gated_step`` and ADR-0016 D4 are untouched — the gated step still
+    suspends at ``waiting_human`` and the run still resumes when the human acts; the
+    act is an acknowledgment instead of an approval.
+
+    Fails CLOSED five ways, each one its own probe in the Step 1 battery:
+
+    * **RF-1** — ``actor_person_id is None`` -> :class:`GateApproverError`. Keyed on the
+      ID, mirroring :func:`cancel_run`, NOT on a resolved ``Person``. SD-3 ruled the
+      cancel posture ("any authenticated human"), and ``auth.person`` is ``None`` in any
+      vertical shipping no ``principals:`` block — 2 of 6 today (aquaculture, energy),
+      carrying 3 of the 18 gated steps. A ``Person``-keyed guard would refuse those
+      permanently, which is a defect rather than a floor. A service actor cannot be
+      recorded here by construction: this seam takes no ``service_principal`` at all.
+    * **not parked** — a run whose status is not ``waiting_human`` has no gate to
+      acknowledge.
+    * **step mismatch** — the caller names the step they believe they are acknowledging;
+      a mismatch with the actually-suspended step means the run moved between the read
+      and the POST. (Concurrent WRITERS are covered as today, by the optimistic lock.)
+    * **escalated failure** — ``artifact is None`` is the ``on_failure =
+      escalate_to_human`` suspend. Its honest exit is a *retry*, a different semantic
+      (``resume_run`` would re-run the failed step). Out of scope, recorded as OQ-1.
+    * **decidable proposals** — the security boundary. Because SD-3 admits any
+      authenticated human, this guard is what stops ``/continue`` being a resolve
+      bypass. Note the refusal names its OWN mechanism: ``resume_run`` carries an
+      independent second guard that refuses the same case with a different message, so
+      a caller (or a test) must be able to tell the two layers apart.
+    """
+    # RF-1 first: no accountable human means nothing else is worth doing, and the
+    # refusal must not depend on the run loading successfully.
+    if actor_person_id is None:
+        raise NoDecisionApproverError(
+            f"run '{run_id}': acknowledging a gate requires an identified human "
+            "(ADR-016 S2 RF-1, PLAN-0114 SD-3 the cancel posture); none was supplied"
+        )
+
+    loaded = await load_run(session, run_id)
+    if loaded is None:
+        raise ProcedureError(f"run '{run_id}' not found")
+    if loaded.run.status != PipelineRunStatus.WAITING_HUMAN.value:
+        raise ProcedureError(
+            f"run '{run_id}' is not parked at a gate — status "
+            f"'{loaded.run.status}' (expected waiting_human); there is nothing to "
+            "acknowledge"
+        )
+
+    # Exactly-one is enforced inside; a run with two unresumed steps raises rather
+    # than letting us guess which gate the human meant.
+    suspended = suspended_step_result(loaded.step_results)
+    if suspended is None:
+        raise ProcedureError(
+            f"run '{run_id}' is waiting_human but carries no unresumed step result — "
+            "the persisted run is inconsistent and cannot be acknowledged"
+        )
+    if suspended.step_id != step_id:
+        raise ProcedureError(
+            f"run '{run_id}': step '{step_id}' is not the step this run is suspended "
+            f"at (that is '{suspended.step_id}') — reload the run and retry"
+        )
+
+    if suspended.artifact is None:
+        raise ProcedureError(
+            f"run '{run_id}': step '{step_id}' is an escalated FAILURE suspend, not a "
+            "no-decision gate — it carries no artifact. Its exit is a retry, not an "
+            "acknowledgment (PLAN-0114 OQ-1); acknowledging it would record that a "
+            "broken step was 'checked and cleared'"
+        )
+
+    if _has_decidable_proposals(suspended.artifact):
+        raise ProcedureError(
+            f"run '{run_id}': step '{step_id}' holds decidable proposals — resolve it "
+            "through resolve_gated_step. The continue seam acknowledges an EMPTY gate "
+            "and is never a resolve bypass (PLAN-0114 fail-closed guard 1)"
+        )
+
+    proposal_count = len(suspended.artifact.get("output_set", []))
+
+    # SD-2 level 2: the human-readable half, on the step's own audit dict. Reassign
+    # rather than mutating in place — `audit` is a JSON column and an in-place mutation
+    # is not seen by the session (the house idiom, mirroring resolve_gated_step's
+    # `governed_decision` write).
+    suspended.audit = {
+        **(suspended.audit or {}),
+        NO_DECISION_ACK_KEY: _no_decision_acknowledgment(
+            actor_person_id=actor_person_id,
+            acknowledged_at=datetime.now(UTC),
+            step_id=step_id,
+            proposal_count=proposal_count,
+            vertical=vertical,
+            procedure=procedure,
+            governance_hash=loaded.run.governance_hash,
+            step_results=loaded.step_results,
+        ),
+    }
+    await session.merge(suspended)
+
+    # SD-2 level 1: the tamper-evident chain row, beside the `run_resumed` row
+    # resume_run appends. `audit_log` treats `action` as an opaque string, so this
+    # rides the existing chain without touching GET /audit/verify.
+    await append_audit(
+        session,
+        action="run_continued_no_decision",
+        actor_person_id=actor_person_id,
+        run_id=run_id,
+        step_id=step_id,
+        payload={"proposal_count": proposal_count, "actor_kind": "human"},
+    )
+    await session.commit()
+
+    # Delegate to the engine's OWN sanctioned exit. `principal` is threaded when it
+    # resolves so PLAN-0053 AC-3's non-null `run_resumed` actor is preserved wherever
+    # it can hold; attribution never depends on it, because the chain row above always
+    # carries the id.
+    return await resume_run(
+        session,
+        procedure,
+        agent,
+        executors,
+        run_id,
+        vertical=vertical,
+        principal=principal,
+    )
