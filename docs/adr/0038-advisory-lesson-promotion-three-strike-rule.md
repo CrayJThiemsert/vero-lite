@@ -2,6 +2,12 @@
 
 **Status:** Accepted
 **Date:** 2026-08-17 (session-235 census; ratified the same day)
+**Amended:** 2026-08-25 (session-254) — watch-list entry **W-1 promoted to C6**
+on its third distinct firing (s253), discharging the D1.6 obligation. This is
+the first **event-driven** promotion — D4's no-census mechanism, used once and
+working as designed. Class, predicate, firing list and enforcement form:
+**D2-C6**. Routing ruling: Cray, typed, s254 (PLAN-0115 SD-4 (a) — the
+amendment is its own artifact, not a rider on a tooling PLAN).
 **Deciders:** Jirachai Thiemsert (Cray) — ruled the threshold and the scope
 (R1/R2), then ruled every surfaced decision the draft raised: SD-1 cross-class
 counting, SD-2 demotion mechanics, and SD-3 the `measure` bucket in full
@@ -22,8 +28,9 @@ D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure); **PLAN-0108**
 land first", `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md:6`;
 referenced here, never restructured); **PLAN-0107** (independent of this ADR in
 both directions — deliberately not coupled, per `0108:7`); PLAN-0099 (C3's
-substantive fix, already ratified); lessons #0024, #0030, #0033–#0037,
-#0039–#0045.
+substantive fix, already ratified); **PLAN-0115** (C6's named enforcer — its
+Step 1 AC-2/AC-4; **Draft and unmerged at amendment time**, see D2-C6's
+sequencing note); lessons #0024, #0030, #0033–#0037, #0039–#0045.
 
 > **Drafting provenance (ADR-012 D4.3 / ADR-013 D1).** Drafted by the in-harness
 > `plan-drafter` subagent from a Code-authored dispatch carrying Cray's two
@@ -35,6 +42,20 @@ substantive fix, already ratified); lessons #0024, #0030, #0033–#0037,
 > explicitly marked *census-attributed* at their sites. Independent review:
 > Code (R2) at PR; ratification: Cray. Author≠reviewer separation: **INTACT**.
 > Uncommitted draft — Code commits per ADR-009 D2.
+
+> **Amendment provenance (2026-08-25, s254 — the D1.6 pass for C6).** Drafted
+> by the in-harness `plan-drafter` from a Code-authored dispatch. The promotion
+> itself is not a drafter position — D1.6 makes it an obligation on the third
+> firing, and no waiver was typed; Cray's typed s254 ruling (PLAN-0115 SD-4
+> (a)) routed the pass here as its own artifact. Drafter positions for review
+> at this amendment's PR: the distinct-class-vs-refinement determination, the
+> predicate wording, and the form determination — all in D2-C6. Every
+> `file:line` cited in the amendment was opened with Read in the amending
+> session; line cites into PLAN-0115 are against its Draft at PR #1288 head
+> `37dbbf5` (stable anchors — Step 1, AC-2, AC-4, SD-4 — are the durable
+> references; the PLAN moves to `done/` at completion). Independent review:
+> Code at PR; ratification: Cray at that PR (per D1.6). Author≠reviewer
+> separation: **INTACT**. Uncommitted — Code commits per ADR-009 D2.
 
 ## Context
 
@@ -195,7 +216,10 @@ when it has fired **three or more distinct times**.
    obligation is dischargeable honestly rather than silently ignored.
 
 **Applied once (R2's scope):** C1–C5 promote under this ADR at ratification.
-Nothing else does.
+Nothing else does. *(Amendment 2026-08-25: C6 promoted post-ratification — not
+by widening this clause but by D1.6's own event-driven mechanism, on W-1's
+third firing. R2's scope governed the ratification-day set; D1.6 governs every
+later crossing, and C6 is its first.)*
 
 ## D2 — what "binding" takes, per class
 
@@ -322,6 +346,140 @@ they stop being allowed to *close* perception claims.
 such claims a satisfiable, auditable home in the goal machinery. C5's
 enforcement completes only if D3 is ratified; the interim rule does not wait.
 
+### C6 — a credited RED that does not name what broke · 3 firings · form (c)+(d); (a) refused as redundant · promoted 2026-08-25 via D1.6 on W-1's third firing
+
+**How this section exists:** the amendment pass D1.6 prescribes, triggered by
+watch-list entry W-1's third distinct firing (s253) and routed here as its own
+artifact by Cray's typed s254 ruling (PLAN-0115 SD-4 (a),
+`docs/plans/0115-probe-battery-driver-and-verification-instrument-hardening.md:587-618`).
+The promotion is D1.6's obligation, not a choice made below; the class shape,
+predicate and form are drafter positions Cray reviews at this amendment's PR.
+
+**The predicate (assigns any incident IN or OUT, per D1.1):** a probe's RED
+was accepted as witnessing a declared claim although its failure output does
+not name that claim as what broke — either the failure record does not show
+the declared assertion failing **at its own site** (a non-assertion crash, a
+raise before the tracked line, a different assertion, or the **right exception
+type from the wrong location**), or the declared assertion did fail but its
+message could not tell a reader what broke.
+
+Two clauses make it mechanical:
+
+- **Identity is decided by failing site/assertion, never by exception type.**
+  A `KeyError` raised one line before a tracked assert about a `KeyError` has
+  the right type and is still not a witness — a naive crash-shape filter
+  passes exactly this, which is why it is the shape most likely to fire next
+  (PLAN-0115's own cut-priority note: "AC-2 catches the last incident; AC-4
+  catches the next one", `0115:501-505`). Crediting such a RED is IN.
+- **The legibility conjunct is part of the class, not a garnish.** Without it
+  the arithmetic below does not reach 3: firing 2's assertion failed at its
+  own site and crediting it was *correct* — the defect was output no reader
+  could act on. A crediting-only predicate counts 2 and this amendment has no
+  trigger. The class is the source lesson's own thesis: a probe has two
+  outputs — the RED (the guard is live) and the RED's text (the guard is
+  usable) — and only the first is usually checked (`0043:21-23`).
+
+**The firing list (D1.2/D1.3 — three distinct defect-occurrences):**
+
+1. **s231** — a sync test's probe reddened as `RuntimeError: no running event
+   loop` before reaching its assertion and was recorded as passing evidence;
+   the crash named the event loop, nothing about the retention gate under test
+   (`docs/lessons/0043-a-probes-red-must-name-what-broke.md:24-49`;
+   recorded-as-evidence at `0043:78-80`).
+2. **s231** — the FK-children set comparison whose measured RED truncated both
+   sides to the same string: assertion correct, probe correct, output unusable
+   (`0043:52-75`). *W-1's entry carried this census-attributed; verified at
+   source in this amendment pass, 2026-08-25.*
+3. **s253** — a `/tmp` probe-battery driver keyed on `returncode == 0`, with
+   captured output discarded, credited as WITNESSED an `AttributeError` from a
+   disabled `None` guard and a `KeyError` raised one line before the tracked
+   assert; published as 13/13, corrected in-PR (`0115:79-84`; the `/tmp`
+   artifacts are gone by design and session-attributed, `0115:648-651`). Its
+   durable tally record additionally lands in lesson #0048 per the s254
+   ruling's binding condition (`0115:601-607`).
+
+**Distinct class, not a refinement clause on C1 — decided by D1.4's factual
+test, not by taste.** C1's predicate asks whether a *green* came from an
+oracle that could not have gone RED. Firings 1 and 2 fail that predicate
+outright: both guards were live and both went RED on the first attempt — the
+source lesson opens by saying so ("Neither guard was vacuous", `0043:7-9`). A
+refinement clause on C1 would hang two of the three firings on a class whose
+predicate rejects them, and future miscredited-RED incidents would have no
+counter of their own. Firing 3 is the honest overlap: the `returncode`
+credit-check could not have *declined* over the crash-vs-assert defect, so on
+its face it also satisfies C1's predicate, and per D1.4 one incident counts in
+each class it factually satisfies. C1 being already promoted, its s253
+recurrence is not a tally event but a **defect against this ADR** per D2's
+preamble — with the owed note on why the enforcer missed: C1's enforcement is
+a review discipline, and s253 delegated the discipline's mechanics to a
+hand-rolled instrument no review had seen; the fix is the same PLAN-0115
+driver. The two classes stay adjacent by design: C1 governs whether the oracle
+**could** redden; C6 governs whether the redden that occurred **is the
+declared witness, legibly**.
+
+**The binding rule (binds via this ADR):** a RED is not a witness until its
+failure record shows the **declared assertion failing at its own site** —
+matched by failing location / assertion identity, never by exception type —
+and a RED recorded as evidence must carry failure text a reader could act on.
+An exception type where an assertion should be, or a container compare the
+runner truncates, is an unfinished guard: the RED is real, and it is still not
+closing evidence (`0043:91-97` is the operational form — read the message
+before recording, and fix the guard, never the probe).
+
+**Form: (c)** — and, unusually, the enforcer already has a named owner rather
+than becoming a fresh debt: PLAN-0115 Step 1's outcome classification
+(`WITNESSED` = the declared assertion failed; `MISFIRE` = a different one;
+`CRASHED` = a non-assertion exception, or a raise before the tracked line)
+reads pytest's machine-readable failure record — `--junitxml` message/type +
+failing location, "never bare `returncode`" (`0115:306-313`). Its **AC-2**
+closes crash-vs-credit and its **AC-4** closes declared-claim match
+(`0115:208-213`, `:218-221`); both sit in Step 1 / PR-A, the MUST tier that
+survives every cut PLAN-0115's build sequence contemplates (`0115:474-499`).
+Owner: PLAN-0115 (Claude Code). **Plus (d)** for the legibility conjunct,
+which no classifier can judge: the read-the-RED clause — after a probe
+reddens, read the message before recording it as evidence; the two smells are
+an exception type instead of an assertion, and a truncated container compare
+(`0043:91-97`) — rides the **same pre-close authoring surface C1's (d)
+already rides**, per §4's bright line. No new authoring-surface PLAN is
+minted: it is one clause on a surface C1's promotion already owes.
+
+**(a) refused as redundant, with the measurement stated:** the constitutional
+sentence already exists — CLAUDE.md §8's witnessed-RED bullet has said "shown
+to redden *that assertion*, in the direction it claims" since C1's promotion —
+and s253 read it at session start and shipped the defect anyway
+(session-attributed; the defect itself is tree-recorded at `0115:79-84`). That
+is a measurement about form (a)'s marginal value **for this class**: the rule
+failed for want of a named instrument, not for want of a sentence, and a
+second sentence would spend §4's keep-`CLAUDE.md`-short budget on a mechanism
+already measured insufficient. The one constitutional change this class does
+need — §8 **naming the tool** — is already owed by Cray's typed s253 ruling 2,
+carried as PLAN-0115 Step 4a / AC-9; this amendment cites that obligation
+rather than duplicating it, and adds no constitutional text of its own (the
+same way C3 honored §4).
+
+**Why (c) here does not reopen D2-C1's (c)-refusal:** the refused artifact was
+a self-authored vacuity *judge* blessing greens — the most C1-prone artifact
+imaginable. C6's enforcer classifies REDs from pytest's own failure record:
+the failing location is a structural fact the driver reads, not an oracle its
+author supplies; and the driver stays an author-invoked instrument whose
+report goes through review, never a CI gate (PLAN-0115 R-B and its
+out-of-scope cut, `0115:170-178`, `:265-267`; crossing the auto-run line later
+requires amending this ADR, per R-B's own terms).
+
+**Sequencing, stated honestly:** PLAN-0115 is **Draft and unmerged** at this
+amendment's date. Until its PR-A lands, C6 binds by D2's two-thing minimum
+only — citable-in-review blocking status, and recurrence reclassification (a
+post-promotion miscredited RED is a defect against this ADR, not fresh lesson
+material). If PLAN-0115 dies unmerged — not merely gets cut to PR-A, which
+still carries AC-2/AC-4 — the (c) owner slot re-opens and this section must be
+re-amended; the rule's binding force does not lapse with it.
+
+**Sunset (per D5):** the (d) clause's *site* half retires if batteries become
+runnable only through a driver that cannot emit un-attributed credit — at that
+point the mechanical form subsumes it. The legibility conjunct has no sunset:
+its consumer is a future human reader at the moment a guard fires, and no
+classifier stands in for them.
+
 ## D3 — the `measure` criterion bucket · PROPOSED — Cray's to ratify; nothing in this section is decided
 
 **The gap, verified:** `/goal` splits criteria into `check` — a command's exit
@@ -440,7 +598,16 @@ lesson-write-time mechanism without any census:
 - **W-1 — a probe's RED must name what broke** (#0043; s231 ×2: a guard
   reddening as `RuntimeError: no running event loop` before reaching its
   assertion, `docs/lessons/0043-a-probes-red-must-name-what-broke.md:24-45`;
-  and a second same-session case, census-attributed).
+  and a second same-session case — census-attributed at ratification, verified
+  at source 2026-08-25 as the truncated set-comparison, `0043:52-75`).
+  **PROMOTED → C6 (2026-08-25, s254 amendment pass):** the third distinct
+  firing landed in s253 (a crash credited as WITNESSED by a
+  `returncode`-keyed driver), and D1.6 discharged exactly as this section
+  designed — no census; the writer holding the incident carried the tally
+  (PLAN-0115 SD-4). Class, predicate, firing list and form: **D2-C6**. The
+  entry stays as the record that the mechanism ran; W-1 is no longer tallied
+  here — a further incident of this shape is a defect against this ADR (D2's
+  preamble), not a watch-list event.
 - **W-2 — a cheap parameter change where the measured unit is wrong** (#0033's
   6→15 threshold raise that left the guard blind to the exact failure mode it
   existed to catch, `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md:23-35`;
@@ -613,5 +780,11 @@ well-organised place to lose things.**
   `tests/api/test_css_class_contract.py`, `tests/api/test_static_ui.py`,
   `.claude/commands/goal.md`, `.claude/agents/goal-evaluator.md`
 - Consumer: `docs/plans/0108-ac-authoring-and-preclose-convention-hardening.md`
+- Amendment (2026-08-25, C6):
+  `docs/plans/0115-probe-battery-driver-and-verification-instrument-hardening.md`
+  (C6's enforcer — Step 1 AC-2/AC-4; SD-4 is the routing ruling; cited as
+  Draft at PR #1288 head `37dbbf5` — the file moves to `done/` at completion);
+  `docs/lessons/0043-a-probes-red-must-name-what-broke.md` (the class's source
+  lesson, both s231 firings)
 - Governance frame: CLAUDE.md §1/§4/§6/§8; ADR-0017; ADR-0018; ADR-009 /
   ADR-012 / ADR-013
