@@ -37,6 +37,31 @@ teardown that hung 67 minutes), amend §8 so the binding rule *names the tool*
 3. **"เอา lesson 0099 ด้วย"** — include the lesson promoting PLAN-0099's method
    (Step 4b drafts it in full).
 
+## Cray's rulings (typed, s254 — the four SDs, LOCKED)
+
+Cray typed **"เอาตามนี้"** (2026-08-25, s254) against the slate below. All four
+SDs are RULED; §Surfaced decisions is retained as the *record of the options*,
+each marked with its outcome, and is not re-opened.
+
+1. **SD-1 → (b), with the guard bound to it.** The shared `drop_all_bounded`
+   helper AND the AC-8 guard ship together — neither is severable. Rationale
+   (s253, who watched the 67-minute hang): a helper without a guard is
+   *"safety-feeling without safety"* — a **new** module simply never calls it,
+   which is precisely how the s253 module escaped.
+2. **SD-2 → neither (a) nor (b) as drafted.** Both fail on measurement (below).
+   The gate stands down under the lock and writes **nothing** to `goal.json`
+   (the original design intent, upheld); the *visibility* half moves to
+   **Telegram, keyed to the lock, not to each defer**. The `no Telegram`
+   clause is struck. See the s254 measurement note under SD-2.
+3. **SD-3 → defer** (as recommended) — but the Residual entry must record that
+   the one fully-instrumented incident **points away from** the theory, not
+   merely that the theory is unverified.
+4. **SD-4 → (a)**, the ADR-0038 amendment as its own dispatch, with one binding
+   condition: **the firing tally lands in the `docs/lessons/0048-…md` file
+   itself**, never only in a PR body. A PR body is untracked by grep and would
+   leave the D1.6 obligation as a debt with no invoice. The dispatch is opened
+   in the **same session** as this PLAN's ruling, not "later".
+
 ## Context — what s253 measured, verified against the tree this session
 
 **No tracked driver exists** (grounded negative, re-verified 2026-08-25):
@@ -303,33 +328,66 @@ from `tools/probes/` (live liveness probes).
   HEAD sha, heartbeat counter + timestamp refreshed per probe) before the
   first mutation; releases after verified restore.
 - `.claude/hooks/_goal_gate.py`: in `run_goal_gate`, **before** `_run_checks`
-  and before any fingerprint read, a fresh lock → return `None` with a stderr
-  note — no subprocess, no trail write, no Telegram (semantics = SD-2; the
-  design intent is that a deliberately-mutated tree leaves **zero residue** in
-  `goal.json`). Lock path honors a `CLAUDE_PROBE_BATTERY_LOCK` env override
-  (the existing `CLAUDE_*` testability family, `_goal_gate.py:69-70`).
+  and before any fingerprint read, a fresh lock → return `None` — no
+  subprocess, **no trail write** (semantics = SD-2 as ruled; the design intent
+  is that a deliberately-mutated tree leaves **zero residue** in `goal.json`,
+  and that half is upheld unchanged). Lock path honors a
+  `CLAUDE_PROBE_BATTERY_LOCK` env override (the existing `CLAUDE_*`
+  testability family, `_goal_gate.py:69-70`).
+- **Visibility is Telegram, keyed to the lock (s254 ruling 2).** The driver
+  pings **once on acquire** and **once on release if it deferred at least one
+  Stop**. It does **not** ping per defer: the lock is held once per battery
+  while Stop fires every turn, so a per-defer ping would emit several pings
+  per battery — the only spam shape anyone could reasonably have been guarding
+  against. Rationale for the channel: ADR-0018 VX-1 states *"D5's warn channel
+  of record is Telegram + the verdict trail; any in-UI annotation is bonus"*
+  (`docs/adr/0018-axis-b-verification-loop.md:578-581`), so Telegram is this
+  gate's designated channel by an Accepted ADR.
 - Staleness (R-D): freshness is judged from the lock's own heartbeat fields
   with a generous bound (order of tens of minutes — WSL2 clock hazard); a
-  stale lock is treated as **absent for gating** but produces a loud stderr
-  warning naming the unrestored-manifest recovery path. A dead driver must
-  not silence the gate indefinitely.
+  stale lock is treated as **absent for gating** and pings Telegram naming the
+  unrestored-manifest recovery path. A dead driver must not silence the gate
+  indefinitely. *(Was "a loud stderr warning" — stderr is not a channel; see
+  the SD-2 measurement note.)*
+- **Owed here, not new work: the VX-1 `systemMessage` probe.** PLAN-0021
+  committed Code to probe whether a Stop hook's JSON `systemMessage` surfaces,
+  and to record the outcome in its closeout
+  (`docs/plans/done/0021-axis-b-verification-loop-build.md:194-201`); **the
+  outcome is recorded nowhere**, and `systemMessage` has zero occurrences in
+  `.claude/hooks/`. Run that probe in this step and write the result down. If
+  it renders, it is the ADR's "bonus" in-UI annotation and may be added
+  *alongside* Telegram — never as a replacement for the channel of record.
 - Tests: AC-7's pair, with `CLAUDE_GOAL_PATH` isolated per the hook-test
   hygiene precedent; plus a stale-lock case asserting the gate proceeds and
-  warns.
+  pings.
 
 ### Step 3: bound the `drop_all` teardown (SHOULD)
 
-Mechanism contingent on SD-1; recommended form:
+Mechanism = SD-1 **(b), ruled** — helper and guard ship together, neither
+severable:
 
 - `tests/db_support.py` gains a shared bounded-teardown helper (e.g.
   `async def drop_all_bounded(conn, timeout: str = "20s")` — `SET
   lock_timeout` then `drop_all`, the donor pattern from
   `test_continue_no_decision_run.py:174-183`, with the s253 incident comment
   moved to the helper as its rationale).
-- Migrate the ~36 fixture sites (enumerate at execution via the `drop_all`
-  grep; the count here is an estimate, the enumeration is the AC).
+- **Migrate 53 call sites across 50 files.** Measured s254 (supersedes the
+  "~36" estimate this PLAN carried, which was low by ~47%):
+  `grep -rn "run_sync(Base.metadata.drop_all)" tests/ --include=*.py` returns
+  **54 sites in 51 files**, of which exactly **one** is already bounded
+  (`tests/services/db/test_continue_no_decision_run.py:181`). Re-enumerate at
+  execution — the enumeration remains the AC, but the number is now measured,
+  not estimated.
 - Guard per AC-8: an AST/grep walk over `tests/` on disk failing any
   `drop_all` teardown not routed through the helper (rule, not roster).
+
+**Framing to carry into the helper's docstring (s253):** `lock_timeout` does
+not *prevent* the failure — it changes its **kind**, from "the suite hangs
+silently for 67 minutes" to "one test reddens in 10 seconds naming the
+operation". A failure that never reddens is a failure the test system cannot
+see. The leaked session is the root cause and a missing `rollback()` fixes
+*that one test*; the helper + guard bound the **whole class**, because leaks
+cannot be prevented in the general case.
 
 ### Step 4: the docs PR — §8 amendment + lesson 0048 (ALSO — rulings 2 + 3)
 
@@ -422,43 +480,142 @@ satisfies).
    after PR-A only because §8 must not name a tool that does not exist yet.
 3. **PR-C (Steps 2+3, SHOULD)** — lock + gate early-return + teardown bound.
 
-**If only one PR is affordable: PR-A ships.** PR-B is deferred-not-dropped
-(typed rulings; recorded as owed in STATUS). PR-C is the cut line — carried
-as a named follow-up, not silently dropped, because each of its two holes has
-a measured incident behind it.
+**If only one PR is affordable: PR-A ships *with the §8 pointer folded in*
+(Step 4a), not PR-A alone.** Corrected s254 on s253's objection:
 
-## Surfaced decisions (for Cray — implementation-level; the three rulings above are not re-opened)
+> The MUST tier ships a **capability**; the ALSO tier ships **the reason
+> anyone would reach for it**. Shipping the tool while cutting the pointer
+> yields a tool nobody knows to use.
 
-- **SD-1 — teardown-bound mechanism.** (a) edit ~36 fixtures in place with
-  the donor pattern; (b) **[recommended]** shared `drop_all_bounded` helper in
+This is not hypothetical — it is the s252→s253 pattern exactly: `probe_coverage.py`
+shipped in s252, and s253 still hand-rolled its own `key_of` while
+`Claim.stable_key` sat on the very object it had imported. The author of that
+miss is the source of this correction. Sequencing caveat still holds — §8 must
+not name a path that does not exist — so the pointer rides **in** PR-A, added
+in the same commit that creates `tools/probe_battery/`, never in a PR before it.
+
+The lesson half of Step 4 (4b / lesson 0048) may still trail into PR-B. PR-C
+is the cut line — carried as a named follow-up, not silently dropped, because
+each of its two holes has a measured incident behind it.
+
+**If ACs must be cut, AC-4 is not the one (s253).** AC-2 catches the failure
+shape already seen — a crash of the *wrong exception type*. The subtler and
+still-uncaught shape is the *right* exception type raised from a *different
+site*, which a crash-shape filter passes and only **AC-4's declared-claim
+match** rejects. AC-2 catches the last incident; AC-4 catches the next one.
+
+## Surfaced decisions — ALL FOUR RULED s254 (options retained as the record; not re-opened)
+
+- **SD-1 — teardown-bound mechanism. ✅ RULED (b) + guard, bound together.**
+  Options as surfaced: (a) edit the fixtures in place with the donor pattern;
+  (b) **[recommended → ruled]** shared `drop_all_bounded` helper in
   `tests/db_support.py` + migrate + rule-not-roster guard; (c) server-side
   (per-role `lock_timeout` on the test DB). Why Cray: (b) touches a shared
   test seam every DB module depends on; (c) is host-adjacent state. Reason
   for (b): one incident comment in one place, new modules inherit the bound
   by using the helper, and the guard catches the module that does not.
-- **SD-2 — gate behavior under a fresh lock.** (a) **[recommended]** silent
-  `None` + stderr note — zero residue in `goal.json`, which is the entire
-  point of the guard; (b) a trail annotation ("skipped: battery lock") — more
-  auditable but writes to the exact artifact being protected and interacts
-  with PLAN-0097's warn-dedup reads. Why Cray: it changes what the Axis-B
-  trail means during batteries.
-- **SD-3 — the Stop-timeout/check-budget mismatch.** `settings.json:71` gives
-  the Stop hook 180 s while `_goal_gate.py:104` budgets checks 600 s (no
-  local override — verified). Fix in this PLAN (one-line alignment, e.g. Stop
-  timeout ≥ budget + margin, or budget ≤ 150 s), or record-and-defer.
-  **Recommend defer** (out-of-scope cut 5): the mismatch is a verified
-  configuration fact but an *unverified* incident cause, and it was not in
-  the ruled tiers. Why Cray: it is a harness-posture change either way.
-- **SD-4 — ADR-0038 D4 watch-list W-1.** s253's crash-credited-as-RED is a
-  recurrence of W-1 ("a probe's RED must name what broke", #0043 — already at
-  2 firings + this one). Amending an Accepted ADR is G1-gated and D1.6
-  prescribes an amendment pass at promotion. (a) **[recommended]** record the
-  tally claim here and in lesson 0048's PR body; open the ADR-0038 amendment
-  as its own follow-up dispatch (promotion is an obligation once counted —
-  but the counting-and-amendment is a governance artifact of its own, not a
-  rider on a tooling PLAN); (b) fold the amendment into PR-B. Why Cray:
-  either way commits Cray to the D1.6 obligation (enforcement work becomes
-  owed for the promoted class).
+  **Ruling detail:** helper and guard are a single deliverable. (c) was
+  declined for a reason worth recording — it fixes the developer's machine,
+  not the repository: CI and every other checkout stay unbounded.
+  **Effort corrected:** 53 sites / 50 files measured, not ~36 (see Step 3).
+- **SD-2 — gate behavior under a fresh lock. ✅ RULED: neither option as
+  drafted — zero-residue upheld, visibility moves to Telegram keyed to the
+  lock.** Options as surfaced: (a) **[recommended]** silent `None` + stderr
+  note — zero residue in `goal.json`, which is the entire point of the guard;
+  (b) a trail annotation ("skipped: battery lock") — more auditable but writes
+  to the exact artifact being protected and interacts with PLAN-0097's
+  warn-dedup reads. Why Cray: it changes what the Axis-B trail means during
+  batteries.
+
+  **s254 measurement — why both options fell:**
+
+  - **(a) writes its note nowhere.** Claude Code's documented contract:
+    *"Stderr from a hook that exits 0 goes to the debug log only, never the
+    transcript, and Claude never sees it"* — and `stop_continuation.py`'s
+    `main()` returns 0 on **all 9** paths by design (`"never raise into the
+    harness (D4 posture)"`, `"fail-open"`), with **24** `assert rc == 0` in
+    `tests/handoffs/test_stop_continuation.py` pinning it. The debug log on
+    the dev box was then inspected directly: **0 files, one dangling
+    `latest` symlink.** Corroborating: `_goal_gate.py` contains **zero**
+    `stderr` writes today, and the repo already carries **four** exit-0
+    stderr notes in this same invisible class (`stop_continuation.py:263`,
+    `:551`; `notification_telegram.py:60`; `subagentstop_notify.py:92`) —
+    including one that fires when the gate *raises unexpectedly*. No test
+    asserts any of them is even emitted. (a) would have been the fifth.
+  - **(b) corrupts four control-flow reads,** not merely "interacts with"
+    dedup. `_last_decision_evaluation` filters only on `GATE_WARN_MARKER`
+    (`_goal_gate.py:405-407`), so a battery entry is read as a *decision* and
+    becomes `last`: `work_changed` (`:583`) compares the wrong fingerprint;
+    the step-6 unanswered-dispatch check (`:600`) is **hidden**, silently
+    skipping the API-dead / spawn-failure path; and `_last_was_enforce_block`
+    (`:411-419`) returns False, so under `enforce: true` the ladder issues a
+    **second block** instead of parking. Plus the exact-count assertions
+    (`tests/handoffs/test_goal_gate.py:588-589`, `:610-611`, `:613-629`).
+  - **Exit code 1 was considered and declined:** it renders as
+    `<hook name> hook error` — error framing for a deliberate, expected skip —
+    and it contradicts both the module's fail-open posture and PLAN-0021's
+    rule that the gate *"never uses the blocking channels … exit code 2, or
+    stderr-as-block"* to annotate (`docs/plans/done/0021-…md:199-201`).
+
+  **Provenance of the struck `no Telegram` clause (recorded so it is not
+  re-litigated).** It appears **exactly once** in this PLAN — the prohibition
+  itself, with no rationale — and a sweep of `docs/plans/`, `done/`, `adr/`,
+  `lessons/`, `status-archive/` and `logs/` found **no ruling reserving
+  Telegram, no noise budget, and no rate limit** governing hook pings. s253
+  (who dispatched the drafter) confirms the words Telegram/ping appear
+  nowhere in anything it wrote, and that it reviewed the draft at AC/SD depth
+  while reading Step bodies only at heading level — so the clause **was
+  neither authored deliberately nor reviewed**. A plausible but unconfirmed
+  origin: a `code-architect` blueprint comment reading
+  `# defer entirely — no trail entry, no ping`, which s253 believes it did
+  not forward. Treated as hypothesis, not fact. The governing text points the
+  other way: ADR-0018 VX-1 names Telegram the channel of record, and per §1
+  precedence an Accepted ADR outranks a PLAN.
+- **SD-3 — the Stop-timeout/check-budget mismatch. ✅ RULED: defer, with the
+  Residual entry strengthened.** `settings.json:71` gives the Stop hook 180 s
+  while `_goal_gate.py:104` budgets checks 600 s (no local override —
+  verified, and **re-verified s254**: `.claude/settings.local.json` exists but
+  carries only a `permissions.allow` block, no `hooks` and no `env`). Fix in
+  this PLAN (one-line alignment, e.g. Stop timeout ≥ budget + margin, or
+  budget ≤ 150 s), or record-and-defer. **Recommend defer** (out-of-scope cut
+  5): the mismatch is a verified configuration fact but an *unverified*
+  incident cause, and it was not in the ruled tiers. Why Cray: it is a
+  harness-posture change either way.
+  **Ruling detail:** deferred — but the Residual entry must state that the
+  one fully-instrumented incident points **away from** the orphan theory, not
+  merely that it is unverified. See §Residual.
+- **SD-4 — ADR-0038 D4 watch-list W-1. ✅ RULED (a), with the tally homed in
+  the lesson FILE.** s253's crash-credited-as-RED is a recurrence of W-1 ("a
+  probe's RED must name what broke", #0043 — already at 2 firings + this one).
+  Amending an Accepted ADR is G1-gated and D1.6 prescribes an amendment pass
+  at promotion. (a) **[recommended → ruled]** record the tally claim here and
+  in lesson 0048's PR body; open the ADR-0038 amendment as its own follow-up
+  dispatch (promotion is an obligation once counted — but the
+  counting-and-amendment is a governance artifact of its own, not a rider on a
+  tooling PLAN); (b) fold the amendment into PR-B. Why Cray: either way
+  commits Cray to the D1.6 obligation (enforcement work becomes owed for the
+  promoted class).
+
+  **Ruling detail — two amendments to (a) as drafted:**
+
+  1. 🔴 **The tally goes in `docs/lessons/0048-…md` itself, not "lesson 0048's
+     PR body".** A PR body is not a tracked surface: `git grep` does not reach
+     it, and a future session auditing W-1's count would not find the third
+     firing. Recording a promotion obligation somewhere ungreppable produces a
+     debt with no invoice. *(This is the same failure shape as #1287, where a
+     correction survived only in a commit body beneath the values it
+     corrected.)*
+  2. **The dispatch opens in the same session as this ruling.** s253 supplied
+     the counter-evidence for "later" against its own preference: three
+     deferrals inside one session did not happen — the driver left in `/tmp`
+     (rebuilt wrong, four defect classes), PLAN-0099's method never lifted out
+     of the PLAN, and the R2/R6 rotation debt carried in `blocked_on`.
+
+  *Note on a rejected argument:* the s254 review initially cited #1287's
+  squash-burial as a reason to prefer (a). s253 refuted it — #1287 was a PR
+  **correcting its own earlier claim**, so ordering buried the correction;
+  (b) would merely co-locate independent items. The argument was withdrawn;
+  (a) stands on the governance-artifact-of-its-own reasoning alone.
 
 ## Verification
 
@@ -478,8 +635,16 @@ a measured incident behind it.
 
 - **The Stop-timeout orphan-pytest theory** (a 180 s-killed hook leaving a
   pytest child holding the test DB): configuration facts verified
-  (`settings.json:71`, `_goal_gate.py:104`, no local override); causal link to
-  any specific incident **not** verified. Carried in SD-3, not asserted.
+  (`settings.json:71`, `_goal_gate.py:104`, no local override — re-verified
+  s254). Causal link to any specific incident **not** verified. Carried in
+  SD-3, not asserted.
+  🔴 **Stronger than "unverified" (s254 ruling 3): the one fully-instrumented
+  incident points AWAY from this theory.** s253's `pg_stat_activity` capture
+  of the 67-minute hang shows the head of the lock chain was its own test
+  session left `idle in transaction` — and the second pytest
+  (`DROP SCHEMA public CASCADE`, pid 1497178) was the goal gate's **C1 check
+  running live with its parent intact**, not an orphan. Anyone reopening this
+  must start from "the evidence leans against", not from "nobody has looked".
 - **s253's ~10× estimate miss** and the four `/tmp`-driver defect
   measurements: session-attributed (the `/tmp` artifacts are gone by design);
   their tree-visible seams are cited instead where they exist.
