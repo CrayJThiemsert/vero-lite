@@ -44,6 +44,7 @@ from tools.probe_battery import (
     run_battery,
 )
 from tools.probe_battery._battery import _child_env, _overlaps
+from tools.probe_battery._lock import lock_path
 from tools.probe_coverage import Claim, enumerate_claims
 
 # ======================================================================================
@@ -680,6 +681,151 @@ def test_re_snapshotting_a_mutated_subject_keeps_the_first_bytes(project: Path) 
     store.snapshot(project / "subject.py")
     store.restore_all()
     assert (project / "subject.py").read_bytes() == before
+
+
+def test_a_probe_that_shifts_its_own_claims_line_still_witnesses(project: Path) -> None:
+    """🔴 A probe mutating the file its claim lives in moves that claim's line number.
+
+    Measured 2026-08-25 by the driver, against itself: a mutation replacing three lines
+    with one shifted every claim below it up by two, and the run was rejected as a MISFIRE
+    — the right refusal on the wrong grounds. `stable_key` is line-independent by
+    construction, so the declared claim is re-resolved from the tree as the probe left it.
+    """
+    (project / "test_suite.py").write_text(
+        'def classify_value():\n    x = "high"\n    y = x\n    return y\n\n\n'
+        'def test_only():\n    assert classify_value() == "high"\n',
+        encoding="utf-8",
+    )
+    probe = Probe(
+        name="P1",
+        subject=Path("test_suite.py"),
+        # 3 lines -> 1: the declared assert moves UP by two, and it reddens.
+        old='    x = "high"\n    y = x\n    return y',
+        new='    return "low"',
+        node_id="test_suite.py::test_only",
+        expect_claim=_keys(project)[0],
+    )
+    result = _run(project, [probe])
+    assert result.results[0].classification.outcome is Outcome.WITNESSED
+
+
+def test_a_line_shifting_probe_credits_its_declared_claim(project: Path) -> None:
+    """🟢 POSITIVE CONTROL for the test above: the re-resolved claim is the DECLARED one,
+    not merely some claim that happened to sit at the new line."""
+    (project / "test_suite.py").write_text(
+        'def classify_value():\n    x = "high"\n    y = x\n    return y\n\n\n'
+        'def test_only():\n    assert classify_value() == "high"\n',
+        encoding="utf-8",
+    )
+    key = _keys(project)[0]
+    probe = Probe(
+        name="P1",
+        subject=Path("test_suite.py"),
+        old='    x = "high"\n    y = x\n    return y',
+        new='    return "low"',
+        node_id="test_suite.py::test_only",
+        expect_claim=key,
+    )
+    result = _run(project, [probe])
+    assert result.credited == {key: "P1"}
+
+
+# -- the cross-process lock (PLAN-0115 Step 2, the driver's half) -----------------------
+
+
+def test_the_lock_is_held_while_the_battery_runs(project: Path) -> None:
+    """🔴 Held DURING, not merely written at some point. The gate reads it on every Stop
+    event, so a lock that appears only after the last probe protects nothing."""
+    seen: dict[str, bool] = {}
+
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+        seen["locked"] = lock_path(root).exists()
+        return None
+
+    battery = Battery(
+        claim_sources=(project / "test_suite.py",),
+        probes=(_witness_first("P1", _keys(project)[0]),),
+    )
+    run_battery(
+        battery, project_root=project, state_base=project / "state", runner=_observe, echo=False
+    )
+    assert seen["locked"] is True
+
+
+def test_the_lock_is_gone_once_the_battery_finishes(project: Path) -> None:
+    """The gate must go live again the moment the tree is back."""
+    _run(project, [_witness_first("P1", _keys(project)[0])])
+    assert not lock_path(project).exists()
+
+
+def test_the_lock_is_released_even_when_the_battery_dies(project: Path) -> None:
+    """🔴 A lock left behind by a crashed battery silences the goal gate for its whole
+    staleness window. Release belongs in the same `finally` as the restore."""
+
+    def _explode(_probe: Probe, _root: Path, _timeout: int) -> str | None:
+        raise RuntimeError("the runner blew up")
+
+    battery = Battery(
+        claim_sources=(project / "test_suite.py",),
+        probes=(_witness_first("P1", _keys(project)[0]),),
+    )
+    with pytest.raises(RuntimeError, match="blew up"):
+        run_battery(
+            battery, project_root=project, state_base=project / "state", runner=_explode, echo=False
+        )
+    assert not lock_path(project).exists()
+
+
+def test_the_lock_carries_the_run_id_the_manifest_records(project: Path) -> None:
+    """The two artifacts must name the same run, or a stale-lock ping points a human at a
+    run directory that does not exist."""
+    seen: dict[str, str] = {}
+
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+        seen["lock_run"] = json.loads(lock_path(root).read_text(encoding="utf-8"))["run_id"]
+        return None
+
+    battery = Battery(
+        claim_sources=(project / "test_suite.py",),
+        probes=(_witness_first("P1", _keys(project)[0]),),
+    )
+    run_battery(
+        battery, project_root=project, state_base=project / "state", runner=_observe, echo=False
+    )
+    manifests = list((project / "state").glob("*/manifest.json"))
+    recorded = {json.loads(m.read_text(encoding="utf-8"))["run_id"] for m in manifests}
+    assert seen["lock_run"] in recorded
+
+
+def test_the_lock_heartbeat_advances_per_probe(project: Path) -> None:
+    """Freshness is a COUNTER, not a clock — WSL2's wall clock steps backwards, so nothing
+    in this protocol may order runs by time."""
+    beats: list[int] = []
+
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+        beats.append(json.loads(lock_path(root).read_text(encoding="utf-8"))["heartbeat"])
+        return None
+
+    keys = _keys(project)
+    battery = Battery(
+        claim_sources=(project / "test_suite.py",),
+        probes=(_witness_first("P1", keys[0]), _witness_second("P2", keys[1])),
+    )
+    run_battery(
+        battery, project_root=project, state_base=project / "state", runner=_observe, echo=False
+    )
+    assert beats[1] > beats[0]
+
+
+def test_a_stale_defers_tally_does_not_carry_into_a_new_battery(project: Path) -> None:
+    """Otherwise a run reports it deferred Stop events it never saw — a number that would
+    be believed precisely because nobody could check it."""
+    lock = lock_path(project)
+    lock.parent.mkdir(parents=True, exist_ok=True)
+    stale = lock.with_name(lock.name + ".defers")
+    stale.write_text("2020-01-01T00:00:00+00:00\n", encoding="utf-8")
+    _run(project, [_witness_first("P1", _keys(project)[0])])
+    assert not stale.exists()
 
 
 # -- the battery file (the CLI's data path) ---------------------------------------------

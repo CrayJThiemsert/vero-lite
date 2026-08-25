@@ -29,7 +29,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from services.db.base import Base
 from services.engine import run_query as rq
 from services.engine.nl_query import QueryFilter, StructuredQuery
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from tests.support.run_corpus_factory import Corpus, build_corpus
 
 _SEED = 77
@@ -54,7 +54,7 @@ async def seeded() -> AsyncIterator[_Seeded]:
         await session.commit()
         yield _Seeded(session=session, corpus=corpus)
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

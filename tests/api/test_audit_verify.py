@@ -42,7 +42,7 @@ from services.db.audit_log import (
 )
 from services.db.base import Base
 from services.db.session import get_session
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _RAW_KEY = "auditor-secret-key"
 _DIGEST = hashlib.sha256(_RAW_KEY.encode("utf-8")).hexdigest()
@@ -73,7 +73,7 @@ async def audit_env() -> AsyncIterator[tuple[AsyncClient, AsyncEngine]]:
     async with eng.begin() as conn:
         await conn.execute(sa.text("DROP TRIGGER IF EXISTS audit_log_no_mutation ON audit_log"))
         await conn.execute(sa.text("DROP FUNCTION IF EXISTS audit_log_block_mutation()"))
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

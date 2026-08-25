@@ -45,7 +45,7 @@ from services.engine.procedures.spec import (
     StepKind,
 )
 from services.engine.registry import registry
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 # A resolving human for the non-SoD gate tests (ADR-016 S2 RF-1 / PLAN-0053 AC-1: a gate
 # resolution now requires an identified approver even on a plain, non-SoD step).
@@ -134,7 +134,7 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from services.db import run_analytics as ra
 from services.db.base import Base
 from services.engine.procedures.runs import PipelineRun
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from tests.support.run_corpus_factory import Corpus, build_corpus
 
 _SEED = 1234
@@ -61,7 +61,7 @@ async def seeded() -> AsyncIterator[_Seeded]:
         yield _Seeded(session=session, corpus=corpus, statements=statements)
     event.remove(eng.sync_engine, "after_cursor_execute", _capture)
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 
@@ -316,6 +316,6 @@ async def test_empty_db_yields_empty_rollups() -> None:
             assert await ra.benefit_rollup(session) == []
     finally:
         async with eng.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
+            await drop_all_bounded(conn)
             await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
         await eng.dispose()

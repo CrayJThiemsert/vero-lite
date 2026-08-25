@@ -21,7 +21,7 @@ from services.api.routers.actions import reset_action_store
 from services.db.base import Base
 from services.db.session import get_session
 from services.engine.llm.client import ChatResult
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
 
@@ -201,7 +201,7 @@ async def api_db_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
         await conn.run_sync(Base.metadata.create_all)
     yield async_sessionmaker(eng, expire_on_commit=False)
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 
