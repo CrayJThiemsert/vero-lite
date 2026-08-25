@@ -410,6 +410,7 @@ itself is confirmed as stated.
   visitor run, its step results, and its **non-demo** link rows **survive**, while its
   **demo-scoped** link rows are deleted; `read_demo_state`
   still reads `PRISTINE` after re-boot (G-11).
+  _[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_
   _[**NARROWED (Cray, typed, s246, 2026-08-22)** — the clause previously read "and its
   link rows **survive**" without qualification, which was **measured FALSE** three
   independent ways before the narrowing was proposed: the scenario test (a run fired
@@ -882,6 +883,7 @@ everything below this ruling line is the PLAN's record, not Cray's.)
   (`entity_ids = [case_id, quote_id]`), never on `accepted_id`, and must author
   `dedup_window_seconds` deliberately wide; the full mechanism, both traps, and the
   citations are G-14. Step 3 and AC-2 carry the constraint.
+- _[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_
 - **AC-2's sub-ceiling pass read was FALSE in the demo environment and is corrected
   in this edit.** The `reshape` step consumes only the breach subset
   (`input: {from: judge, where: {verdict: breach}}`,
@@ -1000,6 +1002,8 @@ make. **Why Cray:** it reverses a named default-deny row — the decision class
 PLAN-0100/0103/ADR-0035 reserved for typed rulings.
 
 ### SD-4 — the population-scan gate: whose cases does a visitor-fired run propose?
+
+_[Superseded s249 by PLAN-0113 — see §Post-archival amendment below]_
 
 **RULED (Cray, typed, s243, 2026-08-21): (a)** — accept the multi-case gate. Cray
 typed the pick only — no reasoning was given, and none is recorded here; everything
@@ -1200,3 +1204,69 @@ SD-6/SD-7 then had to mop up.
    is stamped in place per SD (`RULED (Cray, typed, date, session): …`) with the
    contingent ACs re-fixed in the same edit (drafter dispatch — `docs/plans/` stays
    G2-gated for Code).
+
+## Post-archival amendment — 2026-08-25 (session 252): SD-4 is REVERSED, and the two clauses that rested on it are superseded
+
+**Why this section exists.** Three sites above carry an inline
+`_[Superseded s249 by PLAN-0113 …]_` pointer — SD-4's ruling, AC-7(i)'s NARROWED clause,
+and AC-2's sub-ceiling re-fix. All three rest on one fact that is no longer true: fleet's
+`intake` was a **fleet-wide population scan**. It is not any more. Written **additively**
+per the OQ-1 ruling (Cray, typed, s249): the ruled history above is untouched, every
+original word stands, and the pointer is one inserted line beside it.
+
+**What changed, and where.** PLAN-0113 Step 3 (`ca6133e`, PR #1279) authored
+`scope_by: {field: case_id, from: trigger.entity_ids}` + `when_absent: sweep` on fleet's
+`intake`. An event-fired run now reads only its firing case's rows.
+
+### SD-4 — the reversal, classified
+
+**RULED (Cray, typed, s249, 2026-08-23): re-scope to option (b)** — the option this PLAN
+recorded as rejected. Cray's stated reason, verbatim: *"เพราะมันเป็นทางเลือกที่ดู make
+sense ที่สุด มันควรมีให้เลือกเฉพาะของตัวเอง ไม่ใช่แสดงมาให้เลือกทั้งกอง"*
+
+🔴 **Classified `superseded by new info` — NOT `was an error`.** (a) was correct in its
+context: (b) genuinely WAS outside this PLAN's scope, and the sharpened cost recorded with
+the original ruling — that `GateResolveRequest.decisions` *compels* a decision on every
+proposal, so an approver re-decides the demo pair on every visitor round — is precisely
+the cost the reversal removes. The option (b) text above stands verbatim; it was re-read
+and acted on, not rewritten.
+
+### AC-7(i)'s NARROWED clause — the justification is gone; the CONCLUSION survives
+
+The narrowing's reasoning was "every visitor-fired run's gate also decides the seeded demo
+case, so its demo-scoped link rows are deleted". Under scoping a visitor's run decides
+**its own case alone** and writes **one** link row, so it no longer writes a demo-scoped
+one at all.
+
+**The deletion rule itself is unchanged and was re-verified, not assumed** (s252): the
+reset still clears link rows on BOTH keys, and its rationale was never the population — it
+is **id reuse**. What moved is only *where the both-key deletion is witnessed*: `run_id` on
+the seeded runs' own rows (the boot seeder writes three, one keyed on a demo case), and
+`case_id` on the one remaining path that puts a demo case on a NON-demo run — a visitor who
+accepts ON the demo case. PLAN-0113 AC-5 executed that re-homing.
+
+### AC-2's sub-ceiling re-fix — superseded, and its replacement was MEASURED WRONG TOO
+
+The clause above reads that "**every** visitor-fired run gates, sub-ceiling or not",
+because the seeded demo pair always breached. Under scoping that is false.
+
+🔴 **But PLAN-0113 AC-3's predicted replacement — "a sub-ceiling acceptance fires a run
+that completes with no gate" — is ALSO false, and is corrected here rather than swapped
+in.** Measured s252: `_suspends` (`services/engine/procedures/orchestrator.py:632-644`) is
+purely structural — a `gated` action suspends on its KIND, never on whether its input set
+holds anything. So a sub-ceiling acceptance fires, `judge` bands it `ok`, `reshape` drops
+it, and the run **parks at `approve` with an EMPTY proposal list**; `/gate/resolve` then
+answers 409 `has no proposed actions to resolve`. Only `/cancel` exits it today — which
+records *abandonment* for a case that was checked and cleared.
+
+**The measured truth, for a future reader:** a sub-ceiling acceptance fires a run that
+parks at an empty gate. Not "gates like the others" (this PLAN's reading), and not
+"completes with no gate" (PLAN-0113 AC-3's reading). Both were wrong; the third is
+measured, asserted by
+`tests/api/test_case_acceptance_fires_governed_run_scenario.py::test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`,
+and is the origin of **PLAN-0113 SD-3**, **RULED (b)** (Cray, typed, s252): such a run must
+reach `completed`. **PLAN-0114** carries the build.
+
+**Owning PLAN:** `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md` (§SD-3,
+§AC-3, §AC-5, Step 7). Follow-on:
+`docs/plans/0114-empty-gate-continuation-acknowledge-and-complete.md`.
