@@ -1,6 +1,6 @@
 # PLAN-0115: The probe-battery driver ships — and the verification instrument stops being rebuilt wrong in `/tmp` every session
 
-**Status:** Draft
+**Status:** Complete (2026-08-26, session 255 — see §Closeout)
 **Owner:** Claude Code
 **Created:** 2026-08-25
 **Related ADRs:** ADR-0038 (C1 witnessed-RED promotion; D1 three-strike rule; D2-C1's refusal of a mechanical gate — reconciled below), ADR-0018 (goal gate — the Step 2 seam), ADR-009 D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure)
@@ -196,7 +196,7 @@ House rule applies to every AC below (§8): each load-bearing green is
 witnessed RED by a named probe, one probe per assertion, positive controls
 named for every absence/zero claim.
 
-- [ ] **AC-1 (restore survives SIGTERM).** Scenario test spawns the driver as
+- [x] **AC-1 (restore survives SIGTERM).** Scenario test spawns the driver as
   a child process against a tmp fixture project, waits until a mutation is
   measurably on disk (positive control: the subject's bytes differ from the
   snapshot — proving the mutation reached disk, not a no-op), SIGTERMs it, and
@@ -205,37 +205,37 @@ named for every absence/zero claim.
   no handler chance), the persisted snapshot manifest lets a follow-up
   `restore` invocation recover byte-identical, and the driver **refuses to
   start a new battery** while an unrestored manifest exists.
-- [ ] **AC-2 (a crash is a refusal, not a credit).** Feed a probe whose
+- [x] **AC-2 (a crash is a refusal, not a credit).** Feed a probe whose
   mutation raises `AttributeError` before any tracked assertion; assert the
   outcome is classified `CRASHED` and **no claim is credited**. Positive
   control (its own probe): the same harness with a genuine
   predicted-assertion RED classifies `WITNESSED` and credits — otherwise a
   driver that refuses everything would pass this AC vacuously.
-- [ ] **AC-3 (one claim per probe).** A probe reddening a test that carries
+- [x] **AC-3 (one claim per probe).** A probe reddening a test that carries
   two tracked claims credits **at most the claim whose assertion failed**; the
   report names the sibling claim as a GAP. Positive control: a second probe
   targeting the sibling credits it.
-- [ ] **AC-4 (declared-claim match).** A probe that reddens a *different*
+- [x] **AC-4 (declared-claim match).** A probe that reddens a *different*
   assertion than the one it pre-declared is classified `MISFIRE` and credits
   nothing (pre-committed read discipline: crediting the accidentally-hit claim
   would let the result rewrite the prediction).
-- [ ] **AC-5 (`stable_key` addressing is mandatory).** The driver addresses
+- [x] **AC-5 (`stable_key` addressing is mandatory).** The driver addresses
   claims only via `Claim.stable_key`; on a fixture module with two identical
   asserts in one owner, crediting one leaves the other visibly uncovered
   (driver-level restatement of `tests/tools/test_probe_coverage.py:183`).
-- [ ] **AC-6 (report is mandatory; self-checks are non-tautological).** Every
+- [x] **AC-6 (report is mandatory; self-checks are non-tautological).** Every
   battery run terminates in a `render_report` call and prints its verdict
   token; and the s253 tautology is replayed as a closed-incident oracle: an
   exemption overlapping a *declared* credit — computed from the pre-filter
   set — must be reported as an overlap. Witnessed RED by reconstructing the
   pre-fix shape (post-filter intersection) and showing the check go silent.
-- [ ] **AC-7 (gate stands down under the lock — SHOULD tier).** With the lock
+- [x] **AC-7 (gate stands down under the lock — SHOULD tier).** With the lock
   held and an isolated `CLAUDE_GOAL_PATH` (hook-test hygiene), a Stop-event
   gate invocation returns `None`, runs **no** check subprocess, and the
   evaluations trail's length is unchanged (**delta** assert, not presence).
   Positive control, own probe: the identical fixture without the lock writes a
   trail entry — proving the gate was live, so the absence is not vacuous.
-- [ ] **AC-8 (teardown reddens instead of hanging — SHOULD tier).** With a
+- [x] **AC-8 (teardown reddens instead of hanging — SHOULD tier).** With a
   second session left `idle in transaction` holding a conflicting lock, the
   bounded teardown fails within the bound with a lock-timeout error naming the
   operation (the test itself carries an outer timeout so a regression hangs
@@ -244,11 +244,11 @@ named for every absence/zero claim.
   (mechanism per SD-1), written rule-not-roster so a **new** module is caught
   (the guard walks the tree on disk, not the git index — the
   committed-file-guard blindness does not apply).
-- [ ] **AC-9 (§8 names the tool).** CLAUDE.md §8's witnessed-RED bullet
+- [x] **AC-9 (§8 names the tool).** CLAUDE.md §8's witnessed-RED bullet
   carries the Step 4a pointer sentence verbatim; a grep for
   `tools/probe_battery` in CLAUDE.md §8 is non-empty. (A docs AC — its
   "witness" is the review of the constitutional PR, not a pytest.)
-- [ ] **AC-10 (the lesson exists and is honest about its status).**
+- [x] **AC-10 (the lesson exists and is honest about its status).**
   `docs/lessons/0048-…md` exists with the Step 4b text: advisory, states the
   rate-vs-cause distinction, records PLAN-0099's four moves with citations,
   and carries the below-threshold tally note instead of minting any rule.
@@ -694,4 +694,78 @@ match** rejects. AC-2 catches the last incident; AC-4 catches the next one.
   their tree-visible seams are cited instead where they exist.
 - **The exact unbounded-fixture count** (~36): estimated from a bounded grep;
   Step 3's execution enumerates and the AC-8 guard makes the number
-  self-maintaining.
+  self-maintaining. **RESOLVED at execution: 54 sites / 51 files**, of which
+  exactly one was already bounded — matching the s254 re-measurement, not the
+  original ~36 estimate.
+
+## Closeout (session 255, 2026-08-26)
+
+All ten ACs closed. Shipped across three PRs, in the build sequence this PLAN set:
+
+| PR | Steps | ACs |
+|---|---|---|
+| [#1293](https://github.com/CrayJThiemsert/vero-lite/pull/1293) | Step 1 (MUST) + Step 4a | AC-1 … AC-6, AC-9 |
+| [#1294](https://github.com/CrayJThiemsert/vero-lite/pull/1294) | Step 4b | AC-10 |
+| [#1295](https://github.com/CrayJThiemsert/vero-lite/pull/1295) | Steps 2 + 3 (SHOULD) | AC-7, AC-8 |
+
+**Evidence discipline.** Every AC-closing assertion was witnessed RED **through the
+driver this PLAN shipped** — 21 witnessed across the three PRs, each paired with a
+control left GREEN under the same mutation. Four probes reported GREEN on their first
+attempt and were **repaired rather than recorded as witnessed** (§8: suspect the probe
+first, never relax the criterion): two changed behaviour without changing the output the
+assertion reads, and two targeted a conjunct that could not flip the case under test.
+
+**Two defects the instrument found in itself**, both fixed in-flight:
+
+1. A **same-size mutation could be masked by stale bytecode.** CPython validates a
+   `.pyc` by *(mtime-in-seconds, size)*, so `return "even"` → `return "EVEN"` landing in
+   the same second imported the STALE module and reported a false `GREEN` — "the guard
+   may be vacuous" about a guard never exercised. The full local suite passed; **only CI
+   reddened**, because the window is timing-dependent. Defended twice (targeted cache
+   invalidation on every mutate *and* restore, plus `PYTHONDONTWRITEBYTECODE=1`).
+   ⚠️ This hazard was already measured at s247, fix included — it was **re-made** inside
+   the very tool meant to stop defects being re-derived.
+2. A **probe mutating the file its own claim lives in shifted that claim's line**, so a
+   failure at line 101 was matched against a claim indexed at 103 and rejected as a
+   `MISFIRE` — the right refusal on the wrong grounds. Exactly what happens when the
+   thing under test is a guard living in its own test module. `stable_key` is
+   line-independent by construction, so the declared claim is now re-resolved from the
+   tree as the probe left it.
+
+### Step 2's VX-1 `systemMessage` probe — DISCHARGED
+
+PLAN-0021 wrote *"Probe outcome is documented in the closeout"*
+(`docs/plans/done/0021-axis-b-verification-loop-build.md:196`) and it never was; this
+PLAN picked it up as *"owed here, not new work"*. Run live on the dev box, s255, twice:
+
+**It surfaces.** A top-level `systemMessage` on **non-blocking** Stop-hook JSON output is
+rendered by the harness, prefixed `Stop says: `. It reaches **the user's UI only** — the
+token never entered Claude's context in either run. Both runs carried two controls that
+separate "the harness did not render it" from "the code never ran": the warn trail grew
+`0 → 1` (`_goal_gate:warn`, `C1=fail`) and `stop-chain.json` depth grew `0 → 1`, the
+latter reachable **only** inside `stop_continuation`'s `if gate_directive is not None:`
+branch, whose next statement is the `print`.
+
+🔴 **But it is NOT a drop-in, and that is the load-bearing half.** The gate's warn arm
+returns `None` *by contract*. Returning a dict instead makes `stop_continuation`
+increment the chain counter and **skip the classifier** — measured, both runs. PLAN-0069
+**AC-3** guarantees an `enforce: false` goal takes *"the EXACT v1 branches, so its return
+value / status transitions / Telegram events are identical to v1"*, and bolting the
+annotation onto the warn return breaks that parity outright.
+
+Adopting the bonus annotation therefore needs a change in `stop_continuation` — emit the
+annotation **and still** run the classifier — which is its own work, not a rider here.
+This PLAN's Step 2 said the annotation *"may be added"*; recording the answer and this
+constraint is the discharge. **ADR-0018 VX-1 is unchanged**: Telegram remains D5's
+channel of record, and the in-UI note remains bonus.
+
+### Carried forward (named, not orphaned)
+
+- **The bonus in-UI annotation** is now *available but unadopted*, blocked on the
+  PLAN-0069 AC-3 parity constraint above. No obligation is created — ADR-0018 VX-1 calls
+  it bonus — but the finding is recorded here rather than lost, which is what PLAN-0021's
+  version of this note failed to do.
+- **PLAN-0115's own out-of-scope cuts stand**: porting the s253 battery onto the shared
+  tool and a `probe-battery` skill remain a fast-follow; auto-running batteries in CI or
+  pre-commit stays refused (it would turn the instrument into the mechanical gate
+  ADR-0038 D2-C1 declined).
