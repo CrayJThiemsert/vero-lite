@@ -939,5 +939,5 @@ audit chain is never touched, so an approval stays provable after its link row g
 parked alongside — re-measured at s252 under the scope clause, with the `when_absent:
 refuse` flip witnessed RED to prove the check can still fail.
 
-**Owning PLAN:** `docs/plans/0113-scope-event-fired-run-to-its-firing-case.md` (§AC-5,
+**Owning PLAN:** `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md` (§AC-5,
 §AC-6, Step 7).
