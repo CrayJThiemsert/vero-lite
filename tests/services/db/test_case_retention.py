@@ -29,7 +29,7 @@ from services.db.repair_case import RepairCase
 from services.db.repair_case_retention import CASE_RETENTION_DAYS, sweep
 from services.db.repair_case_run_link import RepairCaseRunLink
 from services.db.repair_case_task import RepairCaseTaskEvent
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from verticals.fleet_maintenance import case_projection
 
 _NOW = datetime(2026, 8, 14, 12, 0, tzinfo=UTC)
@@ -42,7 +42,7 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

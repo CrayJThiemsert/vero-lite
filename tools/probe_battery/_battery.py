@@ -42,6 +42,7 @@ from pathlib import Path
 from types import FrameType
 from xml.etree.ElementTree import ParseError
 
+from tools.probe_battery._lock import LockHandle, ping_telegram
 from tools.probe_battery._outcome import (
     CREDITING_OUTCOMES,
     Classification,
@@ -357,8 +358,36 @@ def _classify_probe(
         return Classification(
             Outcome.SETUP_ERROR, f"the junit report for {probe.node_id!r} is unparsable: {exc}"
         )
-    claim, claim_path = index[probe.expect_claim]
+    claim, claim_path = _resolve_declared(probe, index)
     return classify(cases, claim, claim_path, project_root)
+
+
+def _resolve_declared(probe: Probe, index: Mapping[str, tuple[Claim, Path]]) -> tuple[Claim, Path]:
+    """Re-read the declared claim's CURRENT line, from the tree as the probe left it.
+
+    🔴 **A probe that mutates the file its own claim lives in shifts that claim's line.**
+    Measured 2026-08-25: a mutation replacing three lines with one moved every claim below
+    it up by two, so the failure reported at line 101 was matched against a claim indexed
+    at 103 and the run was rejected as a MISFIRE — the right refusal on the wrong grounds.
+    That case is not exotic: it is exactly what happens when the thing under test is a
+    guard living in its own test module.
+
+    The fix was already in the design and merely unused here. ``stable_key`` is
+    ``owner|source|#occurrence`` — **line-independent by construction**, precisely so an
+    edit above a claim cannot re-point it. Classification runs while the mutation is still
+    on disk, so re-enumerating and looking the key up again yields the line the failure
+    record will actually name.
+
+    Falls back to the pre-run claim when the key no longer resolves — a mutation that
+    rewrote the declared assertion's own text. That is a probe whose prediction can no
+    longer be checked, and it will be reported as a MISFIRE rather than silently credited.
+    """
+    claim, claim_path = index[probe.expect_claim]
+    try:
+        live = {c.stable_key: c for c in enumerate_claims(claim_path)}
+    except (OSError, SyntaxError):
+        return claim, claim_path
+    return live.get(probe.expect_claim, claim), claim_path
 
 
 def _run_one(
@@ -414,17 +443,37 @@ def run_battery(
     run = runner if runner is not None else _make_pytest_runner(store)
     results: list[ProbeResult] = []
     result: BatteryResult
+    # Acquired BEFORE the first mutation and released only after the verified restore, so
+    # the Axis-B goal gate never sees a half-broken tree (PLAN-0115 Step 2).
+    lock = LockHandle.acquire(project_root, store.manifest.run_id, store.manifest.head_sha)
+    ping_telegram(
+        project_root,
+        "lock_acquired",
+        f"battery {store.manifest.run_id} started — the Axis-B goal gate will stand down "
+        f"while it runs. {len(battery.probes)} probe(s), head={store.manifest.head_sha[:8]}",
+    )
     with _terminating_signals():
         try:
             for probe in battery.probes:
                 results.append(_run_one(probe, index, store, project_root, timeout_s, run))
                 store.heartbeat()
+                lock.heartbeat()
         finally:
             # Both halves belong here. The restore is the safety obligation; the report is
             # AC-6 — a battery must not be able to end without one, including the runs
             # that end by exception, which are exactly the runs whose partial results
             # matter most.
             store.restore_all()
+            # Released only after restore_all: the gate must stay stood down until the
+            # tree is actually back, not merely until the last probe finished.
+            deferred = lock.release()
+            if deferred:
+                ping_telegram(
+                    project_root,
+                    "lock_released",
+                    f"battery {store.manifest.run_id} finished — tree restored, gate live "
+                    f"again. It stood down for {deferred} Stop event(s).",
+                )
             result = _finalize(battery, index, tuple(results), store.manifest.run_id, echo)
         return result
 

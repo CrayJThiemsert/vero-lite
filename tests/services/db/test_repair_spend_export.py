@@ -54,7 +54,7 @@ from services.db.repair_spend_export import (
 )
 from services.engine.procedures.ratification import RATIFICATION_KEY
 from services.engine.procedures.runs import PipelineRun, StepResult
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 BKK = ZoneInfo("Asia/Bangkok")
 
@@ -85,7 +85,7 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
     async with maker() as session:
         yield session
     async with db_engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
 
 

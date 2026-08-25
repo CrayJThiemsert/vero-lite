@@ -46,7 +46,7 @@ from services.api.main import app
 from services.api.models.insights import RunQueryAnswer
 from services.db.base import Base
 from services.db.session import get_session
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from tests.support.run_corpus_factory import Corpus, build_corpus
 
 pytestmark = [
@@ -88,7 +88,7 @@ async def live_client() -> AsyncIterator[_Live]:
         yield _Live(http=http, corpus=corpus)
     app.dependency_overrides.clear()
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

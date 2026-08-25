@@ -28,7 +28,7 @@ from services.api.main import app
 from services.db.base import Base
 from services.db.session import get_session
 from services.engine.discovery import discover_and_register
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
 
 _PROC_ID = "low_stock_reorder_round"
@@ -64,7 +64,7 @@ async def procurement_client(monkeypatch: pytest.MonkeyPatch) -> AsyncIterator[A
         yield http
     app.dependency_overrides.clear()
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

@@ -29,7 +29,7 @@ from services.engine.procedures.runs import (
     StepResult,
     StepResultStatus,
 )
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _PROCEDURE_TABLES = {"pipeline_runs", "step_results"}
@@ -41,7 +41,7 @@ _ARTIFACT = {"breach_ponds": ["pond-3", "pond-7"]}
 async def _drop_everything(eng: AsyncEngine) -> None:
     """Drop the ORM tables plus Alembic's version table."""
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
 
 

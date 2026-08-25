@@ -29,6 +29,7 @@ from pathlib import Path
 import pytest
 
 from tools.probe_battery import STATE_ENV, VERDICT_PASS, find_unrestored
+from tools.probe_battery._lock import LOCK_ENV
 
 pytestmark = pytest.mark.skipif(
     sys.platform == "win32", reason="POSIX signals — the driver runs WSL-side, CI is Linux"
@@ -91,6 +92,9 @@ def _make_project(tmp_path: Path, test_body: str, test_name: str, node: str) -> 
 def _spawn(project: Path, stdout: int | None = subprocess.DEVNULL) -> subprocess.Popen[bytes]:
     env = dict(os.environ)
     env[STATE_ENV] = str(project / "state")
+    # Explicit, though `--project-root` already scopes it: a battery that wrote the REAL
+    # lock would stand the live goal gate down for its whole staleness window.
+    env[LOCK_ENV] = str(project / "probe_battery.lock")
     return subprocess.Popen(
         [
             sys.executable,

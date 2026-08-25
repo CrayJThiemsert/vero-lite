@@ -45,7 +45,7 @@ from services.engine.procedures.spec import (
     StepKind,
 )
 from services.engine.registry import registry
-from tests.db_support import create_test_engine
+from tests.db_support import create_test_engine, drop_all_bounded
 
 _APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
@@ -181,7 +181,7 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
         await conn.run_sync(Base.metadata.create_all)
     yield eng
     async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
+        await drop_all_bounded(conn)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
     await eng.dispose()
 

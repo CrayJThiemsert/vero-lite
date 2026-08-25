@@ -102,6 +102,13 @@ from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 DEFAULT_CHECK_BUDGET_S = 600
+
+# PLAN-0115 Step 2. Generous on purpose: too strict wakes the gate mid-battery and
+# evaluates a deliberately-broken tree; too lax lets a crashed driver silence the gate.
+# Must stay in step with tools/probe_battery/_lock.py:STALE_AFTER_S — the two sides parse
+# the same file and cannot import each other (the gate runs Windows-side, the driver
+# WSL-side), so the constant is duplicated and a test pins them equal.
+BATTERY_LOCK_STALE_AFTER_S = 45 * 60
 TELEGRAM_TIMEOUT_SEC = 5
 
 _FORWARDED_ENV = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
@@ -179,6 +186,70 @@ def _ping_telegram(event: str, goal_text: str, detail: str) -> None:
             timeout=TELEGRAM_TIMEOUT_SEC,
         )
     except (subprocess.TimeoutExpired, OSError):
+        pass
+
+
+def _battery_lock_path() -> Path:
+    override = os.environ.get("CLAUDE_PROBE_BATTERY_LOCK")
+    return Path(override) if override else REPO_ROOT / ".claude" / "state" / "probe_battery.lock"
+
+
+def _lock_age_s(state: dict[str, Any]) -> float | None:
+    """Seconds since the lock's own heartbeat, or ``None`` if unreadable.
+
+    ⚠️ A **negative** age is returned as ``0.0``, not as a negative number. WSL2's wall
+    clock steps backwards, so a heartbeat stamped "in the future" is a clock artifact, not
+    evidence — and treating it as stale would wake the gate up mid-battery, which is the
+    exact failure this guard exists to prevent.
+    """
+    raw = str(state.get("heartbeat_ts") or state.get("acquired") or "")
+    if not raw:
+        return None
+    try:
+        from datetime import UTC, datetime
+
+        stamped = datetime.fromisoformat(raw)
+        if stamped.tzinfo is None:
+            stamped = stamped.replace(tzinfo=UTC)
+        return max(0.0, (datetime.now(UTC) - stamped).total_seconds())
+    except (TypeError, ValueError):
+        return None
+
+
+def battery_lock_state() -> tuple[str, dict[str, Any]]:
+    """Classify the probe-battery lock: ``("absent"|"fresh"|"stale", state)``.
+
+    A malformed lock counts as **absent**, deliberately: the gate's job when it cannot read
+    the protocol is to keep working, not to silence itself on the strength of a file it
+    does not understand.
+    """
+    path = _battery_lock_path()
+    try:
+        state = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return "absent", {}
+    if not isinstance(state, dict):
+        return "absent", {}
+    age = _lock_age_s(state)
+    if age is None or age > BATTERY_LOCK_STALE_AFTER_S:
+        return "stale", state
+    return "fresh", state
+
+
+def _record_battery_defer() -> None:
+    """Append one line to the lock's sidecar tally, so the driver can report once.
+
+    The gate never touches the lock file itself — the driver owns that — and it never
+    touches ``goal.json``, which is the whole point: SD-2's ruling is that a
+    deliberately-mutated tree leaves **zero residue** in the artifact being protected.
+    """
+    tally = _battery_lock_path()
+    tally = tally.with_name(tally.name + ".defers")
+    try:
+        tally.parent.mkdir(parents=True, exist_ok=True)
+        with tally.open("a", encoding="utf-8") as fh:
+            fh.write(f"{_now_iso()}\n")
+    except OSError:
         pass
 
 
@@ -542,6 +613,29 @@ def run_goal_gate(payload: dict[str, Any]) -> dict[str, Any] | None:
     goal = load_goal()
     if goal is None or goal.status != STATUS_ACTIVE:
         return None
+
+    # PLAN-0115 Step 2 — a probe battery is mutating the tree on purpose. Stand down
+    # BEFORE _run_checks and BEFORE any fingerprint read: running a check subprocess
+    # against a deliberately-broken tree records a FALSE `fail` into an APPEND-ONLY trail
+    # that nobody can remove afterwards, and the mutation reads as "new work" eligible to
+    # dispatch the evaluator against it. Zero residue in goal.json is the ruling (SD-2),
+    # so nothing is written here — the tally goes to the lock's own sidecar and the driver
+    # reports it once on release.
+    lock_state, lock = battery_lock_state()
+    if lock_state == "fresh":
+        _record_battery_defer()
+        return None
+    if lock_state == "stale":
+        # A dead driver must not silence the gate indefinitely, so a stale lock gates
+        # nothing — but it is said out loud, because a stale lock usually means a battery
+        # died with mutations still on disk.
+        _ping_telegram(
+            "battery_lock_stale",
+            goal.goal,
+            "probe-battery lock is STALE — gating normally. If a battery died mid-run the "
+            "tree may still carry its mutations: `python -m tools.probe_battery status` "
+            f"then `restore`. run_id={lock.get('run_id', '?')} pid={lock.get('pid', '?')}",
+        )
 
     deterministic = _run_checks(goal)
     checks_all_pass = all(v == CHECK_PASS for v in deterministic.values())
