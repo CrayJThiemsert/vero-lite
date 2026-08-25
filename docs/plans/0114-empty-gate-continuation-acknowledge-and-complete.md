@@ -12,12 +12,20 @@
 > fact pack re-verified against the tree on disk. Outline originator: Code (s252).
 > Independent reviewer: Cray at PR merge. Separation: INTACT.
 >
-> **Post-draft amendment (Code, s253, pre-Step-1).** Two edits, both grounded in a
-> measurement of the live tree at `c49872a` (a second, pre-existing guard in `resume_run`
-> that the draft did not account for): AC-2(a)'s RED-witness recipe, and one SD-3
-> sentence. The ruling, the mechanism, the scope and every SD outcome are unchanged —
-> the repair went to the **instrument**, never to the criterion. Author≠reviewer: Code
-> authored this amendment; Cray reviews it at PR merge.
+> **Post-draft amendment (Code, s253, pre-Step-1).** Three edits, each grounded in a
+> measurement of the live tree at `c49872a`, none changing the ruling, the taken
+> mechanism, the scope, or any SD outcome:
+>
+> 1. **AC-2(a)'s RED-witness recipe** — `resume_run` carries a second, pre-existing
+>    guard the draft did not account for, so the drafted probe could not have witnessed
+>    what it claimed. The repair went to the **instrument**, never to the criterion.
+> 2. **One SD-3 sentence** — *"the ONLY thing keeping it from becoming a resolve
+>    bypass"* is measurably too strong; the seam is defense-in-depth.
+> 3. **Guard 3's key** — `actor_person_id`, not a resolved `Person`. Keying on the
+>    `Person` would permanently refuse 3 of the 18 gated steps, contradicting the
+>    LOCKED SD-3; where mechanism prose and a LOCKED SD disagree, the SD wins.
+>
+> Author≠reviewer: Code authored this amendment; Cray reviews it at PR merge.
 
 ## The ruling this PLAN executes (LOCKED — do not re-open)
 
@@ -144,12 +152,40 @@ condition materializing late.
    - **fail-closed guard 2:** `artifact is None` (the escalated-failure suspend,
      `on_failure = escalate_to_human`) → refuse. That is a *retry* surface, not an
      acknowledgment — out of scope here, recorded as OQ-1;
-   - **fail-closed guard 3 (RF-1, library level):** `principal is None` →
-     `GateApproverError`, mirroring `resolve_gated_step`'s posture
-     (`action_step.py:834-844`) so a direct caller / scheduler cannot acknowledge with
-     no accountable human. (`resume_run` itself keeps its `principal: Person | None`
-     signature — the shipped parity tests call it bare and must stay green; the RF-1
-     floor lives in the NEW chokepoint, which is the only surface this PLAN exposes.);
+   - **fail-closed guard 3 (RF-1, library level):** the accountable human is missing →
+     refuse, so a direct caller / scheduler cannot acknowledge with no accountable
+     human. (`resume_run` itself keeps its `principal: Person | None` signature — the
+     shipped parity tests call it bare and must stay green; the RF-1 floor lives in the
+     NEW chokepoint, which is the only surface this PLAN exposes.)
+     🔴 **Keyed on `actor_person_id: str | None`, NOT on a resolved `Person`
+     (Code, s253, pre-Step-1 — measured).** The draft said *"`principal is None` →
+     `GateApproverError`, mirroring `resolve_gated_step`'s posture"*. Measured:
+     `AuthContext` (`services/api/auth.py:37-46`) documents that `person_id` is `None`
+     **only** when authn is disabled, while `person` is `None` when authn is disabled
+     **OR when the active vertical ships no authored principal set**. Only **4 of 6**
+     verticals ship a `principals:` block (`fleet_maintenance`, `building_materials`,
+     `supply_chain`, `procurement`; **not** `aquaculture`, **not** `energy` — control:
+     all 6 ship a `procedures.yaml`, so the 4 is not a missing-file artifact). Keying
+     guard 3 on the `Person` would therefore refuse `/continue` **permanently** on the
+     **3 of 18** gated steps in those two verticals (aquaculture 2, energy 1) even for a
+     correctly authenticated human — a guard that can never pass is a defect, not a
+     floor, and it contradicts SD-3's ruled *"any authenticated human"*. Where this
+     mechanism prose and the LOCKED SD-3 disagree, **the SD wins** (CLAUDE.md §1
+     precedence): SD-3 ruled the **cancel posture**, and `cancel_run`
+     (`persistence.py:491-506`) already states the reason in its own docstring —
+     *"cancel has no SoD check, so it needs the id, not the resolved `Person`"*. So the
+     chokepoint mirrors `cancel_run`'s `actor_person_id` attribution and the `/cancel`
+     route's RF-1 403 (`runs.py:592-599`), not `resolve_gated_step`'s `Person`
+     resolution. `auth.person` is still threaded into `resume_run` when it resolves, so
+     PLAN-0053 AC-3's non-null `run_resumed` actor (test-enforced,
+     `tests/services/db/test_procedure_action_gate.py:241-291`) is preserved wherever it
+     can hold; attribution never depends on it, because the SD-2
+     `run_continued_no_decision` row always carries the id.
+     ⚠️ **Step 2 landmine, recorded:** the new audit action may need a row in the
+     per-action payload-schema registry at
+     `tests/api/test_visitor_case_to_monitor_scenario.py:174`, whose sibling at `:460`
+     asserts an **exact** action set — the same shape as the house "a new trace kind
+     needs its UI label" pairing. Check before assuming it is inert;
    - takes a caller-supplied `step_id` and refuses on mismatch with the actually
      suspended step — the acknowledging human names what they believe they are
      acknowledging (cheap guard against acting on a run that moved between read and
