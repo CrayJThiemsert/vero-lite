@@ -484,3 +484,9 @@ LOCKED ruling is amended in place, never edited._
 ### Recent Decisions row — s242, evicted by the 10-row window
 
 | 2026-08-21 | **s242 — FIVE PRs (#1237–#1241): PLAN-0107 AC-10 CLOSED; FOUR Cray rulings, two re-opening settled ground.** 🔴 **PLAN-0110 SD-E REVERSED** — quote-acceptance, not case creation, is the governable moment; a no-principal firing mints a run **nobody can approve**. 🔴 **ADR-0035's L1 re-read a SECOND time** — app code may READ the gate's verdict, never gate; **OQ-7 (b)** stamps its absence. A LOCKED ruling is amended, never edited. _[Backfilled s243 cont.]_ | `bf2771e` / [#1238](https://github.com/CrayJThiemsert/vero-lite/pull/1238) / `docs/adr/0035-hosting-and-exposure-model.md` |
+
+
+<!-- Recent Decisions rows rotated from docs/STATUS.md at the s253 reconcile -->
+
+| 2026-08-21 | **s244 — ONE PR (#1249): the Box-4 ฿ facet was UNREACHABLE, not missing.** Four of five ฿-producing verticals wrote `economic_impact` only into the action envelope while `benefit_rollup` reads `StepResult.reasoning_trace` — Tab J read ฿0 for all of them. Emission moved down to `ActionStepExecutor`, plus a run-scoped `(action_id, kind)` ledger without which procurement DOUBLE-COUNTED a run. **Standalone wiring fix; NOT a PLAN-0112 step.** | `6fce826` / [#1249](https://github.com/CrayJThiemsert/vero-lite/pull/1249) / `services/engine/procedures/action_step.py` |
+| 2026-08-21 | **s243 cont. — ONE PR (#1246): PLAN-0112 Step 1 EXECUTED, AC-1 CLOSED — `run_procedure_endpoint` 403s without an authenticated human, before spec load and any DB write.** 🔴 **The only producer of a `PipelineRun` was the one door of three that did not fail closed** — `triggered_by: null`; PLAN-0110's G10(6) found it. 🔴 **Non-vacuity took TWO probes on DIFFERENT assertions** — deletion proves presence, RELOCATION proves placement. | `f52dbdc` / [#1246](https://github.com/CrayJThiemsert/vero-lite/pull/1246) / `docs/plans/done/0112-*.md` |

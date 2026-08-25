@@ -1479,3 +1479,100 @@ will meet them at the moment of need._
 > `ruff check .` clean · `ruff format --check .` 654 files · `mypy --strict` clean
 > over 201. Five non-vacuity probes, one per assertion, every mutation on a
 > production file, each restored byte-identically and sha256-verified.
+
+
+<!-- rotated from docs/STATUS.md at the s253 reconcile (sessions 248 + 249) -->
+
+> **Session 249, 2026-08-23 (head_commit `674a985` → `33a4887`) — TWO PRs
+> MERGED ([#1268](https://github.com/CrayJThiemsert/vero-lite/pull/1268),
+> [#1269](https://github.com/CrayJThiemsert/vero-lite/pull/1269)), 0 open, CI
+> green verified on each exact head sha, tree clean. A Tab-H usability question
+> became a ratified architecture reversal: **PLAN-0113 — scope an event-fired
+> run to its firing case** — plus the ADR-016 amendment that reversal requires,
+> Accepted the same session. This session was mostly DECISIONS; weigh them over
+> the diffs.**
+>
+> 🔴 **PLAN-0112 SD-4 is REVERSED (Cray, typed, s249)** — from its s243 ruling
+> **(a) accept the multi-case gate** to that ruling's rejected option **(b)
+> scope the run to the firing case**. Classified **`superseded by new info`,
+> NOT `was an error`**: (a) was correct in its context. Trigger: a Tab-H run
+> stayed `WAITING_HUMAN` after an approval, and one accepted quote produced
+> three approvals. Root cause measured — fleet's `intake` is a **fleet-wide
+> scan**, so the event *triggers* the run but does not *scope* it, and a
+> visitor's gate also decides both seeded demo cases.
+>
+> ✅ **Ten Cray-typed rulings landed, all as-recommended.** PLAN-0113: the SD-4
+> reversal · D1 `when_absent` declared per-step in YAML · D2 the YAML names the
+> field, so the engine never learns `case_id` · SD-1 `when_absent`
+> required-explicit · SD-2 mirror the `join`/`project` governance
+> classification · OQ-2 yes, an ADR-016 amendment · OQ-1 how Code records a
+> supersession inside `docs/plans/done/`. ADR-016 amendment: OQ-1 closed
+> two-member `when_absent` · OQ-2 join-path scoping base-read-only in v1 · OQ-3
+> counted scope provenance is contractual — plus the amendment's own
+> **Proposed → Accepted** ratification.
+>
+> 🔴 **OQ-1 closed a question that had been open for three sessions** — *"may
+> Code edit `docs/plans/done/`?"*, the worked NOT-DECIDED example in the
+> `decision-lookup` skill. Measurement narrowed it: the additive
+> `## Post-archival amendment` form already had **6 merged precedents**, while
+> an inline marker added to an *already-archived* PLAN had **zero**. Cray ruled
+> **(b)** — appended amendment section **plus** a fixed one-line inline
+> pointer, history never rewritten. **Scoped to supersession pointers only; the
+> broad question stays open.**
+>
+> ⚠️ **Byproduct finding: ADR-016's running amendments index listed FIVE
+> entries while the body carried SEVEN** — `Amendment (2026-07-11)` and
+> `(2026-07-12)`, both Accepted and Cray-ratified, were never appended. ~6
+> weeks of drift, now backfilled with a provenance note; the index reads
+> **8 = 8**.
+>
+> **Not started: PLAN-0113 Steps 1–8.** Step 0b (the ADR) is the only one done
+> — and it is precisely what unblocks Step 1, since `CLAUDE.md` §8 requires the
+> ADR merged before any implementation PR.
+
+> **Session 248, 2026-08-23 (head_commit `e126ebd` → `674a985`) — ONE PR
+> MERGED ([#1265](https://github.com/CrayJThiemsert/vero-lite/pull/1265)), 0
+> open, CI green, tree clean. The Recent Decisions R2 trim SHIPPED, the sibling
+> of s247's Active-TODOs trim: **8 of 10 rows over the ~600-char pointer cap,
+> now zero**; the table 7,408 → **5,743 B**, STATUS 53,133 → **51,743 B**, row
+> count unchanged at 10.**
+>
+> 🔴 **The inherited "next place to cut" was measured WRONG, and correcting it
+> changes what the next session should do.** The hand-off into this session
+> named **In-Flight Discussions** as the remaining target. Measured: **R2 does
+> not govern that section at all** — R2 names Current Focus, Recent Decisions,
+> Active TODOs and Next Steps, and *"In-Flight"* appears **nowhere** in
+> `docs/runbooks/memory-architecture.md`. Capping it would be **authoring a new
+> rule, not enforcing one** — a Cray ruling, not a trim Code may perform. That
+> section is 5,152 B across 9 entries.
+>
+> ✅ **The carve-out produced one rehome, and it ran FIRST.** Each row's
+> *content* — not merely the paths it cited — was resolved against
+> `git ls-files`; seven of eight already had a tracked home. The eighth, s240's
+> **"ancestry is not content"** — a `git merge` reported success while the tree
+> dropped every change from #1225, and `merge-base --is-ancestor` still
+> answered YES — was rehomed into `.claude/skills/git-workflow/SKILL.md`, whose
+> `description` was widened to trigger *"whenever about to trust that a
+> `git merge` landed its content"*: surfaced at the moment of need, not merely
+> filed. Re-pointed and verified before anything was trimmed.
+>
+> ⚠️ **A first sweep for orphaned facts produced THREE false positives**, each
+> caught by going to the artifact: it searched STATUS's wording, not the
+> artifact's — *"production agreed twice"* vs the log's *"second production
+> confirmation"*; *"subagent never returned"*, which lives in
+> `.claude/skills/fan-out-dispatch/SKILL.md`; `฿8,107,500`, which a test spells
+> `8107500`. Trusting it would have rehomed three rows that had homes.
+>
+> ⚠️ **`674a985`'s subject lacks its `(#1265)` suffix** — `--subject` was
+> passed to `gh pr merge --squash`, so `gh` wrote it verbatim instead of
+> letting GitHub append the number. Not fixable without a force-push over
+> protected `main`. **For that commit the PR number is recoverable only via
+> `gh pr view 1265`, never from `git log --oneline`.**
+>
+> ✅ **All three R2-governed sections are compliant for the first time** —
+> Active TODOs (#1263), Recent Decisions (#1265), Current Focus (zero over cap
+> under the repaired blockquote bounding, #1264). R4 verified independently
+> against `git show 2073e95:docs/STATUS.md`: **2 unchanged + 8 archived
+> verbatim = 10, LOST = 0, in BOTH = 0.** STATUS is still **2,591 B over R1's
+> 48 KB soft target**, far under the 64 KB hard ceiling that gates a commit —
+> and no rule now covers the remainder.
