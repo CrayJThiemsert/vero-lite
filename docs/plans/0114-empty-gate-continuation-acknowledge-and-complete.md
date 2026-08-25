@@ -11,6 +11,21 @@
 > (`.claude/handoffs/session-252/2026-08-24-2230-code-plan-drafter-empty-gate-continuation-dispatch.md`),
 > fact pack re-verified against the tree on disk. Outline originator: Code (s252).
 > Independent reviewer: Cray at PR merge. Separation: INTACT.
+>
+> **Post-draft amendment (Code, s253, pre-Step-1).** Three edits, each grounded in a
+> measurement of the live tree at `c49872a`, none changing the ruling, the taken
+> mechanism, the scope, or any SD outcome:
+>
+> 1. **AC-2(a)'s RED-witness recipe** — `resume_run` carries a second, pre-existing
+>    guard the draft did not account for, so the drafted probe could not have witnessed
+>    what it claimed. The repair went to the **instrument**, never to the criterion.
+> 2. **One SD-3 sentence** — *"the ONLY thing keeping it from becoming a resolve
+>    bypass"* is measurably too strong; the seam is defense-in-depth.
+> 3. **Guard 3's key** — `actor_person_id`, not a resolved `Person`. Keying on the
+>    `Person` would permanently refuse 3 of the 18 gated steps, contradicting the
+>    LOCKED SD-3; where mechanism prose and a LOCKED SD disagree, the SD wins.
+>
+> Author≠reviewer: Code authored this amendment; Cray reviews it at PR merge.
 
 ## The ruling this PLAN executes (LOCKED — do not re-open)
 
@@ -137,12 +152,40 @@ condition materializing late.
    - **fail-closed guard 2:** `artifact is None` (the escalated-failure suspend,
      `on_failure = escalate_to_human`) → refuse. That is a *retry* surface, not an
      acknowledgment — out of scope here, recorded as OQ-1;
-   - **fail-closed guard 3 (RF-1, library level):** `principal is None` →
-     `GateApproverError`, mirroring `resolve_gated_step`'s posture
-     (`action_step.py:834-844`) so a direct caller / scheduler cannot acknowledge with
-     no accountable human. (`resume_run` itself keeps its `principal: Person | None`
-     signature — the shipped parity tests call it bare and must stay green; the RF-1
-     floor lives in the NEW chokepoint, which is the only surface this PLAN exposes.);
+   - **fail-closed guard 3 (RF-1, library level):** the accountable human is missing →
+     refuse, so a direct caller / scheduler cannot acknowledge with no accountable
+     human. (`resume_run` itself keeps its `principal: Person | None` signature — the
+     shipped parity tests call it bare and must stay green; the RF-1 floor lives in the
+     NEW chokepoint, which is the only surface this PLAN exposes.)
+     🔴 **Keyed on `actor_person_id: str | None`, NOT on a resolved `Person`
+     (Code, s253, pre-Step-1 — measured).** The draft said *"`principal is None` →
+     `GateApproverError`, mirroring `resolve_gated_step`'s posture"*. Measured:
+     `AuthContext` (`services/api/auth.py:37-46`) documents that `person_id` is `None`
+     **only** when authn is disabled, while `person` is `None` when authn is disabled
+     **OR when the active vertical ships no authored principal set**. Only **4 of 6**
+     verticals ship a `principals:` block (`fleet_maintenance`, `building_materials`,
+     `supply_chain`, `procurement`; **not** `aquaculture`, **not** `energy` — control:
+     all 6 ship a `procedures.yaml`, so the 4 is not a missing-file artifact). Keying
+     guard 3 on the `Person` would therefore refuse `/continue` **permanently** on the
+     **3 of 18** gated steps in those two verticals (aquaculture 2, energy 1) even for a
+     correctly authenticated human — a guard that can never pass is a defect, not a
+     floor, and it contradicts SD-3's ruled *"any authenticated human"*. Where this
+     mechanism prose and the LOCKED SD-3 disagree, **the SD wins** (CLAUDE.md §1
+     precedence): SD-3 ruled the **cancel posture**, and `cancel_run`
+     (`persistence.py:491-506`) already states the reason in its own docstring —
+     *"cancel has no SoD check, so it needs the id, not the resolved `Person`"*. So the
+     chokepoint mirrors `cancel_run`'s `actor_person_id` attribution and the `/cancel`
+     route's RF-1 403 (`runs.py:592-599`), not `resolve_gated_step`'s `Person`
+     resolution. `auth.person` is still threaded into `resume_run` when it resolves, so
+     PLAN-0053 AC-3's non-null `run_resumed` actor (test-enforced,
+     `tests/services/db/test_procedure_action_gate.py:241-291`) is preserved wherever it
+     can hold; attribution never depends on it, because the SD-2
+     `run_continued_no_decision` row always carries the id.
+     ⚠️ **Step 2 landmine, recorded:** the new audit action may need a row in the
+     per-action payload-schema registry at
+     `tests/api/test_visitor_case_to_monitor_scenario.py:174`, whose sibling at `:460`
+     asserts an **exact** action set — the same shape as the house "a new trace kind
+     needs its UI label" pairing. Check before assuming it is inert;
    - takes a caller-supplied `step_id` and refuses on mismatch with the actually
      suspended step — the acknowledging human names what they believe they are
      acknowledging (cheap guard against acting on a run that moved between read and
@@ -183,10 +226,19 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   this step **by design** and is re-authored (Step 2) — that is its documented purpose.
 - [ ] **AC-2 — the seam is fail-closed, with a positive control.** Battery, one probe
   per assertion:
-  (a) a gate **with** decidable proposals answers **409** on `/continue` (the control
-  run — this is the discriminator that keeps `/continue` from ever bypassing resolve;
-  RED witness: scratch-disable the `_has_decidable_proposals` guard → (a) reddens while
-  AC-1 stays green, isolating the probe);
+  (a) 🔴 a gate **with** decidable proposals is refused on `/continue` — asserted on the
+  **detail string naming the chokepoint's own mechanism** (`"this gate holds decidable
+  proposals"`), **not** on the bare 409. **Measured correction (Code, s253, pre-Step-1):**
+  the status code is not a discriminator here — `resume_run` already carries a *second*
+  guard (`persistence.py:447-452`: `_has_decidable_proposals` true **and** `status not in
+  _ADVANCING_STATUSES = {RESOLVED, RESOLVED_PROVISIONAL}` → `ProcedureError` *"suspended
+  with undecided proposals"*), which `runs.py:561` also maps to **409**. A `/continue`
+  that skipped chokepoint guard 1 would therefore still answer 409 and a status-code
+  assertion would stay **green** — the s252 failure-#1 shape (one code, two causes,
+  discriminating neither). RED witness: scratch-disable the chokepoint's
+  `_has_decidable_proposals` guard → the observable detail flips to `resume_run`'s
+  *"suspended with undecided proposals"* → (a) reddens **on that assertion**, while AC-1
+  stays green, isolating the probe;
   (b) unauthenticated / authn-off → **403** (RF-1);
   (c) a non-`waiting_human` run → **409**;
   (d) a `step_id` naming a step other than the suspended one → **409**;
@@ -326,10 +378,20 @@ AC-6), the stale docstring refresh, STATUS.md. Then PR per CLAUDE.md §7; this P
   resolver population) is retained verbatim below and is NOT to be reintroduced as an
   implementation detail.
   🔴 **The guard this ruling makes load-bearing:** with the approver population no longer
-  gating `/continue`, the ONLY thing keeping it from becoming a resolve bypass is
-  fail-closed guard 1 (`_has_decidable_proposals` true → refuse). AC-2(a) is therefore
-  not one assertion among five — it is the security boundary of the whole seam, and its
-  witnessed-RED probe is mandatory.
+  gating `/continue`, fail-closed guard 1 (`_has_decidable_proposals` true → refuse) is
+  what keeps it from becoming a resolve bypass. AC-2(a) is therefore not one assertion
+  among five — it is the security boundary of the whole seam, and its witnessed-RED probe
+  is mandatory.
+  <br>**Corrected on measurement (Code, s253, pre-Step-1).** This was drafted as *"the
+  ONLY thing keeping it from becoming a resolve bypass"*; measured against the tree that
+  is too strong. `resume_run` already carries an independent second layer refusing a
+  decidable, unresolved gate (`persistence.py:447-452`), so the seam is defense-in-depth,
+  not single-guarded. The correction **lowers the residual risk and raises the probe
+  bar**: because both layers answer 409, AC-2(a) witnesses nothing unless it asserts the
+  chokepoint's own detail string — see AC-2(a). Guard 2 (`artifact is None` — `resume_run`
+  would *retry*, a different observable) and guard 3 (RF-1 — `resume_run` takes
+  `principal: Person | None` and the shipped parity tests call it bare) have **no** second
+  layer and remain genuinely single-guarded. The SD-3 ruling itself is unchanged.
   <br>_The option text as posed is retained verbatim below (the PLAN-0111 convention)._
   <br>**Recommendation: any authenticated
   human (RF-1 floor) — the cancel posture (PLAN-0054), not the resolve posture.**
