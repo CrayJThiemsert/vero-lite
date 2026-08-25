@@ -43,7 +43,7 @@ from tools.probe_battery import (
     restore_pending,
     run_battery,
 )
-from tools.probe_battery._battery import _overlaps
+from tools.probe_battery._battery import _child_env, _overlaps
 from tools.probe_coverage import Claim, enumerate_claims
 
 # ======================================================================================
@@ -572,6 +572,60 @@ def test_a_mutation_matching_more_than_once_is_refused(project: Path) -> None:
     store = RunStore.begin(project, project / "state")
     with pytest.raises(MutationError, match="occurs 2 times"):
         store.apply(project / "subject.py", "return", "pass  # return")
+
+
+def test_mutating_deletes_the_subjects_cached_bytecode(project: Path) -> None:
+    """🔴 Reaching disk is NOT reaching the interpreter.
+
+    CPython validates a `.pyc` against its source by *(mtime-in-whole-seconds, size)*. A
+    mutation that does not change the file's length — `return "even"` → `return "EVEN"` —
+    landing in the same wall-clock second as the previous compile is judged *unchanged*,
+    so the child imports STALE bytecode and the battery reports GREEN ("the guard may be
+    vacuous") about a guard it never exercised.
+
+    Measured 2026-08-25: CI reddened on exactly this while the same commit passed locally,
+    because the window is timing-dependent. Asserted here by construction instead — the
+    cached file must be gone after a mutation, whatever the clock did.
+    """
+    cache = project / "__pycache__"
+    cache.mkdir()
+    stale = cache / "subject.cpython-312.pyc"
+    stale.write_bytes(b"stale bytecode")
+    store = RunStore.begin(project, project / "state")
+    store.apply(project / "subject.py", "n > 10", "n > 1000")
+    assert not stale.exists()
+
+
+def test_restoring_also_deletes_the_cached_bytecode(project: Path) -> None:
+    """The restore writes a same-size file too, so leaving its bytecode cached would hand
+    the NEXT probe the very staleness this defends against."""
+    store = RunStore.begin(project, project / "state")
+    store.apply(project / "subject.py", "n > 10", "n > 1000")
+    cache = project / "__pycache__"
+    cache.mkdir(exist_ok=True)
+    stale = cache / "subject.cpython-312.pyc"
+    stale.write_bytes(b"stale bytecode")
+    store.restore_all()
+    assert not stale.exists()
+
+
+def test_an_unrelated_modules_bytecode_is_left_alone(project: Path) -> None:
+    """🟢 POSITIVE CONTROL: the invalidation is targeted at the subject, not a blanket wipe
+    of the project's caches — otherwise the two assertions above would pass under a
+    function that simply deleted `__pycache__` wholesale."""
+    cache = project / "__pycache__"
+    cache.mkdir()
+    other = cache / "test_suite.cpython-312.pyc"
+    other.write_bytes(b"unrelated bytecode")
+    store = RunStore.begin(project, project / "state")
+    store.apply(project / "subject.py", "n > 10", "n > 1000")
+    assert other.exists()
+
+
+def test_the_probe_subprocess_is_told_not_to_write_bytecode(project: Path) -> None:
+    """The second half of the defence: no probe run leaves a fresh `.pyc` for the next
+    same-size mutation to be judged against."""
+    assert _child_env()["PYTHONDONTWRITEBYTECODE"] == "1"
 
 
 def test_the_subject_is_restored_after_every_probe(project: Path) -> None:

@@ -130,6 +130,26 @@ Probed 2026-08-25 across 15 outcome shapes, against the project's pinned pytest:
   multi-line exception messages, multi-line assertion reprs, and setup/teardown errors.
 - `DID NOT RAISE` reports as `Failed` at the `with` line — where a `raises` claim lives.
 
+### Reaching disk is not reaching the interpreter
+
+A third measured fact, and the nastiest, because it produces a **false GREEN**.
+
+CPython validates a `.pyc` against its source by *(mtime-in-whole-seconds, size)*. A
+mutation that does not change the file's length — `return "even"` → `return "EVEN"` —
+landing in the same wall-clock second as the previous compile is judged **unchanged**, so
+the probe's child process imports **stale bytecode**. The battery then reports
+`GREEN` — *"the mutation reached disk and nothing reddened, the guard may be vacuous"* —
+about a guard it never actually exercised. The window is timing-dependent, so it is
+invisible on a slow machine: measured 2026-08-25 when CI reddened on it while the same
+commit passed locally.
+
+Defended twice, because a silent false GREEN is exactly the failure no other check catches:
+
+- every mutate **and every restore** deletes the subject's cached bytecode (targeted at
+  the subject, never a blanket `__pycache__` wipe);
+- every probe subprocess runs with `PYTHONDONTWRITEBYTECODE=1`, so no run leaves a fresh
+  `.pyc` for the next same-size mutation to be judged against.
+
 ---
 
 ## Crash safety

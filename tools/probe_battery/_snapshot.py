@@ -33,6 +33,7 @@ import subprocess
 import tempfile
 import time
 import uuid
+from contextlib import suppress
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -149,6 +150,34 @@ class Manifest:
             child_cmdline=str(data.get("child_cmdline", "")),
             entries=entries,
         )
+
+
+def invalidate_bytecode(subject: Path) -> list[Path]:
+    """Delete any cached bytecode for ``subject``. Returns what was removed.
+
+    🔴 **Reaching disk is not the same as reaching the interpreter.** CPython validates a
+    ``.pyc`` against its source by *(mtime-in-whole-seconds, size)*. A mutation that does
+    not change the file's length — ``return "even"`` → ``return "EVEN"`` — and lands in the
+    same wall-clock second as the previous compile is therefore judged *unchanged*, and the
+    child process imports the **stale** bytecode. The battery then reports ``GREEN``: "the
+    mutation reached disk and nothing reddened, the guard may be vacuous" — when in truth
+    the guard was never exercised at all. That is a false negative of exactly the kind this
+    package exists to prevent, and it is invisible on a slow machine.
+
+    Measured 2026-08-25: CI reddened on this while the same commit passed locally.
+
+    Called on every mutate **and** every restore, because the restore writes a same-size
+    file too — leaving a probe's bytecode cached for the *next* probe's run.
+    """
+    cache = subject.parent / "__pycache__"
+    if not cache.is_dir():
+        return []
+    removed: list[Path] = []
+    for stale in cache.glob(f"{subject.stem}.*.pyc"):
+        with suppress(OSError):
+            stale.unlink()
+            removed.append(stale)
+    return removed
 
 
 def _atomic_write_bytes(path: Path, payload: bytes) -> None:
@@ -275,6 +304,7 @@ class RunStore:
                 f"probe changed nothing, so any outcome it reports is about the "
                 f"unmutated code"
             )
+        invalidate_bytecode(subject)
         entry.mutated_sha256 = digest
         self._flush()
         return digest
@@ -291,6 +321,7 @@ class RunStore:
         backup = Path(entry.backup)
         target = Path(entry.subject)
         _atomic_write_bytes(target, backup.read_bytes())
+        invalidate_bytecode(target)
         restored = sha256_of(target)
         if restored != entry.original_sha256:  # pragma: no cover - defended, never seen
             raise RuntimeError(

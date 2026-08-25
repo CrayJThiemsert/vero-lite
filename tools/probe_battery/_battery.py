@@ -30,6 +30,7 @@ real source files, so they stay agent/human-invoked.
 
 from __future__ import annotations
 
+import os
 import signal
 import subprocess
 import sys
@@ -267,6 +268,20 @@ def _overlaps(battery: Battery) -> tuple[str, ...]:
     return tuple(sorted(declared & set(battery.exemptions)))
 
 
+def _child_env() -> dict[str, str]:
+    """The probe subprocess's environment, with bytecode writing off.
+
+    The second half of the stale-``.pyc`` defence (the first is
+    :func:`~tools.probe_battery._snapshot.invalidate_bytecode`). Deleting the cache handles
+    bytecode that already exists; this stops each probe run from leaving a fresh ``.pyc``
+    that the *next* same-size mutation could be judged against. Belt and braces on purpose —
+    the failure it prevents is a silent false GREEN, which no other check would catch.
+    """
+    env = dict(os.environ)
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
+
+
 def _make_pytest_runner(store: RunStore) -> Runner:
     """The real runner, bound to the run's manifest so the child pid is recorded.
 
@@ -296,6 +311,7 @@ def _make_pytest_runner(store: RunStore) -> Runner:
             proc = subprocess.Popen(  # noqa: S603 — fixed argv from the battery, no shell
                 argv,
                 cwd=str(project_root),
+                env=_child_env(),
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
             )
