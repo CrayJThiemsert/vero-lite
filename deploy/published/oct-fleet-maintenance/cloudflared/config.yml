@@ -148,6 +148,24 @@ ingress:
   - path: ^/runs/[^/]+/cancel$
     service: http://app:8000
 
+  # (4b) Acknowledge-and-continue (PLAN-0114). Basis: PLAN-0113's scope clause made
+  # a NEW state reachable on exactly this system — a sub-ceiling acceptance whose
+  # gate holds ZERO proposals. Without this row a visitor who accepts a ฿4,500 quote
+  # gets a run that (3) refuses (409, nothing to resolve) and whose only exit is (4),
+  # which records ABANDONMENT for a case that was checked and cleared. That is the
+  # misleading artifact PLAN-0113 SD-3(b) was ruled to remove, so publishing the
+  # honest exit is what makes the ruling true on the live demo rather than only in
+  # the repo.
+  #
+  # 🔴 It is STRICTLY LESS privileged than (3), and that is a property of the
+  # application, not of taste: the chokepoint refuses (409) any gate that holds a
+  # decidable proposal, so this route can never approve anything — it records that
+  # an identified human LOOKED and found nothing to approve. Same persona
+  # authentication as (3)/(4): RF-1 fail-closed, and the acknowledgment lands in the
+  # real audit chain under the person_id that acted.
+  - path: ^/runs/[^/]+/continue$
+    service: http://app:8000
+
   # (5) Chain verification. Basis: "tamper-evident" is a claim, and this route is
   # the only way a visitor can CHECK it rather than be told it. Read-only, no
   # parameters, and it returns a verification report over the audit chain — the

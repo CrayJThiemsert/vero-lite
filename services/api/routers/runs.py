@@ -720,5 +720,8 @@ async def continue_run_endpoint(
         continued_step=req.step_id,
         run_status=result.run.status,
         suspended_step=suspended.step_id if suspended is not None else None,
+        # SD-4: the caller walks the empty gates, so it must be able to tell an
+        # acknowledgment from a decision without a second round trip.
+        proposals=_proposals(suspended),
         steps=_step_views(result.step_results),
     )

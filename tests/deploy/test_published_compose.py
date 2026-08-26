@@ -181,6 +181,11 @@ _MUST_DENY = {
     "/runs/run-0001": "SD-1's C-3 disposition",
     "/runs/run-0001/gate/resolve": "SD-1's C-3 disposition",
     "/runs/run-0001/cancel": "default-deny",
+    # PLAN-0114's new seam. Denied HERE (oct-energy) for the same reason its four
+    # siblings above are: this system publishes no Monitor, so the whole /runs
+    # family stays on the default-deny floor. The fleet system, which does publish
+    # Tab H, admits it on its own written basis — see that config's row (4b).
+    "/runs/run-0001/continue": "default-deny — this system publishes no Monitor",
     "/demo/hero/event": "D5(2) F4 — event mode excluded",
     "/demo/hero/governance": "Step 8 (Cray, 2026-08-06) — hero is bespoke per design partner",
     "/demo/hero/impact": "Step 8 (Cray, 2026-08-06) — hero is bespoke per design partner",
@@ -237,6 +242,7 @@ _UI_NOT_ROUTES = {
     "/execute": "URL SUFFIX concatenated onto '/recommendations/' + id",
     "/gate/resolve": "URL SUFFIX concatenated onto '/runs/' + id",
     "/cancel": "URL SUFFIX concatenated onto '/runs/' + id",
+    "/continue": "URL SUFFIX concatenated onto '/runs/' + id (PLAN-0114)",
     "/cover": "URL SUFFIX concatenated onto the exports base",
     "/ontology/": "a FILESYSTEM path built for display, view-story.js:1246 — never fetched",
 }

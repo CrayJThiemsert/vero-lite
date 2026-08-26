@@ -272,6 +272,15 @@ class ContinueRunResponse(BaseModel):
         default=None,
         description="The next step awaiting a human when run_status is waiting_human",
     )
+    proposals: list[ProposalView] = Field(
+        default_factory=list,
+        description=(
+            "What the newly suspended gate holds — empty when there is still nothing "
+            "to approve. Mirrors RunProcedureResponse, and it is what lets a caller "
+            "decide whether the next gate is another acknowledgment or a real "
+            "decision WITHOUT a second round trip (PLAN-0114 SD-4)."
+        ),
+    )
     steps: list[StepResultView] = Field(
         description="Every recorded step result after the continuation, in run order"
     )

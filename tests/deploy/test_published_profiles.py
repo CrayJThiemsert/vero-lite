@@ -127,11 +127,22 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
         r"^/query$",
         # Tab F
         r"^/procedures$",
-        # Tab H — five routes, five separate decisions
+        # Tab H — six routes, six separate decisions
         r"^/runs$",
         r"^/runs/[^/]+$",
         r"^/runs/[^/]+/gate/resolve$",
         r"^/runs/[^/]+/cancel$",
+        # 🔴 Added by PLAN-0114 Step 3. Like the accepted-quote row below, this one
+        # gets a basis because it ADMITS a write that was not previously reachable.
+        #
+        # Basis: PLAN-0113's scope clause made a gate with ZERO proposals reachable
+        # on this system for the first time. Without this row the acknowledge
+        # affordance 404s at the edge and a sub-ceiling acceptance is a dead end
+        # whose only exit records abandonment — the artifact PLAN-0113 SD-3(b) was
+        # ruled to remove. It is strictly LESS privileged than gate/resolve: the
+        # chokepoint 409s any gate holding a decidable proposal, so it can never
+        # approve. Persona-authenticated, RF-1 fail-closed, audited.
+        r"^/runs/[^/]+/continue$",
         r"^/audit/verify$",
         # Tab I — visitor-writable; the surface AC-11's RoPA must cover
         r"^/api/cases$",

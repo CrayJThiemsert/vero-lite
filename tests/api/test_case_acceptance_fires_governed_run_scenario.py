@@ -498,6 +498,17 @@ async def test_the_empty_gate_is_acknowledged_and_the_run_reaches_completed(
             f"a waiting_human continuation must name a NEW gate; got {step!r} after "
             f"{acknowledged}"
         )
+        # PLAN-0114 SD-4: the walk's stop rule reads THIS field, so it is load-bearing
+        # for the UI, not decoration. Positive control for "empty" is shared rather than
+        # local: `proposals` is populated by the same `_proposals()` that fills
+        # RunProcedureResponse, which `test_runs_endpoints.py::
+        # test_http_only_run_suspend_resolve_resume` exercises NON-empty (`== 1`). No
+        # shipped spine lands a /continue on a gate that holds a proposal, so the
+        # non-empty case is inexpressible here — recorded, not silently skipped.
+        assert body["proposals"] == [], (
+            "the response must report what the NEW gate holds, so the caller can tell "
+            f"an acknowledgment from a decision without a second GET; got {body['proposals']}"
+        )
     else:  # pragma: no cover — the bound is a non-termination guard, not a path
         pytest.fail(f"the run never settled after acknowledging {acknowledged}")
 

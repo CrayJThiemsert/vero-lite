@@ -214,6 +214,18 @@ condition materializing late.
    one button per gate); it is retained verbatim per the PLAN-0111 convention and is
    superseded by SD-4 for Step 3. The reason the question was re-put is recorded there:
    AC-1's one-POST premise was **measured false** in Step 2.
+   <br>🔴 **Two factual corrections, measured at the tree (Code, s256, Step 3).**
+   **(1) The tab labels are swapped.** `app.js:12-20` registers **H = Monitor
+   (`view-monitor.js`)** and **G = Governance Moment (`view-hero.js`)**; the draft calls
+   view-hero "the Tab H surface". The dead end was observed on the **Monitor**, and that
+   is where the affordance ships. **(2) `view-hero.js` is OUT OF SCOPE, and this is a
+   scope cut, not an omission.** Its Act panel (`renderActPanel`) is reached from
+   `render()` **only** on the procurement path and **only** when `mode === 'event'` —
+   `renderFleet()` (`:580-614`) never calls it. That panel drives the scripted
+   `/demo/hero/event` beat-3 run, whose gate carries a proposal **by construction**; an
+   acknowledge affordance there would be an affordance nothing can reach. `api.js`
+   therefore gains **no** `continueRun` helper — a comment records the refusal in place,
+   mirroring how that module already refuses an unused export download helper.
    <br>The two operate surfaces that POST `gate/resolve` today
    (`services/api/static/assets/view-hero.js:286`-area — the Tab H surface the dead-end
    was observed on — and `services/api/static/assets/view-monitor.js:133`): when a
