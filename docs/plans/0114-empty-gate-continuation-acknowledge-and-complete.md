@@ -347,7 +347,18 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   walk **halts** at a gate carrying a real proposal (positive control — the breaching
   control run must still show the ordinary resolve affordance, never the acknowledge
   one), and the audit trail still carries **one acknowledgment row per gate walked**.
-- [ ] **AC-6 — the record trail is consistent.** PLAN-0113 SD-3 carries the RULED (b)
+- [x] **AC-6 — the record trail is consistent.**
+  *(CLOSED s256 — Step 5. 🔴 **OQ-2 resolved at the artifact, and it said DO NOT
+  WRITE:** PR #1280 **did** land the ruling — `done/0113-…md` carries the RULED (b)
+  marker — so this was a reconcile, not a re-write. What was genuinely missing was
+  any mention of PLAN-0114 at all (`grep 0114` returned zero hits); that pointer is
+  now added, additively, and carries the two things a reader would otherwise inherit
+  wrong: the mechanism is NOT the `_suspends` change SD-3 priced, and the ruling's
+  own arity was off by one. The stale docstring was refreshed in Step 2. STATUS
+  reconciled to s256, with the session-252 block rotated out under R2/R6 and
+  verified **by content** — byte-identical to `git show HEAD:docs/STATUS.md` — not
+  by presence.)*
+  PLAN-0113 SD-3 carries the RULED (b)
   marker + a pointer to this PLAN (additive, ruled history untouched verbatim — the
   PLAN-0111 convention; **check first**: the dispatch says PR #1280 recorded the
   ruling, but on the drafting tree `0113-…md:431` still reads "SD-3 — OPEN" — reconcile
