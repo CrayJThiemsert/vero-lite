@@ -227,5 +227,5 @@ manifest carries a monotonic `heartbeat` and nothing here orders runs by time.
 - `tools/probe_coverage.py` — the coverage half (lesson #0047 §6's fourth clause)
 - `docs/lessons/0043-a-probes-red-must-name-what-broke.md` — the source lesson behind C6
 - `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md` §D2-C6 — the binding rule
-- `docs/plans/0115-probe-battery-driver-and-verification-instrument-hardening.md` — this
-  package's PLAN, including the two safety holes Steps 2–3 still owe
+- `docs/plans/done/0115-probe-battery-driver-and-verification-instrument-hardening.md` —
+  this package's PLAN (Complete, s255), including its closeout and the VX-1 finding
