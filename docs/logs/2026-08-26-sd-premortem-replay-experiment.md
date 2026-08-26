@@ -1,4 +1,4 @@
-# `sd-premortem` — a blinded replay experiment, and an instrument that regressed when repaired
+# `sd-premortem` — four blinded replay runs, and an LLM rollup measured non-reproducible
 
 **Date:** 2026-08-26
 **Branch:** `docs/sd-premortem-replay-experiment`, cut from `main` = `f8aeba0`
@@ -14,15 +14,26 @@ no host touched; the working tree was never mutated. Everything ran out of
 
 ## Verdict
 
-**The hypothesis survived; the instrument did not.**
+**The hypothesis is dead as designed — and the autopsy names a better design.**
 
 A read-only subagent, given drafted decision options and a codebase with every trace of the
 outcome removed, **reconstructed a real ruling from scratch** — matching all four
-control-flow sites the human measurement had named. That is the strongest result a
-one-session experiment can produce.
+control-flow sites the human measurement had named. The *measurement* half works.
 
-A second run, intended to repair the instrument, **broke both regression controls**. The
-cause is identified and is a defect in the experiment's design, not in the idea.
+The *judgment* half does not. **Run 4 repeated run 3's dispatch byte-for-byte against a
+byte-identical tree and returned a different verdict on five of seven options** (§11). An
+LLM cannot own the ALIVE / DEAD / NEEDS-EXECUTION rollup.
+
+What survives is a three-layer split the four runs measured directly:
+
+| layer | reproducible? | who should own it |
+|---|---|---|
+| **citations** — which line does what | ✅ stable in every run | the LLM; it is reliable here |
+| **counts** | ⚠️ stable *only* if the match pattern is pinned | pin the pattern, or let a tool count |
+| **rollup** — ALIVE / DEAD / NEEDS-EXECUTION | ❌ 5 of 7 differed on an identical prompt | **deterministic code, never the model** |
+
+**Do not open a PLAN for `sd-premortem` as originally designed.** The buildable thing is
+smaller: an agent that emits claims plus evidence, and code that computes the verdict.
 
 ---
 
@@ -220,11 +231,57 @@ will be written down**, and take the measurement twice.
 2. **Ruling 1 stands** after the 4-of-5 blocking rate was measured and reported. Repair the
    instrument and re-run rather than relaxing the rule.
 3. **Record the event and the post-repair re-run, then escalate.** This file is that record.
+4. **Run the repeat.** Asked whether to close on the stated limitation or spend one more run
+   settling it, Cray chose the run. §11 is what that bought.
 
 ## 10. What is left
 
-- **v3:** run 1's dispatch + the probe-spec requirement, and nothing else. Re-run against
-  the same blinded surface with the same pre-committed criteria.
-- **Unmodelled:** premortem verdicts expire when a premise changes (PLAN-0114 SD-4).
-- **Not opened:** no PLAN, no ADR, no agent file. `.claude/agents/sd-premortem.md` does not
-  exist and should not until v3 reports.
+- **Unmodelled:** premortem verdicts expire when a premise changes (PLAN-0114 SD-4) —
+  supplied as a same-day case by the parallel session.
+- **Not opened, and should not be:** no PLAN, no ADR, no agent file for `sd-premortem` **as
+  designed**. §11 supersedes the earlier "v3 is the next step" plan.
+- **The buildable successor**, if Cray wants it: an agent emitting claims + citations with a
+  pinned match pattern, and **code** computing the rollup from those claims. That is a
+  different, smaller artifact and still needs a Cowork-drafted PLAN.
+
+## 11. Run 4 — the same dispatch twice, and the result that ends the design
+
+Runs 1–3 each carried a different dispatch, so none of their disagreements could be
+attributed: instruction or model variance were indistinguishable. Run 4 removed that
+ambiguity by changing **nothing** — the run-3 prompt byte-for-byte, against a replay tree
+re-verified as identical (400 files, all four leak greps 0).
+
+Pre-committed before dispatch: *if any of the three tracked verdicts differs from run 3,
+variance dominates and the model cannot own the rollup.*
+
+| option | run 3 | run 4 | |
+|---|---|---|---|
+| SD-3(a) | **DEAD** | **ALIVE** | ✗ |
+| SD-3(b) | NEEDS-EXECUTION | **ALIVE** | ✗ |
+| SD-2(a) | NEEDS-EXECUTION | NEEDS-EXECUTION | ✓ |
+| SD-2(b) | **ALIVE** | **NEEDS-EXECUTION** | ✗ |
+| SD-1(a) | NEEDS-EXECUTION | **ALIVE** | ✗ |
+| SD-1(b) | NEEDS-EXECUTION | **ALIVE** | ✗ |
+| SD-1(c) | NEEDS-EXECUTION | NEEDS-EXECUTION | ✓ |
+| **tally** | ALIVE 1 · DEAD 1 · NE 5 | **ALIVE 4 · DEAD 0 · NE 3** | **5 of 7 differ** |
+
+**The sharpest single case is SD-3(a).** Both runs derived the *same arithmetic* — the work
+sitting outside the check budget is Ollama 75 s (`_sonnet_classifier.py:93`) + git 2×10 s
+(`_goal_gate.py:199`) + Telegram 5 s (`:105`) ≈ 100 s, so a 179 s budget still totals ≈ 279 s
+against a 180 s Stop timeout. Run 3 called that a refutation and returned **DEAD**. Run 4
+called it *"MEASURED CONSEQUENCE (not a refutation)"* and returned **ALIVE**. Identical
+evidence, identical numbers, opposite verdicts. Nothing was measured differently; the two
+runs disagreed about whether the claim was load-bearing.
+
+**A middle layer this session had missed.** Run 3 reported the migration surface as 64
+occurrences / 53 files; run 4 reported 54 / 51. Neither is wrong — measured here directly,
+bare `drop_all` gives **64 / 53** and `run_sync(Base.metadata.drop_all)` gives **54 / 51**.
+**No run stated which pattern it used.** A count therefore looks like the same fact across
+runs while silently answering a different question — worse than an unstable number, because
+it does not announce itself. This is why the table in §Verdict has three rows, not two; the
+earlier reading of this experiment ("claims stable, rollup unstable") was half right.
+
+**What this costs and what it buys.** It cost one dispatch, roughly eight minutes, and no
+repo writes. It bought the difference between *"the rollup might be prompt-tunable"* and
+*"the rollup is not reproducible"* — which are different products. Runs 1–3 could not
+distinguish them; only re-running an unchanged prompt could.
