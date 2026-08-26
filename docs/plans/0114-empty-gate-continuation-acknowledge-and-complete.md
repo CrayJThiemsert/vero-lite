@@ -252,7 +252,12 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
 > walk as a list (`acknowledged == [_APPROVE, _FULFILL]`) so the count cannot drift
 > silently. This is what re-opened the Step 3 UI question — see **SD-4**.
 
-- [ ] **AC-1 — the empty-gate run completes through the product surface.** Scenario test
+- [x] **AC-1 — the empty-gate run completes through the product surface.**
+  *(CLOSED s256 — Step 2. The sub-ceiling run reaches `completed` through the product
+  surface, asserted by `test_the_empty_gate_is_acknowledged_and_the_run_reaches_completed`,
+  and verified LIVE in the preview on the fleet published profile. **Arity corrected:** TWO
+  acknowledgments, measured, asserted as a list so the count cannot drift.)*
+  Scenario test
   (real producer → real consumer, realistic data): the sub-ceiling fleet acceptance
   parks at `approve` with `proposals == []` (the existing helper
   `_fire_sub_ceiling_with_a_breaching_control` — its breaching control run is the
@@ -262,7 +267,14 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   still on the record. The current tripwire
   `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end` reddens loudly at
   this step **by design** and is re-authored (Step 2) — that is its documented purpose.
-- [ ] **AC-2 — the seam is fail-closed, with a positive control.** Battery, one probe
+- [x] **AC-2 — the seam is fail-closed, with a positive control.**
+  *(CLOSED s256 — Step 2. Five HTTP arms shipped (a/b/c/d + the route's own 404).
+  Battery through `tools/probe_battery/`: 4 WITNESSED at their own declared assertion, plus
+  one declared-GREEN isolation control. 🔴 (a) **and (b)** assert the detail string rather
+  than the status code — the PLAN warned of the one-code-two-causes shape for (a) only, and
+  it repeats at (b): RF-1 is guarded twice and BOTH layers answer 403, so `== 403` stays
+  green with either guard deleted.)*
+  Battery, one probe
   per assertion:
   (a) 🔴 a gate **with** decidable proposals is refused on `/continue` — asserted on the
   **detail string naming the chokepoint's own mechanism** (`"this gate holds decidable
@@ -282,7 +294,13 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   (d) a `step_id` naming a step other than the suspended one → **409**;
   (e) an escalated-failure suspend (`artifact is None`) → **409** (OQ-1 stays a
   recorded gap, not a silent hole).
-- [ ] **AC-3 — the completed run is the artifact the ruling values.** After AC-1's
+- [x] **AC-3 — the completed run is the artifact the ruling values.**
+  *(CLOSED s256 — writes in Step 1, **retrieval proven LIVE** in Step 3. The real
+  tamper-evident chain carries `run_continued_no_decision` on `approve` AND on `fulfill`,
+  each naming the acting human with `actor_kind: human`; both step `audit` dicts carry the
+  acknowledgment block, readable through `GET /runs/{run_id}`. `GET /audit/verify` returned
+  `intact: true` over 50 rows — the new action rides the chain without breaking it.)*
+  After AC-1's
   continue: the tamper-evident audit chain carries the new run-level acknowledgment row
   (SD-2 shape) naming the actor and the acknowledged step with `proposal_count: 0`,
   **and** the gate step's own `audit` dict carries the acknowledgment block, retrieved
@@ -292,8 +310,16 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   audit write → the presence assertion reddens. (A reader of the completed run must be
   able to reconstruct *"checked — nothing to approve, acknowledged by X"*, not merely
   *"completed"*.)
-- [ ] **AC-4 — blast radius bounded, with a positive control (the PLAN-0113 AC-4
-  precedent).** `_suspends` and `resolve_gated_step` are byte-identical (empty
+- [x] **AC-4 — blast radius bounded, with a positive control (the PLAN-0113 AC-4
+  precedent).**
+  *(CLOSED s256 — Step 4. `orchestrator.py` and `action_step.py` **byte-identical** vs
+  `origin/main` (empty diffs), the empty-gate raise present verbatim, suite 4460 → 4466 with
+  0 failed. Positive control through the driver: **both** parity tests witnessed RED under a
+  `_suspends` mutation, tree restored byte-identical. 🔴 The watch half **MISFIRED first** —
+  re-addressed from the CODE, not the outcome: that module's suspend guard lives in
+  `_run_to_escalation:148`, which runs before the test body, so the body's own assert is
+  structurally unreachable under this mutation.)*
+  `_suspends` and `resolve_gated_step` are byte-identical (empty
   `git diff` on `orchestrator.py`; `action_step.py`'s empty-gate raise untouched); the
   two parity tests (`test_gate_state_machine.py:260-282`,
   `test_watch_gated_routing.py:187-211`) and the sibling
@@ -304,7 +330,16 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
   nothing about "unchanged" without it): scratch-mutate `_suspends` to consult the
   output set → the watch parity test reddens; restore (restore from the scratch copy,
   verify byte-identical).
-- [ ] **AC-5 — the dead-end is closed where it was observed.** Both operate surfaces
+- [x] **AC-5 — the dead-end is closed where it was observed.**
+  *(CLOSED s256 — Step 3, per SD-4(B). Verified in the preview against a seeded
+  sub-ceiling run: ONE click settled it, the panel read "Acknowledged — nothing to approve.
+  Run completed. (2 empty gates)". Positive control on the same surface: a gate holding
+  three real proposals renders Submit and **not** the acknowledge button. 🔴 **Scope cut,
+  not an omission:** `view-hero.js` is Tab **G**, its Act panel is procurement-only and its
+  gate carries a proposal by construction — an affordance there would be unreachable.
+  🔴 Also closed a **live-only** gap the offline suite could not see: the published ingress
+  allowlist is default-deny, so the button would have 404'd at the Cloudflare edge.)*
+  Both operate surfaces
   render the acknowledge affordance exactly when a `waiting_human` run has zero
   proposals, wired to `/continue`; `?v=` bumped per touched file; verified in the
   preview against a seeded sub-ceiling run. **Per SD-4 the affordance is ONE button that

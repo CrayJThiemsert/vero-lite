@@ -545,6 +545,23 @@ enumeration): Step 2's implementer re-greps `trigger_context`, `entity_ids`, and
   mechanic's own authority"* is a more valuable governance artifact than a stuck one. It is
   the proof the spend was examined, and it is "governed ≠ generated" stated directly.
 
+  ➡️ **EXECUTED BY [`PLAN-0114`](../0114-empty-gate-continuation-acknowledge-and-complete.md)**
+  *(pointer added s256; the ruling above is untouched — the `done/` supersession-pointer
+  convention).* Two things a reader of this ruling should carry forward, both **measured**
+  during that execution rather than inherited from here:
+
+  1. **The mechanism is NOT the `_suspends` change this SD priced.** The engine already
+     sanctioned the exit — `resume_run`'s no-decision branch — and the real gap was
+     *reachability from the product surface*. PLAN-0114 ships a persistence chokepoint plus
+     `POST /runs/{run_id}/continue`; `_suspends`, `resolve_gated_step` and ADR-0016 D4 are
+     **byte-identical**. The line above reading "(b) is a general `_suspends` change" (`:184`)
+     is therefore superseded by the mechanism actually taken.
+  2. **The residual this SD demanded be met, was met — and the ruling's own arity was wrong.**
+     The loudness answer is *posture, not detection*: the run still parks, loudly, and the
+     accountable human is the discriminator (no trace entry, per the not-ruled note below).
+     And "a sub-ceiling acceptance completes" takes **two** acknowledgments, not one — the
+     hero spine is `request -> approve -> fulfill` and `fulfill` is `autonomy: gated` too.
+
   🔴 **Not ruled, and NOT to be read into the ruling:** Code's accompanying recommendation
   that (b) also **emit a trace entry** when it skips an empty gate. That was offered as the
   mitigation for (b)'s one real cost — see the residual below — and Cray endorsed reason 1,
