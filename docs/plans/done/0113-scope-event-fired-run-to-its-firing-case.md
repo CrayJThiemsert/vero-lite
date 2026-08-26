@@ -363,7 +363,8 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   CLAUDE.md §8): full `pytest tests/`, `mypy --strict services/ verticals/`, bare
   `ruff check .`, `ruff format --check .` — counts recorded against the Step 0
   baseline (s246 reference: 4267 passed / 8 skipped). **[offline]**
-- [ ] **AC-9 — live evidence on MS-S1** *(evidence, not a gate)*: the visitor flow
+- [x] **AC-9 — live evidence on MS-S1** *(evidence, not a gate)* — **DISCHARGED s256; see
+  the pointer note below**: the visitor flow
   driven end to end on the live system shows a single-proposal gate; the demo reset +
   reseed still reads `PRISTINE`. 🔴 **Requires a typed Cray go per occasion AND per
   phase (CLAUDE.md §8 Host-State Actions; `DEPLOY.md` §0). The go is NOT held at
@@ -374,6 +375,17 @@ copy sha256-verified byte-identical — the PLAN-0112 AC-7(i) probe discipline).
   an archived PLAN whose live-evidence line quietly disappeared would read as though the
   walk had happened. If the walk is ever run, its record belongs in `docs/logs/` with a
   pointer back to this line. The offline oracle (AC-8) is the gate and it is green.]_
+  <br>_[🎯 **DISCHARGED s256, 2026-08-26 — the walk was run, and this line is the pointer
+  it asked for.** Cray's typed go per occasion; Cray performed the Cloudflare Access PIN.
+  Measured on the published system in a real browser: a mid-band ฿12,000 acceptance fired
+  a run whose gate holds **exactly one** proposal, and it is the visitor's own case
+  (`action-event-case-case-8a25399bd734`) — while the pre-scoping seeded run
+  `run-fleet-operate-demo` still shows **three**, the fleet-wide shape this PLAN removed.
+  That contrast is what makes the one non-accidental. Demo reset read `DEMO-STATE:
+  PRISTINE` before and after. **Record:**
+  `docs/logs/2026-08-26-s256-fleet-deploy-plan0113-plus-0114.md` §5. The deploy that made
+  it possible shipped 0113 **together with PLAN-0114**, because 0113 Step 3 is what
+  creates the empty-gate dead end that 0114 closes.]_
 
 ## Out of Scope
 

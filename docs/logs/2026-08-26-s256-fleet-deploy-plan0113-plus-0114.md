@@ -131,12 +131,45 @@ The claim rests on a chain instead, each link measured:
 2. that same image answered `IMPORT-OK` with `continue_run_endpoint: True`;
 3. §4 shows the running container's `.Image` is **that image id**.
 
-⚠️ **Not claimed:** an end-to-end request through the Cloudflare edge. The ingress row
-is verified *present on the mounted file* and the connector was recreated to read it,
-but no public request was made — that needs the published hostname, which is
-deliberately absent from this repo (ADR-0036 D2). **PLAN-0113 AC-9's visitor walk and
-PLAN-0114 AC-5's live half therefore remain OPEN**, now blocked only on that walk
-rather than on the deploy.
+*(The paragraph that stood here said no public request had been made. Cray supplied
+the hostname and did the Cloudflare Access PIN; the walk below then ran. Kept as a
+correction rather than a silent edit: the claim was true when written.)*
+
+## §5 The visitor walk — PLAN-0113 AC-9 and PLAN-0114 AC-5 CLOSED
+
+Driven through `https://oct-fleet-maintenance.cray-n8n.com` in a real browser, behind
+Cloudflare Access. Cray performed the Access PIN; every step below is the visitor's
+own path. All case text is synthetic and labelled `s256 live walk`, per the intake
+surface's own notice.
+
+**Before anything else — the new UI actually reached the browser.** The live page
+serves `assets/api.js?v=c49` and `assets/view-monitor.js?v=c42`: the per-file
+cache-bust counters this PLAN bumped. Not the container's copy — the browser's.
+
+| # | Step | Measured |
+|---|---|---|
+| 1 | open a case, quote **฿12,000** (mid-band), accept — as **ต้อม** | `case-8a25399bd734`, accepted `201` |
+| 2 | 🎯 **AC-9** — the fired run's gate | `@41bb7835…`, **exactly ONE proposal**, and it is `action-event-case-case-8a25399bd734` — **the visitor's own case**. The pre-scoping seeded run `run-fleet-operate-demo` still shows **3**, the fleet-wide shape, which is the contrast that makes the one meaningful |
+| 3 | open a case, quote **฿4,500** (sub-ceiling), accept | `case-596c0244e638`; run `@d8f5a677…` parks at `approve` with **0 proposals** — the empty gate, reachable on the live system |
+| 4 | switch to **วิรัช**, open the empty-gate run | panel reads *"No decidable proposals at this gate"* + **"Acknowledge — nothing to approve"**; **no Submit** |
+| 5 | 🎯 **AC-5 positive control, same surface** | the mid-band run renders **Submit** and the DOA advisory (฿12,000 → `ผจก.เดินรถ`) and **no Acknowledge**. The affordance appears **exactly** when the gate is empty |
+| 6 | 🎯 **AC-5 / SD-4(B)** — click Acknowledge **once** | `WAITING_HUMAN` → **`COMPLETED`**, panel: *"Acknowledged — nothing to approve. Run completed. **(2 empty gates)**"* |
+| 7 | the artifact the ruling values | both `approve` **and** `fulfill` carry `no_decision_continuation`, `acknowledged_by: appr-fleet-manager-wirat`, `proposal_count: 0`; all six steps `complete` |
+| 8 | `GET /audit/verify` | **`intact: true`**, 64 rows, **0 breaks** — the new action rides the tamper-evident chain |
+| 9 | demo state after | **`DEMO-STATE: PRISTINE`** — unchanged by the walk |
+| 10 | app after | `running`, **healthy**, still on `sha256:880307365d7f…` |
+
+🔴 **The arity measured offline held on the live system.** "(2 empty gates)" is the
+UI reporting that one click walked `approve` **and** `fulfill` — the correction that
+invalidated AC-1's original premise and produced SD-4, confirmed end to end against
+real data on the published surface.
+
+⇒ **PLAN-0113 AC-9 CLOSED** · **PLAN-0114 AC-5's live half CLOSED.**
+
+⚠️ **Left behind on purpose:** the walk created two real cases and left the mid-band
+run `@41bb7835…` parked at its gate — a genuine single-proposal gate a visitor can
+now resolve, which is the demo's own beat. `DEMO-RESET.md` exists if Cray wants them
+gone; **not run** — that is a demo-content decision, not a deploy step.
 
 ## Rollback
 
