@@ -206,7 +206,7 @@ finalizing*.
 | `_goal_gate.py` / `stop_continuation.py` finding | working tree; `main` vs `HEAD` **IDENTICAL** | ✅ clean |
 | `docs/STATUS.md` reads | `main` vs `HEAD` **IDENTICAL** | ✅ clean |
 | `goal.json` gitignore probe | `.gitignore`, unmodified | ✅ clean |
-| a quote from the PLAN-0114 acceptance-criteria block | working tree, since modified (+12 lines) | ⚠️ accurate when taken, **already stale** |
+| a quote from the PLAN-0114 acceptance-criteria block | working tree, since modified — 12 lines inserted **above the quoted range** | ⚠️ accurate when taken, **already stale** |
 
 Corrected figures are the ones in §1: **71 commits, 52 docs / 13 feat**, against
 `origin/main`. Reported earlier as 73 / 53 / 14. **The correction moves the numbers and not
