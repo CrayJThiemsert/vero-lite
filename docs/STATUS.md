@@ -23,31 +23,27 @@ recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 
 > closure. **PLAN-0114 AC-1..AC-5 CLOSED.** ⚠️ [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298)
 > is OPEN, CI green at `b5ccb24` — Cray merges.**
 >
-> 🔴 **AC-1's premise was measured FALSE and the ruling was re-put.** The PLAN said
-> one POST completes the run. `fulfill` is `autonomy: gated` too and `_suspends`
-> never inspects the input set, so acknowledging `approve` parks the run again — it
-> takes **TWO** (the G-12 shape the full-walk test already recorded for *resolve*,
-> not carried across at drafting). That changed the premise Step 3's UI rested on,
-> so it went back to Cray: **SD-4 RULED (B)** — one button walks the empty gates,
-> bounded, halting at the first gate holding a real proposal. API, chokepoint and
-> audit trail untouched; only the click count changes.
+> 🔴 **AC-1's premise was measured FALSE, so the ruling was re-put.** `fulfill` is
+> `autonomy: gated` too, so acknowledging `approve` parks the run again — it takes
+> **TWO**, not one. That changed what Step 3's UI rested on: **SD-4 RULED (B)** —
+> one button walks the empty gates, halting at the first gate holding a real
+> proposal. API, chokepoint and audit trail untouched; only the click count.
 >
 > 🔴 **A live-only gap the offline suite could not see.** The published ingress
-> allowlist is **default-deny**, so the new button would have **404'd at the
-> Cloudflare edge** while every local test passed — caught by
+> allowlist is **default-deny**, so the button would have **404'd at the Cloudflare
+> edge** while every local test passed — caught by
 > `test_ac6b_every_route_the_ui_references_is_classified`. ⚠️ The fix **admits a
-> new write route to a published surface** (strictly less privileged than the
-> published `gate/resolve`: the chokepoint 409s any gate holding a proposal, so it
-> can never approve) — flagged for Cray at the PR, not treated as mechanical.
+> new write route to a published surface** (less privileged than the published
+> `gate/resolve` — the chokepoint 409s any gate holding a proposal, so it can never
+> approve) — flagged for Cray at the PR, not treated as mechanical.
 >
-> 🔴 **PLAN-0113 is merged but NOT live, and it must not ship alone.** Step 3 is
-> what *creates* the empty-gate dead end, so deploying 0113 without 0114 would put
-> that dead end in front of a visitor. The host is safe today **by accident, not
-> plan** — 0113 was never deployed, which is also why its AC-9 is archived
-> CARRIED-OPEN. **Deploy unit = 0113 + 0114 together.** Read-only MS-S1 census
-> under Cray's typed go (host at `ee41b55`; the `vero-published` STOP condition is
-> **clear**) + the phased plan:
-> [`docs/logs/2026-08-26-s256-…-deploy-census.md`](logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md).
+> 🔴 **PLAN-0113 is merged but NOT live, and it must not ship alone** — its Step 3
+> is what *creates* this dead end, so **deploy unit = 0113 + 0114 together**. The
+> host is safe today by accident, not plan (0113 was never deployed, which is also
+> why its AC-9 is archived CARRIED-OPEN). Read-only MS-S1 census under a typed go,
+> plus the phased plan:
+> [`docs/logs/2026-08-26-s256-…`](logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md);
+> the decision itself is a live Active TODO below.
 >
 > **Evidence.** Suite 4460 → **4466**, 0 failed; `mypy --strict` clean, 201 files;
 > ruff + format clean. Two batteries through `tools/probe_battery/` (AC-2: 4
@@ -55,17 +51,22 @@ recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 
 > `_suspends` mutation, tree restored byte-identical). AC-5 verified in the
 > preview; the acknowledgment proven on the **live** audit chain, one
 > `run_continued_no_decision` row per gate, `GET /audit/verify` `intact: true`.
-> **Two of my own probes were defective and the driver caught both** — a bare-403
-> assert that cannot witness a twice-guarded refusal, and an AC-4 MISFIRE
-> re-addressed *from the code, not the outcome*; each recorded at the AC it closes.
+> Two of my own probes were defective and the driver caught both — each recorded
+> at the AC it closes.
 >
-> **A parallel session (`vero-lite-d6`) ran on the SAME worktree** — an
-> `sd-premortem` replay that rebuilt s254's SD-2(b) ruling from scratch, then
-> regressed when its repair changed two variables at once. v3 not run, **no PLAN
-> opened**, `NEEDS-EXECUTION` ruled = **block**; log
-> [#1299](https://github.com/CrayJThiemsert/vero-lite/pull/1299), also OPEN. Cray
-> then split the sessions onto **separate worktrees**. Nothing collided — because
-> that session chose to wait, **not because anything prevented it**.
+> **A parallel session (`vero-lite-d6`) — `sd-premortem`, three blind replays on
+> `git archive ce7c003`, pass/fail pre-committed. v1 3/4 · v2 3/5 ·
+> v3 3/5: the hypothesis FELL.** 🔴 The finding that outranks what it set out to
+> measure: **what is unstable is the CONCLUSION, not the MEASUREMENT.** On one
+> tree SD-2(b) walked `DEAD` → `NEEDS-EXECUTION` → `ALIVE` while the underlying
+> claims stayed identical every round (same `_goal_gate.py` citations). ⇒ the
+> right design is **LLM emits claim + evidence, deterministic code rolls up the
+> verdict** — not an LLM verdict. ⚠️ The same dispatch was never run twice, so
+> **model variance is not ruled out**. **No PLAN opened, and the proposal is not
+> to open one on the original design.** Log
+> [#1299](https://github.com/CrayJThiemsert/vero-lite/pull/1299), OPEN. Cray then
+> split the sessions onto **separate worktrees** — nothing collided today, but
+> because that session chose to wait, **not because anything prevented it**.
 >
 > **Checked, NOT a defect** — recorded so it is not re-derived as one. The battery
 > lock's **stand-down scopes to the gate, not the Stop hook**: a `None` gate return
