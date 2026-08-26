@@ -229,3 +229,49 @@ class CancelRunResponse(BaseModel):
 
     run_id: str = Field(description="The cancelled run")
     run_status: str = Field(description="Run status after the cancel (always 'cancelled')")
+
+
+class ContinueRunRequest(BaseModel):
+    """A human's acknowledgment that a suspended gate holds nothing to approve (PLAN-0114).
+
+    Carries the step id and nothing else: there is no decision to submit. Naming the
+    step is the cheap guard against acknowledging a run that moved between the read
+    and the POST — the chokepoint refuses a mismatch rather than acknowledging
+    whichever gate it happens to find.
+    """
+
+    step_id: str = Field(
+        description=(
+            "The suspended step being acknowledged. Must be the step the run is "
+            "actually parked at; a mismatch is a 409, never a silent re-target."
+        )
+    )
+
+
+class ContinueRunResponse(BaseModel):
+    """The outcome of acknowledging an empty gate and continuing the run (PLAN-0114).
+
+    Mirrors :class:`GateResolveResponse` — ``suspended_step`` included deliberately:
+    a continuation is NOT a completion. ``_suspends`` is purely structural, so a
+    procedure whose spine carries a second gated step (the fleet hero's
+    ``request -> approve -> fulfill``) parks again on the very next step, and a
+    response shape that could not say so would report a continued run as finished.
+    """
+
+    run_id: str = Field(description="The acknowledged run")
+    continued_step: str = Field(
+        description="The empty gated step the acknowledgment was recorded against"
+    )
+    run_status: str = Field(
+        description=(
+            "Run status AFTER the post-acknowledgment resume: completed | "
+            "waiting_human (parked again at a later gate) | failed"
+        )
+    )
+    suspended_step: str | None = Field(
+        default=None,
+        description="The next step awaiting a human when run_status is waiting_human",
+    )
+    steps: list[StepResultView] = Field(
+        description="Every recorded step result after the continuation, in run order"
+    )

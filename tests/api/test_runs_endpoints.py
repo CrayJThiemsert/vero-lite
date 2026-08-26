@@ -376,6 +376,125 @@ async def test_cancel_non_waiting_human_is_409(wired_client: AsyncClient, runs_a
     assert "not cancellable" in second.json()["detail"]
 
 
+# --- PLAN-0114 Step 2: POST /runs/{id}/continue (AC-2's HTTP half) ---
+#
+# Step 1's battery (tests/services/db/test_continue_no_decision_run.py) witnessed all
+# five fail-closed guards at the LIBRARY level. What is untested until here is the
+# ROUTE's own contract: that each library refusal is mapped to the right status code.
+# That mapping is not free — `NoDecisionApproverError` subclasses `ProcedureError`, so
+# an `except ProcedureError` arm placed first silently degrades the RF-1 403 to a 409.
+#
+# ⚠️ Honest scope note: the route checks RF-1 itself (before `load_run`, so an
+# unauthenticated caller cannot probe which run ids exist), which makes the endpoint's
+# `except NoDecisionApproverError` arm UNREACHABLE over HTTP — `auth.person_id` is
+# non-None by the time the chokepoint is called. The arm is defence-in-depth for a
+# future caller that reaches the chokepoint another way, and it is deliberately NOT
+# claimed as covered here: no probe can redden it through this surface.
+
+
+async def test_continue_refuses_a_gate_that_holds_decidable_proposals(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-2(a) — the security boundary: /continue is never a resolve bypass.
+
+    🔴 Asserted on the chokepoint's OWN detail string, not the bare 409. `resume_run`
+    carries an independent second guard that refuses this exact case with a different
+    message and the SAME status code (`persistence.py:447-452`), so `== 409` would
+    stay green with the chokepoint's guard deleted — one code, two causes,
+    discriminating neither. SD-3 admits any authenticated human, which is what makes
+    this guard load-bearing rather than belt-and-braces.
+    """
+    run = await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    run_id = run.json()["run_id"]
+    assert len(run.json()["proposals"]) == 1, "precondition: this gate holds a REAL proposal"
+
+    refused = await wired_client.post(
+        f"/runs/{run_id}/continue", json={"step_id": _GATED_STEP}, headers=HEADERS
+    )
+    assert refused.status_code == 409
+    assert "holds decidable proposals" in refused.json()["detail"], (
+        f"the refusal must name the CHOKEPOINT's mechanism, not resume_run's; got "
+        f"{refused.json()['detail']}"
+    )
+    assert (await wired_client.get(f"/runs/{run_id}")).json()[
+        "status"
+    ] == "waiting_human", "a refused acknowledgment must leave the run parked, not half-advanced"
+
+
+async def test_continue_requires_an_authenticated_human(
+    wired_client: AsyncClient, runs_auth: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-2(b) — RF-1: authn off means no accountable acknowledger → 403, run untouched.
+
+    Arranged like the cancel guard above: the parked run is minted by a real principal
+    and authn is revoked only for the acknowledgment attempt.
+
+    🔴 The STATUS CODE alone does not discriminate here either, for the same reason
+    AC-2(a) does not: RF-1 is guarded TWICE — once by this route (before ``load_run``,
+    so an unauthenticated caller cannot probe which run ids exist) and once inside the
+    chokepoint, which answers ``NoDecisionApproverError`` that this route also maps to
+    403. Deleting EITHER guard leaves ``== 403`` green. The route's own detail string
+    is what pins which layer answered, so it is asserted rather than the code.
+    """
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+    monkeypatch.setattr(settings, "api_auth_enabled", False)
+
+    refused = await wired_client.post(f"/runs/{run_id}/continue", json={"step_id": _GATED_STEP})
+    assert refused.status_code == 403
+    assert "api_auth_enabled is off" in refused.json()["detail"], (
+        "the ROUTE's guard must be what refuses — the chokepoint's twin says "
+        f"'none was supplied' instead. Got {refused.json()['detail']}"
+    )
+    assert (await wired_client.get(f"/runs/{run_id}")).json()["status"] == "waiting_human"
+
+
+async def test_continue_on_a_run_that_is_not_parked_is_409(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-2(c) — a run with no gate to acknowledge. Cancelled here, because that is a
+    settled state a human can actually reach from the same surface."""
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+    assert (await wired_client.post(f"/runs/{run_id}/cancel", headers=HEADERS)).status_code == 200
+
+    refused = await wired_client.post(
+        f"/runs/{run_id}/continue", json={"step_id": _GATED_STEP}, headers=HEADERS
+    )
+    assert refused.status_code == 409
+    assert "not parked at a gate" in refused.json()["detail"]
+
+
+async def test_continue_naming_the_wrong_step_is_409(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-2(d) — the acknowledging human names what they believe they are
+    acknowledging; a mismatch means the run moved between the read and the POST, and
+    the seam refuses rather than acknowledging whichever gate it happens to find."""
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+
+    refused = await wired_client.post(
+        f"/runs/{run_id}/continue", json={"step_id": "not_the_gate"}, headers=HEADERS
+    )
+    assert refused.status_code == 409
+    assert "is not the step this run is suspended at" in refused.json()["detail"]
+
+
+async def test_continue_on_an_unknown_run_is_404(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """The route's own 404 arm — distinct from the chokepoint's `not found`
+    `ProcedureError`, which would otherwise surface as a 409."""
+    refused = await wired_client.post(
+        "/runs/no-such-run/continue", json={"step_id": _GATED_STEP}, headers=HEADERS
+    )
+    assert refused.status_code == 404
+
+
 async def test_run_view_finds_the_suspended_step_when_the_gate_is_not_last(
     wired_client: AsyncClient, runs_auth: None
 ) -> None:

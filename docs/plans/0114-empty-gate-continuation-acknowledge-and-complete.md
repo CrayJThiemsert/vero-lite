@@ -200,7 +200,21 @@ condition materializing late.
    `run_status`, `steps` — mirrors `GateResolveResponse`). Error mapping mirrors the
    siblings: 403 no authenticated human (RF-1, mirrors cancel `:592-599`), 404 unknown
    run, 409 `ProcedureError` / `StaleDataError` (concurrent writer loses cleanly).
-3. **UI affordance** — the two operate surfaces that POST `gate/resolve` today
+   <br>**Shipped with one field more than this list (Code, s256):** `suspended_step`,
+   which `GateResolveResponse` — the mirror this line names — already carries. A
+   continuation is not a completion: the run parks again whenever the next step is also
+   gated, and a response that could not say so would report a continued run as finished.
+   Under **SD-4** it is load-bearing rather than cosmetic — it is the field the UI's walk
+   reads to find the next gate.
+   <br>🔴 Also shipped: the endpoint's `except NoDecisionApproverError` arm must precede
+   its `except ProcedureError` arm, because the former **subclasses** the latter and an
+   arm placed second silently degrades the RF-1 403 to a 409.
+3. **UI affordance** — ⚠️ **amended by SD-4 (Cray, typed, s256): option (B), one button
+   that walks the empty gates.** The paragraph below is the text as drafted (option A,
+   one button per gate); it is retained verbatim per the PLAN-0111 convention and is
+   superseded by SD-4 for Step 3. The reason the question was re-put is recorded there:
+   AC-1's one-POST premise was **measured false** in Step 2.
+   <br>The two operate surfaces that POST `gate/resolve` today
    (`services/api/static/assets/view-hero.js:286`-area — the Tab H surface the dead-end
    was observed on — and `services/api/static/assets/view-monitor.js:133`): when a
    `waiting_human` run's `proposals` list is empty, render an explicit
@@ -213,6 +227,18 @@ condition materializing late.
 Probe discipline per CLAUDE.md §8: every load-bearing green below is witnessed RED by a
 mutation of what the assertion is about, one probe per assertion; the battery's own
 coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0047 §6).
+
+> 🔴 **AC-1's "one POST" premise was MEASURED FALSE (Code, s256, Step 2).** The hero
+> spine is `request -> approve -> fulfill` and **`fulfill` is `autonomy: gated` too**;
+> `_suspends` (`orchestrator.py:632-644`) never inspects the input set, so acknowledging
+> `approve` parks the run again at `fulfill` rather than completing it. The sub-ceiling
+> run reaches `completed` after **TWO** acknowledgments — the same G-12 shape
+> `test_the_full_walk_both_gates_the_link_row_and_the_case_surface` already records for
+> the resolve path, which the draft did not carry across to the continue path. The
+> **outcome** AC-1 asserts (`completed`, reachable through the product surface) is
+> unchanged and is met; only the *arity* was wrong. The shipped test asserts the measured
+> walk as a list (`acknowledged == [_APPROVE, _FULFILL]`) so the count cannot drift
+> silently. This is what re-opened the Step 3 UI question — see **SD-4**.
 
 - [ ] **AC-1 — the empty-gate run completes through the product surface.** Scenario test
   (real producer → real consumer, realistic data): the sub-ceiling fleet acceptance
@@ -269,7 +295,11 @@ coverage may be computed with `tools/probe_coverage.py` (shipped s252, lesson #0
 - [ ] **AC-5 — the dead-end is closed where it was observed.** Both operate surfaces
   render the acknowledge affordance exactly when a `waiting_human` run has zero
   proposals, wired to `/continue`; `?v=` bumped per touched file; verified in the
-  preview against a seeded sub-ceiling run.
+  preview against a seeded sub-ceiling run. **Per SD-4 the affordance is ONE button that
+  walks the empty gates**, so the preview check is: one click settles the fleet hero, the
+  walk **halts** at a gate carrying a real proposal (positive control — the breaching
+  control run must still show the ordinary resolve affordance, never the acknowledge
+  one), and the audit trail still carries **one acknowledgment row per gate walked**.
 - [ ] **AC-6 — the record trail is consistent.** PLAN-0113 SD-3 carries the RULED (b)
   marker + a pointer to this PLAN (additive, ruled history untouched verbatim — the
   PLAN-0111 convention; **check first**: the dispatch says PR #1280 recorded the
@@ -327,8 +357,11 @@ authenticated human → completed (AC-1), (3) `/continue` on the breaching contr
 
 ### Step 3 — UI affordance (AC-5)
 
-Per §Mechanism item 3. Verify against a seeded sub-ceiling run in the preview; `?v=`
-bumps per file.
+Per §Mechanism item 3 **as amended by SD-4** — one button that walks the empty gates,
+bounded, halting at the first gate carrying a real proposal. Verify against a seeded
+sub-ceiling run in the preview (the fleet hero walks **two** gates, so the check is that
+one click settles the run and the audit trail still carries **two** acknowledgment rows);
+`?v=` bumps per file.
 
 ### Step 4 — Regression gate (AC-4)
 
@@ -406,6 +439,39 @@ AC-6), the stale docstring refresh, STATUS.md. Then PR per CLAUDE.md §7; this P
   approve"; costs approver-resolution machinery on a non-decision and changes nothing
   operationally. Why Cray: it sets who is accountable for the "checked" claim in the
   artifact.
+
+- **SD-4 — RULED (Cray, typed, s256, 2026-08-26): option (B), one button that walks the
+  empty gates.** **LOCKED for Step 3 and AC-5.** Supersedes §Mechanism item 3's drafted
+  option (A) (one affordance per gate), whose text is retained verbatim there.
+  <br>**Why this was put to Cray rather than executed as drafted.** Step 3's shape rested
+  on AC-1's premise that one POST completes the run. Step 2 **measured that premise
+  false** (see the AC-1 note above): the hero case takes two acknowledgments. A decision
+  taken under a premise that has since been measured false is a decision worth re-putting,
+  so the three shapes were priced and Cray ruled.
+  <br>**What (B) means concretely, and what it does NOT change.** The UI renders **one**
+  "Acknowledge — nothing to approve" action. On click it POSTs `/continue`, and while the
+  response reports `run_status = waiting_human` **and** the newly suspended step also
+  carries **zero** proposals, it POSTs again for that step — a **bounded** loop, and it
+  **stops** the moment a gate carries a real proposal, falling back to the ordinary
+  resolve affordance rather than clicking on. **The API, the chokepoint and the audit
+  trail are untouched:** every gate still gets its own `run_continued_no_decision` chain
+  row and its own step-`audit` block, because the loop is a client of the same endpoint.
+  Only the number of human clicks changes.
+  <br>🔴 **The cost Cray accepted, recorded so it is not rediscovered as a defect.** The
+  artifact's *"checked — nothing to approve"* claim is weaker for the second and later
+  gates: the human looked at the first gate's evidence, not the last one's. The loudness
+  answer (§Mechanism) is therefore thinner under (B) than under (A) — though strictly
+  stronger than the rejected shape (iii), because a human still initiates the walk on a
+  run that **parked and was displayed**, and the walk halts at the first gate with
+  anything to decide.
+  <br>_The options as posed are retained (the PLAN-0111 convention)._
+  <br>**(A) one affordance per gate** — as drafted; faithful to SD-3's per-gate human act,
+  at two clicks and two "checked" rows for one sub-ceiling case; the second click is
+  semantically odd (`fulfill` is "the mechanical write of the approved decision" and there
+  is no approved decision to write). **(B) one button, UI walks the empty gates —
+  TAKEN.** **(C) the chokepoint walks them server-side** — rejected as drifting into
+  shape (iii), which this PLAN refused on the loudness hazard; re-opening it is a Cray
+  decision, not an implementation choice.
 
 ## Open questions — record, do not resolve here
 
