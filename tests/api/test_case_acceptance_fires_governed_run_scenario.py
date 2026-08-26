@@ -412,26 +412,48 @@ async def test_a_sub_ceiling_acceptance_reaches_the_gate_with_no_proposals(
     )
 
 
-async def test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end(
+async def test_the_empty_gate_is_acknowledged_and_the_run_reaches_completed(
     client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
 ) -> None:
-    """🔴 TRIPWIRE — the cost of the empty gate above, asserted so it cannot be lost.
+    """PLAN-0114 AC-1 / AC-2(a) / AC-4's resolve half — the dead end, closed.
 
-    A run parked at a gate with zero proposals cannot be resolved by anyone:
-    `resolve_gate` raises `has no proposed actions to resolve`
-    (`action_step.py:832`) and the route answers **409**. So a sub-ceiling acceptance
-    now leaves a run sitting in Tab H forever — the G-7 dead-end shape that
-    :func:`test_a_visitor_fired_run_is_never_a_dead_end` exists to exclude, arriving
-    by a route that test does not cover (it fires a MID-BAND amount, so its gate is
-    never empty).
+    This test was, until PLAN-0114 Step 2, the deliberate tripwire
+    `test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end`: it asserted the
+    COST of the empty gate — a sub-ceiling acceptance parking in Tab H with nothing
+    anyone could resolve. PLAN-0113 SD-3 was ruled (b) (Cray, typed, s252): such a run
+    must reach `completed`, because a completed run recording *"checked — ฿4,500 is
+    inside the head mechanic's own authority"* is a better governance artifact than a
+    stuck one. The tripwire named this as the site that must change when the ruling
+    landed. It landed; this is that change.
 
-    **This asserts the CURRENT behaviour, not the desired one.** Whether a gated step
-    with an empty input set should complete instead of suspending is an engine change
-    to the gate shape — explicitly Out of Scope for PLAN-0113 — and is surfaced to
-    Cray as SD-3 on that PLAN. When it is ruled, this test is the site that must
-    change, and it will redden loudly rather than let the fix land unnoticed.
+    Four claims, in the order they fail independently:
+
+    1. **resolve is UNCHANGED** — `/gate/resolve` on the empty gate still answers the
+       same `no proposed actions to resolve`. Continue is a NEW exit, not a changed
+       resolve; if this reddens, PLAN-0114's blast radius escaped its bound (AC-4).
+    2. **continue is not a resolve bypass** — the breaching control run, whose gate
+       holds a REAL proposal, is REFUSED. Asserted on the chokepoint's own detail
+       string, never the bare status code: `resume_run` carries an independent second
+       guard that refuses the same case with a different message and the same 409, so
+       a code-only assertion would stay green with the chokepoint's guard deleted
+       (AC-2a — the security boundary of the whole seam, since SD-3 admits any
+       authenticated human).
+    3. **the run reaches `completed`** — the ruling's actual outcome (AC-1).
+    4. **it takes TWO acknowledgments, not one** — MEASURED, not assumed, and
+       asserted as a list so the count cannot drift silently. `_suspends`
+       (`orchestrator.py:632-644`) is purely structural: the hero spine is
+       `request -> approve -> fulfill` and `fulfill` is `autonomy: gated` too, so
+       acknowledging `approve` parks the run again on the very next step. This is the
+       same G-12 shape :func:`test_the_full_walk_both_gates_the_link_row_and_the_case_surface`
+       records for the resolve path — a test that stopped after one continue would
+       report a closed dead end while the run sat in the visitor's queue.
     """
     run_id = await _fire_sub_ceiling_with_a_breaching_control(client_with_db, db_session)
+    # The helper's breaching control run, recovered by exclusion — its gate holds a real
+    # proposal, which is what makes claim 2 a live refusal rather than a hypothetical.
+    control_run_id = next(
+        r["run_id"] for r in await _hero_runs(client_with_db) if r["run_id"] != run_id
+    )
 
     refused = await client_with_db.post(
         f"/runs/{run_id}/gate/resolve",
@@ -443,9 +465,61 @@ async def test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end(
     # perfectly healthy non-empty gate and asserts nothing about emptiness. The detail
     # string names the mechanism (`action_step.py:832`), and that is the claim.
     assert "no proposed actions to resolve" in refused.text, (
-        "if this no longer reports an EMPTY gate, the dead end has been closed (or "
-        f"moved) — re-read PLAN-0113 SD-3 before touching this test; got "
-        f"{refused.status_code} {refused.text}"
+        "PLAN-0114 leaves resolve UNTOUCHED — an empty gate must still be unresolvable, "
+        f"and the new exit is /continue. Got {refused.status_code} {refused.text}"
+    )
+
+    bypass = await client_with_db.post(
+        f"/runs/{control_run_id}/continue",
+        json={"step_id": _APPROVE},
+        headers=_WIRAT_HEADERS,
+    )
+    assert "holds decidable proposals" in bypass.text, (
+        "the continue seam must refuse a gate carrying a REAL proposal with its OWN "
+        "message — `resume_run`'s second guard answers the same 409 with a different "
+        f"one, so this string IS the claim. Got {bypass.status_code} {bypass.text}"
+    )
+
+    acknowledged: list[str] = []
+    step, body = _APPROVE, {}
+    for _ in range(4):  # bounded: the hero spine carries two gates, never four
+        ack = await client_with_db.post(
+            f"/runs/{run_id}/continue",
+            json={"step_id": step},
+            headers=_WIRAT_HEADERS,
+        )
+        assert ack.status_code == 200, f"acknowledging '{step}': {ack.text}"
+        body = ack.json()
+        acknowledged.append(step)
+        if body["run_status"] != "waiting_human":
+            break
+        step = body["suspended_step"]
+        assert step is not None and step not in acknowledged, (
+            f"a waiting_human continuation must name a NEW gate; got {step!r} after "
+            f"{acknowledged}"
+        )
+        # PLAN-0114 SD-4: the walk's stop rule reads THIS field, so it is load-bearing
+        # for the UI, not decoration. Positive control for "empty" is shared rather than
+        # local: `proposals` is populated by the same `_proposals()` that fills
+        # RunProcedureResponse, which `test_runs_endpoints.py::
+        # test_http_only_run_suspend_resolve_resume` exercises NON-empty (`== 1`). No
+        # shipped spine lands a /continue on a gate that holds a proposal, so the
+        # non-empty case is inexpressible here — recorded, not silently skipped.
+        assert body["proposals"] == [], (
+            "the response must report what the NEW gate holds, so the caller can tell "
+            f"an acknowledgment from a decision without a second GET; got {body['proposals']}"
+        )
+    else:  # pragma: no cover — the bound is a non-termination guard, not a path
+        pytest.fail(f"the run never settled after acknowledging {acknowledged}")
+
+    assert body["run_status"] == "completed", (
+        "PLAN-0113 SD-3 ruled (b): a gate holding nothing decidable must reach "
+        f"completed, not sit unresolvable. Got {body['run_status']}"
+    )
+    assert acknowledged == [_APPROVE, _FULFILL], (
+        "MEASURED: the hero spine's SECOND gate is `autonomy: gated` too and "
+        "`_suspends` never inspects the input set, so the empty run parks again at "
+        f"`fulfill`. If this list changed, the spine did. Got {acknowledged}"
     )
 
 
@@ -565,12 +639,13 @@ async def test_a_visitor_fired_run_is_never_a_dead_end(
     """AC-4: every run a visitor-reachable path can fire has a gate a declared
     approver can actually resolve.
 
-    ⚠️ **Scope note (PLAN-0113, s252).** The name over-claims since scoping landed:
-    this covers the PRINCIPAL dead end (a run nobody holds the role to resolve), on a
-    MID-BAND amount whose gate is never empty. The second dead-end route — a
-    sub-ceiling acceptance whose gate holds zero proposals and 409s — is asserted by
-    :func:`test_an_empty_gate_cannot_be_resolved_so_the_run_is_a_dead_end` and is
-    OPEN as PLAN-0113 SD-3.
+    ⚠️ **Scope note (PLAN-0113, s252; refreshed PLAN-0114 Step 2, s256).** The name
+    over-claims: this covers the PRINCIPAL dead end (a run nobody holds the role to
+    resolve), on a MID-BAND amount whose gate is never empty. The second dead-end
+    route — a sub-ceiling acceptance whose gate holds zero proposals — was OPEN as
+    PLAN-0113 SD-3 when this note was written; it is now RULED (b) and **closed** by
+    PLAN-0114's acknowledge-and-continue seam, asserted by
+    :func:`test_the_empty_gate_is_acknowledged_and_the_run_reaches_completed`.
 
     G-7 measured the failure this excludes, and it is worse than an ungoverned run:
     a `None`-principal fire mints a run that starts, parks, appears in Tab H, and can

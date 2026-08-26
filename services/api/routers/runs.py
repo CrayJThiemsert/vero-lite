@@ -37,6 +37,8 @@ from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.models.runs import (
     CancelRunResponse,
+    ContinueRunRequest,
+    ContinueRunResponse,
     GateResolveRequest,
     GateResolveResponse,
     ProposalView,
@@ -58,7 +60,9 @@ from services.engine.procedures.action_step import (
 )
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.persistence import (
+    NoDecisionApproverError,
     cancel_run,
+    continue_no_decision_run,
     load_run,
     resume_run,
     run_procedure_persisted,
@@ -622,3 +626,102 @@ async def cancel_run_endpoint(
         ) from exc
 
     return CancelRunResponse(run_id=run_id, run_status=run.status)
+
+
+@router.post("/runs/{run_id}/continue", response_model=ContinueRunResponse)
+async def continue_run_endpoint(
+    run_id: str,
+    req: ContinueRunRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> ContinueRunResponse:
+    """Acknowledge a gate holding nothing decidable, then continue the run (PLAN-0114).
+
+    PLAN-0113 SD-3 ruled (b): a run parked at a gate with no decidable proposals must
+    reach ``completed``, not sit unresolvable. The engine already sanctioned that exit
+    — ``resume_run``'s no-decision branch — but nothing on the product surface could
+    reach it, because ``/gate/resolve`` raises on an empty ``output_set`` before
+    ``resume_run`` is ever called. This is that missing surface, and the ONLY one
+    PLAN-0114 adds.
+
+    It is **not** a resolve. Nothing is approved, no decision is exercised, and the
+    chokepoint refuses a gate that holds real proposals — the security boundary of the
+    whole seam, since SD-3 admits any authenticated human. ``_suspends``,
+    ``resolve_gated_step`` and ADR-0016 D4 are untouched: the gated step still
+    suspends at ``waiting_human`` and the run still resumes when the human acts; the
+    act is an acknowledgment instead of an approval.
+
+    Error mapping mirrors the siblings — 403 no authenticated human (RF-1), 404
+    unknown run, 409 every other refusal.
+    """
+    # RF-1 (ADR-016 S2), checked BEFORE the run is loaded so the refusal never depends
+    # on the run existing — an unauthenticated caller learns nothing about which run
+    # ids are real. Mirrors the cancel endpoint's guard; the chokepoint carries its own
+    # library-level twin for the callers that never pass through here.
+    if auth.person_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "acknowledging a gate requires an authenticated human (ADR-016 S2 "
+                "RF-1) — api_auth_enabled is off or no valid credential was presented"
+            ),
+        )
+
+    vertical = settings.oct_vertical
+    loaded = await load_run(session, run_id)
+    if loaded is None:
+        raise HTTPException(status_code=404, detail=f"run '{run_id}' not found")
+
+    spec = _spec_for(vertical)
+    procedure = next(
+        (p for p in spec.procedures if p.procedure_id == loaded.run.procedure_id), None
+    )
+    if procedure is None:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"run '{run_id}' references procedure '{loaded.run.procedure_id}' "
+                f"which vertical '{vertical}' no longer ships"
+            ),
+        )
+    agent = _find_agent(spec, procedure)
+    factory = _executor_factory(vertical)
+
+    try:
+        result = await continue_no_decision_run(
+            session,
+            procedure,
+            agent,
+            factory(),
+            run_id,
+            req.step_id,
+            vertical=vertical,
+            actor_person_id=auth.person_id,
+            # Threaded when it resolves so PLAN-0053 AC-3's non-null `run_resumed`
+            # actor is preserved; attribution never depends on it, because the
+            # chokepoint's chain row always carries the id.
+            principal=auth.person,
+        )
+    except NoDecisionApproverError as exc:
+        # A ProcedureError SUBCLASS — this arm MUST precede the ProcedureError arm
+        # below, or the RF-1 refusal silently degrades to a 409.
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+    except ProcedureError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except StaleDataError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"run '{run_id}' was updated concurrently — reload and retry",
+        ) from exc
+
+    suspended = _suspended_step(result.step_results, result.run.status)
+    return ContinueRunResponse(
+        run_id=run_id,
+        continued_step=req.step_id,
+        run_status=result.run.status,
+        suspended_step=suspended.step_id if suspended is not None else None,
+        # SD-4: the caller walks the empty gates, so it must be able to tell an
+        # acknowledgment from a decision without a second round trip.
+        proposals=_proposals(suspended),
+        steps=_step_views(result.step_results),
+    )

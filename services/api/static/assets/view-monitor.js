@@ -141,6 +141,65 @@
       state.operateBusy = false; renderDetail();
     }
   }
+  /* PLAN-0114 SD-4 (Cray, typed, s256) — ONE button walks the empty gates.
+     `_suspends` is purely STRUCTURAL: a `gated` step suspends on its kind, never on
+     whether its input set holds anything. So a spine whose next step is also gated
+     (the fleet hero's `request -> approve -> fulfill`) parks again the instant an
+     empty gate is acknowledged, and option (A) — one click per gate — made a
+     sub-ceiling case cost two clicks on two gates the visitor cannot act on.
+     Measured s256: the fleet hero takes exactly two.
+
+     What this does NOT change: the API, the chokepoint, and the audit trail. Each
+     gate still gets its own `run_continued_no_decision` chain row and its own
+     step-`audit` block, because this loop is just a client of the same endpoint.
+
+     🔴 Two stop rules, both load-bearing:
+       * a gate carrying a REAL proposal ends the walk — that is a decision, and a
+         decision belongs to the resolve affordance, never to this one; and
+       * no forward progress (no next step, or one already walked) ends it too,
+         rather than spinning on a run that is not advancing. */
+  const ACK_WALK_MAX = 8;   // a bound, not a budget: no shipped spine carries 8 gates
+
+  async function acknowledgeEmptyGate(run) {
+    if (state.operateBusy) return;
+    state.operateBusy = true; state.operateMsg = null; renderDetail();
+    const walked = [];
+    try {
+      let stepId = run.suspended_step;
+      let res = null;
+      while (stepId && walked.length < ACK_WALK_MAX) {
+        res = await postOperate('/runs/' + encodeURIComponent(run.run_id) + '/continue',
+          { step_id: stepId });
+        walked.push(stepId);
+        if (!res || res.run_status !== 'waiting_human') break;
+        const next = res.suspended_step;
+        // stop on no forward progress, or on a gate that actually holds a decision
+        if (!next || walked.indexOf(next) !== -1) break;
+        if ((res.proposals || []).length) break;
+        stepId = next;
+      }
+      const settled = res && res.run_status !== 'waiting_human';
+      state.operateMsg = {
+        kind: 'ok', runId: run.run_id,
+        text: settled
+          ? ('Acknowledged — nothing to approve. Run ' + res.run_status + '.'
+             + (walked.length > 1 ? ' (' + walked.length + ' empty gates)' : ''))
+          : ('Acknowledged ' + walked.length + ' empty gate'
+             + (walked.length === 1 ? '' : 's') + ' — the run is now waiting on a decision.')
+      };
+      await loadDetail(false);
+    } catch (e) {
+      const m = operateError(e); m.runId = run.run_id;
+      // Partial progress is real progress and the audit already records it — say so,
+      // rather than letting the error imply nothing happened.
+      if (walked.length) m.text = 'Acknowledged ' + walked.length + ' gate(s), then: ' + m.text;
+      state.operateMsg = m;
+      await loadDetail(false);
+    } finally {
+      state.operateBusy = false; renderDetail();
+    }
+  }
+
   async function cancelRun(run) {
     if (state.operateBusy) return;
     state.operateBusy = true; state.operateMsg = null; renderDetail();
@@ -327,6 +386,24 @@
       rows.length ? h('div', { class: 'mon-props' }, rows)
                   : h('div', { class: 'faint' }, 'No decidable proposals at this gate.')
     ].filter(Boolean);
+    if (operate && !rows.length) {
+      // PLAN-0114 / PLAN-0113 SD-3(b): a gate holding nothing decidable is no longer a
+      // dead end. The human still LOOKS — the run parked, loudly, and the per-step
+      // evidence above is what separates "correctly nothing to approve" from "an
+      // executor broke" (the engine cannot tell those apart; that is the design, not a
+      // gap). What changes is that they now have an honest exit besides Cancel.
+      kids.push(h('div', { class: 'mon-gate-actions' }, [
+        h('button', {
+          class: 'btn sm', 'data-testid': 'operate-acknowledge',
+          disabled: state.operateBusy ? '' : null,
+          title: 'Record that a human checked this gate and found nothing to approve, '
+               + 'then continue the run (POST /runs/{id}/continue)',
+          onClick: () => acknowledgeEmptyGate(run)
+        }, state.operateBusy ? 'Acknowledging…' : 'Acknowledge — nothing to approve'),
+        h('span', { class: 'faint', style: { fontSize: '11px' } },
+          'Records who checked, on the audit trail. It is not an approval.')
+      ]));
+    }
     if (operate && rows.length) {
       // the resolve endpoint requires an explicit decision per proposal (no silent default)
       const allDecided = proposals.every(p => state.decisions[p.action_id]);

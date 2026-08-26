@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-26T11:20:00+07:00
-session: 255
-current_batch: "s255 — four PRs (#1293–#1296): PLAN-0115 COMPLETE 10/10 and ARCHIVED; `tools/probe_battery/` ships as ADR-0038 C6's enforcer, and VX-1's probe is discharged after being owed since PLAN-0021."
+last_updated: 2026-08-26T14:05:00+07:00
+session: 256
+current_batch: "s256 — PLAN-0114 Steps 2–5: `POST /runs/{run_id}/continue` ships, the dead-end tripwire is re-authored into its own closure, and AC-1..AC-5 close. Two PRs OPEN, not merged (#1298 mine, #1299 the parallel session's)."
 current_actor: code
-blocked_on: "Nothing. Main green, tree clean, 0 open PRs. Owed: PLAN-0107 AC-9 re-scope; PLAN-0109's three ruled-content defects; PLAN-0108 label ordering; the `MEMORY.md` Tier-0 consolidation. ⚠️ SD for Cray: STATUS sits just over R1's soft target and the next legitimate cut is the ungoverned Recent Decisions trailing ledger (~4 KB) — capping it AUTHORS a rule, so it is not a trim Code may take."
-next_action: "PLAN-0114 Step 2 — `POST /runs/{run_id}/continue` + re-author the tripwire, where AC-1 and AC-2 actually close. Declare a `/goal`. It is also where s253's §6.1 prediction finally gets a real test, now that batteries run through the shipped driver."
-head_commit: 2448f90
-recent_commits: [2448f90, b394cfe, 6e61a07, 32fef78, 463fe5f, f0f60fd, 28f5cc3, db98126, ce7c003, 082a6f1]
+blocked_on: "⚠️ TWO PRs OPEN, neither merged — #1298 (PLAN-0114 Steps 2+3, CI green at `b5ccb24`) and #1299 (the parallel session's sd-premortem log, CI green). Cray merges. Owed: PLAN-0107 AC-9 re-scope; PLAN-0109's three ruled-content defects; PLAN-0108 label ordering; the `MEMORY.md` Tier-0 consolidation. ⚠️ SD for Cray, UNCHANGED: STATUS sits over R1's soft target and the next legitimate cut is the ungoverned Recent Decisions trailing ledger (~4 KB) — capping it AUTHORS a rule, so it is not a trim Code may take."
+next_action: "PLAN-0114 closeout — Status: Complete + `git mv` to `done/` once #1298 merges. THEN the deploy question: PLAN-0113 Steps 1–3 are merged but NOT live, and deploying them WITHOUT 0114 would put the empty-gate dead end on the live fleet demo. Deploy unit = 0113 + 0114 together; plan prepared in `docs/logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md` §5, needs a typed go per phase."
+head_commit: b5ccb24
+recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 463fe5f, f0f60fd, 28f5cc3]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,66 @@ recent_commits: [2448f90, b394cfe, 6e61a07, 32fef78, 463fe5f, f0f60fd, 28f5cc3, 
 ---
 
 ## Current Focus
+
+> **Session 256, 2026-08-26 (`f8aeba0` → `748f9d2`, UNMERGED) — PLAN-0114 Steps
+> 2–5. `POST /runs/{run_id}/continue` ships; the dead-end tripwire becomes its own
+> closure. **PLAN-0114 AC-1..AC-5 CLOSED.** ⚠️ [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298)
+> is OPEN, CI green at `b5ccb24` — Cray merges.**
+>
+> 🔴 **AC-1's premise was measured FALSE, so the ruling was re-put.** `fulfill` is
+> `autonomy: gated` too, so acknowledging `approve` parks the run again — it takes
+> **TWO**, not one. That changed what Step 3's UI rested on: **SD-4 RULED (B)** —
+> one button walks the empty gates, halting at the first gate holding a real
+> proposal. API, chokepoint and audit trail untouched; only the click count.
+>
+> 🔴 **A live-only gap the offline suite could not see.** The published ingress
+> allowlist is **default-deny**, so the button would have **404'd at the Cloudflare
+> edge** while every local test passed — caught by
+> `test_ac6b_every_route_the_ui_references_is_classified`. ⚠️ The fix **admits a
+> new write route to a published surface** (less privileged than the published
+> `gate/resolve` — the chokepoint 409s any gate holding a proposal, so it can never
+> approve) — flagged for Cray at the PR, not treated as mechanical.
+>
+> 🔴 **PLAN-0113 is merged but NOT live, and it must not ship alone** — its Step 3
+> is what *creates* this dead end, so **deploy unit = 0113 + 0114 together**. The
+> host is safe today by accident, not plan (0113 was never deployed, which is also
+> why its AC-9 is archived CARRIED-OPEN). Read-only MS-S1 census under a typed go,
+> plus the phased plan:
+> [`docs/logs/2026-08-26-s256-…`](logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md);
+> the decision itself is a live Active TODO below.
+>
+> **Evidence.** Suite 4460 → **4466**, 0 failed; `mypy --strict` clean, 201 files;
+> ruff + format clean. Two batteries through `tools/probe_battery/` (AC-2: 4
+> WITNESSED + a declared-GREEN control; AC-4: both parity tests RED under a
+> `_suspends` mutation, tree restored byte-identical). AC-5 verified in the
+> preview; the acknowledgment proven on the **live** audit chain, one
+> `run_continued_no_decision` row per gate, `GET /audit/verify` `intact: true`.
+> Two of my own probes were defective; the driver caught both.
+>
+> **A parallel session (`vero-lite-d6`) — `sd-premortem`, three blind replays on
+> `git archive ce7c003`, pass/fail pre-committed. v1 3/4 · v2 3/5 ·
+> v3 3/5: the hypothesis FELL.** 🔴 A repeat of the **identical** dispatch then
+> settled the open question: **variance dominates — 5 of 7 options flipped verdict
+> on unchanged evidence.** One arithmetic result surfaced in both rounds and was
+> called `REFUTED` (⇒ DEAD) once, "measured consequence" (⇒ ALIVE) the next.
+> **Three layers, not two: citations stable · counts NOT stable · rollup
+> unstable** — and neither count was wrong; they answered different unstated
+> patterns. ⇒ **LLM emits claim + evidence,
+> deterministic code rolls up the verdict.** **No PLAN opened; the proposal is not
+> to open one on the original design.** Log
+> [#1299](https://github.com/CrayJThiemsert/vero-lite/pull/1299), OPEN. Cray then
+> split the sessions onto **separate worktrees** — nothing collided today, but
+> because that session chose to wait, **not because anything prevented it**.
+>
+> **Checked, NOT a defect** — recorded so it is not re-derived as one. The battery
+> lock's **stand-down scopes to the gate, not the Stop hook**: a `None` gate return
+> falls through to `_classify` (`stop_continuation.py:531` → `:540`), which still
+> runs. Not a defect **because `_classify` never reads the tree** (`:569`: *"can see
+> neither disk state nor in-flight work"*) — that citation, not the verdict, is what
+> stops the next reader. The lock protects **`goal.json` specifically**, not
+> `.claude/state/` wholesale (`stop-chain.json` is there; `proceed` writes it).
+> Remaining: a **documentation gap** — nowhere records that the battery-lock case
+> was considered for the classifier arm.
 
 > **Session 255, 2026-08-26 (head_commit `f0f60fd` → `2448f90`) — FOUR PRs
 > MERGED ([#1293](https://github.com/CrayJThiemsert/vero-lite/pull/1293)–[#1296](https://github.com/CrayJThiemsert/vero-lite/pull/1296)),
@@ -137,53 +197,7 @@ recent_commits: [2448f90, b394cfe, 6e61a07, 32fef78, 463fe5f, f0f60fd, 28f5cc3, 
 > ⚠️ **PLAN-0113 AC-9 (live on MS-S1) is still CARRIED, not dropped** — it needs
 > a typed Cray go per occasion AND per phase.
 
-> **Session 252, 2026-08-25 (head_commit `968b34e` → `c8f685e`) — SIX PRs
-> MERGED ([#1279](https://github.com/CrayJThiemsert/vero-lite/pull/1279)–[#1284](https://github.com/CrayJThiemsert/vero-lite/pull/1284)),
-> 0 open, CI green per-sha on every merge, tree clean. **PLAN-0113 EXECUTED end
-> to end and ARCHIVED at `COMPLETE 8/9 — offline`; PLAN-0113 AC-3 through AC-8
-> CLOSED, AC-9 (live) CARRIED not dropped.** Fleet's `intake` now carries
-> `scope_by: {field: case_id, from: trigger.entity_ids}` + `when_absent: sweep`,
-> so a visitor who accepts a quote sees a gate proposing **exactly one case —
-> their own**.**
->
-> 🔴 **The `intake` fleet-wide scan is GONE — every narrative above that rests
-> on it is superseded.** The s249 root-cause paragraph (*"fleet's `intake` is a
-> fleet-wide scan, so the event triggers the run but does not scope it"*) was
-> true when written and is now history. The four `done/` record sites carry the
-> ruled two-part supersession (PLAN-0113 Step 7): `done/0112` SD-4, its AC-7(i)
-> NARROWED clause and its AC-2 sub-ceiling re-fix, plus `done/0110`'s s245
-> population bound.
->
-> 🔴 **Scoping made a dead-end run reachable for the first time, and it is
-> RULED.** A **sub-ceiling** acceptance now parks at `approve` with an EMPTY
-> proposal list; `/gate/resolve` answers 409 and only `/cancel` exits — which
-> records *abandonment* for a case that was checked and cleared. **PLAN-0113
-> SD-3 RULED (b)** (Cray, typed): such a run must reach `completed`.
-> **PLAN-0114** carries the build, with **SD-2 (dual audit)** and **SD-3 (the
-> RF-1 floor — any authenticated human)** both ruled as recommended. Grounding
-> found the engine ALREADY sanctions the completion (`resume_run`'s no-decision
-> branch); the gap is **reachability** from the product surface, so no ADR-016
-> amendment is needed.
->
-> ✅ **Two PLAN predictions were MEASURED WRONG and corrected in place, not
-> absorbed:** the sub-ceiling run "completes with no gate" (it parks with an
-> empty one), and the witnessed-RED cardinality "3 proposals" (measured: **2**).
-> Neither changed an AC's conclusion.
->
-> ✅ **AC-4 registered an INEXPRESSIBLE case rather than upgrading it to a
-> pass** (CLAUDE.md §8): `scope_by` requires a declared `reads` list and **no
-> step of procurement's `emergency_sourcing_round` declares one**, so its event
-> path structurally cannot carry the clause; the control was re-aimed at the
-> calm path's `read_stock`.
->
-> ✅ **`tools/probe_coverage.py` shipped** — lesson #0047 §6's fourth clause,
-> computed from the AST. Three batteries used it (47/47, 43/43, 53/53 claims, 0
-> gaps); it caught a **vacuous assertion written the same session** and refused
-> to run until every claim owner had a named exemption mechanism.
-
-
-
-_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md), the full pre-trim ledger into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **252–255**. The **s253** reconcile rotated **session-248 AND session-249** together, discharging the debt the **s252** reconcile had booked in `blocked_on`; the **s254** reconcile rotated the **session-250** block. **THIS (s255) reconcile rotates the session-251 block**, holding the window at four (252–255) — on the **window rule alone, not a cap overage**. Its substance keeps tracked homes: PLAN-0113 Step 1 and its only-when-supplied pin are in `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md`, the **fourth load-gate refusal SB-3 does not enumerate** keeps a live Active TODO below, and the block keeps its own Recent Decisions row. The **s251 reconcile's own ledger entry** travels into the archive with that block, as does the s246/s247 travel note the s254 ledger carried.]_
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md), the full pre-trim ledger into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **253–256**. The **s254** reconcile rotated the **session-250** block; the **s255** reconcile rotated the **session-251** block. **THIS (s256) reconcile rotates the session-252 block**, holding the window at four (253–256) — on the **window rule alone, not a cap overage**. Its substance keeps tracked homes: PLAN-0113 is archived at `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md`, which now carries an **additive pointer to PLAN-0114** for the SD-3 execution, and the empty-gate dead end that block first recorded is **CLOSED** by PLAN-0114 Steps 2–3. ⚠️ **Verified in BOTH directions (R6), and by content rather than presence:** the archived block is **byte-identical (2,778 B) to the same block at `git show HEAD:docs/STATUS.md`** and is absent from this file — a presence-only check would have passed on a pre-existing copy. The earlier ledger travel notes (s246/s247, s251) went into the archive with their blocks.]_
 
 
 ## Prior focus (archived)
@@ -226,7 +240,9 @@ _[The two oldest rows (**s234, s233**) rotated to `docs/status-archive/2026-h1-s
 
 ## Active TODOs
 
-- [ ] **🆕 PLAN-0114 is EXECUTING — Step 1 SHIPPED ([#1287](https://github.com/CrayJThiemsert/vero-lite/pull/1287)), Steps 2–5 remain, and the PLAN stays `Status: Draft` on purpose.** **Step 2 is the next build step** (`POST /runs/{run_id}/continue` + the scenario/tripwire re-author) and is **where AC-1 and AC-2 actually close** — Step 1 closed only AC-2's guard half and AC-3's record. ⚠️ AC-4's byte-identical half is already banked (`orchestrator.py` + `action_step.py` at 0 diff lines); its resolve half rides Step 2. **Read the PLAN:** `docs/plans/0114-empty-gate-continuation-acknowledge-and-complete.md`.
+- [ ] **🆕 PLAN-0114 — ALL SIX ACs CLOSED (s256, Steps 2–5); only the CLOSEOUT remains, and it is gated on a merge.** [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298) carries Steps 2–5 in four commits, CI green at `87af4a0`, **OPEN**. On merge: flip `Status: Complete` and `git mv` to `done/`. The PLAN stays `Status: Draft` until then, on purpose. ⚠️ Two PLAN texts were measured wrong in flight and corrected in place — AC-1's one-POST arity, and §Mechanism item 3's Tab G/H mislabel (which turned `view-hero.js` from "in scope" into a scope cut). **Read the PLAN:** `docs/plans/0114-empty-gate-continuation-acknowledge-and-complete.md`.
+- [ ] **🆕 CRAY'S CALL — deploy PLAN-0113 + PLAN-0114 to the live fleet demo, as ONE unit.** 🔴 **0113 must not ship alone:** its Step 3 is what *creates* the empty-gate dead end, and 0114 is what closes it — deploying 0113 by itself puts a visitor-reachable dead end on the published demo whose only exit records *abandonment*. Measured read-only on MS-S1 under a typed go: host at `ee41b55`, fleet image `0fc679cf` (2026-08-22), the `vero-published` STOP condition **clear**. Needs a typed go **per phase**. Closing this also closes PLAN-0113's CARRIED-OPEN **AC-9** and PLAN-0114 AC-5's live half in one occasion. **Read:** `docs/logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md` §5.
+- [ ] **🆕 CRAY'S CALL — `.claude/worktrees/` is 1.8 GB and `git worktree prune` cannot reach most of it.** Measured s256 by set difference, jointly with the parallel session: **19 directories on disk · 7 registered · 6 prunable · 12 UNREGISTERED**. Prune touches **6 of 19**; the other 12 git no longer knows about and only a manual delete removes. Largest: `eloquent-chatelet` 257 MB · `recursing-chatterjee` 163 · `wizardly-hopper` 161 · `youthful-driscoll` 150. **Nothing deleted — 1.8 GB is irreversible and out of scope for Code.** Related: Cray ruled parallel sessions onto separate worktrees this session, so the set will keep growing.
 - [x] **PLAN-0115 — COMPLETE (s255) and archived.** All ten ACs closed across three PRs: [#1293](https://github.com/CrayJThiemsert/vero-lite/pull/1293) (Step 1 + 4a — the driver, and ADR-0038 C6's named D2 form-(c) enforcer), [#1294](https://github.com/CrayJThiemsert/vero-lite/pull/1294) (Step 4b — lesson 0048 + W-1's tally in a tracked file), [#1295](https://github.com/CrayJThiemsert/vero-lite/pull/1295) (Steps 2+3 — the battery lock and the bounded teardown). 🔴 **Step 2's VX-1 `systemMessage` probe is DISCHARGED** — owed since PLAN-0021 and never answered: it **does** surface, rendered `Stop says: …`, to the **user's UI only** (never Claude's context). But adopting it on the warn path would break PLAN-0069 **AC-3**'s enforce-parity guarantee, so it stays available-and-unadopted. **Read:** `docs/plans/done/0115-probe-battery-driver-and-verification-instrument-hardening.md` §Closeout.
 - [ ] **🆕 ADR-016 SB-3 enumerates THREE load-gate refusals; the SHIPPED Step 1 has FOUR.** The fourth — `when_absent` supplied with **no `scope_by`** — was Cray-ratified at the #1275 merge (typed, s251), but SB-3's body still names only the three `scope_by`-present cases; re-checked in the ADR at the s251 reconcile. **Cray's call: amend the ADR, or leave the fourth recorded in the PLAN.** ⚠️ Whoever opens ADR-016 for this should also repair its **two dead pre-archive PLAN pointers** (`0052-*` and, since s252, `0113-*` — both now under `docs/plans/done/`). R8 exempts `docs/adr/` **temporarily and by design**, because G1 blocks Code from editing an Accepted ADR; the exemption's own comment says to remove it in the same change that lands those fixes. **Read:** `docs/adr/0016-governed-procedure-engine.md` §SB-3 · `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md`.
 - [ ] **🆕 CRAY'S CALL — should R2 cap the Active TODOs *COUNT*, and govern the Recent Decisions trailing ledger?** 🔴 **Measured s255, and this is now what holds STATUS over R1's soft target:** Active TODOs is **21,311 B — 43% of the file** across 38 entries (each ≤ ~600 chars, fully compliant; nothing bounds how many), and the RD trailing ledger is **4,261 B, ungoverned** — the s250 cap reached the *Current-Focus* ledger only. By contrast all four Current-Focus blocks are **1,985–3,301 B**, well under R2's 4,096 cap. Capping either **authors a rule**, so Code surfaced it rather than trimming (R6). **Read:** `docs/runbooks/memory-architecture.md` §R2.

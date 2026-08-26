@@ -1654,3 +1654,51 @@ will meet them at the moment of need._
 >
 > **Not started: PLAN-0113 Steps 2–8.** Step 2 is the `trigger_context` wire;
 > PLAN-0113 stays `Status: Draft` **on purpose**.
+
+## Rotated this reconcile — session 252 (s256 reconcile, 2026-08-26)
+
+### Current Focus block — Session 252 (PLAN-0113 Steps 3–7, SD-3 RULED (b), and the empty-gate dead end first recorded) [rotated 2026-08-26, s256 reconcile — 4-newest-sessions CF window; the OLDEST of exactly five, evicted because the s256 block forces a rotation. Its substance keeps tracked homes: PLAN-0113 is archived at `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md` (which now carries a pointer to PLAN-0114 for the SD-3 execution), and the dead end it recorded is CLOSED by PLAN-0114 Steps 2–3.]
+
+> **Session 252, 2026-08-25 (head_commit `968b34e` → `c8f685e`) — SIX PRs
+> MERGED ([#1279](https://github.com/CrayJThiemsert/vero-lite/pull/1279)–[#1284](https://github.com/CrayJThiemsert/vero-lite/pull/1284)),
+> 0 open, CI green per-sha on every merge, tree clean. **PLAN-0113 EXECUTED end
+> to end and ARCHIVED at `COMPLETE 8/9 — offline`; PLAN-0113 AC-3 through AC-8
+> CLOSED, AC-9 (live) CARRIED not dropped.** Fleet's `intake` now carries
+> `scope_by: {field: case_id, from: trigger.entity_ids}` + `when_absent: sweep`,
+> so a visitor who accepts a quote sees a gate proposing **exactly one case —
+> their own**.**
+>
+> 🔴 **The `intake` fleet-wide scan is GONE — every narrative above that rests
+> on it is superseded.** The s249 root-cause paragraph (*"fleet's `intake` is a
+> fleet-wide scan, so the event triggers the run but does not scope it"*) was
+> true when written and is now history. The four `done/` record sites carry the
+> ruled two-part supersession (PLAN-0113 Step 7): `done/0112` SD-4, its AC-7(i)
+> NARROWED clause and its AC-2 sub-ceiling re-fix, plus `done/0110`'s s245
+> population bound.
+>
+> 🔴 **Scoping made a dead-end run reachable for the first time, and it is
+> RULED.** A **sub-ceiling** acceptance now parks at `approve` with an EMPTY
+> proposal list; `/gate/resolve` answers 409 and only `/cancel` exits — which
+> records *abandonment* for a case that was checked and cleared. **PLAN-0113
+> SD-3 RULED (b)** (Cray, typed): such a run must reach `completed`.
+> **PLAN-0114** carries the build, with **SD-2 (dual audit)** and **SD-3 (the
+> RF-1 floor — any authenticated human)** both ruled as recommended. Grounding
+> found the engine ALREADY sanctions the completion (`resume_run`'s no-decision
+> branch); the gap is **reachability** from the product surface, so no ADR-016
+> amendment is needed.
+>
+> ✅ **Two PLAN predictions were MEASURED WRONG and corrected in place, not
+> absorbed:** the sub-ceiling run "completes with no gate" (it parks with an
+> empty one), and the witnessed-RED cardinality "3 proposals" (measured: **2**).
+> Neither changed an AC's conclusion.
+>
+> ✅ **AC-4 registered an INEXPRESSIBLE case rather than upgrading it to a
+> pass** (CLAUDE.md §8): `scope_by` requires a declared `reads` list and **no
+> step of procurement's `emergency_sourcing_round` declares one**, so its event
+> path structurally cannot carry the clause; the control was re-aimed at the
+> calm path's `read_stock`.
+>
+> ✅ **`tools/probe_coverage.py` shipped** — lesson #0047 §6's fourth clause,
+> computed from the AST. Three batteries used it (47/47, 43/43, 53/53 claims, 0
+> gaps); it caught a **vacuous assertion written the same session** and refused
+> to run until every claim owner had a named exemption mechanism.

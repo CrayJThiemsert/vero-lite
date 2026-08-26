@@ -150,6 +150,11 @@
       }
       return data;
     }
+    // PLAN-0114 deliberately adds NO `continueRun` here. The acknowledge-an-empty-gate
+    // seam lives in the Monitor (Tab H, view-monitor.js), which is where the dead end
+    // was observed and which owns its own operate POST. This Act panel is the
+    // procurement beat-3 demo: its gate carries a proposal by construction, so an
+    // acknowledge affordance here would be an affordance nothing can reach.
   };
 
   /* ---- month-end export cover (PLAN-0096 Step 8 / AC-9): the KPI, rendered ----
