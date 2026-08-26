@@ -1,6 +1,9 @@
 # PLAN-0114: Empty-gate continuation — acknowledge-and-complete through the product surface
 
-**Status:** Draft
+**Status:** Complete (s256, 2026-08-26 — all six ACs closed; shipped in
+[#1287](https://github.com/CrayJThiemsert/vero-lite/pull/1287) Step 1 and
+[#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298) Steps 2–5, merged
+`13d11b7`)
 **Owner:** Claude Code
 **Created:** 2026-08-24
 **Related ADRs:** ADR-016 (D4 — **unchanged**; the reading is recorded in §Mechanism), ADR-0019 (watch → gated escalation — unchanged), ADR-007 (proposal envelope — untouched), ADR-0026 (D6 — the echo-only auto-downstream-of-a-gate guarantee, load-bearing for SD-3)
@@ -559,3 +562,65 @@ AC-6), the stale docstring refresh, STATUS.md. Then PR per CLAUDE.md §7; this P
 - Optional: `tools/probe_coverage.py` over the new battery; any never-reddened claim
   named with its reason.
 - Preview check of AC-5 against a seeded sub-ceiling run (both surfaces, `?v=` bumped).
+
+## Closeout — COMPLETE 6/6 (s256, 2026-08-26)
+
+Shipped in two PRs: [#1287](https://github.com/CrayJThiemsert/vero-lite/pull/1287)
+(Step 1, s253) and [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298)
+(Steps 2–5, five commits, squash-merged `13d11b7`). CI green at every pinned sha.
+Suite 4460 → 4466, 0 failed; `mypy --strict` clean on 201 files; bare `ruff check .`
+and `ruff format --check .` clean. Evidence per AC sits at each AC above.
+
+### What the PLAN got wrong, measured in flight
+
+Both were corrected in place rather than absorbed, and each changed what shipped:
+
+1. **AC-1's arity.** "One POST completes the run" is false — `fulfill` is
+   `autonomy: gated` too and `_suspends` never inspects the input set, so the hero
+   case takes **two** acknowledgments. The *outcome* AC-1 asserts was unaffected;
+   the count was not. This is the G-12 shape the full-walk test already recorded
+   for the *resolve* path, simply not carried across to *continue* at drafting —
+   an inherited premise nobody re-measured.
+2. **§Mechanism item 3's surfaces.** It named `view-hero.js` as "the Tab H
+   surface". `app.js` registers **H = Monitor**, **G = Governance Moment**, and
+   `renderActPanel` is unreachable from the fleet path — so what the PLAN listed as
+   in-scope work became a **scope cut** with a written reason.
+
+Finding 1 is why **SD-4** exists: it invalidated the premise Step 3's UI rested on,
+so the question went back to Cray rather than being resolved by the implementer.
+
+### The gap the offline gate could not see
+
+🔴 The published ingress allowlist is **default-deny**, so the acknowledge button
+would have **404'd at the Cloudflare edge** on the live fleet demo while passing
+every local test. `test_ac6b_every_route_the_ui_references_is_classified` caught it
+— a tripwire firing exactly as designed on a new UI fetch to an unlisted route.
+The fix **admits a new write route to a published surface**; it is strictly less
+privileged than the already-published `gate/resolve` (the chokepoint 409s any gate
+holding a decidable proposal, so it can never approve) and was flagged for Cray at
+the PR rather than treated as mechanical.
+
+### Instrument notes (for the next battery author)
+
+Two of this PLAN's own probes were defective and `tools/probe_battery/` caught both:
+
+- **A status-code assertion that could not witness anything.** The PLAN warned of
+  the one-code-two-causes shape for AC-2(a). It repeats at **AC-2(b)**, unwarned:
+  RF-1 is guarded twice and *both* layers answer 403. Both assertions now read the
+  detail string that names which layer refused.
+- **A MISFIRE on AC-4**, repaired **from the code, not the outcome** — see AC-4.
+
+### Carried, not closed
+
+- **AC-5's LIVE half.** The affordance is verified in the local preview; the
+  published demo still runs `ee41b55`. Closing it needs the deploy, which is gated.
+- 🔴 **The deploy is one unit: PLAN-0113 + PLAN-0114.** 0113 Step 3 is what
+  *creates* this dead end; shipping it alone would put a visitor-reachable dead end
+  on the live demo whose only exit records *abandonment*. That occasion also closes
+  PLAN-0113's CARRIED-OPEN **AC-9**. Read-only host census and the phased plan:
+  [`docs/logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md`](../../logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md).
+- **OQ-1** (the escalated-failure suspend, `artifact is None`) is unchanged and
+  still needs its own small PLAN if a vertical exercises it. `/continue` refuses it
+  by design (AC-2e).
+- **OQ-2 is RESOLVED and the answer was do-not-write** — PR #1280 had already landed
+  the SD-3 marker; only the pointer to this PLAN was missing. See AC-6.

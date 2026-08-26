@@ -152,6 +152,28 @@ Defended twice, because a silent false GREEN is exactly the failure no other che
 
 ---
 
+## Restore returns the MODE, not only the bytes
+
+🔴 Added 2026-08-26 (s256) after this driver shipped a defect into a deploy.
+
+`_atomic_write_bytes` builds its temp file with `NamedTemporaryFile`, which creates it
+**`0600`** by design, and `os.replace` carries that mode onto the target. So an atomic
+write silently **narrows** every file it rewrites — on the mutation and again on the
+restore. The snapshot now records `original_mode` and both writes hand it back, and
+`_restore_entry` raises if the mode it put back is not the one it took.
+
+**Why it matters, measured rather than argued.** Three engine modules a battery had
+mutated and "restored" were left `0600`. The restore's own byte-identical check passed,
+because the bytes really were identical. Every other surface was blind for a different
+reason — `git status` under `core.fileMode=false`, the test suite reading the files as
+their owner, CI building from a fresh clone where git's recorded `100644` applies. The
+container image built from that tree **could not import its own engine**, because it
+runs as a non-root uid. It was caught one step before the live demo, by the deploy
+procedure's in-image hash check.
+
+⚠️ A manifest written before this change has no `original_mode`; those runs restore
+bytes only, which is what they always did.
+
 ## Crash safety
 
 Batteries edit real tracked source, so restore is defended twice.
