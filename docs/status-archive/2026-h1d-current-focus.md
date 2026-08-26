@@ -1616,3 +1616,41 @@ will meet them at the moment of need._
 > ✅ **PLAN-0113 Step 0's baseline is recorded** (#1274) at
 > `docs/logs/2026-08-24-plan0113-step0-baseline.md` — the pre-change
 > measurement Step 1's byte-identical claim is checked against.
+
+
+## Rotated this reconcile — session 251 (s255 reconcile, 2026-08-26)
+
+> **Session 251, 2026-08-24 (head_commit `98b3cda` → `968b34e`) — ONE PR
+> MERGED ([#1275](https://github.com/CrayJThiemsert/vero-lite/pull/1275)), 0
+> open, CI green, tree clean. **PLAN-0113 Step 1 SHIPPED and AC-1 is CLOSED:
+> the `scope_by` / `when_absent` read grammar now lives on `StepInput` and
+> consumes NOTHING yet** — it renders SB-1..SB-6 of the ADR-016 amendment
+> (2026-08-23) as schema, and the run path is untouched until Step 2.**
+>
+> 🔴 **The pin choice is the load-bearing decision, and it went AGAINST the
+> nearest-looking precedent.** `scope_by` is governance-pinned
+> **only-when-supplied** (ADR-0034 D6), following `transform` rather than the
+> always-present `reads` / `join` / `project` shape it sits beside. An
+> always-present key would have moved **all six verticals' config hashes** and
+> made **every in-flight run refuse at resume** — a migration nobody asked for,
+> bought back by one serialization decision.
+>
+> ✅ **The no-op claim was MEASURED, not asserted:** all **13 procedures across
+> all 6 verticals** are byte-identical HEAD-vs-tree — **fleet included, because
+> the named oracle guards only five**, so the sixth was checked rather than
+> assumed covered.
+>
+> 🔴 **The nine-probe non-vacuity battery FAILED ITS OWN CRITERION TWICE, and
+> the instrument was repaired both times** — never the criterion, per
+> `CLAUDE.md` §8's *"suspect the probe and control selection first"*. Judged
+> independently by the `goal-evaluator`: **J1 / J2 / J3 all PASS.**
+>
+> ⚠️ **Two Code-decided points were Cray-ratified at merge (typed, s251):**
+> `from:` is **required-explicit**, and there is a **fourth load-gate refusal
+> that SB-3 does not enumerate** — `when_absent` supplied with no `scope_by`.
+> Re-checked at this reconcile: SB-3's body still names three refusals, all of
+> them `scope_by`-present cases, so the fourth is carried by the PR and this
+> record only. Tracked as an Active TODO below.
+>
+> **Not started: PLAN-0113 Steps 2–8.** Step 2 is the `trigger_context` wire;
+> PLAN-0113 stays `Status: Draft` **on purpose**.

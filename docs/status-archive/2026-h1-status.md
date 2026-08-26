@@ -499,3 +499,16 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 
 | 2026-08-22 | **s245 — FOUR PRs (#1252–#1255): PLAN-0112 Step 5 SHIPPED, AC-2…AC-6 CLOSED — the governable moment reaches the published visitor.** 🔴 **THREE guards passed while protecting nothing:** enumerating `Math\.min\s*\(` missed `Math.min.apply`; `"acceptQuote(" in source` was satisfied by the function's own definition. **The instrument was wrong every time, not the artifact** — which promoted `CLAUDE.md` §8's witnessed-RED rule (#1253). 🔴 **G-13's prose set was FOUR, not two.** | `9d0c3ff` / [#1255](https://github.com/CrayJThiemsert/vero-lite/pull/1255) / `docs/plans/done/0112-*.md` |
 | 2026-08-21 | **s244 — TWO PRs (#1248, #1250): PLAN-0112 Steps 3 and 4 BUILT — a visitor's accepted quote fires the governed run.** 🔴 **A SECOND composition failure beyond G-14** — SD-2(b) and SD-5(b) do not compose on the bridge's SD-P4 in-flight guard, which no key design routes around: every acceptance became a silent `SKIPPED_IN_FLIGHT`. 🔴 **Ordering fails with no error** — fire before `_refresh_case_events` and the gate is about ANOTHER truck. **No AC ticked yet.** | `a8c42b7` / [#1248](https://github.com/CrayJThiemsert/vero-lite/pull/1248) / `docs/plans/done/0112-*.md` |
+
+
+## Rotated this reconcile — s255 (2026-08-26)
+
+### Recent Decisions row (s246), rotated on the count rule
+
+| 2026-08-22 | **s246 — THREE PRs (#1256–#1258): PLAN-0112 Steps 6 and 7 EXECUTED; COMPLETE 9/9, ARCHIVED, and the visitor flow proven LIVE.** 🔴 **The host had never received Step 5** — a week-stale checkout kept the accepted-quote ingress row out of production. 🔴 **AC-7(i)'s wording is MEASURED FALSE** — a fleet-wide `intake` makes every visitor run's gate decide the demo case too; production agreed twice. UNTICKED for Cray. | `38ef55e` / [#1257](https://github.com/CrayJThiemsert/vero-lite/pull/1257) / `docs/logs/2026-08-22-s246-*.md` |
+
+### In-Flight Discussions entry — ADR-0020 partner-sim
+
+Rotated under the s250 OPEN-only rule (it announced its own closure). The R2 carve-out was checked at the artifact, not assumed: the live gate it carried — SYNTHETIC provenance INFORMS but never TRIGGERS ADR-011's audit — is tracked in `docs/adr/0020-*.md` as **R3**, and its Related line states outright that partner-sim's R3 means its output does not trip ADR-011's first-real-partner-data gate. So the rotation drops no live constraint.
+
+- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13; verdict **continue-with-adjustments**. Runs 1 (energy, s93) + 2 (supply-chain, s94) both COMPLETE, all S-checks PASS against pre-committed oracles, no R-PS trigger fired; C-1..C-3 CONFIRMED → **no open partner-sim debt**. ADR-011's audit stays gated on a REAL partner conversation (R3: SYNTHETIC provenance INFORMS but never TRIGGERS it). Full record: `docs/adr/0020-*.md` + the gitignored run packages under `docs/research/private/`.
