@@ -18,7 +18,7 @@ recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 
 
 ## Current Focus
 
-> **Session 256, 2026-08-26 (`f8aeba0` → `b5ccb24`, UNMERGED) — PLAN-0114 Steps
+> **Session 256, 2026-08-26 (`f8aeba0` → `748f9d2`, UNMERGED) — PLAN-0114 Steps
 > 2–5. `POST /runs/{run_id}/continue` ships; the dead-end tripwire becomes its own
 > closure. **PLAN-0114 AC-1..AC-5 CLOSED.** ⚠️ [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298)
 > is OPEN, CI green at `b5ccb24` — Cray merges.**
@@ -51,18 +51,18 @@ recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 
 > `_suspends` mutation, tree restored byte-identical). AC-5 verified in the
 > preview; the acknowledgment proven on the **live** audit chain, one
 > `run_continued_no_decision` row per gate, `GET /audit/verify` `intact: true`.
-> Two of my own probes were defective and the driver caught both — each recorded
-> at the AC it closes.
+> Two of my own probes were defective; the driver caught both.
 >
 > **A parallel session (`vero-lite-d6`) — `sd-premortem`, three blind replays on
 > `git archive ce7c003`, pass/fail pre-committed. v1 3/4 · v2 3/5 ·
-> v3 3/5: the hypothesis FELL.** 🔴 The finding that outranks what it set out to
-> measure: **what is unstable is the CONCLUSION, not the MEASUREMENT.** On one
-> tree SD-2(b) walked `DEAD` → `NEEDS-EXECUTION` → `ALIVE` while the underlying
-> claims stayed identical every round (same `_goal_gate.py` citations). ⇒ the
-> right design is **LLM emits claim + evidence, deterministic code rolls up the
-> verdict** — not an LLM verdict. ⚠️ The same dispatch was never run twice, so
-> **model variance is not ruled out**. **No PLAN opened, and the proposal is not
+> v3 3/5: the hypothesis FELL.** 🔴 A repeat of the **identical** dispatch then
+> settled the open question: **variance dominates — 5 of 7 options flipped verdict
+> on unchanged evidence.** One arithmetic result surfaced in both rounds and was
+> called `REFUTED` (⇒ DEAD) once, "measured consequence" (⇒ ALIVE) the next.
+> **Three layers, not two: citations stable · counts NOT stable · rollup
+> unstable** — and neither count was wrong; they answered different unstated
+> patterns. ⇒ **LLM emits claim + evidence,
+> deterministic code rolls up the verdict.** **No PLAN opened; the proposal is not
 > to open one on the original design.** Log
 > [#1299](https://github.com/CrayJThiemsert/vero-lite/pull/1299), OPEN. Cray then
 > split the sessions onto **separate worktrees** — nothing collided today, but
@@ -73,8 +73,8 @@ recent_commits: [b5ccb24, 6808bdf, f8aeba0, 2448f90, b394cfe, 6e61a07, 32fef78, 
 > falls through to `_classify` (`stop_continuation.py:531` → `:540`), which still
 > runs. Not a defect **because `_classify` never reads the tree** (`:569`: *"can see
 > neither disk state nor in-flight work"*) — that citation, not the verdict, is what
-> stops the next reader. And the lock protects **`goal.json` specifically**, not
-> `.claude/state/` wholesale (`stop-chain.json` lives there and `proceed` writes it).
+> stops the next reader. The lock protects **`goal.json` specifically**, not
+> `.claude/state/` wholesale (`stop-chain.json` is there; `proceed` writes it).
 > Remaining: a **documentation gap** — nowhere records that the battery-lock case
 > was considered for the classifier arm.
 
