@@ -17,6 +17,7 @@ assertion at a time.
 from __future__ import annotations
 
 import json
+import stat
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -670,6 +671,69 @@ def test_an_unparsable_manifest_counts_as_unrestored(project: Path) -> None:
     run_dir.mkdir(parents=True)
     (run_dir / "manifest.json").write_text("{not json", encoding="utf-8")
     assert find_unrestored(project / "state") == [run_dir]
+
+
+def test_restore_returns_the_subjects_mode_not_only_its_bytes(project: Path) -> None:
+    """🔴 Bytes are only half of "pristine", and the other half took down a deploy.
+
+    `_atomic_write_bytes` builds its temp file with `NamedTemporaryFile`, which creates
+    it `0600` by design; `os.replace` then carries that mode onto the target. So every
+    atomic write SILENTLY NARROWS the file it rewrites — on the mutation and again on
+    the restore.
+
+    Measured 2026-08-26 (s256): three engine modules a battery had mutated and
+    "restored" were left `0600`. Every existing check passed, and each was blind for a
+    different reason — `git status` under `core.fileMode=false`, the suite reading as
+    the file's owner, CI building from a fresh clone where git's `100644` applies. The
+    image built from that tree could not import its own engine, because the container
+    runs as a non-root uid. It was caught one step before the live demo.
+
+    Asserted on the MODE, because no assertion about content can see this.
+    """
+    subject = project / "subject.py"
+    subject.chmod(0o644)
+    before_mode = stat.S_IMODE(subject.stat().st_mode)
+    before_bytes = subject.read_bytes()
+
+    store = RunStore.begin(project, project / "state")
+    store.apply(subject, "n > 10", "n > 1000")
+
+    # the MUTATED file must be readable exactly as the real one was, or the probe's
+    # subprocess measures a permission error instead of the mutation
+    assert stat.S_IMODE(subject.stat().st_mode) == before_mode
+
+    store.restore_all()
+    assert subject.read_bytes() == before_bytes  # the half that already worked
+    assert stat.S_IMODE(subject.stat().st_mode) == before_mode  # the half that did not
+
+
+def test_restore_returns_a_non_default_mode_too(project: Path) -> None:
+    """🟢 POSITIVE CONTROL for the test above.
+
+    `0644` is what a fresh temp file would land on in many umasks, so a restore that
+    ignored mode entirely could pass that assertion by luck. This one starts from a
+    mode nothing would produce by accident, so only a restore that actually carries
+    the recorded mode can satisfy it.
+    """
+    subject = project / "subject.py"
+    subject.chmod(0o640)
+    store = RunStore.begin(project, project / "state")
+    store.apply(subject, "n > 10", "n > 1000")
+    store.restore_all()
+    assert stat.S_IMODE(subject.stat().st_mode) == 0o640
+
+
+def test_a_manifest_without_a_recorded_mode_still_restores(project: Path) -> None:
+    """Backward compatibility, asserted rather than assumed: a run captured by the
+    pre-fix driver has no `original_mode`, and its restore must still return the bytes
+    instead of raising on the missing field."""
+    subject = project / "subject.py"
+    before = subject.read_bytes()
+    store = RunStore.begin(project, project / "state")
+    store.apply(subject, "n > 10", "n > 1000")
+    store.manifest.entries[0].original_mode = None  # what an older manifest carries
+    store.restore_all()
+    assert subject.read_bytes() == before
 
 
 def test_re_snapshotting_a_mutated_subject_keeps_the_first_bytes(project: Path) -> None:

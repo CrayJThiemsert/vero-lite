@@ -29,6 +29,7 @@ import json
 import os
 import shutil
 import signal
+import stat
 import subprocess
 import tempfile
 import time
@@ -105,6 +106,11 @@ class SnapshotEntry:
     backup: str
     original_sha256: str
     mutated_sha256: str | None = None
+    #: The subject's permission bits at snapshot time. Restored alongside the bytes,
+    #: because an atomic write does not preserve them (see `_atomic_write_bytes`).
+    #: Defaults to ``None`` so a manifest written by an older driver still loads — such
+    #: a run predates the fix and has no mode to give back.
+    original_mode: int | None = None
 
 
 @dataclass
@@ -180,15 +186,36 @@ def invalidate_bytecode(subject: Path) -> list[Path]:
     return removed
 
 
-def _atomic_write_bytes(path: Path, payload: bytes) -> None:
-    """tmpfile in the target directory + :func:`os.replace` — atomic on one filesystem."""
+def _atomic_write_bytes(path: Path, payload: bytes, *, mode: int | None = None) -> None:
+    """tmpfile in the target directory + :func:`os.replace` — atomic on one filesystem.
+
+    🔴 ``mode`` is not optional in spirit, only in signature. ``NamedTemporaryFile``
+    creates its file ``0600`` by design, and ``os.replace`` carries that mode onto the
+    target — so an atomic write silently *narrows* every file it touches. Callers that
+    are rewriting an existing file MUST pass its mode, or the write is a permission
+    change wearing a content change's clothes.
+
+    Measured 2026-08-26 (s256): three engine modules a battery had mutated and
+    "restored" were left ``0600``. Content was byte-perfect and every check passed —
+    `git status` is blind under ``core.fileMode=false``, the suite reads as the owner,
+    and CI builds from a fresh clone. The image built from that tree could not import
+    its own engine (the container runs as a non-root uid), and it was one step from
+    the live demo.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(
         dir=str(path.parent), delete=False, prefix=path.name + ".", suffix=".tmp"
     ) as tmp:
         tmp.write(payload)
         tmp_path = Path(tmp.name)
+    if mode is not None:
+        os.chmod(tmp_path, mode)
     os.replace(tmp_path, path)
+
+
+def mode_of(path: Path) -> int:
+    """The file's permission bits — what :func:`_atomic_write_bytes` must be handed back."""
+    return stat.S_IMODE(path.stat().st_mode)
 
 
 class RunStore:
@@ -267,6 +294,7 @@ class RunStore:
             subject=str(subject.resolve()),
             backup=str(backup.resolve()),
             original_sha256=sha256_of(subject),
+            original_mode=mode_of(subject),
         )
         self.manifest.entries.append(entry)
         self._flush()
@@ -292,7 +320,10 @@ class RunStore:
                 f"nothing; a repeated one edits more than the probe declared. Text: {old!r}"
             )
         mutated = source.replace(old, new, 1)
-        _atomic_write_bytes(subject, mutated.encode("utf-8"))
+        # The MUTATED file keeps the subject's mode too, not just the restored one: the
+        # probe's pytest subprocess has to be able to read it exactly as the real code
+        # was readable, or the probe measures a permission error instead of the mutation.
+        _atomic_write_bytes(subject, mutated.encode("utf-8"), mode=entry.original_mode)
 
         on_disk = subject.read_text(encoding="utf-8")
         if on_disk != mutated:  # pragma: no cover - a filesystem that lied to us
@@ -320,7 +351,7 @@ class RunStore:
     def _restore_entry(self, entry: SnapshotEntry) -> None:
         backup = Path(entry.backup)
         target = Path(entry.subject)
-        _atomic_write_bytes(target, backup.read_bytes())
+        _atomic_write_bytes(target, backup.read_bytes(), mode=entry.original_mode)
         invalidate_bytecode(target)
         restored = sha256_of(target)
         if restored != entry.original_sha256:  # pragma: no cover - defended, never seen
@@ -328,6 +359,18 @@ class RunStore:
                 f"restore of {target} is NOT byte-identical: {restored} != "
                 f"{entry.original_sha256}. The pristine bytes are still at {backup}."
             )
+        # 🔴 Bytes are only half of "pristine". A restore that returns the right content
+        # under the wrong permissions is the s256 defect, and it is invisible to every
+        # check the repo already had — so it is asserted here rather than trusted.
+        if entry.original_mode is not None:
+            now = mode_of(target)
+            if now != entry.original_mode:  # pragma: no cover - defended, never seen
+                raise RuntimeError(
+                    f"restore of {target} returned the right bytes under the WRONG mode: "
+                    f"{now:04o} != {entry.original_mode:04o}. Content-identical is not "
+                    f"pristine — a narrowed mode survives every byte check and breaks the "
+                    f"next reader that is not this uid."
+                )
         entry.mutated_sha256 = None
 
     def restore_all(self) -> None:
