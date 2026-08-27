@@ -14,7 +14,7 @@ counting labels.
 
 **Check 2 — a closure claimed in STATUS must be ticked in the PLAN.**
 ``docs/STATUS.md`` recorded ``AC-11 CLOSED s240`` in four places while
-``docs/plans/0107-*.md`` still carried ``- [ ] **AC-11``. STATUS and the PLAN
+``docs/plans/done/0107-*.md`` still carried ``- [ ] **AC-11``. STATUS and the PLAN
 disagreed for a full session and the PLAN was the stale one — so the file an
 executor opens to pick up work said the work was still open. It was found by a
 subagent reading the file for an unrelated reason, not by any check.
