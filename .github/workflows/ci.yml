@@ -34,7 +34,13 @@ jobs:
           --health-timeout 3s
           --health-retries 10
     steps:
+      # PLAN-0107 AC-14: depth 2, not the default 1. The cache-bust gate below
+      # compares the PR's two revisions, and at depth 1 `HEAD^1` does not exist —
+      # the check would ERROR rather than run, which is the likeliest way to
+      # disarm it by accident.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -75,6 +81,14 @@ jobs:
           fi
           echo "checking ${#files[@]} JS asset(s)"
           for f in "${files[@]}"; do node --check "$f"; done
+
+      # PLAN-0107 AC-14: replaces `test_every_edited_asset_got_a_cache_bust`, which
+      # froze per-file token floors over 9 of 21 JS files and 0 of 4 CSS files — it
+      # passed while the property it guarded (edit an asset, bump its token) was
+      # unenforced for `views.css`. Deleted in the same commit as this step, not kept
+      # alongside. Needs the `fetch-depth: 2` above.
+      - name: Static assets carry a fresh ?v= token (diff-aware)
+        run: uv run --no-sync python tools/ci/cache_bust_diff_check.py
 
       # PLAN-0107 AC-5: `verticals/` joins the CI mypy scope. The pre-commit hook
       # already covered it; CI merely stops TRUSTING that the hook ran. Measured
