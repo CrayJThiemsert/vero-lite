@@ -1702,3 +1702,57 @@ will meet them at the moment of need._
 > computed from the AST. Three batteries used it (47/47, 43/43, 53/53 claims, 0
 > gaps); it caught a **vacuous assertion written the same session** and refused
 > to run until every claim owner had a named exemption mechanism.
+
+<!-- rotated from docs/STATUS.md at the session-257 reconcile (2026-08-27) -->
+
+> **Session 253, 2026-08-25 (head_commit `c8f685e` → `082a6f1`) — TWO PRs
+> MERGED ([#1286](https://github.com/CrayJThiemsert/vero-lite/pull/1286),
+> [#1287](https://github.com/CrayJThiemsert/vero-lite/pull/1287)), ONE OPEN
+> ([#1288](https://github.com/CrayJThiemsert/vero-lite/pull/1288)), CI green
+> per-sha on both merges, tree clean. **PLAN-0114 Step 1 SHIPPED — the
+> `continue_no_decision_run` chokepoint**
+> (`services/engine/procedures/persistence.py::continue_no_decision_run`),
+> purely additive: five fail-closed refusals, SD-2's dual audit written at both
+> levels, and an acknowledgment block that REFERENCES the governance pin rather
+> than copying the procedure shape.**
+>
+> 🔴 **The session's real subject was the verification instrument, not the
+> engine.** An adversarial review found **two of thirteen probes had been
+> credited for reddening on a CRASH** (`AttributeError`, `KeyError`) rather than
+> on the assertion each claimed — a published `13/13` was overstated, and was
+> corrected in-PR with measured evidence. Root cause: the driver returned only
+> `returncode == 0` and discarded captured output. The `goal-evaluator` had
+> already found **five** residual gaps in work called done; all five were real.
+>
+> 🔴 **ADR-0038 D4's W-1 watch-list entry took its THIRD firing** — *"a probe's
+> RED must name what broke"* (#0043), previously at exactly two. D4 names W-1 so
+> the next distinct incident promotes without any census, and D1.6 makes
+> promotion at three **an obligation, not an option**: leaving a counted class
+> advisory requires an explicit typed Cray waiver recorded at the same site.
+> **UNRESOLVED — it is SD-4 on #1288.**
+>
+> ✅ **Three PLAN-0114 corrections landed BEFORE Step 1 was written** (#1286),
+> each grounded in a measurement of the live tree: AC-2(a)'s RED-witness recipe
+> (`resume_run` carries a second, pre-existing guard refusing the same case with
+> the same exception type, so the drafted probe could not have witnessed what it
+> claimed); SD-3's *"the ONLY thing"* wording (measurably too strong — the seam
+> is defense-in-depth); and guard 3's key — **`actor_person_id`, not a resolved
+> `Person`**, because only **4 of 6** verticals ship a `principals:` block (not
+> `aquaculture`, not `energy`), so a `Person`-keyed guard would permanently
+> refuse **3 of the 18** gated steps and contradict the LOCKED SD-3.
+>
+> ✅ **Step 1's close-out is a measured battery, not a claim:** **14 tests, 17
+> claims, 14/14 probes witnessed** with a per-probe evidence line (17 =
+> witnessed 14 + exempted 3), GAPS 0, stale ids 0. `orchestrator.py` and
+> `action_step.py` are **0 diff lines** — AC-4's byte-identical half — and both
+> shipped parity tests stayed green, so the STOP tripwire never fired.
+>
+> **PLAN-0115 is DRAFTED and OPEN (#1288):** ship `tools/probe_battery/`, close
+> two safety holes (a SIGTERM-surviving restore; a lock so the Stop-hook gate
+> never evaluates a mutated tree), amend `CLAUDE.md` §8 to name the tool, and
+> promote PLAN-0099's flake-attribution method to a lesson. **Four SDs await
+> Cray.** Next build step: **PLAN-0114 Step 2**, where AC-1 and AC-2 close.
+> ⚠️ **PLAN-0113 AC-9 (live on MS-S1) is still CARRIED, not dropped** — it needs
+> a typed Cray go per occasion AND per phase.
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md), the full pre-trim ledger into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **253–256**. The **s254** reconcile rotated the **session-250** block; the **s255** reconcile rotated the **session-251** block. **THIS (s256) reconcile rotates the session-252 block**, holding the window at four (253–256) — on the **window rule alone, not a cap overage**. Its substance keeps tracked homes: PLAN-0113 is archived at `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md`, which now carries an **additive pointer to PLAN-0114** for the SD-3 execution, and the empty-gate dead end that block first recorded is **CLOSED** by PLAN-0114 Steps 2–3. ⚠️ **Verified in BOTH directions (R6), and by content rather than presence:** the archived block is **byte-identical (2,778 B) to the same block at `git show HEAD:docs/STATUS.md`** and is absent from this file — a presence-only check would have passed on a pre-existing copy. The earlier ledger travel notes (s246/s247, s251) went into the archive with their blocks.]_
