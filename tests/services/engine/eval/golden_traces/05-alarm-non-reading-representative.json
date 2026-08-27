@@ -1,0 +1,109 @@
+{
+  "name": "alarm-non-reading-representative",
+  "source": "representative — hand-authored for PLAN-0107 AC-9, same class as traces 02/03 (no live capture). The first trace whose event is NOT event_type 'reading': an alarm carries a description and NO measured_value, so it scores composition for an event lacking the numeric field every prior trace supplies. Modelled on the alarm the energy adapter already emits (verticals/energy/data_adapter/synthetic.py:255-262). See the AC-9 ruling annotation in docs/plans/0107-oracle-coverage-hardening.md: the anchor filter's own event_type clause is undiscriminating on current data, so this trace covers the composition path for non-reading events and does not claim to pin that clause.",
+  "vertical": "energy",
+  "event": {
+    "event_id": "event-alarm-eval-05",
+    "event_type": "alarm",
+    "severity": "error",
+    "description": "Inverter Unit A communication loss.",
+    "asset_id": "asset-inverter-01",
+    "site_id": "site-substation-01"
+  },
+  "model_output": {
+    "title": "Investigate Inverter Communication Loss",
+    "description": "Inverter Unit A stopped reporting; telemetry cannot confirm its state.",
+    "rationale": "A communication loss carries no measured value, so the inverter's actual condition is unknown rather than known-good. Dispatch a technician to confirm the unit locally and restore telemetry before the next dispatch window.",
+    "confidence": 0.71,
+    "affected_entities": [
+      {
+        "object_type": "asset",
+        "primary_key": "asset-inverter-01",
+        "title": "Inverter Unit A"
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-alarm-eval-05",
+      "asset_id": "asset-inverter-01",
+      "priority": "Medium",
+      "status": "Pending human review"
+    }
+  },
+  "expected_envelope": {
+    "id": "action-event-alarm-eval-05",
+    "title": "Investigate Inverter Communication Loss",
+    "description": "Inverter Unit A stopped reporting; telemetry cannot confirm its state.",
+    "vertical": "energy",
+    "reasoning_trace": [
+      {
+        "step_id": "ontology-query",
+        "kind": "ontology_query",
+        "summary": "Ingested operational event 'event-alarm-eval-05' from the energy data adapter",
+        "detail": {
+          "vertical": "energy",
+          "event": {
+            "event_id": "event-alarm-eval-05",
+            "event_type": "alarm",
+            "severity": "error",
+            "description": "Inverter Unit A communication loss.",
+            "asset_id": "asset-inverter-01",
+            "site_id": "site-substation-01"
+          }
+        }
+      },
+      {
+        "step_id": "llm-inference",
+        "kind": "llm_inference",
+        "summary": "A communication loss carries no measured value, so the inverter's actual condition is unknown rather than known-good. Dispatch a technician to confirm the unit locally and restore telemetry before the next dispatch window.",
+        "detail": {
+          "label": "MODEL-ASSERTED — this narrative is the model's own account of its reasoning, not a verified explanation of its computation (ADR-010 D3 / research brief #3 §4.2). Treat it as a review aid, not as ground truth.",
+          "model": "gpt-oss:20b",
+          "thinking": "recorded reasoning narrative",
+          "draft": "recorded draft",
+          "structuring_attempts": 1,
+          "confidence": 0.71,
+          "confidence_note": "advisory only — surfaced for the human reviewer, never used to gate approval or execution (ADR-010 IN-3)"
+        }
+      },
+      {
+        "step_id": "semantic-checks",
+        "kind": "rule_check",
+        "summary": "Verified suggested_handler 'echo' resolves in the registry for vertical 'energy'; 1 affected-entity primary key(s) non-empty",
+        "detail": {
+          "vertical": "energy",
+          "suggested_handler": "echo",
+          "handler_registered": true,
+          "affected_entity_count": 1
+        }
+      }
+    ],
+    "confidence": 0.71,
+    "affected_entities": [
+      {
+        "object_type": "asset",
+        "primary_key": "asset-inverter-01",
+        "title": "Inverter Unit A"
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-alarm-eval-05",
+      "asset_id": "asset-inverter-01",
+      "priority": "Medium",
+      "status": "Pending human review"
+    },
+    "requires_approval": true,
+    "approval_chain": [],
+    "audit_metadata": {
+      "actor": "gpt-oss:20b",
+      "actor_kind": "llm",
+      "correlation_id": null,
+      "notes": "LLM reasoning path (PLAN-0006 / ADR-010 D3). The reasoning trace is a human-review artifact; confidence is advisory only (IN-3).",
+      "governed_decision": null
+    },
+    "expires_at": null,
+    "approved_at": null,
+    "executed_at": null
+  }
+}

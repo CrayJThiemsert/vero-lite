@@ -15,9 +15,89 @@
     "rationale": "A 102 celsius reading indicates a likely cooling fault; escalate for inspection before load is restored.",
     "confidence": 0.81,
     "affected_entities": [
-      {"object_type": "Asset", "primary_key": "asset-inverter-12"}
+      {
+        "object_type": "Asset",
+        "primary_key": "asset-inverter-12"
+      }
     ],
     "suggested_handler": "echo",
-    "handler_payload": {"event_id": "event-reading-eval-02", "priority": "high"}
+    "handler_payload": {
+      "event_id": "event-reading-eval-02",
+      "priority": "high"
+    }
+  },
+  "expected_envelope": {
+    "id": "action-event-reading-eval-02",
+    "title": "Inverter over-temperature — investigate",
+    "description": "Inverter asset-inverter-12 reported 102.0 celsius, well above safe limits.",
+    "vertical": "energy",
+    "reasoning_trace": [
+      {
+        "step_id": "ontology-query",
+        "kind": "ontology_query",
+        "summary": "Ingested operational event 'event-reading-eval-02' from the energy data adapter",
+        "detail": {
+          "vertical": "energy",
+          "event": {
+            "event_id": "event-reading-eval-02",
+            "event_type": "reading",
+            "measured_value": 102.0,
+            "unit": "celsius",
+            "asset_id": "asset-inverter-12",
+            "site_id": "substation-07"
+          }
+        }
+      },
+      {
+        "step_id": "llm-inference",
+        "kind": "llm_inference",
+        "summary": "A 102 celsius reading indicates a likely cooling fault; escalate for inspection before load is restored.",
+        "detail": {
+          "label": "MODEL-ASSERTED — this narrative is the model's own account of its reasoning, not a verified explanation of its computation (ADR-010 D3 / research brief #3 §4.2). Treat it as a review aid, not as ground truth.",
+          "model": "gpt-oss:20b",
+          "thinking": "recorded reasoning narrative",
+          "draft": "recorded draft",
+          "structuring_attempts": 1,
+          "confidence": 0.81,
+          "confidence_note": "advisory only — surfaced for the human reviewer, never used to gate approval or execution (ADR-010 IN-3)"
+        }
+      },
+      {
+        "step_id": "semantic-checks",
+        "kind": "rule_check",
+        "summary": "Verified suggested_handler 'echo' resolves in the registry for vertical 'energy'; 1 affected-entity primary key(s) non-empty",
+        "detail": {
+          "vertical": "energy",
+          "suggested_handler": "echo",
+          "handler_registered": true,
+          "affected_entity_count": 1
+        }
+      }
+    ],
+    "confidence": 0.81,
+    "affected_entities": [
+      {
+        "object_type": "Asset",
+        "primary_key": "asset-inverter-12",
+        "title": null
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-reading-eval-02",
+      "priority": "high"
+    },
+    "requires_approval": true,
+    "approval_chain": [],
+    "audit_metadata": {
+      "actor": "gpt-oss:20b",
+      "actor_kind": "llm",
+      "correlation_id": null,
+      "notes": "LLM reasoning path (PLAN-0006 / ADR-010 D3). The reasoning trace is a human-review artifact; confidence is advisory only (IN-3).",
+      "governed_decision": null
+    },
+    "expires_at": null,
+    "approved_at": null,
+    "executed_at": null
   }
 }
