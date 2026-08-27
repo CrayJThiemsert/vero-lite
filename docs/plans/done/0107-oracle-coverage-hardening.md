@@ -1,6 +1,6 @@
 # PLAN-0107: Oracle Coverage Hardening — Instrument, Reach, Arm (Implementation)
 
-**Status:** Draft
+**Status:** Complete (15/15, s258 — archived to `docs/plans/done/`)
 **Owner:** Claude Code
 **Created:** 2026-08-17
 **Related ADRs:** ADR-0018 (Axis-B goal gate — the refute-not-bless mandate this PLAN extends to the oracles themselves); ADR-0032 (strategic frame — the published demo surfaces this PLAN protects are the D1 wedge).

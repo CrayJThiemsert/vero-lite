@@ -1,6 +1,6 @@
 {
   "name": "alarm-non-reading-representative",
-  "source": "representative — hand-authored for PLAN-0107 AC-9, same class as traces 02/03 (no live capture). The first trace whose event is NOT event_type 'reading': an alarm carries a description and NO measured_value, so it scores composition for an event lacking the numeric field every prior trace supplies. Modelled on the alarm the energy adapter already emits (verticals/energy/data_adapter/synthetic.py:255-262). See the AC-9 ruling annotation in docs/plans/0107-oracle-coverage-hardening.md: the anchor filter's own event_type clause is undiscriminating on current data, so this trace covers the composition path for non-reading events and does not claim to pin that clause.",
+  "source": "representative — hand-authored for PLAN-0107 AC-9, same class as traces 02/03 (no live capture). The first trace whose event is NOT event_type 'reading': an alarm carries a description and NO measured_value, so it scores composition for an event lacking the numeric field every prior trace supplies. Modelled on the alarm the energy adapter already emits (verticals/energy/data_adapter/synthetic.py:255-262). See the AC-9 ruling annotation in docs/plans/done/0107-oracle-coverage-hardening.md: the anchor filter's own event_type clause is undiscriminating on current data, so this trace covers the composition path for non-reading events and does not claim to pin that clause.",
   "vertical": "energy",
   "event": {
     "event_id": "event-alarm-eval-05",
