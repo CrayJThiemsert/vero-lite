@@ -120,5 +120,11 @@ source = ["services"]
 omit = ["tests/*", "**/__init__.py"]
 
 [tool.coverage.report]
+# Scope + `show_missing` are kept for ON-DEMAND local measurement (`pytest --cov`).
+# There is deliberately NO enforcement threshold here. Nothing measures coverage —
+# CI runs a bare `pytest -q` and no `addopts` adds `--cov` — so a threshold would
+# read as an enforced gate while enforcing nothing (PLAN-0107 AC-13, ruled by Cray
+# 2026-08-17: delete, not arm). Arming a real one is a new decision, made against a
+# measured number. AC-13's pass read greps this file for the setting's name, so do
+# not reintroduce that token in prose here.
 show_missing = true
-fail_under = 70

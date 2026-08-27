@@ -37,6 +37,7 @@ See project memory ``project_test_suite_drops_demo_db``.
 from __future__ import annotations
 
 import hashlib
+import os
 from pathlib import Path
 
 import pytest
@@ -82,6 +83,28 @@ from services.engine.procedures import (  # noqa: F401  (registers schedule_stat
 )
 
 _UNREACHABLE = "Postgres not reachable — start docker compose / set DATABASE_URL"
+
+#: Node ids of tests that got a LIVE engine — the population PLAN-0107 AC-12's floor
+#: counts. Written here rather than inferred from pytest reports because this function
+#: is the single chokepoint: ``git ls-files | grep conftest`` returns two files, and the
+#: only other route into an engine (``tests/api/conftest.py:199``) calls straight into
+#: it. A test that skipped never reaches the recording line, so membership means
+#: "executed against a real database", not "asked for one".
+EXECUTED_DB_TESTS: set[str] = set()
+
+
+def _record_executed_db_test() -> None:
+    """Note that the CURRENT test reached a live engine (AC-12's counted population).
+
+    ``PYTEST_CURRENT_TEST`` is pytest's own per-test env var; its value carries a
+    trailing phase marker (``… (call)``) which is stripped so setup and call phases
+    of one test count once. Absent outside a pytest run, in which case nothing is
+    recorded and the floor check simply sees no population.
+    """
+    current = os.environ.get("PYTEST_CURRENT_TEST", "")
+    if current:
+        EXECUTED_DB_TESTS.add(current.split(" (")[0])
+
 
 # A DDL lock is held by any live connection to the test DB. Fail loudly rather
 # than hang forever if a prior test leaked one.
@@ -255,4 +278,7 @@ async def create_test_engine() -> AsyncEngine:
         await eng.dispose()
         pytest.skip(_UNREACHABLE)
     await _reset_public_schema_once(eng)
+    # AC-12: recorded AFTER both skip paths above, so the count is of tests that
+    # actually reached a live database — never of tests that merely wanted one.
+    _record_executed_db_test()
     return eng

@@ -1,5 +1,6 @@
 """Shared pytest fixtures."""
 
+import os
 import socket
 from collections.abc import Iterator
 from typing import Any
@@ -152,3 +153,63 @@ def _no_outbound_network(request: pytest.FixtureRequest, monkeypatch: pytest.Mon
         return real_connect(sock, address, *args, **kwargs)
 
     monkeypatch.setattr(socket.socket, "connect", _guarded_connect)
+
+
+# --- PLAN-0107 AC-12: a floor under the executed DB-test count -----------------
+#
+# The gap: `tests/db_support.py` turns an unreachable Postgres into
+# `pytest.skip(_UNREACHABLE)` (`:249`, `:256`) with no floor anywhere. The CI job
+# PROVIDES a postgres service, but if it were unreachable the whole DB layer would
+# drop silently and `pytest -q` would still exit 0 — 475 tests' worth of coverage
+# gone, reported as a pass.
+#
+#: Measured baseline: **475** executed DB-backed tests (session 257, full suite,
+#: `CI=1`, real Postgres, 4477 collected). The floor sits deliberately far below it.
+_DB_TEST_BASELINE = 475
+#: ~16% of margin. The floor exists to catch a COLLAPSE (the layer vanished), not
+#: drift — a tight floor would redden on ordinary test churn and get raised until it
+#: meant nothing. FAILURE MODE, stated so it is never mistaken for the other one:
+#: **RED on shrink, loud** — it can fail a green run, and it can NEVER turn a failing
+#: run into a passing one.
+_DB_TEST_FLOOR = 400
+
+#: Measured, not assumed: both `pytest -q` (no path — pytest fills this from
+#: `testpaths`) and `pytest tests -q` report exactly this. A narrower run carries its
+#: own paths here, which is how a partial run is recognised and left alone — without
+#: this, `pytest one_module.py` under CI would trip the floor every time (measured:
+#: one module = 7 executed DB tests).
+_FULL_SUITE_ARGS = ["tests"]
+
+
+def db_floor_verdict(executed: int, ci: str | None, args: list[str]) -> str | None:
+    """The floor decision, pure so the unit suite can drive it (AC-12).
+
+    Returns the failure message, or ``None`` when the run passes the floor — which
+    includes every run the floor does not govern (local, or a partial selection).
+    """
+    if not ci:
+        return None
+    if list(args) != _FULL_SUITE_ARGS:
+        return None
+    if executed >= _DB_TEST_FLOOR:
+        return None
+    return (
+        f"DB-TEST FLOOR: only {executed} DB-backed test(s) executed, floor is "
+        f"{_DB_TEST_FLOOR} (baseline {_DB_TEST_BASELINE}). The database layer did not "
+        "run. A mass skip reads as a pass on the summary line, so this fails the run "
+        "instead — check that the postgres service is reachable and TEST_DATABASE_URL "
+        "points at it."
+    )
+
+
+def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    """Fail a CI full-suite run whose DB layer silently vanished (AC-12)."""
+    message = db_floor_verdict(
+        len(db_support.EXECUTED_DB_TESTS),
+        os.environ.get("CI"),
+        list(session.config.args),
+    )
+    if message is None:
+        return
+    print(f"\n{message}")
+    session.exitstatus = 1

@@ -28,7 +28,7 @@ How was this tested?
 
 - [ ] `uv run ruff check .` passes
 - [ ] `uv run mypy services/` passes
-- [ ] `uv run pytest` passes (coverage ≥ 70%)
+- [ ] `uv run pytest` passes
 - [ ] `uv run pre-commit run --all-files` passes
 - [ ] Manual smoke test: ...
 

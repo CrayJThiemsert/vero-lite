@@ -722,33 +722,15 @@ def test_a_published_page_with_no_declared_set_refuses_to_render() -> None:
     assert "function renderUnconfigured" in app_source
 
 
-def test_every_edited_asset_got_a_cache_bust() -> None:
-    """A stale ``?v=`` serves the OLD file, so a browser check would verify nothing.
-
-    Each floor is the token the asset carried when a PLAN last edited it — a
-    per-file counter, not a build number, so the values differing from each other
-    is normal and not drift. ``api.js`` and ``app.js`` were raised by PLAN-0103
-    Step 2; the rest still hold PLAN-0100 Step 3's floors.
-    """
-    index = _INDEX.read_text(encoding="utf-8")
-    for name, minimum in (
-        ("api.js", 48),
-        ("app.js", 49),
-        ("view-anomaly.js", 26),
-        ("view-flow.js", 38),
-        ("view-procedures.js", 26),
-        ("view-story.js", 39),
-        # PLAN-0103 Step 6 raised these three.
-        ("view-hero.js", 49),
-        ("auth.js", 34),
-        ("view-monitor.js", 41),
-    ):
-        match = re.search(rf"assets/{re.escape(name)}\?v=c(\d+)", index)
-        assert match, f"{name} is not versioned in index.html"
-        assert int(match.group(1)) >= minimum, (
-            f"{name} is served at ?v=c{match.group(1)} but was edited at "
-            f"c{minimum} — a stale cache-bust serves the pre-edit file"
-        )
+# The cache-bust guard that stood here — `test_every_edited_asset_got_a_cache_bust`
+# — was RETIRED by PLAN-0107 AC-14, in the same commit that landed its replacement.
+# It asserted per-file token FLOORS over 9 of 21 JS files and 0 of 4 CSS files, so it
+# passed today and would still have passed with the property it existed to protect
+# broken: editing `views.css` without bumping its token was outside its reach, and
+# that exact shape shipped (PR #1190's c43->c44 bump was hand-made and unguarded).
+# The replacement is relational rather than absolute — if the bytes changed, the token
+# must have changed — and lives in `tools/ci/cache_bust_diff_check.py` with its unit
+# suite at `tests/tools/test_cache_bust_diff_check.py`.
 
 
 def test_sd8_iii_narrative_copy_is_published_only() -> None:
