@@ -284,8 +284,10 @@ a source-text read.
   > state, rather than an edit that manufactures it.
   > ⚠️ **`aquaculture` streaming 0 triggering events is worth AC-9's attention** —
   > AC-9 cites the aquaculture dissolved-oxygen crash as its below-direction source.
-- [ ] **AC-9 [check] — the golden-trace corpus covers the `below` direction AND
-  a non-`reading` event.** *(Ruled by Cray 2026-08-17: both traces.)*
+- [x] **AC-9 [check] — the golden-trace corpus covers the `below` direction AND
+  a non-`reading` event.** *(Ruled by Cray 2026-08-17: both traces. Re-scoped by
+  Cray 2026-08-27 to option (b); delivered s258 — see the Delivered annotation
+  below for what each half does and does not pin.)*
   `tests/services/engine/eval/golden_traces/` (today 3 traces, all
   `event_type: reading`, all over-temp — verified listing) gains **two**
   traces, produced by the same harness that produced traces 01–03: (a) a
@@ -341,6 +343,93 @@ a source-text read.
   > (b) build a real trace producer first, then the two traces; (c) retire
   > AC-9. Until ruled, this AC stays `[ ]` and no execution against it is
   > authorised.
+  >
+  > **RULED (Cray, typed, 2026-08-27, session 258): option (b)** — build a real
+  > trace producer first, then the two traces. Rationale as given: the better
+  > long-term investment of the three. Execution against AC-9 is now authorised
+  > **under the re-scope below**, not as Step 7 stands.
+  >
+  > 🔴 **What was re-measured at ruling time (s258), which constrains execution.**
+  > All three s241 defects re-verified against the working tree, and two further
+  > facts measured that the s241 amendment did not carry:
+  >
+  > **(i) The below-direction half already has a live oracle with a control.**
+  > `tests/services/engine/test_recommender_config.py:108-112` pins
+  > `crosses_threshold` in the `below` direction at the exact aquaculture DO
+  > values (3.2 vs 4.0, inclusive boundary, plus a negative); and
+  > `tests/services/engine/test_demo_events.py:195` drives `below` through the
+  > real `demo_events.events()` → `_breach_event` path, with `:213` as its
+  > positive control (raise DO to 5.5 → nothing crosses → base survives). Both
+  > predate this PLAN (PLAN-0016 Step 0). **A new below-direction assertion must
+  > therefore state what it adds over these two, or it is a duplicate guard.**
+  >
+  > **(ii) The non-`reading` half is a real gap that current data cannot reach.**
+  > The crossing filter's `event_type == "reading"` clause
+  > (`demo_events.py:60`) is redundant with the `isinstance(measured_value,
+  > int | float)` clause at `:61` on **every dataset the system has**: grepping
+  > `"event_type":` across `tests/ services/ verticals/` and excluding `reading`
+  > returns `alarm` / `transition` / `failure` / `low_stock`, and **not one of
+  > them carries a `measured_value`** — they carry `description`. So the clause
+  > is undiscriminating today and no test can redden on its removal. *(Static
+  > grep evidence, s258 — NOT a witnessed RED; a probe through
+  > `tools/probe_battery/` is owed before any AC closes on this.)* Making the
+  > clause matter requires an event that does not exist, which is the
+  > "manufactured state" this PLAN refuses elsewhere (AC-9's own ② REACH
+  > annotation above).
+  >
+  > **(iii) The corpus is not yet an oracle of the system.** A golden trace is
+  > `{name, source, event, model_output}` — a *recorded* `LlmJudgment`. The five
+  > harness tests assert schema-validity, confidence range, handler resolution
+  > and envelope composition: they compare the file to itself. Per CLAUDE.md §8
+  > (*"an expected-value set … is not an oracle of the system until the system's
+  > own output is scored against it"*), **a producer that only emits more such
+  > files does not lift the corpus out of class C1.** Option (b) is therefore
+  > scoped as: producer **plus** a scoring path the system's own output runs
+  > through — and Step 7's probe is re-authored against that scoring path, since
+  > the mutation it names today (`demo_events.py:62`) is a delegation the corpus
+  > cannot observe.
+  >
+  > ✅ **DELIVERED (s258) — option (b), built as scoped above.**
+  >
+  > **The producer.** `tools/golden_trace/` — `refresh` recomputes each trace's
+  > `expected_envelope` by running its recorded `event` + `model_output` through
+  > the real `recommender._compose_llm_record`; `check` reports drift. This is
+  > the mechanism defect (3) found missing: before it, `golden_trace` across
+  > every `.py` in the repo matched only the consuming test module.
+  >
+  > **The scoring path — what actually lifts the corpus out of class C1.** The
+  > harness gains invariant 5
+  > (`test_golden_trace_matches_system_composition`): the envelope the system
+  > composes **live** must equal the one recorded on disk. `created_at` is the
+  > sole exclusion, and that is measured rather than assumed — composing the
+  > same trace twice differs in exactly one of 16 top-level keys (s258
+  > feasibility probe). Invariants 1–4 remain what they were: comparisons of
+  > each file to itself.
+  >
+  > **The two traces.** `04-do-crash-below-direction-representative.json`
+  > (aquaculture DO crash, 3.2 mg/L — keyed on `pond_id`, so it scores
+  > composition against a **non-energy event shape**) and
+  > `05-alarm-non-reading-representative.json` (an `alarm` carrying **no
+  > `measured_value`**). Both are `representative`, the class traces 02–03
+  > already established; no live capture, so **MS-S1 was not touched**.
+  >
+  > 🔴 **What these two traces do NOT claim**, stated so a later reader does not
+  > over-read them: trace 04 does **not** pin the `below` comparison — that is
+  > `recommender.crosses_threshold`, already covered per (i) above. Trace 05
+  > does **not** pin the anchor filter's `event_type` clause — per (ii) that
+  > clause is undiscriminating on current data, and manufacturing an event to
+  > make it matter is refused. What both traces DO pin is the composition path
+  > for event shapes the corpus previously could not express.
+  >
+  > **Witnessed RED** (`tools/probe_battery`, run `run-b9955b50`,
+  > `PROBE-BATTERY: PASS` / `PROBE-COVERAGE: COMPLETE`, 0 gaps, 11 claims — 2
+  > witnessed, 9 exempted with written reasons, tree restored byte-identical):
+  > **P1** mutates the envelope `id` prefix inside `_compose_llm_record` →
+  > invariant 5 reddens with `assert ['id'] == []` at its own site. **P3**
+  > renames a trace's `expected_envelope` key → the precondition reddens.
+  > **P2/P4** are their controls, both GREEN under the same mutations — the
+  > green that rules out "something unrelated broke". One probe per assertion,
+  > per CLAUDE.md §8.
 - [x] **AC-10 [check] — every expressible gold case is compared to the real
   engine.** The nl-13 harness
   (`tests/benchmark/test_nl_query_feasibility_gold.py:220-244` — real engine,
@@ -439,8 +528,12 @@ a source-text read.
   > failure a completeness KPI structurally cannot see. The refusal is INTERIM
   > and says so at the seam; the schema that can hold an invoice and its credit
   > as two coexisting facts is PLAN-0111's subject.
-- [ ] **AC-12 [check] — a floor under the executed DB-test count.** *(Ruled by
-  Cray 2026-08-17: close this as a count floor.)* A session-finish check
+- [x] **AC-12 [check] — a floor under the executed DB-test count.** *(Ruled by
+  Cray 2026-08-17: close this as a count floor. Landed #1305; ticked s258 after
+  re-running the AC's own command verbatim — it exits **1** with
+  `4023 passed, 486 skipped` against a normal 8. Note the shape: pytest's own
+  summary reports **nothing failed** and the process fails anyway, which is the
+  session-finish floor doing its job.)* A session-finish check
   (in the top-level conftest, active when `CI` is set — GitHub sets `CI=true`)
   fails the run when the number of **executed** (non-skipped) DB-backed tests
   falls below a floor set from the CI baseline with an explicit margin and a
@@ -454,8 +547,10 @@ a source-text read.
   (the probe is the check):
   `CI=1 TEST_DATABASE_URL=postgresql+asyncpg://vero:vero@localhost:59999/vero_lite_test uv run --no-sync pytest tests -q` <!-- pragma: allowlist secret — the throwaway CI-container cred already carried in ci.yml:27,:60,:75-76 and docker-compose.yml; port 59999 is deliberately unreachable, which is the whole probe -->
   exits **nonzero** (today it exits 0 with skips).
-- [ ] **AC-13 [check] — the dead coverage floor stops existing.** *(Ruled by
-  Cray 2026-08-17: delete, not arm.)* `pyproject.toml:124` (`fail_under = 70`)
+- [x] **AC-13 [check] — the dead coverage floor stops existing.** *(Ruled by
+  Cray 2026-08-17: delete, not arm. Landed #1305; ticked s258 after re-running
+  the AC's own command — `git grep -n "fail_under" -- pyproject.toml` exits
+  **1**, measured, not inferred from the PR body.)* `pyproject.toml:124` (`fail_under = 70`)
   is deleted: no `addopts` exists (`:109-116`) and `ci.yml:77` is a bare
   `pytest -q`, so coverage is never measured while the config reads as an
   enforced gate — a guard that reads as protection and is not. The
@@ -464,8 +559,13 @@ a source-text read.
   `git grep -n "fail_under" -- pyproject.toml` exits **1** (it exits 0 today).
   Any future *armed* coverage gate is a new decision for Cray, made against a
   measured number — not this PLAN's business.
-- [ ] **AC-14 [check] — the frozen `?v=` floor is replaced by a diff-aware
-  gate, in the same PR.** `tests/api/test_ui_profile.py:725-751` freezes
+- [x] **AC-14 [check] — the frozen `?v=` floor is replaced by a diff-aware
+  gate, in the same PR.** *(Landed #1305; ticked s258 against all four of the
+  AC's own reads: the unit suite is **6 passed**; `git grep -n "def
+  test_every_edited_asset_got_a_cache_bust" -- tests/` exits **1** — retired,
+  with a tombstone at `tests/api/test_ui_profile.py:725` stating why;
+  `fetch-depth: 2` is at `ci.yml:43`; and the new step at `ci.yml:91` ran
+  **success** on this PLAN's own closing PR.)* `tests/api/test_ui_profile.py:725-751` freezes
   per-file minima over 9 of 21 JS files and 0 of 4 CSS files — editing
   `views.css` without bumping `index.html:29` passes today, and that exact
   bump (c43→c44, PR #1190) was hand-made and unguarded. **This guard passes
@@ -483,11 +583,20 @@ a source-text read.
 
 ### Cross-phase
 
-- [ ] **AC-15 [evidence] — the CI bill is recorded.** The closing PR body
+- [x] **AC-15 [evidence] — the CI bill is recorded.** The closing PR body
   records, per new CI step, the observed wall-clock delta on that PR's run.
   Recorded, **explicitly NOT a gate** — no threshold is enforced on these
   numbers; they exist so the later browser-plan discussion starts from
   measured cost, not vibes.
+  > **Measured on this PLAN's closing PR** (#1307, run `33039045076`, gate
+  > **585s** total, all 20 steps `success`). The two steps this PLAN added:
+  > `JS assets parse (node --check)` (AC-1) **4s**; `Static assets carry a
+  > fresh ?v= token (diff-aware)` (AC-14) **<1s**. Combined **~4s of 585s —
+  > 0.7%** of the gate. For the browser-plan discussion the Out-of-Scope
+  > section defers to: the dominant cost is `Full test suite (offline gate +
+  > DB-backed tests)` at **483s (83%)**, and the rejected ~3-minute browser
+  > stage would have been **~31%** on top of the whole gate — which is the
+  > ground (b) that rejection rests on, now carrying a number.
 
 ## Out of Scope
 
@@ -678,21 +787,34 @@ green — the exact invisibility being closed. Output changed: the per-event
 judgment fields in the streamed response, hence the scenario verdict. Cost:
 not separately measured.
 
-### Step 7 (B / AC-9): two golden traces — below-direction and non-reading
+### Step 7 (B / AC-9): a producer, a scoring path, and two golden traces
 
-Read the harness that produced traces 01–03 (mechanism read at execution — the
-corpus predates this PLAN), then produce and wire in: (a) the DO-crash
-below-direction trace, and (b) a trace whose evaluated path carries a
-non-`reading` event type (the anchor filter selects `reading` only,
-`demo_events.py:57-64` — today a regression anywhere non-reading events flow
-has no golden artifact that can redden).
-**Probe (a):** invert the `below` comparison inside the threshold-crossing
-predicate (`demo_events.py:62` seam) in a scratch copy → trace (a)'s eval
-verdict reds while traces 01–03 stay green — proving the new artifact, and
-only it, pins the below branch. **Probe (b):** in a scratch copy, drop
-non-`reading` events from the pipeline the trace exercises → trace (b)'s
-verdict reds while 01–03 stay green. Output changed: each new trace's eval
-verdict. Cost: inside pytest, not separately measured.
+_[Rewritten s258 after Cray ruled option (b). The prior text is preserved in
+git history; it is `was an error`, not `superseded` — its two probes named a
+mutation (`demo_events.py:62`) that is a delegation, and an oracle
+(`test_eval_harness.py`) that reads static JSON and cannot observe it. Both
+were measured unrunnable at s241 and re-verified s258. Executing them as
+written would have produced the class-C1 guard this PLAN exists to remove.]_
+
+Build `tools/golden_trace/` — the producer the corpus never had — with
+`refresh` (recompute each trace's `expected_envelope` through the real
+`recommender._compose_llm_record`) and `check` (report drift, exit 1). Measure
+which envelope fields are reproducible **before** choosing what to pin, and
+exclude only those that are not. Add invariant 5 to the eval harness: the
+system's live composition must equal the recorded envelope. Backfill traces
+01–03, then add the two new traces as `representative` (the class 02–03
+established — no live capture, so no host-state gate applies). Split the
+"expectation is recorded" precondition into its own assertion so an
+unrecorded expectation fails loudly instead of letting the corpus go vacuous.
+
+**Probe (a):** mutate the envelope `id` prefix inside `_compose_llm_record` →
+invariant 5 reddens at its own site, while the precondition assertion stays
+green under the same mutation (the control). **Probe (b):** rename a trace's
+`expected_envelope` key → the precondition reddens, while a sibling trace's
+stays green (the control). One probe per assertion; run through
+`tools/probe_battery`, never a hand-rolled driver. Output changed: (a) the
+composed envelope's `id`, hence the scoring verdict; (b) the presence of the
+recorded expectation. Cost: inside pytest, not separately measured.
 
 ### Step 8 (B / AC-10): gold meets engine, eleven more times
 

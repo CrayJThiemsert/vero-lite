@@ -15,10 +15,96 @@
     "rationale": "Sustained 94 celsius across the string risks degradation; inspect both the cell and the site cooling system.",
     "confidence": 0.66,
     "affected_entities": [
-      {"object_type": "Asset", "primary_key": "asset-battery-22"},
-      {"object_type": "Site", "primary_key": "substation-02"}
+      {
+        "object_type": "Asset",
+        "primary_key": "asset-battery-22"
+      },
+      {
+        "object_type": "Site",
+        "primary_key": "substation-02"
+      }
     ],
     "suggested_handler": "echo",
-    "handler_payload": {"event_id": "event-reading-eval-03"}
+    "handler_payload": {
+      "event_id": "event-reading-eval-03"
+    }
+  },
+  "expected_envelope": {
+    "id": "action-event-reading-eval-03",
+    "title": "Battery string over-temperature",
+    "description": "Battery asset-battery-22 at substation-02 crossed the thermal threshold.",
+    "vertical": "energy",
+    "reasoning_trace": [
+      {
+        "step_id": "ontology-query",
+        "kind": "ontology_query",
+        "summary": "Ingested operational event 'event-reading-eval-03' from the energy data adapter",
+        "detail": {
+          "vertical": "energy",
+          "event": {
+            "event_id": "event-reading-eval-03",
+            "event_type": "reading",
+            "measured_value": 94.0,
+            "unit": "celsius",
+            "asset_id": "asset-battery-22",
+            "site_id": "substation-02"
+          }
+        }
+      },
+      {
+        "step_id": "llm-inference",
+        "kind": "llm_inference",
+        "summary": "Sustained 94 celsius across the string risks degradation; inspect both the cell and the site cooling system.",
+        "detail": {
+          "label": "MODEL-ASSERTED — this narrative is the model's own account of its reasoning, not a verified explanation of its computation (ADR-010 D3 / research brief #3 §4.2). Treat it as a review aid, not as ground truth.",
+          "model": "gpt-oss:20b",
+          "thinking": "recorded reasoning narrative",
+          "draft": "recorded draft",
+          "structuring_attempts": 1,
+          "confidence": 0.66,
+          "confidence_note": "advisory only — surfaced for the human reviewer, never used to gate approval or execution (ADR-010 IN-3)"
+        }
+      },
+      {
+        "step_id": "semantic-checks",
+        "kind": "rule_check",
+        "summary": "Verified suggested_handler 'echo' resolves in the registry for vertical 'energy'; 2 affected-entity primary key(s) non-empty",
+        "detail": {
+          "vertical": "energy",
+          "suggested_handler": "echo",
+          "handler_registered": true,
+          "affected_entity_count": 2
+        }
+      }
+    ],
+    "confidence": 0.66,
+    "affected_entities": [
+      {
+        "object_type": "Asset",
+        "primary_key": "asset-battery-22",
+        "title": null
+      },
+      {
+        "object_type": "Site",
+        "primary_key": "substation-02",
+        "title": null
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-reading-eval-03"
+    },
+    "requires_approval": true,
+    "approval_chain": [],
+    "audit_metadata": {
+      "actor": "gpt-oss:20b",
+      "actor_kind": "llm",
+      "correlation_id": null,
+      "notes": "LLM reasoning path (PLAN-0006 / ADR-010 D3). The reasoning trace is a human-review artifact; confidence is advisory only (IN-3).",
+      "governed_decision": null
+    },
+    "expires_at": null,
+    "approved_at": null,
+    "executed_at": null
   }
 }

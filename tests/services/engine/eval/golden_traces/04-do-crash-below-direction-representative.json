@@ -1,0 +1,113 @@
+{
+  "name": "do-crash-below-direction-representative",
+  "source": "representative — hand-authored for PLAN-0107 AC-9, same class as traces 02/03 (no live capture). Covers the below-direction breach the recommender cites (services/engine/demo_events.py:50-51) on a NON-energy event shape: aquaculture events key on pond_id, not asset_id, so this trace scores the vertical-agnostic claim in PLAN-0013's AC-template rather than restating energy's shape. It does NOT pin the below COMPARISON — that lives in recommender.crosses_threshold and is already covered by tests/services/engine/test_recommender_config.py:108-112 and tests/services/engine/test_demo_events.py:195 with its :213 control.",
+  "vertical": "aquaculture",
+  "event": {
+    "event_id": "event-reading-eval-04",
+    "event_type": "reading",
+    "measured_value": 3.2,
+    "unit": "mg/L",
+    "pond_id": "pond-07",
+    "site_id": "farm-bayfront-01"
+  },
+  "model_output": {
+    "title": "Restore Aeration on Pond 07",
+    "description": "Dissolved oxygen at pond-07 has fallen to 3.2 mg/L, below the pond's floor.",
+    "rationale": "Dissolved oxygen of 3.2 mg/L is at or below the per-species floor for this pond and will cause stock mortality within hours if it persists. Restoring aeration is the immediate mitigation; the stalled paddlewheel should be inspected in the same visit.",
+    "confidence": 0.88,
+    "affected_entities": [
+      {
+        "object_type": "pond",
+        "primary_key": "pond-07",
+        "title": "Pond 07"
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-reading-eval-04",
+      "pond_id": "pond-07",
+      "measured_value": 3.2,
+      "unit": "mg/L",
+      "priority": "High",
+      "status": "Pending human review"
+    }
+  },
+  "expected_envelope": {
+    "id": "action-event-reading-eval-04",
+    "title": "Restore Aeration on Pond 07",
+    "description": "Dissolved oxygen at pond-07 has fallen to 3.2 mg/L, below the pond's floor.",
+    "vertical": "aquaculture",
+    "reasoning_trace": [
+      {
+        "step_id": "ontology-query",
+        "kind": "ontology_query",
+        "summary": "Ingested operational event 'event-reading-eval-04' from the aquaculture data adapter",
+        "detail": {
+          "vertical": "aquaculture",
+          "event": {
+            "event_id": "event-reading-eval-04",
+            "event_type": "reading",
+            "measured_value": 3.2,
+            "unit": "mg/L",
+            "pond_id": "pond-07",
+            "site_id": "farm-bayfront-01"
+          }
+        }
+      },
+      {
+        "step_id": "llm-inference",
+        "kind": "llm_inference",
+        "summary": "Dissolved oxygen of 3.2 mg/L is at or below the per-species floor for this pond and will cause stock mortality within hours if it persists. Restoring aeration is the immediate mitigation; the stalled paddlewheel should be inspected in the same visit.",
+        "detail": {
+          "label": "MODEL-ASSERTED — this narrative is the model's own account of its reasoning, not a verified explanation of its computation (ADR-010 D3 / research brief #3 §4.2). Treat it as a review aid, not as ground truth.",
+          "model": "gpt-oss:20b",
+          "thinking": "recorded reasoning narrative",
+          "draft": "recorded draft",
+          "structuring_attempts": 1,
+          "confidence": 0.88,
+          "confidence_note": "advisory only — surfaced for the human reviewer, never used to gate approval or execution (ADR-010 IN-3)"
+        }
+      },
+      {
+        "step_id": "semantic-checks",
+        "kind": "rule_check",
+        "summary": "Verified suggested_handler 'echo' resolves in the registry for vertical 'aquaculture'; 1 affected-entity primary key(s) non-empty",
+        "detail": {
+          "vertical": "aquaculture",
+          "suggested_handler": "echo",
+          "handler_registered": true,
+          "affected_entity_count": 1
+        }
+      }
+    ],
+    "confidence": 0.88,
+    "affected_entities": [
+      {
+        "object_type": "pond",
+        "primary_key": "pond-07",
+        "title": "Pond 07"
+      }
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-reading-eval-04",
+      "pond_id": "pond-07",
+      "measured_value": 3.2,
+      "unit": "mg/L",
+      "priority": "High",
+      "status": "Pending human review"
+    },
+    "requires_approval": true,
+    "approval_chain": [],
+    "audit_metadata": {
+      "actor": "gpt-oss:20b",
+      "actor_kind": "llm",
+      "correlation_id": null,
+      "notes": "LLM reasoning path (PLAN-0006 / ADR-010 D3). The reasoning trace is a human-review artifact; confidence is advisory only (IN-3).",
+      "governed_decision": null
+    },
+    "expires_at": null,
+    "approved_at": null,
+    "executed_at": null
+  }
+}
