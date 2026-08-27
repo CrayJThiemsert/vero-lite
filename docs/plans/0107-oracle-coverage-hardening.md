@@ -528,8 +528,12 @@ a source-text read.
   > failure a completeness KPI structurally cannot see. The refusal is INTERIM
   > and says so at the seam; the schema that can hold an invoice and its credit
   > as two coexisting facts is PLAN-0111's subject.
-- [ ] **AC-12 [check] — a floor under the executed DB-test count.** *(Ruled by
-  Cray 2026-08-17: close this as a count floor.)* A session-finish check
+- [x] **AC-12 [check] — a floor under the executed DB-test count.** *(Ruled by
+  Cray 2026-08-17: close this as a count floor. Landed #1305; ticked s258 after
+  re-running the AC's own command verbatim — it exits **1** with
+  `4023 passed, 486 skipped` against a normal 8. Note the shape: pytest's own
+  summary reports **nothing failed** and the process fails anyway, which is the
+  session-finish floor doing its job.)* A session-finish check
   (in the top-level conftest, active when `CI` is set — GitHub sets `CI=true`)
   fails the run when the number of **executed** (non-skipped) DB-backed tests
   falls below a floor set from the CI baseline with an explicit margin and a
@@ -543,8 +547,10 @@ a source-text read.
   (the probe is the check):
   `CI=1 TEST_DATABASE_URL=postgresql+asyncpg://vero:vero@localhost:59999/vero_lite_test uv run --no-sync pytest tests -q` <!-- pragma: allowlist secret — the throwaway CI-container cred already carried in ci.yml:27,:60,:75-76 and docker-compose.yml; port 59999 is deliberately unreachable, which is the whole probe -->
   exits **nonzero** (today it exits 0 with skips).
-- [ ] **AC-13 [check] — the dead coverage floor stops existing.** *(Ruled by
-  Cray 2026-08-17: delete, not arm.)* `pyproject.toml:124` (`fail_under = 70`)
+- [x] **AC-13 [check] — the dead coverage floor stops existing.** *(Ruled by
+  Cray 2026-08-17: delete, not arm. Landed #1305; ticked s258 after re-running
+  the AC's own command — `git grep -n "fail_under" -- pyproject.toml` exits
+  **1**, measured, not inferred from the PR body.)* `pyproject.toml:124` (`fail_under = 70`)
   is deleted: no `addopts` exists (`:109-116`) and `ci.yml:77` is a bare
   `pytest -q`, so coverage is never measured while the config reads as an
   enforced gate — a guard that reads as protection and is not. The
@@ -553,8 +559,13 @@ a source-text read.
   `git grep -n "fail_under" -- pyproject.toml` exits **1** (it exits 0 today).
   Any future *armed* coverage gate is a new decision for Cray, made against a
   measured number — not this PLAN's business.
-- [ ] **AC-14 [check] — the frozen `?v=` floor is replaced by a diff-aware
-  gate, in the same PR.** `tests/api/test_ui_profile.py:725-751` freezes
+- [x] **AC-14 [check] — the frozen `?v=` floor is replaced by a diff-aware
+  gate, in the same PR.** *(Landed #1305; ticked s258 against all four of the
+  AC's own reads: the unit suite is **6 passed**; `git grep -n "def
+  test_every_edited_asset_got_a_cache_bust" -- tests/` exits **1** — retired,
+  with a tombstone at `tests/api/test_ui_profile.py:725` stating why;
+  `fetch-depth: 2` is at `ci.yml:43`; and the new step at `ci.yml:91` ran
+  **success** on this PLAN's own closing PR.)* `tests/api/test_ui_profile.py:725-751` freezes
   per-file minima over 9 of 21 JS files and 0 of 4 CSS files — editing
   `views.css` without bumping `index.html:29` passes today, and that exact
   bump (c43→c44, PR #1190) was hand-made and unguarded. **This guard passes
@@ -572,11 +583,20 @@ a source-text read.
 
 ### Cross-phase
 
-- [ ] **AC-15 [evidence] — the CI bill is recorded.** The closing PR body
+- [x] **AC-15 [evidence] — the CI bill is recorded.** The closing PR body
   records, per new CI step, the observed wall-clock delta on that PR's run.
   Recorded, **explicitly NOT a gate** — no threshold is enforced on these
   numbers; they exist so the later browser-plan discussion starts from
   measured cost, not vibes.
+  > **Measured on this PLAN's closing PR** (#1307, run `33039045076`, gate
+  > **585s** total, all 20 steps `success`). The two steps this PLAN added:
+  > `JS assets parse (node --check)` (AC-1) **4s**; `Static assets carry a
+  > fresh ?v= token (diff-aware)` (AC-14) **<1s**. Combined **~4s of 585s —
+  > 0.7%** of the gate. For the browser-plan discussion the Out-of-Scope
+  > section defers to: the dominant cost is `Full test suite (offline gate +
+  > DB-backed tests)` at **483s (83%)**, and the rejected ~3-minute browser
+  > stage would have been **~31%** on top of the whole gate — which is the
+  > ground (b) that rejection rests on, now carrying a number.
 
 ## Out of Scope
 
