@@ -14,12 +14,9 @@ from pydantic import ValidationError
 
 from benchmarks.procedure_baseline.grader import classify_disposition
 from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all, load_dataset
+from benchmarks.procedure_baseline.run_benchmark import _register_all_handlers
 from benchmarks.procedure_baseline.schema import Disposition
 from services.engine.registry import registry
-from verticals.aquaculture.handlers import register_aquaculture_handlers
-from verticals.energy.handlers import register_energy_handlers
-from verticals.fleet_maintenance.handlers import register_fleet_maintenance_handlers
-from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 # The β-headline SCORING fields — a breach item must declare at least one (the tiered
 # α handler probe and the advisory payload_contains do NOT make an item gradable).
@@ -103,10 +100,7 @@ def test_alpha_probe_handlers_are_registered_for_their_vertical() -> None:
     registered for its vertical; otherwise the live ``suggested_handler`` enum could
     never offer it and the tier would be unreachable by construction (PLAN-0019
     Part B)."""
-    register_aquaculture_handlers()
-    register_energy_handlers()
-    register_supply_chain_handlers()
-    register_fleet_maintenance_handlers()
+    _register_all_handlers([dataset.vertical for dataset in load_all()])
     for dataset in load_all():
         registered = set(registry.handler_names(dataset.vertical))
         assert registered, f"{dataset.vertical}: no handlers registered"

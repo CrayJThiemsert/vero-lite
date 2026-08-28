@@ -132,6 +132,31 @@ class ItemResult:
     #: is the p95"; only a per-item number answers "WHICH task was slow", which is
     #: what a per-judgment deadline breach has to be able to name.
     judgment_latency_s: float | None = None
+    #: The call-1 reasoning output (``draft``) and the model's own thinking trace.
+    #: ``None`` when no call 1 ran (``reasoning_mode="skip"``, the ok guard) or the
+    #: exchange errored before producing one. Carried because a claim about what
+    #: the reasoning pass DID is otherwise reconstructed from the call-2 rationale,
+    #: which is a downstream echo of the draft rather than the draft — the product
+    #: path already persists both (``services/engine/llm/trace.py``).
+    draft: str | None = None
+    thinking: str | None = None
+
+
+@dataclass(frozen=True)
+class JudgmentRun:
+    """One item's LLM exchange, as returned by :func:`_run_judgment`.
+
+    Exactly one of ``judgment`` / ``error`` is ``None``. A record rather than a
+    tuple because ``draft`` and ``thinking`` joined it: three call sites unpack
+    this, and two same-typed optional strings sitting next to each other are two
+    positions to swap silently.
+    """
+
+    judgment: LlmJudgment | None
+    error: str | None
+    latency_s: float
+    draft: str | None = None
+    thinking: str | None = None
 
 
 async def _run_judgment(
@@ -145,9 +170,13 @@ async def _run_judgment(
     recorder: LatencyRecorder | None,
     reasoning_mode: ReasoningMode,
     deadline_s: float | None = None,
-) -> tuple[LlmJudgment | None, str | None, float]:
-    """Run the live ``generate_judgment`` exchange for one item and return
-    ``(judgment, error)`` — exactly one of the two is ``None``.
+    include_handler_catalog: bool = False,
+) -> JudgmentRun:
+    """Run the live ``generate_judgment`` exchange for one item.
+
+    Returns a :class:`JudgmentRun` — exactly one of ``judgment`` / ``error`` is
+    ``None`` — rather than a positional tuple, because the reasoning ``draft``
+    and ``thinking`` now ride back with it and three call sites unpack this.
 
     Both a :class:`StructuredOutputError` (the model never produced a valid
     judgment within the retry budget) and an ``OllamaError`` (a transport failure
@@ -164,6 +193,8 @@ async def _run_judgment(
     start = time.perf_counter()
     judgment: LlmJudgment | None = None
     error: str | None = None
+    draft: str | None = None
+    thinking: str | None = None
     try:
         if deadline_s is None:
             result = await generate_judgment(
@@ -173,6 +204,7 @@ async def _run_judgment(
                 retry_budget=retry_budget,
                 goal=goal,
                 reasoning_mode=reasoning_mode,
+                include_handler_catalog=include_handler_catalog,
             )
         else:
             # The deadline bounds the WHOLE exchange — both Pattern-B calls plus
@@ -188,8 +220,15 @@ async def _run_judgment(
                     retry_budget=retry_budget,
                     goal=goal,
                     reasoning_mode=reasoning_mode,
+                    include_handler_catalog=include_handler_catalog,
                 )
         judgment = result.judgment
+        # The call-1 reasoning output, carried back so a run can persist it. Without
+        # it, any account of what the reasoning pass DID is reconstructed from the
+        # call-2 rationale — a downstream echo, not the draft. Phase 1.6's causal
+        # story was built that way and could not be checked.
+        draft = result.draft
+        thinking = result.thinking
     except TimeoutError:
         # Named distinctly so a breach is never read as a model failure: the run
         # was CUT, and what it would have produced is unknown.
@@ -202,7 +241,9 @@ async def _run_judgment(
         elapsed = time.perf_counter() - start
         if recorder is not None:
             recorder.record(elapsed)
-    return judgment, error, elapsed
+    return JudgmentRun(
+        judgment=judgment, error=error, latency_s=elapsed, draft=draft, thinking=thinking
+    )
 
 
 async def evaluate_item(
@@ -217,6 +258,7 @@ async def evaluate_item(
     watch_judgment_recorder: LatencyRecorder | None = None,
     reasoning_mode: ReasoningMode = "full",
     judgment_deadline_s: float | None = None,
+    include_handler_catalog: bool = False,
 ) -> ItemResult:
     """Evaluate one item: deterministic disposition, then grade the live LLM
     proposal on the lane the item's disposition selects — **breach** -> the β
@@ -257,7 +299,7 @@ async def evaluate_item(
         # The deterministic disposition stays the routing truth (AC-3): this lane
         # grades WHAT the model proposed on an item the watch band routed, not
         # whether to route (M-3 — mis-routing is structurally impossible here).
-        judgment, error, latency = await _run_judgment(
+        run = await _run_judgment(
             item,
             client,
             vertical=vertical,
@@ -267,7 +309,9 @@ async def evaluate_item(
             recorder=watch_judgment_recorder,
             reasoning_mode=reasoning_mode,
             deadline_s=judgment_deadline_s,
+            include_handler_catalog=include_handler_catalog,
         )
+        judgment, error, latency = run.judgment, run.error, run.latency_s
         if judgment is None:
             # A failed judgment is loud: scored items fail the lane; unscored
             # (M-2=b calibration) items carry the error with no pass/fail to pin.
@@ -284,6 +328,8 @@ async def evaluate_item(
                 watch_graded=True,
                 watch_pass=False if declares_handler_tiers(item.expected) else None,
                 judgment_latency_s=latency,
+                draft=run.draft,
+                thinking=run.thinking,
             )
         watch = grade_watch_proposal(judgment, item.expected)
         return ItemResult(
@@ -301,9 +347,11 @@ async def evaluate_item(
             watch_tier=watch.tier,
             watch_handler=watch.handler,
             judgment_latency_s=latency,
+            draft=run.draft,
+            thinking=run.thinking,
         )
 
-    judgment, error, latency = await _run_judgment(
+    run = await _run_judgment(
         item,
         client,
         vertical=vertical,
@@ -313,8 +361,17 @@ async def evaluate_item(
         recorder=judgment_recorder,
         reasoning_mode=reasoning_mode,
         deadline_s=judgment_deadline_s,
+        include_handler_catalog=include_handler_catalog,
     )
+    judgment, error, latency = run.judgment, run.error, run.latency_s
     if judgment is None:
+        # NOT a wrong answer — an ABSENT one. `proposal_correct=False` here made a
+        # deadline cut arithmetically identical to a model that answered and got it
+        # wrong, so latency leaked into the accuracy column: measured s260, the
+        # cells with cuts were the slow model's, and only its. `None` keeps the item
+        # attempted-but-unscored, which is what the watch lane beside this one has
+        # always done, and what compare.py's own docstring already claims it
+        # receives ("kept so they are never silently counted as failures").
         return ItemResult(
             item_id=item.id,
             vertical=vertical,
@@ -322,10 +379,12 @@ async def evaluate_item(
             disposition_actual=actual,
             disposition_correct=disposition_correct,
             graded=True,
-            proposal_correct=False,
+            proposal_correct=None,
             grade=None,
             error=error,
             judgment_latency_s=latency,
+            draft=run.draft,
+            thinking=run.thinking,
         )
 
     grade = grade_proposal(judgment, item.expected)
@@ -342,6 +401,8 @@ async def evaluate_item(
         probe_tier=grade.handler_tier,
         judgment=judgment,
         judgment_latency_s=latency,
+        draft=run.draft,
+        thinking=run.thinking,
     )
 
 
@@ -375,6 +436,14 @@ class Summary:
 
     total: int
     graded: int
+    #: Of the ``graded`` (attempted) breach items, how many produced a judgment to
+    #: score, and how many did not. Reported as a PAIR with ``headline_accuracy``
+    #: on purpose: accuracy-of-scored conditions on the items the model could
+    #: finish, so it is only honest beside the count it excluded. The watch lane
+    #: has always reported ``watch_errors`` this way; this is the breach lane
+    #: catching up.
+    headline_scored: int
+    headline_errors: int
     headline_correct: int
     headline_accuracy: float | None
     probe_graded: int
@@ -398,7 +467,14 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
     (β / α / watch lane / sanity)."""
     total = len(results)
     graded = [result for result in results if result.graded]
-    headline_correct = sum(1 for result in graded if result.proposal_correct)
+    # ATTEMPTED vs SCORED. An errored/cut judgment carries `proposal_correct=None`;
+    # it was attempted but produced nothing to grade. Dividing by `len(graded)`
+    # counted it as a wrong answer, which made the accuracy column a function of
+    # how slow the model was — and in the s260 matrix every cut belonged to one
+    # model, so the confound ran one way only.
+    headline_basis = [result for result in graded if result.proposal_correct is not None]
+    headline_errors = len(graded) - len(headline_basis)
+    headline_correct = sum(1 for result in headline_basis if result.proposal_correct)
     probed = [result for result in graded if result.probe_correct is not None]
     probe_correct = sum(1 for result in probed if result.probe_correct)
     deterministic_correct = sum(1 for result in results if result.disposition_correct)
@@ -428,8 +504,10 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
     return Summary(
         total=total,
         graded=len(graded),
+        headline_scored=len(headline_basis),
+        headline_errors=headline_errors,
         headline_correct=headline_correct,
-        headline_accuracy=(headline_correct / len(graded)) if graded else None,
+        headline_accuracy=(headline_correct / len(headline_basis)) if headline_basis else None,
         probe_graded=len(probed),
         probe_correct=probe_correct,
         probe_accuracy=(probe_correct / len(probed)) if probed else None,

@@ -332,13 +332,24 @@ async def test_transport_error_is_recorded_not_raised() -> None:
 
     result = await evaluate_item(_breach_item(), _Boom(), vertical=_VERTICAL)
 
-    assert result.graded is True
-    assert result.proposal_correct is False
+    assert result.graded is True, "the item was attempted"
+    assert result.proposal_correct is None, "attempted but UNSCORED — not a wrong answer"
     assert result.grade is None
     assert result.error is not None and "timeout" in result.error
 
+    # The load-bearing half: an item that produced no judgment must leave the
+    # accuracy denominator, not sit in it as a miss. Scoring a transport failure
+    # or a deadline cut as FALSE made accuracy a function of latency — measured
+    # s260, where every cut in the phase-1.6 matrix belonged to the slower model
+    # and to no other, so the confound ran one direction only.
+    summary = summarize([result])
+    assert summary.graded == 1, "attempted"
+    assert summary.headline_scored == 0, "nothing was scorable"
+    assert summary.headline_errors == 1
+    assert summary.headline_accuracy is None, "no accuracy is definable over zero scored items"
 
-async def test_structured_output_failure_is_an_incorrect_proposal() -> None:
+
+async def test_structured_output_failure_is_unscored_not_incorrect() -> None:
     registry.register_handler(_VERTICAL, "echo", _noop_handler)
     # one reasoning draft + 3 un-parseable structuring attempts exhausts the budget
     client = FakeChatClient(
@@ -348,9 +359,42 @@ async def test_structured_output_failure_is_an_incorrect_proposal() -> None:
     result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=3)
 
     assert result.graded is True
-    assert result.proposal_correct is False
+    assert result.proposal_correct is None
     assert result.grade is None
     assert result.error is not None
+
+
+async def test_an_errored_item_does_not_dilute_a_scored_one() -> None:
+    """The positive control for the assertion above.
+
+    "Excluded from the denominator" is satisfied by an empty denominator, so a
+    test that only ever sees errored items cannot tell exclusion from having
+    nothing to divide. This one mixes a scored PASS with an errored item and
+    pins the accuracy at 100% — the number the old denominator would have
+    reported as 50%.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+
+    passing = await evaluate_item(
+        _breach_item(),
+        FakeChatClient([_result("draft", thinking="r"), _result(_judgment_json())]),
+        vertical=_VERTICAL,
+    )
+    assert passing.proposal_correct is True, "control: this item really was scored and passed"
+
+    errored = await evaluate_item(
+        _breach_item(),
+        FakeChatClient([_result("draft", thinking="r"), _result("nope")]),
+        vertical=_VERTICAL,
+        retry_budget=1,
+    )
+    assert errored.proposal_correct is None
+
+    summary = summarize([passing, errored])
+    assert summary.graded == 2
+    assert summary.headline_scored == 1
+    assert summary.headline_errors == 1
+    assert summary.headline_accuracy == 1.0
 
 
 def test_summarize_separates_headline_from_deterministic_sanity() -> None:

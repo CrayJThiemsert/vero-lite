@@ -25,6 +25,23 @@ reading_parameter: temperature
 threshold_note: >-
   PROVISIONAL 90.0 C over-temperature ceiling, breach ABOVE; watch band 5.0
   (85.0-90.0). Pin the exact ceiling against energy_v0.yaml + demo config.
+goal_parameter_exemption: >-
+  DECLARED, NOT RESOLVED. This dataset measures asset TEMPERATURE in celsius,
+  while substation_health_sweep's goal — threaded into the trusted system
+  instruction of every call — instructs the model to read FEEDER CURRENT against
+  rated_current_a. PLAN-0070 (2026-07-13) re-themed the procedure from
+  over-temperature to over-current and left the reactive-recommender / timeline
+  demo path on temperature as out of scope; this fixture was never re-themed with
+  it, and no guard existed to notice. Measured s260 in the phase-1.6 dumps: the
+  challenger model detected the contradiction ("the event is a temperature
+  reading, not a feeder current overload, so the feeder-restart procedure does
+  not apply") and was graded WRONG for it, because the gold set pins restart. So
+  every beta number this file has ever produced scores directive-faithfulness as
+  failure and shallow keyword-matching as success. It is retained unchanged
+  because benchmarks/procedure_comparison/ still uses it as its default dataset
+  and re-theming it would strand that arm's banked baseline; the model decision
+  moved to fleet_maintenance.yaml, whose goal and events agree (Cray, s260).
+  DO NOT read this file's accuracy numbers as a measure of model capability.
 
 items:
   # --- breach (temp >= 90.0; the LLM-graded mass, weighted to the boundary) ----

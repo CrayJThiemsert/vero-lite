@@ -28,6 +28,10 @@ import json
 from pathlib import Path
 from typing import Any
 
+from benchmarks.procedure_baseline.consistency import (
+    goal_coverage,
+    missing_handler_verticals,
+)
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
     LatencyRecorder,
@@ -41,32 +45,48 @@ from benchmarks.procedure_baseline.harness import (
 from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all
 from benchmarks.procedure_baseline.schema import Dataset
 from services.api.config import settings
+from services.engine.discovery import discover_and_register
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ReasoningMode
 from services.engine.procedures.spec import Procedure, load_procedures
-from verticals.aquaculture.handlers import register_aquaculture_handlers
-from verticals.energy.handlers import register_energy_handlers
-from verticals.fleet_maintenance.handlers import register_fleet_maintenance_handlers
-from verticals.supply_chain.handlers import register_supply_chain_handlers
+from services.engine.registry import registry
 
 _DEFAULT_MODEL = "gpt-oss:20b"  # ADR-001 pin
 _DEFAULT_KEEP_ALIVE = "10m"
 
 
-def _register_all_handlers() -> None:
-    """Register every dataset vertical's action handlers on the registry so the
-    ``suggested_handler`` enum-constraint + the semantic check resolve.
+def _register_all_handlers(verticals: list[str] | None = None) -> None:
+    """Register every vertical's action handlers so the ``suggested_handler``
+    enum-constraint and the semantic check resolve.
 
-    A vertical whose handlers are NOT registered here gets an EMPTY enum, which
-    silently removes the schema constraint the whole alpha lane depends on — the
-    model may then emit any string and nothing catches it. The loader test asserts
-    every dataset vertical has registered handlers precisely so a new dataset
-    cannot be added without this line.
+    A vertical whose handlers are NOT registered gets an EMPTY enum, which
+    silently removes the schema constraint the whole α lane depends on — the model
+    may then emit any string and nothing catches it. This function used to name
+    four verticals by hand, so a fifth was one forgotten import away from that
+    silence; the s259 fleet dataset landed with exactly that bug.
+
+    It now goes through registry auto-discovery (ADR-0023 / PLAN-0032), the
+    mechanism built so a conforming vertical registers **without a hand edit**.
+    Discovery alone is not enough, though: it is deliberately *failure-isolated*
+    and logs-and-skips a vertical whose import raises, which reproduces the same
+    silence one layer down. So when ``verticals`` is supplied — the datasets this
+    run will actually grade — the outcome is ASSERTED, and a vertical that came
+    back with no handlers aborts the run before a single model call is spent.
     """
-    register_aquaculture_handlers()
-    register_energy_handlers()
-    register_supply_chain_handlers()
-    register_fleet_maintenance_handlers()
+    discover_and_register()
+    if verticals is None:
+        return
+    registered = {vertical: registry.handler_names(vertical) for vertical in set(verticals)}
+    missing = missing_handler_verticals(verticals, registered)
+    if missing:
+        raise SystemExit(
+            "registry discovery produced NO handlers for: "
+            + ", ".join(missing)
+            + ". Their suggested_handler enum would be empty, so the schema constraint "
+            "the α lane depends on would be silently absent and any string the model "
+            "emitted would pass. Check that each vertical package exposes "
+            "register_<vertical>_handlers and imports cleanly."
+        )
 
 
 def _resolve_goal_and_model(dataset: Dataset) -> tuple[str | None, str]:
@@ -111,6 +131,16 @@ async def run_dataset(
     breach-scoped — and in ``watch_judgment_recorder`` for watch items (the
     M-4 own-lane diagnostic, no bar)."""
     goal, agent_model = _resolve_goal_and_model(dataset)
+    # Say out loud, before any model is contacted, whether the directive this run
+    # threads into the trusted system instruction is about the quantity the events
+    # actually carry. energy.yaml's mismatch survived six weeks and produced a
+    # matrix nobody could interpret, because nothing printed this line.
+    coverage = goal_coverage(dataset.reading_parameter, goal)
+    if not coverage.covered:
+        marker = "DECLARED" if dataset.goal_parameter_exemption else "UNDECLARED"
+        print(f"GOAL/PARAMETER MISMATCH ({marker}) [{dataset.vertical}]: {coverage.describe()}")
+        if dataset.goal_parameter_exemption:
+            print(f"  exemption: {dataset.goal_parameter_exemption.strip()}")
     model = model_override or agent_model
     base = OllamaClient(
         base_url=host,
@@ -134,6 +164,13 @@ async def run_dataset(
             reasoning_mode=reasoning_mode,
             retry_budget=retry_budget,
             judgment_deadline_s=judgment_deadline_s,
+            # Read the PRODUCT's setting rather than carrying a benchmark-local
+            # default. The two had drifted apart — the product ships the catalog
+            # ON and the benchmark hardcoded OFF — so every number the matrix
+            # produced was measured on a prompt the product does not send, with
+            # the model choosing between bare enum names and no description of
+            # what any of them means.
+            include_handler_catalog=settings.handler_catalog_enabled,
         )
         results.append(result)
         _print_item(result)
@@ -161,7 +198,12 @@ def _print_item(result: ItemResult) -> None:
     if not result.graded:
         print(f"  {result.item_id:<16} {result.disposition_expected.value:<7} sanity={sanity}")
         return
-    headline = "PASS" if result.proposal_correct else "FAIL"
+    # An errored item is UNSCORED, not failed — say so, or the per-item log
+    # disagrees with the summary that now excludes it.
+    if result.proposal_correct is None:
+        headline = "UNSCORED"
+    else:
+        headline = "PASS" if result.proposal_correct else "FAIL"
     suffix = f" ({result.error})" if result.error else ""
     print(
         f"  {result.item_id:<16} {result.disposition_expected.value:<7} "
@@ -177,7 +219,8 @@ def _print_summary(label: str, summary: Summary) -> None:
     tiers = summary.probe_tiers
     print(
         f"\n{label}: β headline {headline} "
-        f"({summary.headline_correct}/{summary.graded} graded breach proposals) | "
+        f"({summary.headline_correct}/{summary.headline_scored} SCORED breach proposals; "
+        f"{summary.headline_errors} of {summary.graded} attempted produced no judgment) | "
         f"α handler-probe {probe} "
         f"({summary.probe_correct}/{summary.probe_graded} reactive-path handler picks: "
         f"canonical {tiers['canonical']} / acceptable {tiers['acceptable']} / "
@@ -250,6 +293,12 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
         "error": result.error,
         "checks": checks,
         "judgment": result.judgment.model_dump() if result.judgment is not None else None,
+        # The call-1 reasoning output. Phase 1.6 concluded things about what the
+        # reasoning pass did to the decision while the dumps carried no draft at
+        # all, so the account rested on the call-2 rationale — the draft's echo.
+        # An offline re-read of a run is only possible if the run wrote this down.
+        "draft": result.draft,
+        "thinking": result.thinking,
         # Per-item wall-clock. The aggregates answer "what is the p95"; only this
         # answers "WHICH task was slow" — which a deadline breach must be able to
         # name, and which no aggregate can reconstruct after the fact.
@@ -318,8 +367,10 @@ def _print_watch_judgment_latency(latency: LatencySummary) -> None:
 
 
 async def _main(args: argparse.Namespace) -> None:
-    _register_all_handlers()
+    # Load first, so registration can be ASSERTED against the verticals this run
+    # will actually grade rather than against a list written months ago.
     datasets = load_all(args.dataset_dir)
+    _register_all_handlers([dataset.vertical for dataset in datasets])
     recorder = LatencyRecorder()
     judgment_recorder = LatencyRecorder()
     watch_judgment_recorder = LatencyRecorder()
