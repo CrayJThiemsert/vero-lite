@@ -1798,3 +1798,34 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 > ride **in** PR-A rather than trailing it.
 
 _[Rotated from `docs/STATUS.md` at the **s258** reconcile — the window holds at four (255–258) as the s258 block enters. Rotates on the **window rule alone**, not a cap overage: **measured 2,671 B**, inside the 4,096 B per-block cap. The block is archived byte-identical, untrimmed. ⚠️ **A correction travelling with it:** the session-257 handoff recorded this block as *"`s254` is 4,303 B — over"* the cap, and that number is **wrong** — pinning the block by its own first and last lines and measuring gives 2,671 B. The claim was never written to a tracked file, so nothing else needs repair; it is recorded here because the rotation is the last moment anyone would have checked it, and the next reader would otherwise inherit it.]_
+
+> **Session 255, 2026-08-26 (head_commit `f0f60fd` → `2448f90`) — FOUR PRs
+> MERGED ([#1293](https://github.com/CrayJThiemsert/vero-lite/pull/1293)–[#1296](https://github.com/CrayJThiemsert/vero-lite/pull/1296)),
+> 0 open, CI green per-sha on every merge, tree clean. **PLAN-0115 is COMPLETE
+> 10/10 and ARCHIVED — `tools/probe_battery/` ships, so the witnessed-RED
+> discipline finally has an instrument instead of a `/tmp` script rebuilt wrong
+> every session.** ADR-0038 C6's named D2 form-(c) enforcer now exists.**
+>
+> 🔴 **VX-1 is DISCHARGED — owed since PLAN-0021, never answered.** Measured
+> live, twice: a non-blocking Stop-hook `systemMessage` **does** surface as
+> `Stop says: …`, to the **user's UI only** — never into Claude's context. **Not
+> a drop-in, though:** adopting it on the gate's warn arm breaks **PLAN-0069
+> AC-3** parity, so it stays available and unadopted; Telegram remains D5's
+> channel of record.
+>
+> 🔴 **The instrument found TWO defects in itself, both fixed in flight.** A
+> **same-size mutation was masked by stale bytecode** (CPython validates a `.pyc`
+> by *mtime-seconds + size*) and reported a false `GREEN` — the full local suite
+> passed and **only CI reddened.** ⚠️ That hazard was measured at s247, fix
+> included, and was **re-made inside the very tool meant to stop that.** And a
+> probe mutating its own claim's file **shifted that claim's line**, so a real RED
+> was rejected as MISFIRE — the right refusal on the wrong grounds.
+>
+> ✅ **21 assertions witnessed RED through the driver itself**, each with a
+> control left GREEN under the same mutation; **four probes reported GREEN first
+> and were REPAIRED, never recorded as witnessed** (§8: suspect the probe first).
+> **Step 3 migrated 54 `drop_all` sites / 51 files** onto a bounded helper — the
+> 67-minute hang class — with a **rule-not-roster** guard that walks the tree **on
+> disk** and matches by **AST**. Full record: the PLAN's §Closeout.
+
+_[Rotated from `docs/STATUS.md` at the **s260** reconcile — the window holds at four (256, 257, 258, 259–260) as the session-259–260 block enters. Rotates on the **window rule alone**, not a cap overage: **measured 1,984 B**, the smallest block in the outgoing window and well inside the 4,096 B per-block cap. The block is archived byte-identical, untrimmed. Its substance keeps tracked homes, each checked with `git grep` at this reconcile rather than assumed: PLAN-0115's closeout and its ten ACs are in `docs/plans/done/0115-probe-battery-driver-and-verification-instrument-hardening.md`; ADR-0038 C6's promotion (and the legibility conjunct its predicate needed) in `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md`; and the **stale-`.pyc` hazard** — a same-size mutation masked by CPython's *mtime-seconds + size* validation, which passed the full local suite and reddened **only in CI** — is documented in `tools/probe_battery/README.md` (3 references) and in `_battery.py` / `_snapshot.py`, which is where a reader about to trust a battery's GREEN actually looks. The **VX-1 `systemMessage` discharge** (it surfaces as `Stop says: …` to the user's UI only, and adopting it would break PLAN-0069 AC-3 parity) travels with the block and is also recorded in that PLAN's §Closeout.]_
