@@ -1,0 +1,94 @@
+{
+  "disagreements": [
+    {
+      "item_id": "energy-003",
+      "majority": {
+        "gpt-oss:20b": false,
+        "qwen3.8:27b-mtp-q8_0": true
+      }
+    },
+    {
+      "item_id": "energy-011",
+      "majority": {
+        "gpt-oss:20b": false,
+        "qwen3.8:27b-mtp-q8_0": true
+      }
+    },
+    {
+      "item_id": "energy-013",
+      "majority": {
+        "gpt-oss:20b": false,
+        "qwen3.8:27b-mtp-q8_0": true
+      }
+    },
+    {
+      "item_id": "energy-017",
+      "majority": {
+        "gpt-oss:20b": false,
+        "qwen3.8:27b-mtp-q8_0": true
+      }
+    },
+    {
+      "item_id": "energy-019",
+      "majority": {
+        "gpt-oss:20b": true,
+        "qwen3.8:27b-mtp-q8_0": false
+      }
+    },
+    {
+      "item_id": "energy-020",
+      "majority": {
+        "gpt-oss:20b": false,
+        "qwen3.8:27b-mtp-q8_0": true
+      }
+    }
+  ],
+  "models": [
+    {
+      "error_counts": [
+        1,
+        0,
+        0
+      ],
+      "flip_rate": 0.45,
+      "flipped_items": [
+        "energy-004",
+        "energy-005",
+        "energy-006",
+        "energy-007",
+        "energy-008",
+        "energy-010",
+        "energy-015",
+        "energy-016",
+        "energy-019"
+      ],
+      "forbidden_items": [],
+      "items_seen": 20,
+      "items_stable_basis": 20,
+      "majority_accuracy": 0.1,
+      "majority_correct": 2,
+      "model": "gpt-oss:20b",
+      "probe_tier_totals": {
+        "canonical": 59
+      },
+      "repeats": 3
+    },
+    {
+      "error_counts": [
+        10
+      ],
+      "flip_rate": null,
+      "flipped_items": [],
+      "forbidden_items": [],
+      "items_seen": 20,
+      "items_stable_basis": 20,
+      "majority_accuracy": 0.3,
+      "majority_correct": 6,
+      "model": "qwen3.8:27b-mtp-q8_0",
+      "probe_tier_totals": {
+        "other": 10
+      },
+      "repeats": 1
+    }
+  ]
+}

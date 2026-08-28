@@ -1,0 +1,37 @@
+REASONING MODE (PLAN-0020 think-trim lever): full
+
+=== energy (substation_health_sweep) ===
+  energy-001       breach  sanity=ok proposal=FAIL
+  energy-002       breach  sanity=ok proposal=FAIL
+  energy-003       breach  sanity=ok proposal=FAIL
+  energy-004       breach  sanity=ok proposal=FAIL
+  energy-005       breach  sanity=ok proposal=PASS
+  energy-006       breach  sanity=ok proposal=FAIL
+  energy-007       breach  sanity=ok proposal=PASS
+  energy-008       breach  sanity=ok proposal=FAIL
+  energy-009       breach  sanity=ok proposal=FAIL
+  energy-010       breach  sanity=ok proposal=PASS
+  energy-011       breach  sanity=ok proposal=FAIL
+  energy-012       breach  sanity=ok proposal=FAIL
+  energy-013       breach  sanity=ok proposal=FAIL
+  energy-014       breach  sanity=ok proposal=FAIL
+  energy-015       breach  sanity=ok proposal=PASS
+  energy-016       breach  sanity=ok proposal=FAIL
+  energy-017       breach  sanity=ok proposal=FAIL
+  energy-018       breach  sanity=ok proposal=FAIL
+  energy-019       breach  sanity=ok proposal=FAIL
+  energy-020       breach  sanity=ok proposal=FAIL
+
+energy: β headline 20.0% (4/20 graded breach proposals) | α handler-probe 100.0% (20/20 reactive-path handler picks: canonical 20 / acceptable 0 / forbidden 0 + other 0) | deterministic 100.0% (20/20 dispositions) | by-disposition {'breach': 20, 'watch': 0, 'ok': 0}
+
+OVERALL: β headline 20.0% (4/20 graded breach proposals) | α handler-probe 100.0% (20/20 reactive-path handler picks: canonical 20 / acceptable 0 / forbidden 0 + other 0) | deterministic 100.0% (20/20 dispositions) | by-disposition {'breach': 20, 'watch': 0, 'ok': 0}
+
+LATENCY [gpt-oss:20b] per LLM call (lever diagnostic): n=40 mean=16.50s p50=14.21s p95=28.43s max=51.98s
+
+LATENCY per BREACH judgment (end-to-end exchange — SD-2 acceptance bar): n=20 mean=33.00s p50=28.62s p95=44.45s max=75.38s | SD-2 p95 <= 30s -> OVER
+
+LATENCY per WATCH judgment (M-4 diagnostic — own lane, no bar): n=0 mean=0.00s p50=0.00s p95=0.00s max=0.00s
+
+DUMP: wrote 20 item records -> .claude/benchmark-results/s259-mc-gptoss-3.jsonl
+
+NOTE: β headline = LLM action-proposal correctness (affected entity + action class) on breach items; α handler-probe = reactive-path handler-selection (suggested_handler tiered canonical / acceptable / forbidden-or-other, PLAN-0022 Step 1; pass = canonical or acceptable — NOT a procedure-path decision, ADR-016 fixes that via step.handler); watch-lane = escalation correctness on watch items (PLAN-0022 Phase 3, M-1; calibration-only distribution until ground truth is pinned — M-2=b); deterministic disposition is a separate ~100% sanity number. The four are NOT folded together. Mis-routing columns (acted-on-watch / escalated-on-breach) are STRUCTURAL — the harness routes by the same classify_verdict on both sides (M-3), so the deterministic sanity lane covers them. Latency: per-BREACH-judgment p95 is the SD-2 acceptance bar (<= 30 s; breach-scoped — M-4); watch-judgment latency is its own diagnostic (no bar); per-call p95 is retained as a lever diagnostic. B-gamma (text-to-SQL + RAG baselines) is TODO.

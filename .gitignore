@@ -38,6 +38,14 @@ Thumbs.db
 local/
 scratch/
 
+# Model-comparison console logs are deliberately TRACKED evidence (Cray, typed
+# 2026-08-28: keep the logs — local LLM capability is a standing selling point and
+# swapping in new models has to stay a measured decision). They are the ONLY place
+# the latency aggregates and the DEADLINE breach line live; the JSONL dumps carry
+# per-item numbers but not those. Without this negation the *.log rule above
+# silently drops half of every comparison's evidence.
+!benchmarks/model_compare/evidence/*.log
+
 # Ontology codegen outputs (ADR-008 D5; reproducible from <name>_v0.yaml)
 verticals/*/generated/
 # Shared/core ontology codegen outputs (ADR-0033 D5; the committed shared ORM
