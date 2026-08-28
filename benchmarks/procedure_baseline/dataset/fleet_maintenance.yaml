@@ -1,0 +1,465 @@
+# Procedure-baseline ground truth — fleet_maintenance (FDE program phase 1.6).
+#
+# "Governed Repair Approval": a garage quote at/above THIS truck's own
+# minor_repair_ceiling_thb breaches into the governed DOA ladder.
+#   breach: quote >= 5001      watch: 4501 <= quote < 5001      ok: quote < 4501
+#
+# The ฿500 watch band is AUTHORED HERE, exactly as every other dataset authors
+# its own. It is not read from the shipped procedure — fleet's judge step
+# declares no watch_margin, and neither does energy's, yet energy's dataset
+# carries watch items. The band is operationally meaningful rather than filler:
+# a repair quoted a few hundred baht under the ceiling is the case a fleet
+# manager wants visibility on, because repeated near-ceiling quotes on one truck
+# are a signal even though no single one crosses.
+#
+# Watch items deliberately declare NO handler tiers. That is the M-2=b
+# calibration state (PLAN-0022 Phase 3): they run the LLM and report the
+# suggested-handler distribution WITHOUT scoring it, because no watch-tier ground
+# truth has been adjudicated for fleet. Pinning one here would be inventing an
+# answer, and an invented ground truth scores models against the author rather
+# than against the domain.
+#
+# Domain facts, all sourced rather than invented:
+#   * minor_repair_ceiling_thb = 5001 — design partner Q8, 2026-07-28 discovery
+#     round ("ต้อม ~5,000; some tractor heads stretch a bit"). 5001 encodes his
+#     inclusive "up to 5,000" under an at/above comparison.
+#   * DOA ladder (verticals/fleet_maintenance/procedures.yaml): 0 -> ช่างใหญ่,
+#     5001 -> ผจก.เดินรถ, 30001 -> เจ้าของกิจการ.
+#   * The sourcing-hygiene rule_gate wants three competing quotes above ฿30,000.
+#   * Truck ids / plates / classes follow the shipped synthetic seed's shape.
+#
+# WHY THIS DATASET EXISTS, and how its ground truth differs from energy's.
+# The energy set pins canonical_handler: restart with acceptable_handlers: [] —
+# every other registered handler grades "other". Measured on 2026-08-28, that
+# convention alone drove a challenger model to alpha 0% while it was emitting
+# perfectly valid enum members (escalate, dispatch_technician) that a human could
+# defend for a 96 C asset. That is a dataset convention scoring as a model defect.
+#
+# So this set declares acceptable_handlers HONESTLY, per scenario:
+#   * When the event is purely "who may authorise this spend", escalate is the
+#     only handler that answers the question and acceptable stays empty.
+#   * When the truck is DISABLED at the roadside, towing it or dispatching a
+#     replacement are genuinely defensible responses to the same event, so they
+#     are declared acceptable rather than silently graded wrong.
+# A model that picks a defensible action should not lose points for failing to
+# guess which single string an author pinned.
+#
+# 20 items: 14 breach (weighted to the ceiling boundary and across BOTH DOA
+# bands) + 3 watch + 3 ok. A 20-item set is a SUBSET by design — never quote a
+# number from it as if it came from the 66-item energy set.
+
+vertical: fleet_maintenance
+procedure: governed_repair_approval
+reading_parameter: repair_quote_thb
+threshold_note: >-
+  Per-truck minor_repair_ceiling_thb (5001 THB, partner Q8), breach AT/ABOVE,
+  with a ฿500 watch band authored for this dataset (4501-5000).
+
+items:
+  # --- Family A: plain spend escalation, mid DOA band (5,001-30,000) ----------
+  # The truck is drivable; the only open question is who may authorise the spend.
+  # acceptable_handlers is empty here BECAUSE no other handler answers that
+  # question — not as a default.
+  - id: fleet-001
+    description: ฿5,001 — exactly at the ceiling; inclusive breach, mid band.
+    scenario:
+      event_id: fleet-evt-001
+      entity_type: Truck
+      primary_key: truck-01
+      measured_value: 5001.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "80-1234 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "brake pad replacement", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-01
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  - id: fleet-002
+    description: ฿5,200 — a hair over the ceiling; mid band.
+    scenario:
+      event_id: fleet-evt-002
+      entity_type: Truck
+      primary_key: truck-02
+      measured_value: 5200.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-5678 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "air dryer leak", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-02
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  - id: fleet-003
+    description: ฿12,400 — comfortably mid band.
+    scenario:
+      event_id: fleet-evt-003
+      entity_type: Truck
+      primary_key: truck-03
+      measured_value: 12400.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "82-9012 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "clutch assembly", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-03
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  - id: fleet-004
+    description: ฿22,800 — upper mid band, still below the owner tier.
+    scenario:
+      event_id: fleet-evt-004
+      entity_type: Truck
+      primary_key: truck-04
+      measured_value: 22800.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "81-3456 กรุงเทพมหานคร", truck_class: trailer, symptom: "suspension leaf spring", drivable: true, quotes_obtained: 2}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-04
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  - id: fleet-005
+    description: ฿30,000 — the last baht inside the mid band (owner tier starts at 30,001).
+    scenario:
+      event_id: fleet-evt-005
+      entity_type: Truck
+      primary_key: truck-05
+      measured_value: 30000.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-7788 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "turbocharger rebuild", drivable: true, quotes_obtained: 2}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-05
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  # --- Family B: owner tier (>= 30,001), where the sourcing gate also bites ----
+  - id: fleet-006
+    description: ฿30,001 — first baht of the owner tier; only one quote in hand.
+    scenario:
+      event_id: fleet-evt-006
+      entity_type: Truck
+      primary_key: truck-06
+      measured_value: 30001.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "82-1122 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "gearbox overhaul", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-06
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+      forbidden_keywords: [tow]
+
+  - id: fleet-007
+    description: ฿68,500 — well into the owner tier.
+    scenario:
+      event_id: fleet-evt-007
+      entity_type: Truck
+      primary_key: truck-07
+      measured_value: 68500.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-3344 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "engine rebuild after overheat", drivable: false, quotes_obtained: 3}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-07
+      canonical_handler: escalate
+      acceptable_handlers: [tow_to_partner_garage]
+      action_keywords: [escalat, approv, authoris, authoriz]
+
+  - id: fleet-008
+    description: ฿145,000 — largest quote in the set; owner tier, three quotes held.
+    scenario:
+      event_id: fleet-evt-008
+      entity_type: Truck
+      primary_key: truck-08
+      measured_value: 145000.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "81-5566 กรุงเทพมหานคร", truck_class: trailer, symptom: "chassis crack repair", drivable: false, quotes_obtained: 3}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-08
+      canonical_handler: escalate
+      acceptable_handlers: [tow_to_partner_garage]
+      action_keywords: [escalat, approv, authoris, authoriz]
+
+  # --- Family C: truck DISABLED — alternatives are genuinely defensible -------
+  # This is the family energy could not express. A model that proposes towing the
+  # disabled truck or sending a replacement is answering the same event sensibly,
+  # so those handlers are declared acceptable rather than graded as "other".
+  - id: fleet-009
+    description: ฿9,800 — broken down at the roadside with a load aboard.
+    scenario:
+      event_id: fleet-evt-009
+      entity_type: Truck
+      primary_key: truck-09
+      measured_value: 9800.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "82-7788 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "alternator failure, stopped at roadside", drivable: false, load_aboard: true, delivery_window_hours: 6, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-09
+      canonical_handler: escalate
+      acceptable_handlers: [tow_to_partner_garage, dispatch_replacement_truck]
+      action_keywords: [escalat, approv, authoris, authoriz, tow, replacement]
+
+  - id: fleet-010
+    description: ฿15,600 — disabled, no load aboard, no delivery pressure.
+    scenario:
+      event_id: fleet-evt-010
+      entity_type: Truck
+      primary_key: truck-10
+      measured_value: 15600.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-9900 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "fuel pump seized in depot", drivable: false, load_aboard: false, quotes_obtained: 2}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-10
+      canonical_handler: escalate
+      acceptable_handlers: [tow_to_partner_garage]
+      action_keywords: [escalat, approv, authoris, authoriz, tow]
+
+  - id: fleet-011
+    description: ฿7,300 — disabled far from the depot with a same-day delivery aboard.
+    scenario:
+      event_id: fleet-evt-011
+      entity_type: Truck
+      primary_key: truck-11
+      measured_value: 7300.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "81-2233 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "radiator burst on the highway", drivable: false, load_aboard: true, delivery_window_hours: 3, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-11
+      canonical_handler: escalate
+      acceptable_handlers: [tow_to_partner_garage, dispatch_replacement_truck]
+      action_keywords: [escalat, approv, authoris, authoriz, tow, replacement]
+
+  # --- Family E: multi-entity — one truck breaches, siblings must not be named -
+  - id: fleet-012
+    description: ฿6,900 breach beside two trucks quoted safely under their ceiling.
+    scenario:
+      event_id: fleet-evt-012
+      entity_type: Truck
+      primary_key: truck-12
+      measured_value: 6900.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      distractors:
+        - {primary_key: truck-13, measured_value: 1800.0}
+        - {primary_key: truck-14, measured_value: 3400.0}
+      context: {plate: "82-4455 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "steering box play", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-12
+      forbidden_primary_keys: [truck-13, truck-14]
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+
+  - id: fleet-013
+    description: ฿41,200 owner-tier breach; a sibling sits just one baht under its ceiling.
+    scenario:
+      event_id: fleet-evt-013
+      entity_type: Truck
+      primary_key: truck-15
+      measured_value: 41200.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      distractors:
+        - {primary_key: truck-16, measured_value: 5000.0}
+      context: {plate: "70-6677 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "differential replacement", drivable: true, quotes_obtained: 3}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-15
+      forbidden_primary_keys: [truck-16]
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+
+  - id: fleet-014
+    description: ฿5,050 — narrow breach with a near-miss sibling at ฿4,999.
+    scenario:
+      event_id: fleet-evt-014
+      entity_type: Truck
+      primary_key: truck-17
+      measured_value: 5050.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      distractors:
+        - {primary_key: truck-18, measured_value: 4999.0}
+      context: {plate: "81-8899 กรุงเทพมหานคร", truck_class: trailer, symptom: "tail lift hydraulics", drivable: true, quotes_obtained: 1}
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: truck-17
+      forbidden_primary_keys: [truck-18]
+      canonical_handler: escalate
+      acceptable_handlers: []
+      action_keywords: [escalat, approv, authoris, authoriz]
+
+  # --- Family W: watch — inside the ฿500 band just under the ceiling ----------
+  # These RUN the LLM and are graded on the watch-tier lane only. They declare no
+  # handler tiers on purpose (M-2=b): the distribution is the evidence until a
+  # watch ground truth is adjudicated for fleet.
+  - id: fleet-015
+    description: ฿5,000 — the last baht the head mechanic may authorise alone; top of the watch band.
+    scenario:
+      event_id: fleet-evt-015
+      entity_type: Truck
+      primary_key: truck-19
+      measured_value: 5000.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "82-1010 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "wiper motor", drivable: true}
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: fleet-016
+    description: ฿4,999 — one baht under the ceiling; mid watch band.
+    scenario:
+      event_id: fleet-evt-016
+      entity_type: Truck
+      primary_key: truck-20
+      measured_value: 4999.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-2020 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "cabin door hinge", drivable: true}
+    expected:
+      disposition: watch
+      action_expected: false
+
+  # --- Family D: ok — clear of the watch band; the head mechanic just fixes it -
+  # The deterministic false-positive guard. No LLM call is made on these.
+  - id: fleet-017
+    description: ฿1,250 — routine consumable.
+    scenario:
+      event_id: fleet-evt-017
+      entity_type: Truck
+      primary_key: truck-21
+      measured_value: 1250.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "81-3030 กรุงเทพมหานคร", truck_class: trailer, symptom: "mudflap and lamp", drivable: true}
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: fleet-018
+    description: ฿380 — trivial spend.
+    scenario:
+      event_id: fleet-evt-018
+      entity_type: Truck
+      primary_key: truck-22
+      measured_value: 380.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "82-4040 กรุงเทพมหานคร", truck_class: six_wheeler, symptom: "bulb replacement", drivable: true}
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: fleet-019
+    description: ฿3,600 — mid-range but still the head mechanic's call.
+    scenario:
+      event_id: fleet-evt-019
+      entity_type: Truck
+      primary_key: truck-23
+      measured_value: 3600.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "70-5050 กรุงเทพมหานคร", truck_class: tractor_head, symptom: "battery replacement", drivable: true}
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: fleet-020
+    description: ฿4,750 — inside the watch band; close enough that a manager wants sight of it.
+    scenario:
+      event_id: fleet-evt-020
+      entity_type: Truck
+      primary_key: truck-24
+      measured_value: 4750.0
+      unit: THB
+      threshold: 5001.0
+      direction: above
+      watch_margin: 500.0
+      context: {plate: "81-6060 กรุงเทพมหานคร", truck_class: trailer, symptom: "brake shoe adjustment", drivable: true}
+    expected:
+      disposition: watch
+      action_expected: false

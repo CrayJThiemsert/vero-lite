@@ -46,6 +46,7 @@ from services.engine.llm.structured import ReasoningMode
 from services.engine.procedures.spec import Procedure, load_procedures
 from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.handlers import register_energy_handlers
+from verticals.fleet_maintenance.handlers import register_fleet_maintenance_handlers
 from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 _DEFAULT_MODEL = "gpt-oss:20b"  # ADR-001 pin
@@ -53,11 +54,19 @@ _DEFAULT_KEEP_ALIVE = "10m"
 
 
 def _register_all_handlers() -> None:
-    """Register the three example verticals' action handlers on the registry so
-    ``suggested_handler`` enum-constraint + the semantic check resolve."""
+    """Register every dataset vertical's action handlers on the registry so the
+    ``suggested_handler`` enum-constraint + the semantic check resolve.
+
+    A vertical whose handlers are NOT registered here gets an EMPTY enum, which
+    silently removes the schema constraint the whole alpha lane depends on — the
+    model may then emit any string and nothing catches it. The loader test asserts
+    every dataset vertical has registered handlers precisely so a new dataset
+    cannot be added without this line.
+    """
     register_aquaculture_handlers()
     register_energy_handlers()
     register_supply_chain_handlers()
+    register_fleet_maintenance_handlers()
 
 
 def _resolve_goal_and_model(dataset: Dataset) -> tuple[str | None, str]:
