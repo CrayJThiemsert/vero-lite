@@ -207,7 +207,11 @@ def build_model_report(
         majority_correct=majority_correct,
         majority_accuracy=(majority_correct / len(basis)) if basis else None,
         flipped_items=flipped,
-        flip_rate=(len(flipped) / len(basis)) if basis else None,
+        # A single repeat is unanimous with itself, so a flip rate computed over one
+        # run is 0.0 by construction and says nothing about stability. Found by using
+        # this module on a challenger whose run was stopped after one repeat: the
+        # report read "flip rate 0.0%" beside a model nothing had measured twice.
+        flip_rate=(len(flipped) / len(basis)) if (basis and repeats > 1) else None,
         error_counts=errors_per_repeat,
         forbidden_items=sorted(v.item_id for v in verdicts.values() if v.ever_forbidden()),
         probe_tier_totals=dict(sorted(tier_totals.items())),
@@ -235,7 +239,11 @@ def render(reports: Sequence[ModelReport], diffs: Sequence[Mapping[str, Any]]) -
     lines: list[str] = ["MODEL COMPARISON — majority verdict over repeats", ""]
     for report in reports:
         accuracy = "n/a" if report.majority_accuracy is None else f"{report.majority_accuracy:.1%}"
-        flip = "n/a" if report.flip_rate is None else f"{report.flip_rate:.1%}"
+        flip = (
+            "not measurable (needs 2+ repeats)"
+            if report.flip_rate is None
+            else f"{report.flip_rate:.1%}"
+        )
         lines.append(f"[{report.model}]  repeats={report.repeats}")
         lines.append(
             f"  majority accuracy : {accuracy} "

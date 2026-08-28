@@ -162,6 +162,27 @@ def test_a_unanimous_run_reports_a_zero_flip_rate(tmp_path: Path) -> None:
     assert report.noisy is False
 
 
+def test_a_single_repeat_reports_no_flip_rate_rather_than_zero(tmp_path: Path) -> None:
+    """One run is unanimous with itself; 0.0% there would read as 'stable'."""
+    run = _write_dump(tmp_path / "solo.jsonl", [_result("a", proposal=True)])
+
+    report = build_model_report("m", [load_dump(run)])
+
+    assert report.flip_rate is None
+    assert "not measurable (needs 2+ repeats)" in render([report], [])
+
+
+def test_two_repeats_do_report_a_flip_rate(tmp_path: Path) -> None:
+    """Positive control: the None above is the repeat count, not a broken metric."""
+    runs = [
+        _write_dump(tmp_path / f"pair{i}.jsonl", [_result("a", proposal=True)]) for i in range(1, 3)
+    ]
+
+    report = build_model_report("m", [load_dump(p) for p in runs])
+
+    assert report.flip_rate == 0.0
+
+
 def test_majority_needs_a_strict_majority() -> None:
     """Two repeats that disagree have no majority — it must not silently pass."""
     entry = ItemVerdicts("x", proposal=[True, False])
