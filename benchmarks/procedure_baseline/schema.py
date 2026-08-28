@@ -189,4 +189,16 @@ class Dataset(BaseModel):
     threshold_note: str | None = Field(
         default=None, description="Provenance of the threshold/direction (grounding for review)"
     )
+    goal_parameter_exemption: str | None = Field(
+        default=None,
+        min_length=1,
+        description=(
+            "WHY this dataset's reading_parameter is not named in the goal of the procedure "
+            "it exercises. Leave unset unless the consistency guard fires. Supplying it does "
+            "NOT make the mismatch correct — it makes it DECLARED: the numbers this dataset "
+            "produces measure a directive about one quantity applied to events about another, "
+            "and the exemption is where a reader finds that out before trusting them. An "
+            "empty string is refused so the field cannot be used as a silent opt-out."
+        ),
+    )
     items: list[BenchmarkItem] = Field(..., min_length=1)
