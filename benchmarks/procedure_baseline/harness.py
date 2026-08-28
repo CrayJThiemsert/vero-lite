@@ -25,6 +25,7 @@ mapping (the DB/orchestrator are bypassed to isolate the LLM variable).
 
 from __future__ import annotations
 
+import asyncio
 import math
 import time
 from collections.abc import Sequence
@@ -126,6 +127,11 @@ class ItemResult:
     watch_pass: bool | None = None
     watch_tier: HandlerTier | None = None
     watch_handler: str | None = None
+    #: Wall-clock of THIS item's full judgment exchange, in seconds — ``None`` for
+    #: an ok-guard item that ran no LLM call. The aggregate recorders answer "what
+    #: is the p95"; only a per-item number answers "WHICH task was slow", which is
+    #: what a per-judgment deadline breach has to be able to name.
+    judgment_latency_s: float | None = None
 
 
 async def _run_judgment(
@@ -138,7 +144,8 @@ async def _run_judgment(
     retry_budget: int,
     recorder: LatencyRecorder | None,
     reasoning_mode: ReasoningMode,
-) -> tuple[LlmJudgment | None, str | None]:
+    deadline_s: float | None = None,
+) -> tuple[LlmJudgment | None, str | None, float]:
     """Run the live ``generate_judgment`` exchange for one item and return
     ``(judgment, error)`` — exactly one of the two is ``None``.
 
@@ -155,22 +162,47 @@ async def _run_judgment(
     """
     event = scenario_to_event(item.scenario, reading_parameter)
     start = time.perf_counter()
+    judgment: LlmJudgment | None = None
+    error: str | None = None
     try:
-        result = await generate_judgment(
-            client,
-            event,
-            vertical,
-            retry_budget=retry_budget,
-            goal=goal,
-            reasoning_mode=reasoning_mode,
-        )
+        if deadline_s is None:
+            result = await generate_judgment(
+                client,
+                event,
+                vertical,
+                retry_budget=retry_budget,
+                goal=goal,
+                reasoning_mode=reasoning_mode,
+            )
+        else:
+            # The deadline bounds the WHOLE exchange — both Pattern-B calls plus
+            # every retry — because the thing a bar is set on is one task, not one
+            # call. A per-call timeout cannot express "this judgment took too long":
+            # three retries of a call that each finish just inside their own limit
+            # produce a judgment far past any per-call number.
+            async with asyncio.timeout(deadline_s):
+                result = await generate_judgment(
+                    client,
+                    event,
+                    vertical,
+                    retry_budget=retry_budget,
+                    goal=goal,
+                    reasoning_mode=reasoning_mode,
+                )
+        judgment = result.judgment
+    except TimeoutError:
+        # Named distinctly so a breach is never read as a model failure: the run
+        # was CUT, and what it would have produced is unknown.
+        error = f"DEADLINE-BREACH: judgment exceeded {deadline_s:.0f}s"
     except (StructuredOutputError, OllamaError) as exc:
-        return None, str(exc)
+        error = str(exc)
     finally:
-        # The ``return`` in ``except`` still runs this ``finally`` first.
+        # ``finally`` still runs before any return above, so a judgment that cost
+        # wall-clock is recorded even when it produced nothing.
+        elapsed = time.perf_counter() - start
         if recorder is not None:
-            recorder.record(time.perf_counter() - start)
-    return result.judgment, None
+            recorder.record(elapsed)
+    return judgment, error, elapsed
 
 
 async def evaluate_item(
@@ -184,6 +216,7 @@ async def evaluate_item(
     judgment_recorder: LatencyRecorder | None = None,
     watch_judgment_recorder: LatencyRecorder | None = None,
     reasoning_mode: ReasoningMode = "full",
+    judgment_deadline_s: float | None = None,
 ) -> ItemResult:
     """Evaluate one item: deterministic disposition, then grade the live LLM
     proposal on the lane the item's disposition selects — **breach** -> the β
@@ -224,7 +257,7 @@ async def evaluate_item(
         # The deterministic disposition stays the routing truth (AC-3): this lane
         # grades WHAT the model proposed on an item the watch band routed, not
         # whether to route (M-3 — mis-routing is structurally impossible here).
-        judgment, error = await _run_judgment(
+        judgment, error, latency = await _run_judgment(
             item,
             client,
             vertical=vertical,
@@ -233,6 +266,7 @@ async def evaluate_item(
             retry_budget=retry_budget,
             recorder=watch_judgment_recorder,
             reasoning_mode=reasoning_mode,
+            deadline_s=judgment_deadline_s,
         )
         if judgment is None:
             # A failed judgment is loud: scored items fail the lane; unscored
@@ -249,6 +283,7 @@ async def evaluate_item(
                 error=error,
                 watch_graded=True,
                 watch_pass=False if declares_handler_tiers(item.expected) else None,
+                judgment_latency_s=latency,
             )
         watch = grade_watch_proposal(judgment, item.expected)
         return ItemResult(
@@ -265,9 +300,10 @@ async def evaluate_item(
             watch_pass=watch.passed,
             watch_tier=watch.tier,
             watch_handler=watch.handler,
+            judgment_latency_s=latency,
         )
 
-    judgment, error = await _run_judgment(
+    judgment, error, latency = await _run_judgment(
         item,
         client,
         vertical=vertical,
@@ -276,6 +312,7 @@ async def evaluate_item(
         retry_budget=retry_budget,
         recorder=judgment_recorder,
         reasoning_mode=reasoning_mode,
+        deadline_s=judgment_deadline_s,
     )
     if judgment is None:
         return ItemResult(
@@ -288,6 +325,7 @@ async def evaluate_item(
             proposal_correct=False,
             grade=None,
             error=error,
+            judgment_latency_s=latency,
         )
 
     grade = grade_proposal(judgment, item.expected)
@@ -303,6 +341,7 @@ async def evaluate_item(
         probe_correct=grade.probe_passed,
         probe_tier=grade.handler_tier,
         judgment=judgment,
+        judgment_latency_s=latency,
     )
 
 
