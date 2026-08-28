@@ -18,6 +18,7 @@ from benchmarks.procedure_baseline.schema import Disposition
 from services.engine.registry import registry
 from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.handlers import register_energy_handlers
+from verticals.fleet_maintenance.handlers import register_fleet_maintenance_handlers
 from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 # The β-headline SCORING fields — a breach item must declare at least one (the tiered
@@ -25,9 +26,14 @@ from verticals.supply_chain.handlers import register_supply_chain_handlers
 _HEADLINE_FIELDS = ("affected_primary_key", "action_keywords")
 
 
-def test_load_all_returns_the_three_example_verticals() -> None:
+def test_load_all_returns_every_packaged_vertical() -> None:
     datasets = load_all()
-    assert {dataset.vertical for dataset in datasets} == {"aquaculture", "energy", "supply_chain"}
+    assert {dataset.vertical for dataset in datasets} == {
+        "aquaculture",
+        "energy",
+        "fleet_maintenance",
+        "supply_chain",
+    }
     for dataset in datasets:
         assert dataset.items, f"{dataset.vertical}: dataset is empty"
         assert dataset.reading_parameter, f"{dataset.vertical}: no reading_parameter declared"
@@ -38,6 +44,7 @@ def test_dataset_dir_is_the_packaged_dataset_folder() -> None:
     assert sorted(p.name for p in DATASET_DIR.glob("*.yaml")) == [
         "aquaculture.yaml",
         "energy.yaml",
+        "fleet_maintenance.yaml",
         "supply_chain.yaml",
     ]
 
@@ -99,6 +106,7 @@ def test_alpha_probe_handlers_are_registered_for_their_vertical() -> None:
     register_aquaculture_handlers()
     register_energy_handlers()
     register_supply_chain_handlers()
+    register_fleet_maintenance_handlers()
     for dataset in load_all():
         registered = set(registry.handler_names(dataset.vertical))
         assert registered, f"{dataset.vertical}: no handlers registered"
@@ -128,7 +136,14 @@ def test_acceptable_handlers_never_duplicate_the_canonical() -> None:
 
 
 def test_every_dataset_covers_all_three_dispositions() -> None:
-    """SD-B2 coverage: each vertical exercises breach, watch, and ok."""
+    """SD-B2 coverage: each vertical exercises breach, watch, and ok.
+
+    The watch band is authored by the SCENARIO's own ``watch_margin``, not read
+    from the vertical's shipped procedure — energy's judge step declares no
+    ``watch_margin`` either, yet its dataset carries watch items. So "the
+    procedure has no watch band" is never a reason to skip watch coverage here;
+    a new dataset authors the band like every other one does.
+    """
     for dataset in load_all():
         seen = {item.expected.disposition for item in dataset.items}
         assert seen == set(Disposition), f"{dataset.vertical}: missing {set(Disposition) - seen}"

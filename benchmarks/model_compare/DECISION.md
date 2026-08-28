@@ -1,0 +1,159 @@
+# Model decision rule — phase 1.5 of the FDE readiness program
+
+> **Written 2026-08-28, BEFORE any comparison run.** Everything below is a
+> pre-committed read. If a run produces a result this rule does not cover, the
+> honest outcome is INSUFFICIENT-EVIDENCE and a second, differently-designed run
+> — never a criterion edited after seeing the numbers.
+>
+> **Incumbent:** `gpt-oss:20b` — pinned by PLAN-0006 CHECKPOINT-0 after a sweep of
+> four model families. It is the default in `services/api/config.py`.
+> **Challenger:** `qwen3.8:27b-mtp-q8_0` — the tag as Cray typed it, and
+> **asserted-not-verified**: confirm it against the box's own tag list before the
+> first run (step 0 below). A wrong-but-plausible model name has bitten this repo
+> before, and the log looked fine.
+
+---
+
+## 1. What is being decided
+
+Which local model the **phase-2 dry-run** binds. Nothing else. This is not a
+re-pin of the product default: changing `recommender_model` puts the model name
+into `audit_metadata` on every record, which reddens the golden-trace oracle and
+carries its own two-step discipline (§6). A dry-run binding is reversible; the
+default is not free.
+
+## 2. The bars, fixed now
+
+Read them in this order. A bar failed at a lower number stops the comparison —
+a later number cannot buy it back.
+
+| # | Bar | Threshold | Why it is a bar and not a preference |
+|---|---|---|---|
+| B1 | **Tag verified on the box** | exact match in `/api/tags` | Everything below measures a model we cannot name otherwise. |
+| B2 | **Structured-output integrity** | judgment errors ≤ incumbent's, in every repeat | A model that drops the schema is unusable here regardless of how well it writes. Qwen3.x is the family Ollama #15260 affects. |
+| B3 | **No forbidden handler, ever** | `forbidden_items` empty across all repeats | Worst-case, not averaged. A model that proposes a dangerous handler one run in three is not one-third as dangerous. |
+| B4 | **Majority accuracy** | ≥ incumbent's, **and** the gap must exceed both models' flip rates | The repo has already measured that variance dominates single runs. A gap smaller than the noise is not a gap. |
+| B5 | **Stability** | flip rate ≤ 0.15 | A model whose own verdict moves between identical runs cannot be demonstrated to a customer. |
+| B6 | **Latency** | p95 per LLM call within 2x incumbent's | 27B at q8 is a much larger load; a demo that stalls is a demo that fails. |
+
+**Decision:**
+
+* Challenger clears **every** bar → bind the challenger for the dry-run, and
+  record which bar it won on.
+* Challenger fails **any** bar → keep `gpt-oss:20b`. This is the default outcome
+  and needs no further argument.
+* Challenger ties within noise on B4 but wins clearly on B6 (or vice versa) →
+  keep the incumbent. A tie does not justify moving a pin that four model
+  families were already swept to set.
+* Either model shows flip rate > 0.15 → **INSUFFICIENT-EVIDENCE**. Report it as
+  such; do not pick a winner from noisy data.
+
+## 3. Cost, before asking for the go
+
+Energy carries **66 items**; each graded item costs two LLM calls. Three repeats
+per model over the full set is ~800 calls — too much for a decision this narrow.
+
+🔴 **The runner has no `--vertical` flag** (verified against its `_parse_args`):
+it loads **every** dataset in `--dataset-dir`, and `--limit` caps items *per
+vertical*. So a bare `--limit 20` would run 20 energy + 20 aquaculture + 20
+supply_chain. Point `--dataset-dir` at a directory holding only `energy.yaml`.
+
+**20 energy items × 3 repeats × 2 models ≈ 240 calls**, sequential. Record the
+limit in the result file — a number from a 20-item subset must never be quoted as
+a 66-item number.
+
+## 4. The run sequence (host-state — needs a typed go from Cray, per CLAUDE.md §8)
+
+Run **sequentially, one model fully warmed and finished before the other**. MS-S1
+has ~63.65 GiB usable and a 27B q8 model is a large resident; interleaving pays a
+cold load per switch and makes the latency numbers incomparable.
+
+```bash
+# 0. Verify the tag EXISTS. warm.sh takes the model as a POSITIONAL argument and is
+#    fail-closed by design: on an unknown tag it prints the full tag list and ABORTS
+#    rather than warming something else. That refusal IS the verification step.
+bash .claude/skills/ms-s1-ollama/warm.sh qwen3.8:27b-mtp-q8_0
+
+# 0b. Energy-only dataset dir (no --vertical flag exists).
+mkdir -p /tmp/mc-dataset && cp benchmarks/procedure_baseline/dataset/energy.yaml /tmp/mc-dataset/
+
+# 1. Incumbent — warm once, then three repeats.
+uv run python -m benchmarks.procedure_baseline.run_benchmark \
+  --dataset-dir /tmp/mc-dataset --limit 20 --model gpt-oss:20b --warm \
+  --dump-json .claude/benchmark-results/s259-mc-gptoss-1.jsonl | tee /tmp/mc-gptoss-1.log
+# repeat for -2 and -3 WITHOUT --warm
+
+# 2. Challenger — warm once, then three repeats.
+uv run python -m benchmarks.procedure_baseline.run_benchmark \
+  --dataset-dir /tmp/mc-dataset --limit 20 --model qwen3.8:27b-mtp-q8_0 --warm \
+  --dump-json .claude/benchmark-results/s259-mc-qwen-1.jsonl | tee /tmp/mc-qwen-1.log
+# repeat for -2 and -3 WITHOUT --warm
+
+# 3. Join — offline, no model contact.
+uv run python -m benchmarks.model_compare.compare \
+  --run gpt-oss:20b=.claude/benchmark-results/s259-mc-gptoss-1.jsonl \
+  --run gpt-oss:20b=.claude/benchmark-results/s259-mc-gptoss-2.jsonl \
+  --run gpt-oss:20b=.claude/benchmark-results/s259-mc-gptoss-3.jsonl \
+  --run qwen3.8:27b-mtp-q8_0=.claude/benchmark-results/s259-mc-qwen-1.jsonl \
+  --run qwen3.8:27b-mtp-q8_0=.claude/benchmark-results/s259-mc-qwen-2.jsonl \
+  --run qwen3.8:27b-mtp-q8_0=.claude/benchmark-results/s259-mc-qwen-3.jsonl \
+  --json .claude/benchmark-results/s259-mc-report.json
+```
+
+⚠️ **Latency is printed to the console, not written into the dump** — hence the
+`tee`. A comparison whose B6 evidence was never captured is missing a bar, not
+passing it.
+
+⚠️ `.claude/benchmark-results/` is untracked **and unignored**: the raw evidence
+lives only in the working tree unless it is deliberately copied somewhere durable.
+That has already cost this repo one set of dumps.
+
+## 5. The one dimension this instrument cannot measure
+
+The procedure-baseline dataset is English. **Thai brief quality — the actual job
+in case 1 — is not measured by any number above.** It is a separate, smaller step
+and must be reported separately, never folded into the bars:
+
+1. Pull the `judgment` blobs for the same 20 items out of both models' repeat-1
+   dumps.
+2. Strip the model names, shuffle, and present pairs.
+3. Score each on a 3-point rubric **written before reading any output**:
+   *(a)* names the right entity and number, *(b)* an operator could act on it
+   without asking a follow-up question, *(c)* reads as Thai a manager would send
+   on, not as translated English.
+4. Report as a preference count with the n, e.g. "13 of 20 preferred B" — never
+   as a percentage accuracy.
+
+If the bars pick one model and the blind read prefers the other, that is a real
+conflict and it goes to Cray. It is **not** resolved by re-weighting the bars.
+
+## 6. If the challenger wins — what it costs to actually switch
+
+Binding it for the dry-run is a per-run `--model` / `RECOMMENDER_MODEL` override.
+Changing the product default is a different act:
+
+* the model name travels into `audit_metadata` on every record, so the
+  golden-trace oracle goes red;
+* the fix is `python -m tools.golden_trace refresh` **and reading the diff as part
+  of the change** — refreshing without reading it accepts a regression as the new
+  expectation, which is the one way that oracle can be defeated;
+* `client.py`'s CHECKPOINT-0 caller contract (never `think=False` with
+  `response_format`) was written against a Qwen3.x failure. Re-verify it holds
+  for this specific MTP tag rather than assuming the existing guard covers it.
+
+## 7. Provenance of this instrument
+
+`compare.py` is offline and reads files only. Its 17 tests drive the **shipped**
+`run_benchmark._item_record` into the joiner, so the dump contract is never
+hand-copied. Probe battery `run-53f8778f`: **PASS**, 12/12 probes, **8 witnessed
+RED + 4 declared-GREEN controls**, coverage COMPLETE over 30 claims with 0 gaps,
+tree restored. The two absence claims (`forbidden_items == []`,
+`disagreements(...) == []`) each carry a positive control that reddens them under
+an over-firing mutation — an empty list satisfies an absence assert by
+construction, so without those controls they would prove nothing.
+
+*(One probe was repaired mid-battery: blinding `if not path.is_file():` made
+`read_text` raise `FileNotFoundError`, a non-assertion exception the driver
+correctly refused to credit. The mutation was changed to return an empty list —
+the actual false-pass shape — which fails as `DID NOT RAISE`. The instrument was
+repaired; the criterion was not touched.)*

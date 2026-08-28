@@ -46,6 +46,7 @@ from services.engine.llm.structured import ReasoningMode
 from services.engine.procedures.spec import Procedure, load_procedures
 from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.handlers import register_energy_handlers
+from verticals.fleet_maintenance.handlers import register_fleet_maintenance_handlers
 from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 _DEFAULT_MODEL = "gpt-oss:20b"  # ADR-001 pin
@@ -53,11 +54,19 @@ _DEFAULT_KEEP_ALIVE = "10m"
 
 
 def _register_all_handlers() -> None:
-    """Register the three example verticals' action handlers on the registry so
-    ``suggested_handler`` enum-constraint + the semantic check resolve."""
+    """Register every dataset vertical's action handlers on the registry so the
+    ``suggested_handler`` enum-constraint + the semantic check resolve.
+
+    A vertical whose handlers are NOT registered here gets an EMPTY enum, which
+    silently removes the schema constraint the whole alpha lane depends on — the
+    model may then emit any string and nothing catches it. The loader test asserts
+    every dataset vertical has registered handlers precisely so a new dataset
+    cannot be added without this line.
+    """
     register_aquaculture_handlers()
     register_energy_handlers()
     register_supply_chain_handlers()
+    register_fleet_maintenance_handlers()
 
 
 def _resolve_goal_and_model(dataset: Dataset) -> tuple[str | None, str]:
@@ -87,6 +96,9 @@ async def run_dataset(
     judgment_recorder: LatencyRecorder,
     watch_judgment_recorder: LatencyRecorder,
     reasoning_mode: ReasoningMode,
+    retry_budget: int = 3,
+    judgment_deadline_s: float | None = None,
+    request_timeout_s: float | None = None,
 ) -> list[ItemResult]:
     """Evaluate every item in one vertical's dataset against the live model.
 
@@ -100,7 +112,11 @@ async def run_dataset(
     M-4 own-lane diagnostic, no bar)."""
     goal, agent_model = _resolve_goal_and_model(dataset)
     model = model_override or agent_model
-    base = OllamaClient(base_url=host, model=model, timeout=settings.llm_request_timeout_s)
+    base = OllamaClient(
+        base_url=host,
+        model=model,
+        timeout=request_timeout_s or settings.llm_request_timeout_s,
+    )
     if warm:
         await base.warm(keep_alive=_DEFAULT_KEEP_ALIVE)
     client = TimingChatClient(base, recorder)
@@ -116,6 +132,8 @@ async def run_dataset(
             judgment_recorder=judgment_recorder,
             watch_judgment_recorder=watch_judgment_recorder,
             reasoning_mode=reasoning_mode,
+            retry_budget=retry_budget,
+            judgment_deadline_s=judgment_deadline_s,
         )
         results.append(result)
         _print_item(result)
@@ -232,7 +250,35 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
         "error": result.error,
         "checks": checks,
         "judgment": result.judgment.model_dump() if result.judgment is not None else None,
+        # Per-item wall-clock. The aggregates answer "what is the p95"; only this
+        # answers "WHICH task was slow" — which a deadline breach must be able to
+        # name, and which no aggregate can reconstruct after the fact.
+        "judgment_latency_s": (
+            round(result.judgment_latency_s, 3) if result.judgment_latency_s is not None else None
+        ),
     }
+
+
+def _print_deadline_breaches(results: list[ItemResult], deadline_s: float | None) -> None:
+    """Name every task that hit the ceiling, and say so even when none did.
+
+    An absent line would be indistinguishable from a run where the flag was never
+    passed, so the no-breach case is printed explicitly.
+    """
+    if deadline_s is None:
+        print("\nDEADLINE: none set — per-judgment wall-clock recorded but not bounded.")
+        return
+    breaches = [r for r in results if r.error is not None and r.error.startswith("DEADLINE-BREACH")]
+    slowest = max((r.judgment_latency_s or 0.0 for r in results), default=0.0)
+    if not breaches:
+        print(
+            f"\nDEADLINE [{deadline_s:.0f}s per judgment]: 0 breaches — "
+            f"slowest task {slowest:.1f}s."
+        )
+        return
+    print(f"\nDEADLINE [{deadline_s:.0f}s per judgment]: {len(breaches)} BREACHES")
+    for r in breaches:
+        print(f"  {r.item_id}  cut at {r.judgment_latency_s or 0.0:.1f}s")
 
 
 def _print_latency(model: str, latency: LatencySummary) -> None:
@@ -291,10 +337,14 @@ async def _main(args: argparse.Namespace) -> None:
             judgment_recorder=judgment_recorder,
             watch_judgment_recorder=watch_judgment_recorder,
             reasoning_mode=args.reasoning_mode,
+            retry_budget=args.retry_budget,
+            judgment_deadline_s=args.judgment_deadline,
+            request_timeout_s=args.request_timeout,
         )
         all_results.extend(results)
         _print_summary(dataset.vertical, summarize(results))
     _print_summary("OVERALL", summarize(all_results))
+    _print_deadline_breaches(all_results, args.judgment_deadline)
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
     _print_latency(args.model or "per-agent", latency)
     judgment_latency = summarize_latency(
@@ -333,6 +383,31 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama-host", default=settings.ollama_host, help="MS-S1 Ollama URL.")
     parser.add_argument("--warm", action="store_true", help="Warm the model first (MS-S1 note).")
     parser.add_argument("--limit", type=int, default=None, help="Cap items per vertical (smoke).")
+    parser.add_argument(
+        "--retry-budget",
+        type=int,
+        default=3,
+        help=(
+            "Total structured-output attempts per judgment. Explicit because it "
+            "multiplies the worst-case wall-clock a single task can cost."
+        ),
+    )
+    parser.add_argument(
+        "--judgment-deadline",
+        type=float,
+        default=None,
+        help=(
+            "Hard ceiling in seconds on ONE judgment — the whole exchange, both "
+            "calls and every retry. A breach is recorded as DEADLINE-BREACH with "
+            "the item's own elapsed time, never as a model failure."
+        ),
+    )
+    parser.add_argument(
+        "--request-timeout",
+        type=float,
+        default=None,
+        help="Per-LLM-call timeout override (default: settings.llm_request_timeout_s).",
+    )
     parser.add_argument(
         "--latency-threshold",
         type=float,
