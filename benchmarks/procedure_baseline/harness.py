@@ -291,6 +291,12 @@ async def _run_judgment(
         # type degrades to "no metrics" instead of an AttributeError mid-sweep —
         # the whole point of this record is to survive the runs that go wrong.
         calls = getattr(exc, "calls", ())
+        # The draft too, and by the same `getattr` route. Without this the record
+        # for a failed item says `draft: null` whether call 1 wrote nothing or
+        # wrote 7,000 characters that call 2 then failed to structure — session
+        # 261 could not tell those apart and concluded the wrong one.
+        draft = getattr(exc, "draft", None)
+        thinking = getattr(exc, "thinking", None)
     finally:
         # ``finally`` still runs before any return above, so a judgment that cost
         # wall-clock is recorded even when it produced nothing.

@@ -141,9 +141,25 @@ class StructuredOutputError(RuntimeError):
     callers that turn this into a per-item error string keep working untouched.
     """
 
-    def __init__(self, message: str, *, calls: tuple[CallMetrics, ...] = ()) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        calls: tuple[CallMetrics, ...] = (),
+        draft: str | None = None,
+        thinking: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.calls = calls
+        # The call-1 output, carried for the same reason ``calls`` is — and it is
+        # the half that says WHAT the reasoning pass produced rather than how much.
+        # Session 261 read an absent draft on this path as "call 1 produced
+        # nothing"; the draft was simply never recorded here, so the two states
+        # were indistinguishable. ``None`` now means call 1 genuinely produced no
+        # content (or never ran, under ``reasoning_mode="skip"``), which is a fact
+        # about the model rather than about which branch the code took.
+        self.draft = draft
+        self.thinking = thinking
 
 
 @dataclass(frozen=True)
@@ -263,6 +279,8 @@ async def generate_judgment(
     raise StructuredOutputError(
         f"structured output failed after {budget} attempt(s): {last_error}",
         calls=tuple(calls),
+        draft=draft,
+        thinking=thinking,
     )
 
 
