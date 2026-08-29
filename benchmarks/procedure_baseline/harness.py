@@ -41,7 +41,7 @@ from benchmarks.procedure_baseline.grader import (
     grade_watch_proposal,
 )
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Scenario
-from services.engine.llm.client import ChatResult, OllamaError
+from services.engine.llm.client import CallMetrics, ChatResult, OllamaError
 from services.engine.llm.structured import (
     ChatClient,
     LlmJudgment,
@@ -140,6 +140,13 @@ class ItemResult:
     #: path already persists both (``services/engine/llm/trace.py``).
     draft: str | None = None
     thinking: str | None = None
+    #: Per-call generation accounting for this item's exchange (PLAN — session
+    #: 262). Empty for an ok-guard item that ran no LLM call, and for a deadline
+    #: breach: the cut discards the in-flight call, so there is no envelope to
+    #: account. Non-empty on the FAILURE path too — an exhausted retry budget is
+    #: the shape a starved reasoning pass produces, and those attempts are the
+    #: ones worth reading.
+    calls: tuple[CallMetrics, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -157,6 +164,7 @@ class JudgmentRun:
     latency_s: float
     draft: str | None = None
     thinking: str | None = None
+    calls: tuple[CallMetrics, ...] = ()
 
 
 class ReasoningModeInexpressibleError(RuntimeError):
@@ -206,6 +214,7 @@ async def _run_judgment(
     error: str | None = None
     draft: str | None = None
     thinking: str | None = None
+    calls: tuple[CallMetrics, ...] = ()
     try:
         if deadline_s is None:
             result = await generate_judgment(
@@ -240,6 +249,7 @@ async def _run_judgment(
         # story was built that way and could not be checked.
         draft = result.draft
         thinking = result.thinking
+        calls = result.calls
         # A `think_off` run that comes back WITH a reasoning trace did not run
         # with reasoning off — the model ignored the flag, and this cell's
         # numbers are a second sample of `full`, not a think-off measurement.
@@ -275,6 +285,12 @@ async def _run_judgment(
         error = f"DEADLINE-BREACH: judgment exceeded {deadline_s:.0f}s"
     except (StructuredOutputError, OllamaError) as exc:
         error = str(exc)
+        # StructuredOutputError carries the attempts it burned; OllamaError does
+        # not, because the transport failed and there is no envelope to account.
+        # `getattr` rather than an isinstance branch so a future third exception
+        # type degrades to "no metrics" instead of an AttributeError mid-sweep —
+        # the whole point of this record is to survive the runs that go wrong.
+        calls = getattr(exc, "calls", ())
     finally:
         # ``finally`` still runs before any return above, so a judgment that cost
         # wall-clock is recorded even when it produced nothing.
@@ -282,7 +298,12 @@ async def _run_judgment(
         if recorder is not None:
             recorder.record(elapsed)
     return JudgmentRun(
-        judgment=judgment, error=error, latency_s=elapsed, draft=draft, thinking=thinking
+        judgment=judgment,
+        error=error,
+        latency_s=elapsed,
+        draft=draft,
+        thinking=thinking,
+        calls=calls,
     )
 
 
@@ -370,6 +391,7 @@ async def evaluate_item(
                 judgment_latency_s=latency,
                 draft=run.draft,
                 thinking=run.thinking,
+                calls=run.calls,
             )
         watch = grade_watch_proposal(judgment, item.expected)
         return ItemResult(
@@ -389,6 +411,7 @@ async def evaluate_item(
             judgment_latency_s=latency,
             draft=run.draft,
             thinking=run.thinking,
+            calls=run.calls,
         )
 
     run = await _run_judgment(
@@ -425,6 +448,7 @@ async def evaluate_item(
             judgment_latency_s=latency,
             draft=run.draft,
             thinking=run.thinking,
+            calls=run.calls,
         )
 
     grade = grade_proposal(judgment, item.expected)
@@ -443,6 +467,7 @@ async def evaluate_item(
         judgment_latency_s=latency,
         draft=run.draft,
         thinking=run.thinking,
+        calls=run.calls,
     )
 
 

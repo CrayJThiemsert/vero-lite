@@ -25,7 +25,7 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 
@@ -122,6 +122,89 @@ class ChatResult:
     thinking: str | None
     model: str
     raw: dict[str, Any]
+
+
+#: Which of the two Pattern B calls a :class:`CallMetrics` describes. A literal
+#: rather than a free string because the whole point of the record is to keep the
+#: reasoning pass and the structuring pass apart — a mistyped role silently merges
+#: two profiles that differ by an order of magnitude.
+CallRole = Literal["reasoning", "structuring"]
+
+
+@dataclass(frozen=True)
+class CallMetrics:
+    """Per-call generation accounting, read off the Ollama response envelope.
+
+    ``done_reason`` is the TRUNCATION ORACLE, and it is why this record exists.
+    Ollama reports ``"stop"`` when the model ended on its own and ``"length"``
+    when generation ran into ``num_predict``. Without it the only available
+    signal is a character count, and a character count cannot tell "the model
+    finished and was brief" apart from "the model was cut mid-sentence" — the
+    two readings session 261 could only separate by running the same item twice
+    at two different caps, because nothing on disk said which had happened.
+    ``ChatResult.raw`` already carried this; every consumer dropped it, so no
+    artifact in the repo could answer the question.
+
+    The distinction matters beyond tuning. A cap low enough to EMPTY the draft
+    fails loudly — no JSON, an unscored item. A cap that merely CLIPS the draft
+    lets call 2 structure a partial reasoning into a well-formed envelope: a
+    judgment that grades as an ordinary pass or fail while resting on reasoning
+    that was cut off. The second failure is the dangerous one precisely because
+    it is quiet, and ``done_reason`` is the only thing that makes it visible.
+
+    ``eval_count`` is generated tokens — the model's actual DEMAND, which is what
+    a cap should be chosen from. Measuring demand directly beats searching over
+    caps: a search returns one pass/fail bit per run and converges on the
+    smallest value that happens to work, which is exactly the clipping cap above.
+    ``prompt_eval_count`` rides along because a demand number is only
+    interpretable next to the input that produced it.
+
+    ``thinking_chars`` is kept apart from ``content_chars`` because in ``full``
+    mode the reasoning lands in its own channel; the split is what tells a reader
+    whether a long call was long from thinking or from prose.
+    """
+
+    role: CallRole
+    done_reason: str | None
+    eval_count: int | None
+    prompt_eval_count: int | None
+    content_chars: int
+    thinking_chars: int | None
+
+    @property
+    def truncated(self) -> bool:
+        """True when generation stopped because it hit the cap, not because the model did.
+
+        Keyed on the string Ollama actually returns rather than on a comparison
+        against the configured ``num_predict``: the configured value and the
+        value the server applied can differ (an env override, a per-model
+        default), and a derived answer would then report a truncation the server
+        never performed — or miss one it did.
+        """
+        return self.done_reason == "length"
+
+
+def call_metrics(result: ChatResult, *, role: CallRole) -> CallMetrics:
+    """Read the generation accounting out of one chat response.
+
+    Every field is optional-tolerant. Ollama versions differ in what they put in
+    the envelope, and a missing counter must degrade to ``None`` — a metrics
+    record that raised would turn a benchmark sweep into a crash over a field
+    nothing scores. ``None`` is honest and reads as absent downstream; a zero
+    would be a measurement that never happened wearing the shape of one that did.
+    """
+    raw = result.raw
+    done_reason = raw.get("done_reason")
+    eval_count = raw.get("eval_count")
+    prompt_eval_count = raw.get("prompt_eval_count")
+    return CallMetrics(
+        role=role,
+        done_reason=done_reason if isinstance(done_reason, str) else None,
+        eval_count=eval_count if isinstance(eval_count, int) else None,
+        prompt_eval_count=prompt_eval_count if isinstance(prompt_eval_count, int) else None,
+        content_chars=len(result.content),
+        thinking_chars=len(result.thinking) if result.thinking is not None else None,
+    )
 
 
 class OllamaClient:
