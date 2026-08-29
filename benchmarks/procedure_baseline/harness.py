@@ -618,7 +618,12 @@ class TimingChatClient:
         self,
         messages: list[dict[str, str]],
         *,
-        think: bool | None = None,
+        # Mirrors the ChatClient Protocol exactly, `str` included. A decorator
+        # narrower than the thing it decorates stops satisfying the Protocol and
+        # silently rejects a value the inner client accepts — which is what
+        # happened when `think` was widened to `bool | str | None` and this
+        # signature was not carried along.
+        think: bool | str | None = None,
         response_format: dict[str, Any] | None = None,
         temperature: float = 0.0,
     ) -> ChatResult:
