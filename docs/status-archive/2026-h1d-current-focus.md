@@ -1829,3 +1829,65 @@ _[Rotated from `docs/STATUS.md` at the **s258** reconcile — the window holds a
 > disk** and matches by **AST**. Full record: the PLAN's §Closeout.
 
 _[Rotated from `docs/STATUS.md` at the **s260** reconcile — the window holds at four (256, 257, 258, 259–260) as the session-259–260 block enters. Rotates on the **window rule alone**, not a cap overage: **measured 1,984 B**, the smallest block in the outgoing window and well inside the 4,096 B per-block cap. The block is archived byte-identical, untrimmed. Its substance keeps tracked homes, each checked with `git grep` at this reconcile rather than assumed: PLAN-0115's closeout and its ten ACs are in `docs/plans/done/0115-probe-battery-driver-and-verification-instrument-hardening.md`; ADR-0038 C6's promotion (and the legibility conjunct its predicate needed) in `docs/adr/0038-advisory-lesson-promotion-three-strike-rule.md`; and the **stale-`.pyc` hazard** — a same-size mutation masked by CPython's *mtime-seconds + size* validation, which passed the full local suite and reddened **only in CI** — is documented in `tools/probe_battery/README.md` (3 references) and in `_battery.py` / `_snapshot.py`, which is where a reader about to trust a battery's GREEN actually looks. The **VX-1 `systemMessage` discharge** (it surfaces as `Stop says: …` to the user's UI only, and adopting it would break PLAN-0069 AC-3 parity) travels with the block and is also recorded in that PLAN's §Closeout.]_
+
+> **Session 256, 2026-08-26 (`f8aeba0` → `6882b8b`) — PLAN-0114 Steps 2–5.
+> `POST /runs/{run_id}/continue` ships; the dead-end tripwire becomes its own
+> closure. **PLAN-0114 is COMPLETE 6/6 and archived to `done/`** —
+> [#1298](https://github.com/CrayJThiemsert/vero-lite/pull/1298) merged `13d11b7`.**
+>
+> 🔴 **AC-1's premise was measured FALSE, so the ruling was re-put.** `fulfill` is
+> `autonomy: gated` too, so acknowledging `approve` parks the run again — it takes
+> **TWO**, not one. That changed what Step 3's UI rested on: **SD-4 RULED (B)** —
+> one button walks the empty gates, halting at the first gate holding a real
+> proposal. API, chokepoint and audit trail untouched; only the click count.
+>
+> 🔴 **A live-only gap the offline suite could not see.** The published ingress
+> allowlist is **default-deny**, so the button would have **404'd at the Cloudflare
+> edge** while every local test passed — caught by
+> `test_ac6b_every_route_the_ui_references_is_classified`. ⚠️ The fix **admits a
+> new write route to a published surface** (less privileged than the published
+> `gate/resolve` — the chokepoint 409s any gate holding a proposal, so it can never
+> approve) — flagged for Cray at the PR, not treated as mechanical.
+>
+> 🔴 **PLAN-0113 is merged but NOT live, and it must not ship alone** — its Step 3
+> is what *creates* this dead end, so **deploy unit = 0113 + 0114 together**. The
+> host is safe today by accident, not plan (0113 was never deployed, which is also
+> why its AC-9 is archived CARRIED-OPEN). Read-only MS-S1 census under a typed go,
+> plus the phased plan:
+> [`docs/logs/2026-08-26-s256-…`](logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md);
+> the decision itself is a live Active TODO below.
+>
+> **Evidence.** Suite 4460 → **4466**, 0 failed; `mypy --strict` clean, 201 files;
+> ruff + format clean. Two batteries through `tools/probe_battery/` (AC-2: 4
+> WITNESSED + a declared-GREEN control; AC-4: both parity tests RED under a
+> `_suspends` mutation, tree restored byte-identical). AC-5 verified in the
+> preview; the acknowledgment proven on the **live** audit chain, one
+> `run_continued_no_decision` row per gate, `GET /audit/verify` `intact: true`.
+> Two of my own probes were defective; the driver caught both.
+>
+> **A parallel session (`vero-lite-d6`) — `sd-premortem`, three blind replays on
+> `git archive ce7c003`, pass/fail pre-committed. v1 3/4 · v2 3/5 ·
+> v3 3/5: the hypothesis FELL.** 🔴 A repeat of the **identical** dispatch then
+> settled the open question: **variance dominates — 5 of 7 options flipped verdict
+> on unchanged evidence.** One arithmetic result surfaced in both rounds and was
+> called `REFUTED` (⇒ DEAD) once, "measured consequence" (⇒ ALIVE) the next.
+> **Three layers, not two: citations stable · counts NOT stable · rollup
+> unstable** — and neither count was wrong; they answered different unstated
+> patterns. ⇒ **LLM emits claim + evidence,
+> deterministic code rolls up the verdict.** **No PLAN opened; the proposal is not
+> to open one on the original design.** Log
+> [#1299](https://github.com/CrayJThiemsert/vero-lite/pull/1299), OPEN. Cray then
+> split the sessions onto **separate worktrees** — nothing collided today, but
+> because that session chose to wait, **not because anything prevented it**.
+>
+> **Checked, NOT a defect** — recorded so it is not re-derived as one. The battery
+> lock's **stand-down scopes to the gate, not the Stop hook**: a `None` gate return
+> falls through to `_classify` (`stop_continuation.py:531` → `:540`), which still
+> runs. Not a defect **because `_classify` never reads the tree** (`:569`: *"can see
+> neither disk state nor in-flight work"*) — that citation, not the verdict, is what
+> stops the next reader. The lock protects **`goal.json` specifically**, not
+> `.claude/state/` wholesale (`stop-chain.json` is there; `proceed` writes it).
+> Remaining: a **documentation gap** — nowhere records that the battery-lock case
+> was considered for the classifier arm.
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **256, 257, 258, 259–260**. **THIS (s260) reconcile rotates the session-255 block** on the **window rule alone, not a cap overage** — measured **1,984 B** against the 4,096 B cap. ✅ **Both directions were checked, never inferred:** the slice was pinned by its first AND last line, checked for neighbour-bleed, checked absent from the target *before* the write, then verified present-in-archive and absent-from-STATUS **separately**, by byte **delta** rather than presence — a presence test passes on a pre-existing copy. Slice **1,984 B** · archive **+3,300 B** · STATUS **−2,644 B** across both rotations at this reconcile (this block and the s249 RD row). Substance keeps tracked homes, re-checked with `git grep`: `docs/plans/done/0115-*.md`, `docs/adr/0038-*.md`, and the stale-`.pyc` hazard in `tools/probe_battery/README.md` plus `_battery.py` / `_snapshot.py`.]_
