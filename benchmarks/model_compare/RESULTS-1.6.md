@@ -14,11 +14,25 @@ Energy, 10 items, one repeat per cell, `--judgment-deadline 300 --retry-budget 1
 | cell | β headline | α probe | 5-min breaches | p50 | p95 | errors | handlers emitted |
 |---|---|---|---|---|---|---|---|
 | gptoss / full | 10% | 100% canon | 0 | 29.6 s | 45.6 s | 0 | `restart` ×10 |
-| gptoss / think_off | 10% | 100% canon | 0 | 40.7 s | 144.8 s | 0 | `restart` ×10 |
+| gptoss / think_off ⚠️ | 10% | 100% canon | 0 | 40.7 s | 144.8 s | 0 | `restart` ×10 |
 | gptoss / skip | 30% | 100% canon | 0 | **27.2 s** | 48.0 s | 0 | `restart` ×10 |
 | qwen / full | 30% | 0% | **3** | 188.9 s | 300.1 s | 3 | escalate ×3, dispatch ×4 |
 | qwen / **think_off** | **80%** | 75% canon | **2** | 62.4 s | 300.1 s | 2 | **restart ×6**, dispatch ×2 |
 | qwen / **skip** | 60% | 30% canon | **0** | 85.2 s | 116.6 s | 0 | restart ×3, dispatch ×6, escalate ×1 |
+
+⚠️ **`gptoss / think_off` is NOT a sixth configuration.** Measured session 261:
+`gpt-oss:20b` discards a boolean `think`, so that row and `gptoss / full` are the
+same request run twice. Read the pair as a repeat — a free measurement of this
+model's run-to-run noise — and never as a think-on/think-off contrast. Full
+reasoning in §4.
+
+The `qwen` rows are **not known to be affected, and not known to be clean either.**
+Their handler distributions differ sharply between the two modes (escalate ×3 /
+dispatch ×4 under `full`; restart ×6 / dispatch ×2 under `think_off`), which is
+consistent with the flag being honoured — but that is an inference from behaviour,
+not the direct check run against gpt-oss. **Marked `asserted-not-verified`.** The
+same one-item probe would settle it, and until it does, no conclusion should rest
+on qwen's think-off cell being a genuine second configuration.
 
 ## 2. The finding that closes the JSON question
 
@@ -76,9 +90,37 @@ thinking **on** it never once picked the canonical `restart` (escalate ×3,
 dispatch ×4); with thinking **off** it picked `restart` 6 of 8. The reasoning pass
 was steering it away from the correct answer, not toward it.
 
-`gptoss/think_off` is a latency anomaly worth noting: p95 **144.8 s** against
-`full`'s 45.6 s. Running call 1 with `think=false` is slower than running it with
-thinking on. Unexplained; recorded rather than smoothed over.
+**The `gptoss/think_off` "latency anomaly" recorded here has been SUPERSEDED — see
+the note below before reading its p95 against `full`'s.** This paragraph originally
+reported p95 **144.8 s** against `full`'s 45.6 s and called the difference
+unexplained. It has an explanation, and it is not about latency.
+
+> ⚠️ **SUPERSEDED 2026-08-29 (session 261) — the anomaly is not an anomaly.**
+>
+> `gpt-oss:20b` **discards a boolean `think`** — it takes `"low"`/`"medium"`/`"high"`.
+> Measured live: a 1-item run with `reasoning_mode=think_off` came back with a
+> **3,105-character reasoning trace**, i.e. the flag was ignored outright and the
+> model reasoned exactly as it does under `full`.
+>
+> So `gptoss/full` and `gptoss/think_off` **were the same request**, and the p95
+> gap between them is run-to-run variance between two samples of ONE configuration —
+> a free noise measurement, not a latency finding. Nothing was slower for being
+> asked to think less, because it was never asked.
+>
+> Two further consequences for the table above: gpt-oss's 10% → 30% β "improvement"
+> is a 2-item move inside its own measured 45% flip rate, and the next matrix has
+> **five cells, not six** — `gptoss/think_off` is now registered as inexpressible
+> for this model, and the harness raises rather than scoring it (PR #1312).
+>
+> Classified **superseded by new info**, not "was an error": at the time of writing
+> nothing captured the reasoning trace, so the observation was honest about what
+> could then be seen. The capture shipped in PR #1311, which is what made this
+> checkable at all.
+
+<!-- retired: "Running call 1 with `think=false` is slower than running it with thinking on. Unexplained" -->
+<!-- The claim above is dead: the two cells were one configuration. Kept in place,
+     struck through by the note, so the reasoning lineage stays readable. -->
+
 
 ## 5. What CANNOT be concluded
 
