@@ -28,8 +28,26 @@ measured in this harness on 2026-07-26 and recorded in
 
 Why the advisory is PostToolUse rather than a PreToolUse deny: the harm is not
 running the command, it is *believing* its output. That is knowable only after it
-has run, which is when this fires — and it costs no false-positive tax, because a
-warn cannot block legitimate work.
+has run, which is when this fires.
+
+⚠️ **Corrected 2026-08-29 (session 261).** This paragraph used to end "and it costs
+no false-positive tax, because a warn cannot block legitimate work." **Measured and
+falsified.** A warn's tax is not blocking, it is *attention*: replayed over 950 Bash
+commands from five transcripts the advisory fired on **30.8%** of them, and **37.8%**
+of the expansion rule's firings were on a `$` that sat OUTSIDE the quoted argument —
+where the outer shell's `$?` is exact (`exit 7` -> 7, `exit 8` -> 8). So the
+instrument was telling its reader that the very idiom it prescribes is untrustworthy,
+and the reader stopped reading it: on 2026-08-29 the advisory fired at 03:18:48, was
+ignored, and the identical shape was re-issued at 03:20:49. The predicate is now
+quote-span aware and exempts `wsl -e`; ``CORRECT_IDIOM_STAYS_SILENT`` pins that
+direction so a regression back into noise reddens.
+
+Two further shapes were added the same session, both measured: `$VAR`/`${}`/`$$`/a
+backtick are clobbered exactly as `$?` is, and a redirect written OUTSIDE the quoted
+argument is applied by the Windows-side shell, so the bytes never reach WSL's
+filesystem at all.
+
+<!-- retired: "it costs no false-positive tax, because a warn cannot block legitimate work" -->
 """
 
 from __future__ import annotations
@@ -70,6 +88,38 @@ EARLY_EXPANSION = [
     "wsl bash -lc 'false; echo rc=$?'",
     "wsl bash -lc 'cd /etc; echo $(pwd)'",
     "bash -c 'echo $(date)'",
+    # Session 261: `$VAR`, `${}`, `$$` and a backtick are clobbered EXACTLY as `$?`
+    # is (measured — `$VAR` came back empty), and were missed for no better reason
+    # than that nobody had yet been unlucky enough to write one.
+    "wsl bash -lc 'echo v=$HOME'",
+    "wsl bash -lc 'echo v=${HOME}'",
+    "wsl bash -lc 'echo pid=$$'",
+    "wsl bash -lc 'echo v=`pwd`'",
+]
+
+#: A redirect the WINDOWS-side shell applies, so the bytes never reach WSL's
+#: filesystem. Session 261: a watcher's output written this way was reported "No
+#: such file or directory" by a later WSL `cat`, and the run was briefly misread
+#: as never having happened.
+REDIRECT_OUTSIDE = [
+    "wsl bash -lc 'echo hi' > /tmp/w.txt 2>&1",
+    "wsl bash -lc 'pytest -q' >> /tmp/run.log",
+    "wsl bash -lc 'cat f' > /home/crayj/out.txt",
+]
+
+#: The correct idiom, and the structural fix, both of which the predicate used to
+#: fire on. These are NOT decoration: an advisory that calls the prescribed remedy
+#: untrustworthy is one its reader learns to disregard, and a disregarded advisory
+#: is unread when it is finally right. Measured session 261: the OUTER `$?` is
+#: exact (`exit 7` -> 7, `exit 8` -> 8), so there is nothing to warn about.
+CORRECT_IDIOM_STAYS_SILENT = [
+    "wsl bash -lc 'exit 7'; echo \"RC=$?\"",
+    "wsl bash -lc 'cmd > /tmp/o.txt 2>&1'; echo \"RC=$?\"",
+    "wsl bash -lc 'git status' ; echo \"RC=$?\" ; cat /tmp/o.txt",
+    # `wsl -e` runs the program directly and deletes the extra shell layer, so it
+    # is the one invocation for which this hazard cannot occur at all.
+    "wsl -e bash -lc 'echo v=$(pwd)'",
+    "wsl --exec bash -lc 'false; echo rc=$?'",
 ]
 
 # A DOUBLE-quoted outer argument, where the backslash escape is eaten before WSL
@@ -148,6 +198,31 @@ def test_double_quoted_outer_with_a_dollar_warns(command: str) -> None:
     warning = _shell_hygiene_warning(command)
     assert warning is not None, f"no advisory for a double-quoted outer: {command!r}"
     assert "SINGLE-quoted" in warning
+
+
+@pytest.mark.parametrize("command", REDIRECT_OUTSIDE)
+def test_redirect_outside_the_quoted_arg_warns(command: str) -> None:
+    """The bytes land on the WINDOWS filesystem while every later reader looks in WSL."""
+    warning = _shell_hygiene_warning(command)
+    assert warning is not None, f"no advisory for an outside redirect: {command!r}"
+    assert "WINDOWS filesystem" in warning
+
+
+@pytest.mark.parametrize("command", CORRECT_IDIOM_STAYS_SILENT)
+def test_the_prescribed_remedy_is_not_itself_warned_about(command: str) -> None:
+    """The other direction of the span rule — and the one that decides if it is read.
+
+    Pinned separately from CLEAN because these are not merely "clean": they are the
+    shapes the advisory *recommends*. Before session 261 the predicate searched the
+    whole command string, so every one of these drew "do not treat its exit status
+    or output as trustworthy evidence" — the instrument telling its reader that the
+    fix it prescribes is broken. Measured over 950 commands from five transcripts,
+    ~38% of that rule's firings were this false positive; the advisory fired on 31%
+    of all commands and was, demonstrably, stopped being read.
+    """
+    assert (
+        _shell_hygiene_warning(command) is None
+    ), f"the advisory fires on its own prescribed remedy: {command!r}"
 
 
 @pytest.mark.parametrize("command", CLEAN)

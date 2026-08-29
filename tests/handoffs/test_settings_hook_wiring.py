@@ -219,6 +219,48 @@ def test_governance_gate_deny_is_registered_for_write_and_edit() -> None:
     )
 
 
+def test_ci_wait_deny_covers_bash_and_monitor() -> None:
+    """The CI-wait gate must reach BOTH command surfaces, not just Bash.
+
+    `Monitor` is the harness's own sanctioned wait primitive, and it was the tool
+    the agent reached for mid-incident on 2026-08-29 — a call that had zero hook
+    coverage of any kind. A Bash-only registration is a gate with a documented
+    bypass, and the bypass is the more natural way to write the denied thing.
+    """
+    matchers = {
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("PreToolUse", "pretooluse_ci_wait_deny.py")
+    }
+    assert matchers, "the CI-wait deny lost its PreToolUse registration entirely"
+    covered = {surface for m in matchers for surface in m.split("|")}
+    assert {"Bash", "Monitor"} <= covered, (
+        f"the CI-wait gate no longer covers both command surfaces; a Bash-only gate "
+        f"is bypassed by Monitor, which is where the incident's own wait was written. "
+        f"Got {sorted(matchers)}"
+    )
+
+
+def test_the_route_the_ci_wait_deny_names_still_exists() -> None:
+    """Anti-rot: a deny that names a moved path is obstruction with no way to comply.
+
+    This repo has measured that failure twice already (R8's plan-archive refs, and
+    the s241 ``warm.sh`` case behind ``check_retired_claims.py``). The deny text is
+    the contract, so the module it points at is asserted importable — not merely
+    present as a string.
+    """
+    import importlib
+
+    hook_src = (REPO_ROOT / ".claude" / "hooks" / "pretooluse_ci_wait_deny.py").read_text(
+        encoding="utf-8"
+    )
+    assert "tools.ci.wait_for_ci" in hook_src, "the deny stopped naming a route at all"
+    module = importlib.import_module("tools.ci.wait_for_ci")
+    assert hasattr(module, "classify"), (
+        "the route the deny names no longer exposes classify(); the gate now points "
+        "somewhere that cannot answer the question it denies"
+    )
+
+
 def test_classifier_dispatch_is_not_re_registered_on_pretooluse() -> None:
     """The classifier's PreToolUse arm was retired (session 202) — keep it out.
 

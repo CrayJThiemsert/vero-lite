@@ -360,10 +360,87 @@ def _apply_l3(counter: Any, combined_output: str) -> bool:
 #: A pipe into ``head``/``tail`` — the shape that discards the producer's exit status.
 _PIPE_TO_TRUNCATOR_RE = re.compile(r"\|\s*(?:head|tail)\b")
 
-#: ``$?`` / ``$(...)`` inside a ``bash -c`` / ``bash -lc`` string with NO backslash
-#: escape. Under ``wsl bash -lc`` these expand one shell layer too early.
-_UNESCAPED_EXPANSION_RE = re.compile(r"(?<!\\)\$(?:\?|\()")
+#: Expansions the extra shell layer claims when they ride INSIDE the quoted
+#: argument, with NO backslash escape. ``$?`` and ``$(`` were the original two;
+#: ``${``, ``$VAR``, ``$$`` and a backtick are clobbered identically (measured
+#: session 261 — ``$VAR`` came back empty exactly as ``$?`` came back 0), and were
+#: simply never written by a session unlucky enough to notice.
+_UNESCAPED_EXPANSION_RE = re.compile(r"(?<!\\)(?:\$\?|\$\(|\$\{|\$\$|\$[A-Za-z_][A-Za-z0-9_]*|`)")
 _WSL_BASH_C_RE = re.compile(r"\bbash\s+-[a-z]*c\b")
+
+#: ``wsl -e`` / ``wsl --exec`` runs the program DIRECTLY instead of handing the
+#: string to WSL's default shell, which deletes the extra evaluation layer and so
+#: removes this hazard at the source. Exempted because the predicate used to fire
+#: on it: the advisory was penalising the one invocation that structurally fixes
+#: what the advisory is about, which teaches the reader that the remedy is wrong.
+_WSL_EXEC_RE = re.compile(r"\bwsl(?:\.exe)?\s+(?:-e\b|--exec\b)")
+
+
+#: A redirect to a POSIX ABSOLUTE path sitting OUTSIDE the quoted argument. The
+#: Windows-side shell applies it, so the bytes land on the WINDOWS filesystem while
+#: every later reader looks for them inside WSL. Measured session 261: a watcher's
+#: output written this way was reported "No such file or directory" by a WSL `cat`,
+#: and the run was briefly misread as never having happened. Restricted to absolute
+#: POSIX paths because that is the unambiguous half — a relative target is resolved
+#: against whatever CWD the harness has and may genuinely be intended.
+_OUTSIDE_REDIRECT_RE = re.compile(r">>?\s*/(?:tmp|home|mnt|var|etc)\b")
+
+
+def _redirect_outside_the_quoted_arg(command: str) -> bool:
+    """True when a POSIX-absolute redirect is applied OUTSIDE a ``bash -c`` argument."""
+    token = _WSL_BASH_C_RE.search(command)
+    if token is None:
+        return False
+    # BOTH quote styles are tracked, because the argument may be double-quoted.
+    # A single-quote-only scanner reads a `bash -lc "... > /tmp/out.txt"` as having
+    # its redirect outside — the existing CLEAN corpus caught exactly that, which is
+    # what that corpus is for.
+    outside: list[str] = []
+    in_single = in_double = False
+    for ch in command[token.end() :]:
+        if ch == "'" and not in_double:
+            in_single = not in_single
+            continue
+        if ch == '"' and not in_single:
+            in_double = not in_double
+            continue
+        if not in_single and not in_double:
+            outside.append(ch)
+    if in_single or in_double:  # unbalanced — same fail-open contract as the span reader
+        return False
+    return bool(_OUTSIDE_REDIRECT_RE.search("".join(outside)))
+
+
+def _inside_single_quotes_after_bash_c(command: str) -> str | None:
+    """The text riding INSIDE single quotes after a ``bash -c`` token.
+
+    Returns ``None`` when the shape cannot be read confidently — the caller then
+    stays SILENT. **Failing open is the point.** Before this span check the
+    predicate searched the WHOLE command, so the correct, prescribed idiom —
+    ``wsl bash -lc '...'; echo "RC=$?"``, whose ``$?`` belongs to the OUTER shell
+    and is exact (measured session 261: ``exit 7`` -> 7, ``exit 8`` -> 8) — drew
+    the advisory "do not treat its exit status as trustworthy evidence". Telling
+    an author their correct command is broken is how an instrument becomes
+    wallpaper, and a wallpapered advisory is one nobody reads when it is right.
+
+    A parser that guessed would re-create exactly that, so anything ambiguous
+    (no ``bash -c``, no single quotes, unbalanced quotes) yields ``None``.
+    """
+    token = _WSL_BASH_C_RE.search(command)
+    if token is None:
+        return None
+    inside: list[str] = []
+    in_quote = False
+    for ch in command[token.end() :]:
+        if ch == "'":
+            in_quote = not in_quote
+            continue
+        if in_quote:
+            inside.append(ch)
+    if in_quote:  # unbalanced — cannot say what is inside; stay silent
+        return None
+    return "".join(inside) or None
+
 
 #: A ``bash -c`` / ``bash -lc`` argument opened with a DOUBLE quote, which makes any
 #: ``$`` inside it unsafe *whether or not* it is backslash-escaped — the outer layer
@@ -383,8 +460,17 @@ def _shell_hygiene_warning(command: str) -> str | None:
     """Advisory for Bash command shapes that make a FAILURE look like a SUCCESS.
 
     Every check here fires on a *deliberately typed* shape, never on incidental
-    output, so false positives are cheap and rare. All three were measured in this
-    harness on 2026-07-26 — see ``docs/lessons/0007-harness-exit-code-artifact.md``.
+    output. The originals were measured in this harness on 2026-07-26 — see
+    ``docs/lessons/0007-harness-exit-code-artifact.md``.
+
+    ⚠️ **Corrected 2026-08-29 (session 261).** This used to add "so false positives
+    are cheap and rare". Replayed over 950 commands they were neither: the advisory
+    fired on 30.8% of all Bash commands, and 37.8% of the expansion rule's firings
+    were on a ``$`` OUTSIDE the quoted argument — the prescribed idiom, whose outer
+    ``$?`` is exact. An instrument that calls its own remedy untrustworthy is one its
+    reader learns to skip, and the skipping was observed: fired 03:18:48, ignored,
+    same shape re-issued 03:20:49. Hence the quote-span reader and the ``wsl -e``
+    exemption below — the goal is FEWER, truer firings, not more.
 
     This lives in the observer rather than a PreToolUse gate on purpose. The harm
     is not running the command, it is *believing* its output — which is knowable
@@ -408,13 +494,28 @@ def _shell_hygiene_warning(command: str) -> str | None:
             "closes the pipe early — that turns a SUCCESSFUL command into a spurious "
             "failure; use `tail`, which drains its input"
         )
-    if _WSL_BASH_C_RE.search(command) and _UNESCAPED_EXPANSION_RE.search(command):
+    if _redirect_outside_the_quoted_arg(command):
         problems.append(
-            "contains an unescaped `$?`/`$(...)` inside a `bash -c` string; under "
-            "`wsl bash -lc` that expands one shell layer EARLY (measured: `$?` "
-            "reports 0 for a failed command, `$(pwd)` resolves before a preceding "
-            "`cd`) — the remedy has TWO halves and needs BOTH: a SINGLE-quoted outer "
-            "argument AND `\\$` for every `$`"
+            "redirects to an absolute POSIX path from OUTSIDE the `bash -c` argument, "
+            "so the Windows-side shell applies it and the bytes land on the WINDOWS "
+            "filesystem — a later `wsl ... cat` of that path reports 'No such file or "
+            "directory' and the command reads as never having run. Move the `>` INSIDE "
+            "the quoted argument"
+        )
+
+    quoted_arg = _inside_single_quotes_after_bash_c(command)
+    if (
+        quoted_arg is not None
+        and not _WSL_EXEC_RE.search(command)
+        and _UNESCAPED_EXPANSION_RE.search(quoted_arg)
+    ):
+        problems.append(
+            "contains an unescaped `$?`/`$(...)`/`$VAR` INSIDE the single-quoted "
+            "`bash -c` argument; under `wsl bash -lc` that expands one shell layer "
+            "EARLY (measured: `$?` reports 0 for a failed command, `$(pwd)` resolves "
+            "before a preceding `cd`) — the remedy has TWO halves and needs BOTH: a "
+            "SINGLE-quoted outer argument AND `\\$` for every `$`. A `$` OUTSIDE that "
+            "argument is fine and is not what this is about"
         )
     if _BASH_C_DOUBLE_QUOTED_RE.search(command) and _ANY_DOLLAR_RE.search(command):
         problems.append(
