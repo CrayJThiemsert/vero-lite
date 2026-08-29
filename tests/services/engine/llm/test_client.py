@@ -97,6 +97,62 @@ async def test_chat_sends_keep_alive_so_the_model_survives_between_visitors() ->
     assert captured["body"]["keep_alive"] == settings.ollama_keep_alive
 
 
+async def test_chat_bounds_generation_server_side_with_num_predict() -> None:
+    """Every chat call must carry `options.num_predict`, set from the config knob.
+
+    Nothing sent this before, so generation was bounded ONLY by the client-side
+    request timeout — and a client-side timeout aborts the call and discards
+    every token already produced. That is the difference between a run that is
+    BOUNDED and one that is CUT: phase 1.6's deadline breaches recorded no
+    answer at all, when a server-side cap would have left a short answer that
+    could still be graded.
+
+    Asserted against `settings.llm_max_output_tokens` rather than a literal, for
+    the same reason as `keep_alive` above: the invariant under test is "the wire
+    carries what the setting says", not any one token count.
+    """
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return _ok_response()
+
+    await _client(handler).chat([{"role": "user", "content": "hi"}])
+
+    assert "num_predict" in captured["body"]["options"], (
+        "the /api/chat body sets no num_predict, so Ollama generates until the "
+        "context is exhausted and only the client timeout bounds the call"
+    )
+    assert captured["body"]["options"]["num_predict"] == settings.llm_max_output_tokens
+    # The bound must be a real ceiling. Ollama spells "unbounded" as -1, so a
+    # negative or zero value here would satisfy the presence check above while
+    # restoring exactly the behaviour this test exists to prevent.
+    assert captured["body"]["options"]["num_predict"] > 0
+
+
+async def test_chat_passes_a_string_think_through_untouched() -> None:
+    """`think` must survive as a STRING, not just a bool.
+
+    Reasoning-effort models (the gpt-oss family) take "low"/"medium"/"high" and
+    DISCARD a boolean. While the signature was `bool | None`, the only two
+    values expressible were the two such a model ignores — so a think-on and a
+    think-off run were the same request, and phase 1.6 compared a configuration
+    against itself without anything noticing.
+    """
+    captured: dict[str, Any] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return _ok_response()
+
+    await _client(handler).chat([{"role": "user", "content": "hi"}], think="low")
+
+    assert captured["body"]["think"] == "low", (
+        "a string reasoning-effort value did not reach the wire, so effort-only "
+        "models cannot be driven at all"
+    )
+
+
 async def test_chat_includes_think_only_when_set() -> None:
     captured: dict[str, Any] = {}
 
