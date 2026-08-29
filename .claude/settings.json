@@ -17,6 +17,15 @@
         ]
       },
       {
+        "matcher": "Bash|Monitor",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_ci_wait_deny.py"
+          }
+        ]
+      },
+      {
         "matcher": "Write|Edit",
         "hooks": [
           {
