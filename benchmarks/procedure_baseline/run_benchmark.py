@@ -43,7 +43,7 @@ from benchmarks.procedure_baseline.harness import (
     summarize_latency,
 )
 from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all
-from benchmarks.procedure_baseline.schema import Dataset
+from benchmarks.procedure_baseline.schema import BenchmarkItem, Dataset
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
 from services.engine.llm.client import OllamaClient
@@ -257,7 +257,7 @@ def _print_watch_lane(label: str, summary: Summary) -> None:
     )
 
 
-def _item_record(result: ItemResult) -> dict[str, Any]:
+def _item_record(result: ItemResult, item: BenchmarkItem | None = None) -> dict[str, Any]:
     """One JSONL record for ``--dump-json``: the item's verdicts, the per-field check
     breakdown (name / passed / detail / lane), and the raw model judgment — the
     evidence to VERIFY a score is a real model verdict, not a grader artifact (the
@@ -309,6 +309,33 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
         # via ``dataclasses.asdict`` so ``truncated`` — a property, not a field —
         # lands in the record too: it is the one value a human reading the dump
         # actually looks for, and asdict would silently omit it.
+        # The QUESTION the item posed, carried beside the answer. Without it a dump
+        # records what the model said and not what it was asked, so reading a run
+        # back means joining against a dataset file that may since have changed —
+        # and a scored verdict whose input is reconstructed is not evidence. Same
+        # argument the draft above is carried under. Optional so the record still
+        # builds for a caller that has no dataset in hand; a reader must then say
+        # "not recorded" rather than invent it.
+        "scenario": (
+            None
+            if item is None
+            else {
+                "description": item.description,
+                "entity_type": item.scenario.entity_type,
+                "primary_key": item.scenario.primary_key,
+                "measured_value": item.scenario.measured_value,
+                "unit": item.scenario.unit,
+                "threshold": item.scenario.threshold,
+                "direction": item.scenario.direction,
+                "watch_margin": item.scenario.watch_margin,
+                "distractors": [
+                    {"primary_key": d.primary_key, "measured_value": d.measured_value}
+                    for d in item.scenario.distractors
+                ],
+                "context": item.scenario.context,
+            }
+        ),
+        "expected": (None if item is None else item.expected.model_dump(mode="json")),
         "calls": [
             {
                 "role": call.role,
@@ -444,6 +471,7 @@ async def _main(args: argparse.Namespace) -> None:
     judgment_recorder = LatencyRecorder()
     watch_judgment_recorder = LatencyRecorder()
     all_results: list[ItemResult] = []
+    summaries: list[tuple[str, Summary]] = []
     print(f"REASONING MODE (PLAN-0020 think-trim lever): {args.reasoning_mode}")
     for dataset in datasets:
         print(f"\n=== {dataset.vertical} ({dataset.procedure}) ===")
@@ -462,8 +490,36 @@ async def _main(args: argparse.Namespace) -> None:
             request_timeout_s=args.request_timeout,
         )
         all_results.extend(results)
-        _print_summary(dataset.vertical, summarize(results))
-    _print_summary("OVERALL", summarize(all_results))
+        summaries.append((dataset.vertical, summarize(results)))
+    summaries.append(("OVERALL", summarize(all_results)))
+
+    # The (d') policy. Scores are WITHHELD, never the data: the dump below is
+    # written either way, and the demand + latency diagnostics still print, so a
+    # withheld run is a complete measurement of everything except the one number
+    # it cannot honestly report. Computed here, before the first summary line,
+    # because a score already on screen cannot be unprinted — and a reviewer who
+    # sees a β figure remembers the figure, not the warning under it.
+    #
+    # Truncation is checked rather than trusted: a clipped reasoning pass still
+    # structures into a well-formed envelope, so the affected items grade as
+    # ordinary passes and fails. Comparing two models where one was clipped and
+    # the other was not measures the cap, not the models.
+    truncated = [(r, c) for r in all_results for c in r.calls if c.truncated]
+    withhold = bool(truncated) and not args.allow_truncation
+    if withhold:
+        print(
+            f"\n{'=' * 78}\nSCORES WITHHELD — {len(truncated)} call(s) hit the "
+            f"generation cap.\n{'=' * 78}\n"
+            "A truncated reasoning pass still yields a well-formed judgment, so the "
+            "affected items would have scored as ordinary passes and fails and been "
+            "averaged in silently. The per-item data IS still written (see DUMP "
+            "below) and the demand report names every truncated call.\n"
+            "Raise the cap and re-run, or pass --allow-truncation to accept clipped "
+            "reasoning and print the scores anyway."
+        )
+    else:
+        for label, summary in summaries:
+            _print_summary(label, summary)
     _print_deadline_breaches(all_results, args.judgment_deadline)
     _print_generation_demand(all_results)
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
@@ -475,7 +531,12 @@ async def _main(args: argparse.Namespace) -> None:
     watch_judgment_latency = summarize_latency(watch_judgment_recorder.durations)
     _print_watch_judgment_latency(watch_judgment_latency)
     if args.dump_json is not None:
-        lines = [json.dumps(_item_record(result)) for result in all_results]
+        # Indexed by id so the dump is self-contained. Built from the datasets that
+        # were actually loaded for THIS run, never re-read from disk afterwards.
+        by_id = {item.id: item for dataset in datasets for item in dataset.items}
+        lines = [
+            json.dumps(_item_record(result, by_id.get(result.item_id))) for result in all_results
+        ]
         args.dump_json.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print(f"\nDUMP: wrote {len(lines)} item records -> {args.dump_json}")
     print(
@@ -495,6 +556,15 @@ async def _main(args: argparse.Namespace) -> None:
         "retained as a lever diagnostic. B-gamma (text-to-SQL + RAG baselines) is "
         "TODO."
     )
+    if withhold:
+        # Repeated last so it is the line still on screen, and non-zero so a script
+        # cannot read this run as a clean one. Raised after the dump, deliberately:
+        # the measurement is the valuable part and it must survive the refusal.
+        print(
+            f"\nRESULT: NO SCORE — {len(truncated)} truncated call(s). "
+            "Data written; scores withheld."
+        )
+        raise SystemExit(3)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -546,6 +616,17 @@ def _parse_args() -> argparse.Namespace:
         choices=["full", "think_off", "skip"],
         default="full",
         help="PLAN-0020 think-trim lever (AC-1a): full (shipped) | think_off | skip.",
+    )
+    parser.add_argument(
+        "--allow-truncation",
+        action="store_true",
+        help=(
+            "Print the scores even when a call hit the generation cap. OFF by "
+            "default: a clipped reasoning pass still produces a well-formed "
+            "judgment, so without this the affected items would be averaged in "
+            "silently. Pass it for a DEMAND run, where truncation is the "
+            "measurement rather than a defect."
+        ),
     )
     parser.add_argument(
         "--dump-json",

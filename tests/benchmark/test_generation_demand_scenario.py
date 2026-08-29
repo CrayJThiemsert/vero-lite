@@ -181,6 +181,37 @@ async def test_metrics_survive_the_failure_path() -> None:
     assert [c["role"] for c in record["calls"]] == ["reasoning", "structuring"]
 
 
+async def test_the_reasoning_draft_survives_the_failure_path() -> None:
+    """A failed exchange must still say WHAT call 1 produced.
+
+    This is the misreading session 261 actually made. Run A recorded
+    ``draft: null`` and it was read as "call 1 produced nothing" — but the harness
+    assigned ``draft`` only on the success path, so that null was written whether
+    call 1 emitted nothing or emitted seven thousand characters that call 2 then
+    failed to structure. The two states were indistinguishable, and the mechanism
+    story built on the null was wrong.
+
+    Call 1 here returns a full draft and call 2 returns unparseable output, which
+    is exactly that shape: the item ends unscored, and the draft must survive
+    anyway.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = _two_call_client(
+        _envelope(_LONG_DRAFT, done_reason="stop", eval_count=1_893),
+        _envelope("not json at all", done_reason="stop", eval_count=12),
+    )
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=1)
+    record = _item_record(result)
+
+    assert record["error"] is not None, "precondition: this exchange must have failed"
+    assert record["judgment"] is None, "precondition: a failed exchange has no judgment"
+    assert record["draft"] == _LONG_DRAFT, (
+        "the reasoning draft did not survive the failure path, so an unscored item "
+        "cannot be told apart from one whose reasoning pass produced nothing"
+    )
+
+
 async def test_a_healthy_exchange_records_demand_and_no_truncation() -> None:
     """The s261 run-B shape: a long draft that ended on its own, and a valid judgment.
 
