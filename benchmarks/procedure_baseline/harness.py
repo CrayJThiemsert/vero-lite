@@ -159,6 +159,17 @@ class JudgmentRun:
     thinking: str | None = None
 
 
+class ReasoningModeInexpressibleError(RuntimeError):
+    """The configured ``reasoning_mode`` is not expressible for the model under test.
+
+    Raised — never caught into a per-item ``error`` string — because the failure
+    is a property of the RUN's configuration, not of one item: every remaining
+    item would be mislabelled the same way. Deliberately NOT a subclass of
+    ``StructuredOutputError`` or ``OllamaError``, the two the per-item handler
+    absorbs, so it propagates and stops the sweep.
+    """
+
+
 async def _run_judgment(
     item: BenchmarkItem,
     client: ChatClient,
@@ -229,6 +240,35 @@ async def _run_judgment(
         # story was built that way and could not be checked.
         draft = result.draft
         thinking = result.thinking
+        # A `think_off` run that comes back WITH a reasoning trace did not run
+        # with reasoning off — the model ignored the flag, and this cell's
+        # numbers are a second sample of `full`, not a think-off measurement.
+        # Phase 1.6 reported exactly that as a finding ("think_off is SLOWER"),
+        # because nothing checked. Deliberately keyed on what the MODEL returned
+        # rather than on a roster of model names: a roster is a list to keep
+        # up to date, and the next un-listed model reintroduces the same silent
+        # mislabelling. Raised, not recorded — a mislabelled cell is worse than
+        # an absent one, and failing on item 1 beats ten mislabelled records.
+        #
+        # One direction only, and deliberately so: a returned trace PROVES the
+        # flag was ignored. The converse does not hold — an absent trace is not
+        # proof the reasoning pass was off (a model may reason inside `content`),
+        # so this never certifies a think_off run as valid.
+        if reasoning_mode == "think_off" and thinking:
+            raise ReasoningModeInexpressibleError(
+                # The mode is interpolated from the variable, not written as a
+                # literal: a hardcoded name can drift from the mode actually in
+                # force and report a mode that did not run. It also appears
+                # exactly ONCE, so a claim about the message naming the mode has
+                # a single site that can be probed — three literal copies made
+                # that claim unwitnessable, since removing any one left the
+                # other two satisfying it.
+                f"item {item.id!r}: reasoning_mode={reasoning_mode!r} but the model "
+                f"returned a {len(thinking)}-char reasoning trace, so it ignored "
+                f"think=False. That mode is INEXPRESSIBLE for this model — its "
+                f"results would duplicate 'full'. Use a model that honours the "
+                f"flag, or drop that cell for this model and say why."
+            )
     except TimeoutError:
         # Named distinctly so a breach is never read as a model failure: the run
         # was CUT, and what it would have produced is unknown.

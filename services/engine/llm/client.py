@@ -155,7 +155,7 @@ class OllamaClient:
         self,
         messages: list[dict[str, str]],
         *,
-        think: bool | None = None,
+        think: bool | str | None = None,
         response_format: dict[str, Any] | None = None,
         temperature: float = 0.0,
     ) -> ChatResult:
@@ -174,7 +174,20 @@ class OllamaClient:
             "model": self._model,
             "messages": messages,
             "stream": False,
-            "options": {"temperature": temperature},
+            # `num_predict` bounds generation SERVER-side. Without it Ollama
+            # generates until the context is exhausted, so the only thing bounding
+            # a call was the client-side timeout — which aborts and DISCARDS every
+            # token already produced. That is why phase 1.6's deadline breaches
+            # recorded no answer at all instead of a short one that could still be
+            # graded: the run was cut, not bounded, and what it would have said is
+            # unknowable. Sits beside `temperature` rather than in a per-call
+            # argument for the same reason the in-flight cap is read here — eight
+            # call sites construct a client, and a bound that must be passed
+            # correctly at each of them is one forgotten argument from being off.
+            "options": {
+                "temperature": temperature,
+                "num_predict": settings.llm_max_output_tokens,
+            },
             # Nothing set this before, so every chat call inherited Ollama's own
             # 5-minute default and the model was evicted between visitors. On the
             # published demo that is not a latency detail: PLAN-0100 Step 11

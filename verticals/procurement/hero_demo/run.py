@@ -106,7 +106,7 @@ class _AdvisoryStubClient:
         self,
         messages: list[dict[str, str]],
         *,
-        think: bool | None = None,
+        think: bool | str | None = None,
         response_format: dict[str, Any] | None = None,
         temperature: float = 0.0,
     ) -> ChatResult:

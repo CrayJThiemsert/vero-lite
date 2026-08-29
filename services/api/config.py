@@ -165,6 +165,19 @@ class Settings(BaseSettings):
         gt=0.0,
         description="Per-request timeout for a single Ollama chat call, in seconds",
     )
+    llm_max_output_tokens: int = Field(
+        default=1024,
+        gt=0,
+        description=(
+            "Server-side generation cap, sent as the Ollama `num_predict` option. "
+            "Ollama's own default is unbounded, so before this knob nothing bounded "
+            "generation LENGTH except llm_request_timeout_s — and a client-side "
+            "timeout ABORTS the call and discards every token already produced. A "
+            "deadline breach therefore recorded no answer at all, rather than a "
+            "bounded one that could still be graded. Bounding server-side turns "
+            "that abort into a short, gradeable result"
+        ),
+    )
     llm_status_timeout_s: float = Field(
         default=3.0,
         gt=0.0,

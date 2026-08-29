@@ -14,10 +14,13 @@ from __future__ import annotations
 import json
 from typing import Any
 
+import pytest
+
 from benchmarks.procedure_baseline.grader import GradeResult, HandlerTier, classify_disposition
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
     LatencyRecorder,
+    ReasoningModeInexpressibleError,
     TimingChatClient,
     evaluate_item,
     percentile,
@@ -780,3 +783,86 @@ async def test_evaluate_item_threads_reasoning_mode_skip_to_single_call() -> Non
     assert result.proposal_correct is True
     assert len(client.calls) == 1  # skip -> single structured call (no reasoning call)
     assert client.calls[0]["has_format"] is True
+
+
+async def test_think_off_that_returns_a_trace_is_inexpressible_not_a_result() -> None:
+    """A `think_off` run whose model still reasons must STOP, not be scored.
+
+    Reasoning-effort models discard a boolean `think`, so `think_off` silently
+    became a second sample of `full` — phase 1.6 published that pair as a
+    latency finding ("think_off is SLOWER") because nothing checked. The
+    returned reasoning trace is the evidence: a model that reasoned did not run
+    with reasoning off.
+
+    Raised rather than recorded as a per-item error because the defect belongs
+    to the RUN's configuration — every remaining item would be mislabelled the
+    same way, and a mislabelled cell is worse than an absent one.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    # Call 1 comes back WITH a reasoning trace despite think=False. Two canned
+    # results, not one: `generate_judgment` runs BOTH Pattern-B calls before
+    # returning, so the trace only reaches the harness after call 2 has already
+    # been made. The guard is fail-fast at the level it can be — item 1 of N —
+    # not before call 2 of item 1.
+    client = FakeChatClient(
+        [_result("draft", thinking="I should check the pond.."), _result(_judgment_json())]
+    )
+
+    with pytest.raises(ReasoningModeInexpressibleError) as exc:
+        await evaluate_item(_breach_item(), client, vertical=_VERTICAL, reasoning_mode="think_off")
+
+    assert "think_off" in str(exc.value)
+    assert "INEXPRESSIBLE" in str(exc.value)
+
+
+async def test_think_off_without_a_trace_is_allowed_through() -> None:
+    """Positive control for the guard above — it must not fire on every think_off run.
+
+    Without this, a guard hard-wired to `raise` on any `think_off` call would
+    satisfy the test above completely, and the suite would prove nothing about
+    the condition that actually distinguishes the two cases.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    # A model that HONOURS think=False returns no reasoning trace.
+    client = FakeChatClient([_result("draft", thinking=None), _result(_judgment_json())])
+
+    # RECORD the guard firing rather than letting it propagate. Left to
+    # propagate, an over-firing guard surfaces as a raised exception, which is a
+    # CRASH — and a crash credits no claim under the witness rule, so the very
+    # mutation this control exists to catch could never be witnessed at an
+    # assertion's own site.
+    # Exactly ONE assertion, deliberately: this control's whole claim is "the
+    # guard did not fire". Asserting the item also GRADED correctly would add
+    # claims this test does not own — grading is covered by the tests above —
+    # and each would land in the battery's coverage denominator as a claim no
+    # probe here witnesses.
+    fired: Exception | None = None
+    try:
+        await evaluate_item(_breach_item(), client, vertical=_VERTICAL, reasoning_mode="think_off")
+    except ReasoningModeInexpressibleError as exc:
+        fired = exc
+
+    assert fired is None, f"the guard fired on a think_off run with no reasoning trace: {fired}"
+
+
+async def test_a_reasoning_trace_under_full_is_expected_not_an_error() -> None:
+    """Second positive control: the guard is scoped to `think_off`.
+
+    Under `full` a reasoning trace is exactly what was ASKED for, so the same
+    input that must raise above must pass here. This is what pins the guard to
+    the mode rather than to the presence of a trace.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = FakeChatClient(
+        [_result("draft", thinking="I should check the pond.."), _result(_judgment_json())]
+    )
+
+    # Recorded, not propagated — same reason as the control above.
+    # One assertion, same reasoning as the control above.
+    fired: Exception | None = None
+    try:
+        await evaluate_item(_breach_item(), client, vertical=_VERTICAL, reasoning_mode="full")
+    except ReasoningModeInexpressibleError as exc:
+        fired = exc
+
+    assert fired is None, f"the guard fired under reasoning_mode='full': {fired}"

@@ -44,7 +44,7 @@ class ChatClient(Protocol):
         self,
         messages: list[dict[str, str]],
         *,
-        think: bool | None = ...,
+        think: bool | str | None = ...,
         response_format: dict[str, Any] | None = ...,
         temperature: float = ...,
     ) -> ChatResult: ...
