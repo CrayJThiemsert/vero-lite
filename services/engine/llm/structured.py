@@ -35,7 +35,7 @@ from typing import Any, Literal, Protocol
 from pydantic import BaseModel, Field, ValidationError
 
 from services.engine.actions import EntityRef
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import CallMetrics, ChatResult, call_metrics
 from services.engine.llm.prompt import build_reasoning_messages, build_structuring_messages
 from services.engine.registry import RegistryError, registry
 
@@ -130,7 +130,20 @@ class StructuredOutputError(RuntimeError):
 
     The Step 5 fail-safe (PLAN-0006 §6.6 / ADR-010 IN-4) catches this to
     fall back to the deterministic rule path — it never escapes the loop.
+
+    ``calls`` carries the per-call accounting for the attempts that WERE made.
+    It rides on the exception rather than only on :class:`JudgmentResult`
+    because an exhausted budget is the exact shape a starved reasoning pass
+    produces: session 261 measured a cap that emptied call 1, which left call 2
+    nothing to structure and burned the whole budget on invalid JSON. Metrics
+    attached only to the success path would therefore be missing from every run
+    that most needs explaining. ``str(exc)`` is deliberately unchanged — the
+    callers that turn this into a per-item error string keep working untouched.
     """
+
+    def __init__(self, message: str, *, calls: tuple[CallMetrics, ...] = ()) -> None:
+        super().__init__(message)
+        self.calls = calls
 
 
 @dataclass(frozen=True)
@@ -147,6 +160,12 @@ class JudgmentResult:
     draft: str
     model: str
     attempts: int
+    #: One entry per chat call actually issued, in order: the reasoning pass
+    #: (absent under ``reasoning_mode="skip"``) then one per call-2 attempt.
+    #: A sequence rather than two named fields because the retry loop can issue
+    #: several structuring calls, and collapsing them would hide the one that
+    #: differs — which, when a cap is clipping, is the only one that differs.
+    calls: tuple[CallMetrics, ...] = ()
 
 
 async def generate_judgment(
@@ -202,6 +221,7 @@ async def generate_judgment(
     # with think on/off. `draft`/`thinking` feed the hybrid trace (empty on skip).
     draft: str | None
     thinking: str | None
+    calls: list[CallMetrics] = []
     if reasoning_mode == "skip":
         draft = None
         thinking = None
@@ -212,6 +232,7 @@ async def generate_judgment(
         )
         draft = reasoning.content
         thinking = reasoning.thinking
+        calls.append(call_metrics(reasoning, role="reasoning"))
 
     feedback: str | None = None
     last_error = "no attempt was made"
@@ -221,6 +242,11 @@ async def generate_judgment(
         )
         # call 2: omit `think` (CHECKPOINT-0 contract — never think=False + format)
         result = await client.chat(messages, response_format=schema)
+        # Appended BEFORE the parse so a call that produced unusable output is
+        # still counted. The failing attempts are the informative ones when a cap
+        # is starving generation, and a metrics list that only recorded parseable
+        # responses would drop exactly them.
+        calls.append(call_metrics(result, role="structuring"))
         judgment, error = _parse_and_check(result.content, vertical)
         if judgment is not None:
             return JudgmentResult(
@@ -229,11 +255,15 @@ async def generate_judgment(
                 draft=draft if draft is not None else "",
                 model=result.model,
                 attempts=attempt,
+                calls=tuple(calls),
             )
         last_error = error
         feedback = error
 
-    raise StructuredOutputError(f"structured output failed after {budget} attempt(s): {last_error}")
+    raise StructuredOutputError(
+        f"structured output failed after {budget} attempt(s): {last_error}",
+        calls=tuple(calls),
+    )
 
 
 def _parse_and_check(content: str, vertical: str) -> tuple[LlmJudgment | None, str]:

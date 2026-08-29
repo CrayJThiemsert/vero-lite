@@ -305,6 +305,22 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
         "judgment_latency_s": (
             round(result.judgment_latency_s, 3) if result.judgment_latency_s is not None else None
         ),
+        # Per-call generation accounting. Spelled out field by field rather than
+        # via ``dataclasses.asdict`` so ``truncated`` — a property, not a field —
+        # lands in the record too: it is the one value a human reading the dump
+        # actually looks for, and asdict would silently omit it.
+        "calls": [
+            {
+                "role": call.role,
+                "done_reason": call.done_reason,
+                "eval_count": call.eval_count,
+                "prompt_eval_count": call.prompt_eval_count,
+                "content_chars": call.content_chars,
+                "thinking_chars": call.thinking_chars,
+                "truncated": call.truncated,
+            }
+            for call in result.calls
+        ],
     }
 
 
@@ -328,6 +344,59 @@ def _print_deadline_breaches(results: list[ItemResult], deadline_s: float | None
     print(f"\nDEADLINE [{deadline_s:.0f}s per judgment]: {len(breaches)} BREACHES")
     for r in breaches:
         print(f"  {r.item_id}  cut at {r.judgment_latency_s or 0.0:.1f}s")
+
+
+def _print_generation_demand(results: list[ItemResult]) -> None:
+    """Report what generation actually COST, and whether anything was cut.
+
+    Three separate facts, deliberately never folded together:
+
+    * **peak demand** per call role — the ``eval_count`` a cap has to clear. This
+      is the number a per-model ``num_predict`` should be chosen from. Choosing
+      it by searching for the smallest cap that still yields parseable output
+      converges on a cap that CLIPS the reasoning, because a clipped draft still
+      structures into a well-formed envelope.
+    * **truncations** — calls Ollama ended with ``done_reason="length"``, named
+      by item, printed explicitly when there are none. An absent line would read
+      the same as a clean run.
+    * **calls with no oracle at all** — envelopes that carried no ``done_reason``.
+      This is the one that must never be silent. If the server does not report
+      the field, every call scores ``truncated=False`` and the truncation line
+      would print a reassuring zero that means "not measured", not "measured and
+      clean". A zero from silence is not a pass.
+    """
+    calls = [(r, c) for r in results for c in r.calls]
+    if not calls:
+        print("\nGENERATION: no LLM calls recorded (no metrics to report).")
+        return
+
+    unmeasured = [(r, c) for r, c in calls if c.done_reason is None]
+    if unmeasured:
+        print(
+            f"\nGENERATION: !! {len(unmeasured)}/{len(calls)} calls carried NO "
+            f"'done_reason' — for those, truncation is UNMEASURED, not absent. "
+            f"Treat any zero below as unproven for them."
+        )
+
+    for role in ("reasoning", "structuring"):
+        counts = [c.eval_count for _, c in calls if c.role == role and c.eval_count is not None]
+        if not counts:
+            print(f"\nGENERATION [{role}]: no eval_count reported.")
+            continue
+        ordered = sorted(counts)
+        print(
+            f"\nGENERATION [{role}]: n={len(ordered)} "
+            f"max={ordered[-1]} p95={ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))]} "
+            f"median={ordered[len(ordered) // 2]} min={ordered[0]} tokens"
+        )
+
+    cut = [(r, c) for r, c in calls if c.truncated]
+    if not cut:
+        print(f"\nTRUNCATION: 0 of {len(calls)} calls hit the cap.")
+        return
+    print(f"\nTRUNCATION: {len(cut)} of {len(calls)} calls HIT THE CAP")
+    for r, c in cut:
+        print(f"  {r.item_id}  [{c.role}]  eval_count={c.eval_count}")
 
 
 def _print_latency(model: str, latency: LatencySummary) -> None:
@@ -396,6 +465,7 @@ async def _main(args: argparse.Namespace) -> None:
         _print_summary(dataset.vertical, summarize(results))
     _print_summary("OVERALL", summarize(all_results))
     _print_deadline_breaches(all_results, args.judgment_deadline)
+    _print_generation_demand(all_results)
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
     _print_latency(args.model or "per-agent", latency)
     judgment_latency = summarize_latency(
