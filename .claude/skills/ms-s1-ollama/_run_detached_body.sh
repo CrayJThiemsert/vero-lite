@@ -10,7 +10,10 @@ cd "$HOME/work/vero-lite"
 OUT=${1:?out prefix (e.g. .claude/benchmark-results/<run-name>)}
 shift || true
 echo "[wrap] START $(date -Iseconds)" > "$OUT.wrap"
-PYTHONUNBUFFERED=1 uv run python -m benchmarks.procedure_baseline.run_benchmark \
+# `--no-sync`, matching .github/workflows: a bare `uv run` re-syncs the project
+# env WITHOUT the dev extra and uninstalls pytest / ruff / mypy / pre-commit, so
+# launching a benchmark used to break the toolchain for the rest of the session.
+PYTHONUNBUFFERED=1 uv run --no-sync python -m benchmarks.procedure_baseline.run_benchmark \
   --ollama-host "${OLLAMA_HOST_URL:-http://192.168.1.133:11434}" --warm \
   --dump-json "$OUT.jsonl" "$@" > "$OUT.log" 2>&1
 rc=$?

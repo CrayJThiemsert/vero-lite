@@ -28,7 +28,19 @@
 # change that needs Cray approval.
 set -eu
 REPO="$HOME/work/vero-lite"
-RUN_NAME=${1:?usage: run_detached.sh <run-name> [extra run_benchmark args...]}
+
+# Leading `--setenv K=V` pairs are forwarded to the UNIT, not to run_benchmark.
+# `systemd-run --user` does not inherit the caller's environment, so a knob that
+# is only reachable through an env var could not be set for a detached run at
+# all — which covers LLM_MAX_OUTPUT_TOKENS, the server-side generation cap.
+SETENV_ARGS=()
+while [ "${1:-}" = "--setenv" ]; do
+  shift
+  SETENV_ARGS+=("--setenv=${1:?--setenv needs KEY=VALUE}")
+  shift
+done
+
+RUN_NAME=${1:?usage: run_detached.sh [--setenv K=V ...] <run-name> [extra run_benchmark args...]}
 shift || true
 OUT_REL=".claude/benchmark-results/$RUN_NAME"
 UNIT="bench-$RUN_NAME"
@@ -40,9 +52,14 @@ if systemctl --user is-active --quiet "$UNIT"; then
 fi
 rm -f "$OUT_REL.done"
 
-systemd-run --user --collect --unit="$UNIT" \
+systemd-run --user --collect --unit="$UNIT" "${SETENV_ARGS[@]+"${SETENV_ARGS[@]}"}" \
   bash "$REPO/.claude/skills/ms-s1-ollama/_run_detached_body.sh" "$OUT_REL" "$@"
 
 echo "launched unit: $UNIT (carrier-proof; probe-verified 2026-06-12)"
+if [ "${#SETENV_ARGS[@]}" -gt 0 ]; then
+  # Echoed so the run's own configuration is in the launch record rather than
+  # only in the shell history of whoever started it.
+  echo "unit env:      ${SETENV_ARGS[*]}"
+fi
 echo "watch:   systemctl --user status $UNIT   |   tail .claude/benchmark-results/$RUN_NAME.log"
 echo "done iff: $OUT_REL.done exists (contains: rc + ISO timestamp)"
