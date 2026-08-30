@@ -433,3 +433,116 @@ Amounts and quote counts read from each item's `measured_value` and
 `context.quotes_obtained` in the dumps. The ฿30,000 threshold is the design
 partner's Q10 figure, held in `verticals/fleet_maintenance/sourcing.py` and
 deliberately absent from the prompt (`procedures.yaml` rule_gate note, ADR-0025 D4).
+
+## 11. Session 263 — the defect was in the DIRECTIVE, and fixing it closed the gap
+
+🔴 **Everything above §11 was measured against a procedure goal that contained a
+contradiction. This section is the other side of that line: numbers from §8–§10 are
+NOT comparable with anything measured after it.**
+
+### What the models were actually told
+
+Reading the assembled prompt (`services/engine/llm/prompt.py`) rather than the
+benchmark's reader-facing summary showed the system instruction is well-built — it
+separates trusted config from untrusted operator data, contains injection with
+explicit delimiters, and carries a full **action catalog with a description per
+handler** (`handler_catalog_enabled` defaults True; `run_benchmark` calls
+`discover_and_register()` and fails closed if a vertical registers nothing). The
+models were not choosing blind.
+
+The defect was one clause of the procedure goal. It told the model to **check** the
+sourcing gate, told it the gate **blocks the spend on failure**, told it the
+threshold is *"authored in the typed rule, never in this prose"* — and the event then
+handed it `quotes_obtained`. The next clause said to route the *compliant* spend.
+
+A reader following that reaches: one quote of three, gate fails, spend blocked, no
+compliant spend to route. **That is what qwen concluded.** The key says `escalate`
+regardless — correctly, because the gate is evaluated **deterministically downstream
+with no LLM** (the step's own description says so). The directive never said that.
+
+**Scale of the mismatch: 11 of the 14 breach items carry fewer than three quotes, so
+the invitation was live on nearly every graded item; the rule it points at fires on
+exactly one (`fleet-006`).**
+
+### The gold set was NOT the defect
+
+Audited before changing anything, because changing the directive and the key together
+would have made the re-measure uninterpretable. The key varies **honestly** on the
+signals it grades — `drivable=True` (9 items) → `acceptable: []` with `tow` forbidden;
+`drivable=False` (5) → `tow_to_partner_garage` acceptable; `load_aboard` (2) →
+`dispatch_replacement_truck` also acceptable. It is **flat on `quotes_obtained`**:
+canonical is `escalate` for all 14 regardless. The key was right; the directive was
+asking for something else.
+
+### The change
+
+`verticals/fleet_maintenance/procedures.yaml`, the goal's third clause only —
+*"check the sourcing-hygiene gate … which blocks the spend on failure"* becomes
+*"note that a sourcing-hygiene gate on competing quotes is applied DOWNSTREAM by the
+engine and not by you — it may block the spend after your recommendation, so route
+the spend as if it will pass and never withhold a routing decision on quote counts"*.
+
+The gate stays *visible* to the model deliberately: ADR-010 D3 surfaces the reasoning
+trace to operators, so the trace should say a gate is still pending rather than imply
+the spend is settled. No ฿ figure and no handler name enters the prose, so ADR-0025
+D4's load-time lint is unaffected — confirmed, along with `goal_coverage` still
+matching `repair`/`quote`, and the full offline gate at CI scope (ruff clean · mypy
+`--strict services/ verticals/` clean on 201 · **pytest 4636 passed, 8 skipped**).
+`fleet_maintenance` is the scaffolder golden donor and **no golden test reddened**.
+
+### The re-measure — one variable, the goal
+
+`qwen3.8:27b-mtp-q8_0`, `full`, identical to §10's cell in every other respect.
+**gpt-oss could not be the test cell: already at ceiling, it was structurally
+incapable of showing an improvement** — the §9 ceiling problem now obstructing
+verification of our own fix.
+
+| cell | β | α (canon/accept/forbid/other) | consistency | latency p95 | wall |
+|---|---|---|---|---|---|
+| q8, old goal | 85.7% | 85.7% (12/0/1/1) | 12/14 | 203.1 s | 48 m 52 s |
+| **q8, fixed goal** | **100%** | **100% (14/0/0/0)** | **14/14** | 396.3 s | 49 m 24 s |
+| `gpt-oss`, old goal | 100% | 100% (14/0/0/0) | 14/14 | 38.1 s | 8 m 53 s |
+
+Pre-committed read, fixed before the run: both `fleet-002` and `fleet-006` returning
+to `escalate` = the fix works; one = partial; neither = the goal was not the cause.
+**Both returned.** Every mechanical criterion cleared (sentinel `rc=0`, `TRUNCATION:
+0 of 34`, deterministic 20/20, denominator 14, `DUMP: wrote 20 item records`, zero
+no-judgment).
+
+### The mechanism, not just the score
+
+| | old goal | fixed goal |
+|---|---|---|
+| items whose reasoning mentions the gate | 17 of 17 | 14 of 17 |
+| breach items where it **overrode** the routing | **2** | **0** |
+| items naming the gate as **downstream** | **0** | **15** |
+
+The model did not stop reasoning about the gate — it started reasoning about it
+*correctly*. It still raises it, now frames it as a downstream step, and no longer
+withholds a routing decision on quote counts. Rationales came out cleaner too:
+*"The quote size requires escalation to the appropriate human approval tier rather
+than terminal approval at this stage."*
+
+### What this costs, and what it does not settle
+
+- ⚠️ **Latency p95 roughly doubled** (203.1 s → 396.3 s) on a mean that barely moved
+  (178.5 → 186.1) — one slow item, not a shift. Recorded rather than explained: n=1
+  cannot tell an outlier from a regression.
+- **n=1**, like every cell but the 4-bit `full` pass.
+- **`gpt-oss` has not been re-run under the fixed goal.** It scored 100% while
+  ignoring the defective clause, so it has nothing to gain — but "nothing to gain" is
+  a prediction, not a measurement.
+- 🔴 **`fleet` is now at ceiling for TWO models.** It could already not measure an
+  improvement; it can no longer separate the two candidates at all. Harder items are
+  now blocking, not merely advisable.
+- Two dataset-hygiene items surfaced by the audit, both independent of this change and
+  **not** acted on: `fleet-006` is keyed as a pure-authorisation item though it is the
+  one item where the gate genuinely fires, with no written ruling saying why; and
+  `forbidden: ['tow']` is declared on only 6 of the 9 `drivable=True` items, so the
+  same wrong answer grades `forbidden` or `other` depending on which item a model errs
+  on — the header's own "dataset convention scoring as a model defect" hazard.
+
+**Evidence:** `.claude/benchmark-results/s263-2e-qwen-q8-goalfix` (`.log` + `.jsonl` +
+`.wrap`) against `s263-2d-qwen-q8-full`. Gate-mechanism counts computed over both
+dumps' `draft` + `rationale` fields. Gold-set audit read from
+`benchmarks/procedure_baseline/dataset/fleet_maintenance.yaml`.

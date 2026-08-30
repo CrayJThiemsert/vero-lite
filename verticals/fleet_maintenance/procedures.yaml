@@ -134,9 +134,10 @@ procedures:
       A truck is off the road and the garage has quoted a repair at or above that truck's
       minor-repair ceiling. Read each truck's latest quoted repair joined to its own ceiling, judge
       the quote against that per-truck ceiling, reshape the breach into the flat spend the authority
-      gate reads, check the sourcing-hygiene gate (a large repair needs three competing quotes — the
-      threshold is authored in the typed rule, never in this prose) which blocks the spend on
-      failure, then route the compliant spend to the human
+      gate reads, note that a sourcing-hygiene gate on competing quotes is applied DOWNSTREAM by the
+      engine and not by you — it may block the spend after your recommendation, so route the spend as
+      if it will pass and never withhold a routing decision on quote counts —
+      then route the spend to the human
       authority the quote's size demands — the head mechanic REQUESTS, the fleet manager or the owner
       APPROVES (SoD) — and write nothing until that human decides. The LLM drafts the summary
       (advisory); it decides nothing.
