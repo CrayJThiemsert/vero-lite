@@ -1891,3 +1891,59 @@ _[Rotated from `docs/STATUS.md` at the **s260** reconcile — the window holds a
 > was considered for the classifier arm.
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **256, 257, 258, 259–260**. **THIS (s260) reconcile rotates the session-255 block** on the **window rule alone, not a cap overage** — measured **1,984 B** against the 4,096 B cap. ✅ **Both directions were checked, never inferred:** the slice was pinned by its first AND last line, checked for neighbour-bleed, checked absent from the target *before* the write, then verified present-in-archive and absent-from-STATUS **separately**, by byte **delta** rather than presence — a presence test passes on a pre-existing copy. Slice **1,984 B** · archive **+3,300 B** · STATUS **−2,644 B** across both rotations at this reconcile (this block and the s249 RD row). Substance keeps tracked homes, re-checked with `git grep`: `docs/plans/done/0115-*.md`, `docs/adr/0038-*.md`, and the stale-`.pyc` hazard in `tools/probe_battery/README.md` plus `_battery.py` / `_snapshot.py`.]_
+
+> **Session 257, 2026-08-27 (`6bddc82` → `1993bda`) — THREE PRs merged
+> ([#1303](https://github.com/CrayJThiemsert/vero-lite/pull/1303),
+> [#1304](https://github.com/CrayJThiemsert/vero-lite/pull/1304),
+> [#1305](https://github.com/CrayJThiemsert/vero-lite/pull/1305)), 0 open, tree
+> clean. **PLAN-0107 Phase C closes AC-12/13/14/15 — the PLAN goes 10/15 →
+> 14/15**; only AC-9 remains, BLOCKED on a Cray ruling (3 options written).**
+>
+> 🔴 **Three gates that READ as protection started providing it.** **AC-13**
+> deleted a coverage threshold from `pyproject.toml` that measured nothing — no
+> `addopts` adds `--cov`, CI is a bare `pytest -q`; deleted, not armed (Cray's
+> typed ruling), and the same "coverage ≥ 70%" certification was struck from
+> `.github/PULL_REQUEST_TEMPLATE.md`, surfaced by Step 11's required grep
+> rather than silently edited. **AC-14** retired
+> `test_every_edited_asset_got_a_cache_bust` — it froze per-file minima over **9
+> of 21 JS and 0 of 4 CSS files**, so it passed while `views.css` was unguarded
+> — for `tools/ci/cache_bust_diff_check.py` + `fetch-depth: 2`: **relational,
+> not absolute** — if the bytes changed, the token must have changed, driven
+> RED/GREEN/ERROR through **real git**. **AC-15**: the step costs **under 1s of
+> a 606s job**; recorded, not a gate.
+>
+> 🔴 **AC-12's probe is the headline.** A session-finish, CI-only floor of
+> **400** under the executed DB-test count — baseline **475** (`CI=1`, real
+> Postgres, 4477 collected), ~16% margin because it catches a COLLAPSE, not
+> drift. Under the dead-port mutation the check **exits 1 while pytest's own
+> summary reports `4005 passed, 484 skipped`** — 484 skips against a normal 8.
+> It also settled what everything hung on: that `session.exitstatus = 1` in
+> `pytest_sessionfinish` reaches the process exit code — **none of the seven
+> unit tests could establish it**.
+>
+> 🔴 **The s256 walk residue is TWO RUNS, not two cases** (#1303) — re-measured
+> LIVE by three READ-ONLY probes, each under its own typed Cray go recorded
+> before it ran. Both cases **ABSENT** (control-backed); run
+> `@41bb78353e7c4138` is still `waiting_human` at a resolvable `approve` gate.
+> STATUS's own row was wrong **twice** (corrected below); `audit_log` unchanged
+> at **64 rows**, so **how the cases went away is measured but unexplained**.
+>
+> ✅ **And if a visitor clicks that orphaned gate, nothing breaks** (#1304).
+> Answered offline first: a controlled grep sweep found **ZERO** `repair_case`
+> refs on the whole resolve path — `runs.py`, `action_step.py`, all 74 modules
+> of `services/engine/` — against a control where the same grep finds 5 modules
+> under `services/db/` and 4 under `services/api/`; and those six files are
+> **byte-identical** between `dd4228f`, what the deployed image was built from,
+> and `6bddc82`. `tests/api/test_orphan_case_gate_resolve_scenario.py` then
+> drives the real producer (HTTP `/api/cases` + quotes + accepted-quote) into
+> the real `resolve_gated_step`, erasing the case in between through the real
+> `delete_case` seam, with a positive control. Cray chose to **simulate rather
+> than click live**, so nothing touched the live audit chain. **3/3 probes
+> WITNESSED**, `PROBE-COVERAGE: COMPLETE`, 0 gaps, tree byte-identical after.
+>
+> **Evidence.** Offline gate green at CI scope — **4481 passed, 8 skipped, 0
+> failed**; `mypy --strict services/ verticals/` clean on 201 files; bare `ruff
+> check .` + `ruff format --check .` clean; 20 pre-commit hooks; CI green at
+> every pinned sha. **Not in a PR:** all **116** Tier-0 memories with no repo
+> home were audited — **ZERO safe deletions**, and **no hook enforces the
+> `MEMORY.md` < 140 target**. Cray **PARKED** it.
