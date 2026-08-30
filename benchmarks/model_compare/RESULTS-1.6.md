@@ -546,3 +546,72 @@ than terminal approval at this stage."*
 `.wrap`) against `s263-2d-qwen-q8-full`. Gate-mechanism counts computed over both
 dumps' `draft` + `rationale` fields. Gold-set audit read from
 `benchmarks/procedure_baseline/dataset/fleet_maintenance.yaml`.
+
+## 12. Session 263 — gpt-oss under the fixed goal: the prediction, measured
+
+§11 predicted that `gpt-oss:20b` had nothing to gain from the goal fix, because it
+scored 100% while ignoring the defective clause — and flagged that "nothing to gain"
+was a prediction, not a measurement. It is now a measurement. Same cell as §9's
+`gptoss/full`, one variable changed (the goal).
+
+| gpt-oss `full` | β | α (canon/accept/forbid/other) | consistency | p95 breach | wall |
+|---|---|---|---|---|---|
+| old goal | 100% | 100% (14/0/0/0) | 14/14 | 38.1 s | 8 m 53 s |
+| **fixed goal** | **100%** | **100% (14/0/0/0)** | **14/14** | 46.1 s | 7 m 12 s |
+
+**Every score is identical.** All six mechanical criteria cleared. The fix is neutral
+for this model, as predicted — and the prediction is now retired as a claim.
+
+### Why it is neutral — the mechanism confirms the story
+
+| gpt-oss | old goal | fixed goal |
+|---|---|---|
+| items whose reasoning mentions the sourcing gate | **1 of 17** | **0 of 17** |
+| items naming it as downstream | 0 | 1 |
+
+Against qwen's 17-of-17 mentions under the same old goal, this is the direct evidence
+for §11's account: **gpt-oss never engaged with the contradictory clause at all.** A
+directive it does not read cannot mislead it, and repairing that directive cannot
+help it. Its 100% under the old goal was compliance-by-omission, not comprehension.
+
+### What did NOT improve — and what that isolates
+
+Its rationales are unchanged in quality. `fleet-004` still reads, verbatim:
+
+> Only truck-04 breaches its threshold; all other readings are safe context.
+
+No amount, no authority tier, no reason. This is the expected result and a useful
+one: it isolates the two defects cleanly. **The goal fix was the remedy for wrong
+actions; it is not a remedy for thin reasoning.** Rationale quality is unmeasured by
+β, α and consistency alike, so nothing in this matrix would ever have caught it —
+that remains open work.
+
+(One rationale did improve: `fleet-006` now names both figures — *"The measured repair
+quote of 30 001 THB is above the threshold of 5 001 THB, triggering an escalation."*
+One item is not a trend.)
+
+### An observation that is NOT a finding
+
+Aggregate reasoning demand looks tighter — max 7,247 → 1,498 tokens. Read per item,
+the 7,247 was **`fleet-016`, a watch item** (unscored calibration), which fell to 872,
+while other items moved both ways (+915, +562, +529) and the **median rose** (540 →
+622).
+
+More importantly: **`gpt-oss` reproducibility has never been measured.** Only the
+4-bit qwen `full` cell was ever repeated. So a per-item token delta between these two
+runs cannot be separated from ordinary run-to-run variation, and no causal claim
+about the goal change's effect on generation length is available from n=1 per side.
+Recorded because the number is visible in the logs and would otherwise be read as a
+result.
+
+### Where this leaves the matrix
+
+🔴 **Both models now sit at 100% / 100% / 14-of-14 on `fleet` under the fixed goal.**
+The dataset can no longer distinguish them on any axis it measures, and this section
+is the second consecutive run where the ceiling prevented a measurement rather than
+merely limiting one. Harder items are the blocking prerequisite for any further
+model, prompt, or quantization comparison on this vertical.
+
+**Evidence:** `.claude/benchmark-results/s263-2f-gptoss-goalfix` (`.log` + `.jsonl` +
+`.wrap`) against `s263-2c-gptoss-full`. Per-item reasoning tokens read from each
+dump's `calls[].eval_count` where `role == "reasoning"`.
