@@ -45,19 +45,20 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-# Candidate human-role phrases, superset across verticals. A phrase here is inert
-# until a procedure goal actually contains it — `role_vocabulary` filters this set
-# by the goal text, which is what keeps the check fair (see module docstring).
-CANDIDATE_ROLE_PHRASES: tuple[str, ...] = (
-    "head mechanic",
-    "fleet manager",
-    "owner",
-    "shift supervisor",
-    "operations manager",
-    "duty engineer",
-    "site manager",
-    "controller",
-)
+# The vocabulary and its filter live in `grader.py` — the shipped grader owns them
+# since session 264 promoted this signal into a scored lane (route B2). Imported
+# rather than copied: two lists would drift, and the offline re-grade must score the
+# same words the live run scores, or the two stop being comparable at all.
+from benchmarks.procedure_baseline.grader import CANDIDATE_ROLE_PHRASES, role_vocabulary
+
+__all__ = [
+    "CANDIDATE_ROLE_PHRASES",
+    "RationaleSignals",
+    "format_report",
+    "role_vocabulary",
+    "score_dump",
+    "score_rationale",
+]
 
 # A bare integer/decimal, tolerating thousands separators ("5,001" / "5001.0").
 _NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
@@ -66,17 +67,6 @@ _NUMBER_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 # as 5001, 5001.0 or 5,001 — all the same fact — but must not earn the signal by
 # naming a merely nearby number.
 _VALUE_RTOL = 1e-6
-
-
-def role_vocabulary(goal: str) -> tuple[str, ...]:
-    """The role phrases this goal actually supplies to the model.
-
-    The fairness guarantee: a model is only ever measured against vocabulary its
-    own prompt handed it, so a 0-of-N result is a failure to use supplied words,
-    never a vocabulary mismatch invented by the grader.
-    """
-    lowered = goal.lower()
-    return tuple(phrase for phrase in CANDIDATE_ROLE_PHRASES if phrase in lowered)
 
 
 def _numbers_in(text: str) -> list[float]:

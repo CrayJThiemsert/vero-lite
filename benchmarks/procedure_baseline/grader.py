@@ -25,8 +25,17 @@ probe (:func:`classify_handler_tier`): **canonical** (the single correct
 ``canonical_handler``) / **acceptable** (a benign defensible alternative in
 ``acceptable_handlers``) / **forbidden-or-other** (everything else — with a
 ``forbidden_keywords`` hit flagged explicitly in reporting per SD-4=a, never a
-new dataset tier). ``payload_contains`` stays an **advisory** signal. Headline /
-probe / advisory are aggregated separately.
+new dataset tier). ``payload_contains`` stays an **advisory** signal.
+
+A fourth lane joined at session 264 — the **rationale lane** (``names_approver``):
+does the model's prose name the human authority the spend routes to? It exists
+because the three lanes above stopped discriminating: both compared models reached
+100% / 100% / 14-of-14 on `fleet`, while this lane separates them in every cell.
+It is emitted only when the caller supplies the procedure ``goal``, since its
+vocabulary is derived from that text (:func:`role_vocabulary`) — so every call site
+without a directive grades exactly as it did before the lane existed, and no
+published β/α figure moves. Headline / probe / advisory / rationale are aggregated
+separately.
 
 :func:`grade_watch_proposal` is the PLAN-0022 Phase-3 **watch-tier lane**
 (escalation correctness — M-1, Cray-ratified 2026-06-12): on a deterministic
@@ -45,6 +54,46 @@ from enum import StrEnum
 from benchmarks.procedure_baseline.schema import Disposition, Expected, Scenario
 from services.engine.llm.structured import LlmJudgment
 from services.engine.procedures.verdict import classify_verdict
+
+# Candidate human-role phrases, a superset across verticals. A phrase here is inert
+# until a procedure goal actually contains it — `role_vocabulary` filters this set by
+# the goal text, which is what makes the rationale lane fair (see below).
+CANDIDATE_ROLE_PHRASES: tuple[str, ...] = (
+    "head mechanic",
+    "fleet manager",
+    "owner",
+    "shift supervisor",
+    "operations manager",
+    "duty engineer",
+    "site manager",
+    "controller",
+)
+
+
+def role_vocabulary(goal: str | None) -> tuple[str, ...]:
+    """The human-role phrases a procedure goal actually supplies to the model.
+
+    The rationale lane's fairness guarantee, and the reason the phrase list above is
+    not itself the check: a model is only ever measured against vocabulary its **own
+    prompt handed it**, so a 0-of-N result is a failure to use supplied words, never a
+    mismatch invented by the grader. The goal string passed here is the same one
+    ``build_reasoning_messages`` threads into the system prompt — edit the goal and
+    this check follows it.
+
+    This also **caps how strict the lane can be**, which is why the ratified bar
+    (Cray, typed, 2026-08-31) is role-naming ALONE. The richer questions a human
+    approver would want answered — is this the right supplier, does their delivery
+    history support accepting this quote, how does it compare with the alternatives —
+    rest on facts the ontology does not yet carry, so demanding them would fail every
+    model for the ontology's silence rather than for its own prose. Raising the bar is
+    therefore an **ontology** move before it is a grader move. Measured at ratification
+    on the two ceiling-tied models: requiring the quoted amount as well scored 0/14
+    against ~3/14 — rejected as unmeasurable, not as undesirable.
+    """
+    if not goal:
+        return ()
+    lowered = goal.lower()
+    return tuple(phrase for phrase in CANDIDATE_ROLE_PHRASES if phrase in lowered)
 
 
 def classify_disposition(scenario: Scenario) -> Disposition:
@@ -155,7 +204,7 @@ def declares_handler_tiers(expected: Expected) -> bool:
 class FieldCheck:
     """One graded objective field — its name, pass/fail, and a human-readable detail.
 
-    Three lanes, set by the two flags (a check is in exactly one):
+    Four lanes, set by the three flags (a check is in exactly one):
 
     * **scoring** (both flags False) — drives ``GradeResult.passed`` (the β headline:
       ``affected_primary_key``, ``action_keywords``).
@@ -169,6 +218,14 @@ class FieldCheck:
       ``step.handler`` (ADR-016) — PLAN-0019 Part B hardening, Cray-ratified
       2026-06-09; tiered canonical/acceptable/forbidden-or-other by PLAN-0022
       Step 1 (``passed`` = canonical or acceptable).
+    * ``rationale`` — the **rationale-content** lane (``names_approver``): does the
+      model's prose name the human authority the spend routes to? Reported on its
+      own lane, never a headline gate, for the same reason α is not: it measures
+      the *explanation*, not the decision, and folding it into β would make every
+      previously published β incomparable. Added session 264 after both compared
+      models hit 100% / 100% / 14-of-14 and the three lanes above could no longer
+      separate them; this one separates them in every cell. Bar ratified by Cray
+      2026-08-31 — see :func:`role_vocabulary` for why it is only role-naming.
     """
 
     name: str
@@ -176,6 +233,7 @@ class FieldCheck:
     detail: str
     advisory: bool = False
     probe: bool = False
+    rationale: bool = False
 
 
 @dataclass(frozen=True)
@@ -197,9 +255,12 @@ class GradeResult:
     checks: list[FieldCheck]
     probe_passed: bool | None = None
     handler_tier: HandlerTier | None = None
+    rationale_passed: bool | None = None
 
 
-def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
+def grade_proposal(
+    judgment: LlmJudgment, expected: Expected, *, goal: str | None = None
+) -> GradeResult:
     """Score an :class:`LlmJudgment` against the item's expected key.
 
     Grades exactly the fields ``expected`` declares (each ``None`` field is
@@ -211,6 +272,12 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     the handler-payload subset (**advisory**). All objective — no fuzzy/semantic
     scoring. Primary-KEY comparisons normalize Unicode hyphen variants to ASCII
     via :func:`normalize_primary_key` (B-6 calibration, Cray-ratified 2026-06-12).
+
+    ``goal`` is the procedure directive the model was actually shown. Supplying it
+    adds the session-264 **rationale lane** (``names_approver``), whose vocabulary is
+    derived from that same text — see :func:`role_vocabulary`. Omitting it (the
+    default, and every offline call site that has no directive) emits no rationale
+    check at all, so β and α come out identical to before the lane existed.
     """
     checks: list[FieldCheck] = []
     handler_tier: HandlerTier | None = None
@@ -276,12 +343,36 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         detail = f"decoy action verb in title: {hits}" if hits else "no decoy action verb in title"
         checks.append(FieldCheck("forbidden_keywords", passed, detail))
 
-    scoring = [check for check in checks if not check.advisory and not check.probe]
+    vocabulary = role_vocabulary(goal)
+    if vocabulary:
+        # RATIONALE lane: does the prose name the human authority the spend routes to?
+        # Emitted only when the goal actually supplies role phrases, so a run with no
+        # goal — every offline/mocked call site — grades byte-identically to before
+        # this lane existed, and no previously published beta/alpha figure moves.
+        named_roles = sorted(
+            phrase for phrase in vocabulary if phrase in judgment.rationale.lower()
+        )
+        detail = (
+            f"named {named_roles} of goal-supplied {list(vocabulary)}"
+            if named_roles
+            else f"named NONE of goal-supplied {list(vocabulary)}"
+        )
+        checks.append(FieldCheck("names_approver", bool(named_roles), detail, rationale=True))
+
+    scoring = [
+        check for check in checks if not check.advisory and not check.probe and not check.rationale
+    ]
     passed = bool(scoring) and all(check.passed for check in scoring)
     probe_checks = [check for check in checks if check.probe]
     probe_passed = all(check.passed for check in probe_checks) if probe_checks else None
+    rationale_checks = [check for check in checks if check.rationale]
+    rationale_passed = all(check.passed for check in rationale_checks) if rationale_checks else None
     return GradeResult(
-        passed=passed, checks=checks, probe_passed=probe_passed, handler_tier=handler_tier
+        passed=passed,
+        checks=checks,
+        probe_passed=probe_passed,
+        handler_tier=handler_tier,
+        rationale_passed=rationale_passed,
     )
 
 
