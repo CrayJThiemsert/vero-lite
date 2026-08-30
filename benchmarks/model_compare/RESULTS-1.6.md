@@ -241,9 +241,15 @@ is Cray's typed ruling of 2026-08-30 (see `docs/lessons/0050-*`).
 Run 2026-08-30 under Cray's typed §8 host-state go. Two cells, `fleet_maintenance`,
 20 items, `LLM_MAX_OUTPUT_TOKENS=16384`, `--retry-budget 1 --request-timeout 900
 --allow-truncation`, model **`gpt-oss:20b`** (the ADR-0001 pin). Both cells cleared
-the pass/fail read fixed *before* the run: sentinel `rc=0`, `TRUNCATION: 0`,
-deterministic 20/20, scored denominator 14 (so the cells compare against 2b), and
-`DUMP: wrote 20 item records`.
+the pass/fail read — **fixed before any result existed**: sentinel `rc=0`,
+`TRUNCATION: 0`, deterministic 20/20, scored denominator 14 (so the cells compare
+against 2b), and `DUMP: wrote 20 item records`. The on-disk record of that read
+(`.claude/state/goal.json`, `created` 16:22:16) was written 99 s into the first
+cell, which had started at 16:20:37 and emitted no aggregate line until 16:29:30;
+the second cell started at 16:30:06. Stated this way rather than as "before the
+run" because that is the part a reader can check from disk, and it is the part
+that matters — no criterion could have been tuned to a result none of them had
+yet seen.
 
 ### The complete 5-cell matrix
 
@@ -262,7 +268,11 @@ per-call — the same column §8 uses.
 🔴 **`gpt-oss:20b` is perfect on all three quality axes, in both reasoning modes** —
 every breach item scored, every handler pick canonical, zero forbidden picks, and
 consistency 14/14 under Cray's strict reading (mid band 10/10 `escalate`, owner band
-4/4 `escalate`; no divergence to explain). It is also **4–6× faster end to end**.
+4/4 `escalate`; no divergence to explain). It is also faster end to end, compared
+**same mode against same mode**: `full` **4.8×** (42 m 59 s → 8 m 53 s), `skip`
+**3.8×** (26 m 53 s → 7 m 08 s). Both figures are `.wrap` START→EXIT deltas. A
+wider-sounding band is available only by comparing cells of *different* reasoning
+modes, which is not a like-for-like speedup and is not claimed here.
 
 ⚠️ **This inverts §1's model ranking, but it is NOT a single-variable result.**
 §1 measured gpt-oss at β 10–30% and qwen at 30–80% — on `energy`, before
