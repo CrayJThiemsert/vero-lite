@@ -221,8 +221,11 @@ construction. Tracked as an Active TODO in `docs/STATUS.md`.
 
 - `think_off` and `skip` are **n=1**, and their reproducibility is **unverified** —
   only `full` was repeated.
-- `gptoss/full` and `gptoss/skip` have **not been run** (`gptoss/think_off` is
-  inexpressible and the harness raises). The matrix is 3 of 5 cells.
+- ~~`gptoss/full` and `gptoss/skip` have **not been run** (`gptoss/think_off` is
+  inexpressible and the harness raises). The matrix is 3 of 5 cells.~~
+  **Superseded by §9** (session 263, 2026-08-30): both cells were run and the
+  matrix is now 5 of 5. `gptoss/think_off` remains inexpressible. Kept rather
+  than deleted — it is the record of what was open when §8 was written.
 - Nothing here measures **Thai prose quality**, which is what the phase-2 tasks
   actually are.
 
@@ -232,3 +235,98 @@ present only on the dev machine, which is why the numbers are transcribed above
 rather than referenced. Consistency is computed by
 `benchmarks/procedure_baseline/tier_consistency.py`; the strict reading it applies
 is Cray's typed ruling of 2026-08-30 (see `docs/lessons/0050-*`).
+
+## 9. Session 263 — stage 2c: the matrix completed, and the model ranking inverts
+
+Run 2026-08-30 under Cray's typed §8 host-state go. Two cells, `fleet_maintenance`,
+20 items, `LLM_MAX_OUTPUT_TOKENS=16384`, `--retry-budget 1 --request-timeout 900
+--allow-truncation`, model **`gpt-oss:20b`** (the ADR-0001 pin). Both cells cleared
+the pass/fail read fixed *before* the run: sentinel `rc=0`, `TRUNCATION: 0`,
+deterministic 20/20, scored denominator 14 (so the cells compare against 2b), and
+`DUMP: wrote 20 item records`.
+
+### The complete 5-cell matrix
+
+`latency p95` is the **per-BREACH-judgment** figure (the SD-2 acceptance bar), not
+per-call — the same column §8 uses.
+
+| cell | model | β headline | α probe (canon/accept/forbid/other) | consistency | latency p95 | LLM calls | wall |
+|---|---|---|---|---|---|---|---|
+| `full` (pass 1) | qwen | 85.7% | 78.6% (9/2/1/2) | 9/14 | 172.3 s | 34 | 43 m |
+| `full` (pass 2) | qwen | 85.7% | 78.6% (9/2/1/2) | 9/14 | 183.7 s | 34 | 43 m |
+| `think_off` | qwen | 78.6% | 57.1% (8/0/**3**/3) | 8/14 | 353.4 s | 34 | 49 m |
+| `skip` | qwen | 85.7% | 85.7% (10/2/1/1) | 10/14 | 113.3 s | 17 | 27 m |
+| 🔴 **`full`** | **gpt-oss** | **100%** | **100% (14/0/0/0)** | **14/14** | **38.1 s** | 34 | **8 m 53 s** |
+| 🔴 **`skip`** | **gpt-oss** | **100%** | **100% (14/0/0/0)** | **14/14** | **33.1 s** | 17 | **7 m 08 s** |
+
+🔴 **`gpt-oss:20b` is perfect on all three quality axes, in both reasoning modes** —
+every breach item scored, every handler pick canonical, zero forbidden picks, and
+consistency 14/14 under Cray's strict reading (mid band 10/10 `escalate`, owner band
+4/4 `escalate`; no divergence to explain). It is also **4–6× faster end to end**.
+
+⚠️ **This inverts §1's model ranking, but it is NOT a single-variable result.**
+§1 measured gpt-oss at β 10–30% and qwen at 30–80% — on `energy`, before
+`num_predict` existed, with generation cut at a client timeout. §9 changes **two**
+variables at once (dataset `energy` → `fleet`, and cut → correctly bounded
+generation), so it establishes *that the ranking is opposite here*, and **not**
+which of the two changes caused it. Isolating that needs `gptoss` re-run on
+`energy` under the current bound — not run, not scheduled.
+
+### `skip` vs `full` for gpt-oss — a clean single-variable comparison
+
+Same model, dataset and bound; only `--reasoning-mode` differs. β, α and
+consistency are **identical** (100% / 100% / 14/14), so for this model the
+reasoning pass buys **no measurable quality** while costing **double the calls**
+and ~25% more wall clock. This strengthens §8's "`skip` wins" for a *different*
+reason: there `skip` won on quality, here it **ties** on quality and wins on cost.
+The §8 trade-off is unchanged and still unsettled — `skip` emits no reasoning
+trace, and the product surfaces one (`llm_inference`, ADR-010 D3).
+
+The watch lane (unscored calibration) is the one place the two modes differ:
+`full` returned `{echo: 3}`, `skip` returned `{escalate: 1, echo: 2}`.
+
+### Generation demand — a profile shaped nothing like qwen's
+
+| cell | model | reasoning min / median / max | structuring min / median / max |
+|---|---|---|---|
+| `full` | qwen | 1,294 / 1,876 / 2,457 | 360 / 531 / 733 |
+| `think_off` | qwen | 582 / 1,765 / 4,727 | 364 / 519 / 725 |
+| `skip` | qwen | *(no call 1)* | 425 / 592 / 745 |
+| **`full`** | **gpt-oss** | **215 / 540 / 7,247** | **83 / 114 / 148** |
+| **`skip`** | **gpt-oss** | *(no call 1)* | **93 / 142 / 167** |
+
+Two contrasts worth keeping:
+
+- **The 1024 default fails differently per model.** For `qwen/full` 1024 is below
+  the *minimum* demand (1,294), so it cut **every** item. For `gptoss/full` the
+  median is 540 — comfortably under 1024 — while the max is 7,247, so 1024 would
+  have cut **some** items and left others whole. A silent partial cut is the harder
+  failure to notice, because the aggregate still looks plausible.
+- **gpt-oss structures ~5× more cheaply** (max 148/167 vs qwen's 733/745) while its
+  reasoning is far more variable (max 7,247 vs 2,457). A strict cap for
+  `gptoss/full` (100% `stop`, ×1.5 over max) is ≈ **10,900 → 12288**, well above
+  qwen's ≈ 4096.
+
+### Still NOT concluded
+
+- Both `gptoss` cells are **n=1**; their reproducibility is **unverified**. Only
+  `qwen/full` has ever been repeated. The two `gptoss` cells agreeing 14/14 is
+  cross-*mode* agreement under different configurations — it is **not** a
+  determinism check and must not be read as one.
+- `gptoss/think_off` remains **inexpressible** (the model discards a boolean
+  `think`; the harness raises). The matrix is 5 of 5 *runnable* cells, not 6.
+- ⚠️ **`fleet` no longer discriminates for the pinned model.** With β, α and
+  consistency all at ceiling, this dataset can measure a regression in `gpt-oss`
+  but can no longer measure an improvement, and cannot rank two good models. A
+  harder dataset — or harder items in this one — is the prerequisite for any
+  further model comparison on `fleet`.
+- Latency still **misses the SD-2 bar**: p95 38.1 s / 33.1 s against ≤ 30 s. Much
+  closer than qwen's 113–353 s, but `-> OVER` in both cells.
+- Nothing here measures **Thai prose quality**, unchanged from §8.
+
+**Evidence:** `.claude/benchmark-results/s263-2c-gptoss-full`,
+`s263-2c-gptoss-skip` (`.log` + `.jsonl`) — **gitignored**, present only on the dev
+machine, which is why the numbers are transcribed above rather than referenced.
+Wall-clock figures are the `[wrap] START` → `EXIT` deltas in the matching `.wrap`
+files. Consistency is computed by
+`benchmarks/procedure_baseline/tier_consistency.py`.
