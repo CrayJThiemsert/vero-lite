@@ -1947,3 +1947,48 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 > every pinned sha. **Not in a PR:** all **116** Tier-0 memories with no repo
 > home were audited — **ZERO safe deletions**, and **no hook enforces the
 > `MEMORY.md` < 140 target**. Cray **PARKED** it.
+
+> **Session 258, 2026-08-27 (`1904caa` → `d78eebe`) — ONE PR merged
+> ([#1307](https://github.com/CrayJThiemsert/vero-lite/pull/1307)), 0 open, tree
+> clean. **PLAN-0107 is COMPLETE 15/15 and ARCHIVED** — AC-9 unblocked by
+> Cray's typed ruling for **option (b)**, and AC-12/13/14/15 ticked only after
+> each AC's own pass read was re-run.**
+>
+> 🔴 **AC-9's literal text could not be executed without manufacturing the
+> defect the PLAN exists to remove.** Its three s241 defects were re-verified
+> first: the named seam (`demo_events.py:62`) is a **delegation**; the named
+> oracle reads static JSON and cannot observe the mutation; and the producer the
+> AC presumes **never existed** — `golden_trace` across every `.py` matched one
+> file, the consuming test. Dropping two JSON fixtures in would have added ~8
+> assertions pinning none of it: an ADR-0038 **class-C1** guard inside the PLAN
+> that exists to eliminate class-C1 guards.
+>
+> ✅ **Option (b) shipped as producer PLUS scoring path — the second half is the
+> load-bearing one.** `tools/golden_trace/` recomputes each trace's
+> `expected_envelope` through the real `_compose_llm_record`; **invariant 5**
+> then scores the system's LIVE composition against the recorded value.
+> Invariants 1–4 compare each file to itself — they redden on a malformed
+> fixture and never on a composition regression (CLAUDE.md §8). `created_at` is
+> the **sole** exclusion, and that is measured: composing twice differs in
+> **1 of 16** keys.
+>
+> ⚠️ **What the two new traces do NOT claim, recorded so nobody over-reads
+> them.** Trace 04 does not pin the `below` comparison — that is
+> `crosses_threshold`, already covered by `test_recommender_config.py` and
+> `test_demo_events.py` **with a control**, both predating this PLAN. Trace 05
+> does not pin the anchor filter's `event_type` clause: **no non-`reading` event
+> anywhere carries a `measured_value`**, so the clause is redundant with the
+> `isinstance` beside it and no test can redden on its removal. Making it matter
+> needs an event that does not exist.
+>
+> 🔴 **The AC ledger had drifted and its own guard could not see it.**
+> AC-12/13/14 landed in #1305 but were never ticked, while this file claimed
+> *Phase C CLOSED s257* — and `tools/check_ac_consistency.py` reported
+> **clean**. It searches `AC-N` **backwards** from `CLOSED`, and the row wrote
+> `CLOSED s257 — AC-12, …` with the refs **after**, outside the lookback.
+> **The guard gap is NOT fixed** — mechanism read from source, not yet probed.
+>
+> 🔴 **AC-12's shape is the finding, not its verdict:** its own command returns
+> `4023 passed, 486 skipped` and **exit 1** — pytest reports nothing failed and
+> the process fails anyway. That is exactly why the pre-#1305 state was
+> invisible: a collapsed DB layer looked identical to a green run.
