@@ -42,11 +42,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 #: Repo root, resolved from THIS FILE rather than the CWD. A sentinel addressed
 #: relative to the working directory is one `cd` away from being written somewhere
@@ -81,7 +83,7 @@ class Verdict:
         return self.name != "PENDING"
 
 
-def classify(runs: list[dict], *, deadline_exceeded: bool = False) -> Verdict:
+def classify(runs: list[dict[str, Any]], *, deadline_exceeded: bool = False) -> Verdict:
     """Decide the verdict for the runs at one sha. Pure.
 
     ``runs`` is the parsed ``gh run list --json databaseId,status,conclusion`` payload.
@@ -124,7 +126,70 @@ def classify(runs: list[dict], *, deadline_exceeded: bool = False) -> Verdict:
     return Verdict("FAIL", 1, f"conclusion={conclusion}{extra}", run_id)
 
 
-def _gh_runs(sha: str) -> list[dict]:
+class ShaResolutionError(ValueError):
+    """The argument could not be turned into one full commit sha."""
+
+
+#: A full git object name. GitHub's `gh run list --commit` matches ONLY this form.
+_FULL_SHA = re.compile(r"\A[0-9a-f]{40}\Z")
+
+#: An abbreviated one. Bounded below at 7 because git's own default abbreviation
+#: is 7 and anything shorter is far more likely to be a typo than an intent.
+_SHORT_SHA = re.compile(r"\A[0-9a-f]{7,39}\Z")
+
+
+def resolve_sha(raw: str) -> str:
+    """Turn an accepted argument into the full 40-character sha, or refuse.
+
+    Exists because a short sha used to reach the API unchanged, come back with
+    zero runs, and be reported as NO-RUN — a verdict that means "CI has not run
+    here", stated about a commit where it had run and passed. Measured at s262 on
+    a sha whose full form returned PASS. The failure is safe in direction (this
+    tool can still never report a green it did not measure) but it is a false
+    reading all the same, and a tool whose exit 0 means "measured pass" becomes
+    one that simply cannot pass.
+
+    Deliberately accepts hex prefixes ONLY — never ``HEAD``, a branch, or a tag.
+    Resolving a moving ref would reintroduce the very thing the ``--sha`` flag is
+    required for: a green is a claim about ONE commit, and a ref answers with
+    whatever it points at when asked, which is not necessarily what the caller
+    was looking at.
+
+    Raises :class:`ShaResolutionError` rather than returning anything the caller
+    could mistake for an answer. The one outcome this must never produce is a
+    value that flows on to be reported as NO-RUN.
+    """
+    candidate = raw.strip().lower()
+    if _FULL_SHA.match(candidate):
+        return candidate
+    if not _SHORT_SHA.match(candidate):
+        raise ShaResolutionError(
+            f"{raw!r} is not a commit sha. Pass the full 40-character sha, or an "
+            f"abbreviation of at least 7 hex characters — a branch name, a tag or "
+            f"HEAD is refused on purpose, because a green is a claim about one "
+            f"commit and a moving ref is not one."
+        )
+    # `^{commit}` forces a commit rather than a tag object, and git fails loudly on
+    # an ambiguous or unknown prefix — which is the behaviour wanted here, since
+    # guessing between two candidates would put the verdict on the wrong commit.
+    proc = subprocess.run(  # noqa: S603
+        ["git", "rev-parse", "--verify", "--quiet", f"{candidate}^{{commit}}"],  # noqa: S607
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    resolved = proc.stdout.strip()
+    if proc.returncode != 0 or not _FULL_SHA.match(resolved):
+        raise ShaResolutionError(
+            f"{raw!r} does not resolve to a commit in this repository "
+            f"(git rev-parse exit {proc.returncode}). A sha this clone has never "
+            f"seen cannot be the one CI ran on."
+        )
+    return resolved
+
+
+def _gh_runs(sha: str) -> list[dict[str, Any]]:
     """The runs GitHub has for one sha. Fixed argv, no shell — there is no layer to eat."""
     proc = subprocess.run(  # noqa: S603
         [  # noqa: S607
@@ -208,19 +273,34 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
+    # Resolved FIRST, so nothing downstream ever sees an abbreviation. A short sha
+    # reaching the API returns zero runs, and zero runs is reported as NO-RUN —
+    # the one verdict a caller reads as a fact about CI rather than about their
+    # own argument. ERROR (2) instead: the tool could not answer, which is true.
+    try:
+        sha = resolve_sha(args.sha)
+    except ShaResolutionError as exc:
+        print(f"CI_WAIT: ERROR       {exc}", file=sys.stderr)
+        return 2
+    if sha != args.sha.strip().lower():
+        # Said out loud, on stderr so it cannot be mistaken for the verdict line.
+        # A step that silently changes which commit is queried is exactly the kind
+        # of invisible substitution this tool exists to make impossible.
+        print(f"CI_WAIT: resolved {args.sha} -> {sha}", file=sys.stderr)
+
     if args.mode == "wait":
-        stale = SENTINEL_DIR / f"{args.sha}.done"
+        stale = SENTINEL_DIR / f"{sha}.done"
         # A previous run's answer would otherwise read as this one's.
         stale.unlink(missing_ok=True)
-        verdict = _wait(args.sha, args.deadline_min)
+        verdict = _wait(sha, args.deadline_min)
     else:
         try:
-            verdict = classify(_gh_runs(args.sha))
+            verdict = classify(_gh_runs(sha))
         except (subprocess.CalledProcessError, ValueError, json.JSONDecodeError) as exc:
             print(f"CI_WAIT: ERROR       gh call failed: {exc}", file=sys.stderr)
             return 2
 
-    _emit(verdict, args.sha)
+    _emit(verdict, sha)
     return verdict.exit_code
 
 
