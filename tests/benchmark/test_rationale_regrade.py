@@ -84,6 +84,27 @@ class TestRoleVocabulary:
         assert signals.names_role is True
 
 
+class TestCarriesContentBar:
+    """The ratified pass rule (2026-08-31): naming a role, and nothing else."""
+
+    def test_naming_a_role_passes_the_bar(self) -> None:
+        assert _signals("Route to the fleet manager.").carries_content is True
+
+    def test_stating_amount_and_threshold_without_a_role_does_not_pass(self) -> None:
+        # The bar is about WHO decides. A rationale rich in numbers but naming
+        # nobody leaves the approver without the one fact the bar is for.
+        signals = _signals("The 5001 quote exceeds the 4000 ceiling.")
+        assert (signals.names_amount, signals.names_threshold) == (True, True)
+        assert signals.carries_content is False
+
+    def test_a_role_absent_from_the_goal_does_not_pass_the_bar(self) -> None:
+        # The fairness filter caps the bar too: an ungoverned role earns nothing.
+        assert _signals("Escalate to the duty engineer.").carries_content is False
+
+    def test_an_empty_rationale_does_not_pass(self) -> None:
+        assert _signals("").carries_content is False
+
+
 class TestValueRestatement:
     def test_plain_integer_form_counts(self) -> None:
         assert _signals("The quote is 5001 THB.").names_amount is True
@@ -162,6 +183,7 @@ class TestScoreDumpScenario:
         assert "breach items=2" in report
         assert "names_role      : 1/2" in report
         assert "names_amount    : 1/2" in report
+        assert "CARRIES_CONTENT : 1/2" in report
 
     def test_empty_dump_reports_no_breach_records(self, tmp_path: Path) -> None:
         dump = tmp_path / "empty.jsonl"

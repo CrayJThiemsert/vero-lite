@@ -121,6 +121,35 @@ class RationaleSignals:
         """Whether the rationale names at least one goal-supplied human role."""
         return bool(self.roles_named)
 
+    @property
+    def carries_content(self) -> bool:
+        """The minimum bar: does the rationale name **who** must decide?
+
+        **Role-naming alone — Cray-ratified 2026-08-31.** Deliberately the
+        weakest of the three candidate rules, and the reason is a property of the
+        system rather than of the models: the richer criteria a human approver
+        would actually want — is this the right supplier, does their delivery
+        history support accepting this quote, how does it compare with the
+        alternatives — rest on facts **the ontology does not yet carry**. A pass
+        rule may only demand what the run supplies, which is the same fairness
+        principle :func:`role_vocabulary` applies to the vocabulary: the goal
+        supplies the three role phrases, so naming one is answerable today;
+        supplier history is not, so requiring it would fail every model for the
+        ontology's silence.
+
+        Raising this bar is therefore an **ontology** move before it is a grader
+        move. As supplier-evaluation facts enter the ontology and the goal, each
+        one makes a stricter rule answerable, and the bar can rise toward the
+        standing target — an approver who can act on the rationale without
+        reopening the event.
+
+        Measured consequence on the two ceiling-tied cells (14 breach items,
+        corrected goal): ``gpt-oss:20b`` 0/14, ``qwen3.8:27b-mtp-q8_0`` 8/14.
+        Requiring the amount as well would have scored 0/14 against ~3/14 —
+        rejected as unmeasurable, not as undesirable.
+        """
+        return self.names_role
+
 
 def score_rationale(
     rationale: str,
@@ -207,6 +236,8 @@ def format_report(label: str, signals: list[RationaleSignals]) -> str:
         f"    names_amount    : {sum(s.names_amount for s in signals)}/{total}",
         f"    names_threshold : {sum(s.names_threshold for s in signals)}/{total}",
         f"    names_role      : {sum(s.names_role for s in signals)}/{total}",
+        f"    CARRIES_CONTENT : {sum(s.carries_content for s in signals)}/{total}"
+        "   (bar: names a role — Cray-ratified 2026-08-31)",
     ]
     ambiguous = [s.item_id for s in signals if s.amount_threshold_ambiguous]
     if ambiguous:
