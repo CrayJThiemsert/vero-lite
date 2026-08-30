@@ -221,6 +221,29 @@ checks every turn and can dispatch the `goal-evaluator` to adversarially
 step 2's pass/fail read from post-hoc prose into machinery and adds a skeptical
 second perspective for free. Warn-only v1 (never blocks) → pure upside.
 
+## CI does not type-check `tools/` or `benchmarks/`
+
+`.github/workflows` runs `mypy --strict services/ verticals/`. Those two trees are
+the whole scope. **`tools/`, `benchmarks/` and `tests/` are never type-checked by
+CI**, and the pre-commit mypy hook skips them too — so a green PR says nothing
+about them.
+
+Measured session 262, twice in one session and in two different trees: a decorator
+that had silently stopped satisfying the Protocol it wraps (after the Protocol was
+widened in an earlier PR, with CI green throughout), and two `list[dict]`
+type-argument errors in a shipped tool. Both surfaced only because mypy was run at
+the package by hand while the file was open for an unrelated reason.
+
+**So: when you touch `tools/` or `benchmarks/`, run it yourself.**
+
+```bash
+wsl bash -lc 'cd ~/work/vero-lite && source .venv/bin/activate && mypy --strict <path>'
+```
+
+Treat a pre-existing error you find there as in scope for the change you are
+already making — a module cannot be kept clean going forward if it starts dirty,
+and the next person will not be looking either.
+
 ## References
 
 - `CLAUDE.md` §11 (constitutional pointer), §8 (host-state ASK-Cray gate)

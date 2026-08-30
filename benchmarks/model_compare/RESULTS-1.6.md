@@ -164,3 +164,71 @@ starts. Any monitor watching WSL state must run its commands **through**
 `wsl bash -lc`: the Monitor tool's own shell is Git Bash on the Windows side,
 where `/tmp` is a different filesystem and `pgrep` cannot see WSL processes. Both
 mistakes were made in this run; the lock exists so the second cannot recur.
+---
+
+## 8. Session 262 — measured against §4, on `fleet`, under a correct bound
+
+§4 concludes that **the reasoning pass hurts BOTH models** and that this is a
+pipeline property. That was measured on `energy`, **before `num_predict` existed**,
+when generation ran to the client timeout and was CUT. Session 262 re-measured the
+same lever on `fleet` with a server-side cap and **zero truncation in every run**,
+and the conclusion does not hold there.
+
+All four cells: `fleet_maintenance`, 20 items, `LLM_MAX_OUTPUT_TOKENS=16384`,
+`--retry-budget 1 --request-timeout 900`, model `qwen3.8:27b-mtp-q4_K_M`.
+
+| cell | β headline | α probe (canon/accept/forbid/other) | consistency | latency p95 | LLM calls |
+|---|---|---|---|---|---|
+| `full` (pass 1) | 85.7% | 78.6% (9/2/1/2) | **9/14** | 172.3 s | 34 |
+| `full` (pass 2) | 85.7% | 78.6% (9/2/1/2) | **9/14** | 183.7 s | 34 |
+| `think_off` | 78.6% | **57.1%** (8/0/**3**/3) | **8/14** | **353.4 s** | 34 |
+| **`skip`** | **85.7%** | **85.7%** (10/2/1/1) | **10/14** | **113.3 s** | **17** |
+
+🔴 **`think_off` is worse than `full` on every axis here** — β down, handler probe
+down 21 points, forbidden picks tripled (1 → 3), consistency down, and it is the
+**slowest** of the three. The phase-1.6 observation that `think_off` runs slower
+(retired at §4 as unexplained) reappears under a correct bound.
+
+✅ **`skip` wins on every measured axis at half the calls.** ⚠️ But `skip` runs no
+call 1, so there is **no reasoning trace** — and the product surfaces one
+(`llm_inference`, ADR-010 D3). That is a product trade-off, not a number, and it
+is not settled here.
+
+### Generation demand — the first real per-cell figures
+
+| cell | reasoning min / median / max | structuring min / median / max |
+|---|---|---|
+| `full` | **1,294 / 1,876 / 2,457** | 360 / 531 / 733 |
+| `think_off` | **582 / 1,765 / 4,727** | 364 / 519 / 725 |
+| `skip` | *(no call 1)* | 425 / 592 / 745 |
+
+The shipped `llm_max_output_tokens` default of **1024 is below the MINIMUM `full`
+reasoning demand**, so every item's call 1 was cut, not some. A strict cap (100%
+`done_reason == "stop"`, ×1.5 over max) gives ≈ **3,700 → 4096** for `qwen/full`.
+
+### Reproducibility — and what it does to §5
+
+The two `full` passes are **byte-identical**: drafts character for character,
+rationales, handlers and every `eval_count` the same, while judgment latency
+differed on 17 of 20 (plus differing file hashes, start times and sentinels). At
+`temperature=0.0` with nothing truncated, this model is deterministic on this
+dataset. §5's *"every cell is a single repeat, against a 45% flip rate"* caveat is
+therefore **contradicted, not corrected** — the 45% has not been re-measured under
+the current bound, and a run terminated on wall-clock is not reproducible by
+construction. Tracked as an Active TODO in `docs/STATUS.md`.
+
+### What is still NOT concluded
+
+- `think_off` and `skip` are **n=1**, and their reproducibility is **unverified** —
+  only `full` was repeated.
+- `gptoss/full` and `gptoss/skip` have **not been run** (`gptoss/think_off` is
+  inexpressible and the harness raises). The matrix is 3 of 5 cells.
+- Nothing here measures **Thai prose quality**, which is what the phase-2 tasks
+  actually are.
+
+**Evidence:** `.claude/benchmark-results/s262-2a-pass1`, `-pass2`,
+`s262-2b-qwen-think-off`, `s262-2b-qwen-skip` (`.log` + `.jsonl`) — **gitignored**,
+present only on the dev machine, which is why the numbers are transcribed above
+rather than referenced. Consistency is computed by
+`benchmarks/procedure_baseline/tier_consistency.py`; the strict reading it applies
+is Cray's typed ruling of 2026-08-30 (see `docs/lessons/0050-*`).
