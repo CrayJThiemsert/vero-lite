@@ -221,8 +221,11 @@ construction. Tracked as an Active TODO in `docs/STATUS.md`.
 
 - `think_off` and `skip` are **n=1**, and their reproducibility is **unverified** —
   only `full` was repeated.
-- `gptoss/full` and `gptoss/skip` have **not been run** (`gptoss/think_off` is
-  inexpressible and the harness raises). The matrix is 3 of 5 cells.
+- ~~`gptoss/full` and `gptoss/skip` have **not been run** (`gptoss/think_off` is
+  inexpressible and the harness raises). The matrix is 3 of 5 cells.~~
+  **Superseded by §9** (session 263, 2026-08-30): both cells were run and the
+  matrix is now 5 of 5. `gptoss/think_off` remains inexpressible. Kept rather
+  than deleted — it is the record of what was open when §8 was written.
 - Nothing here measures **Thai prose quality**, which is what the phase-2 tasks
   actually are.
 
@@ -232,3 +235,383 @@ present only on the dev machine, which is why the numbers are transcribed above
 rather than referenced. Consistency is computed by
 `benchmarks/procedure_baseline/tier_consistency.py`; the strict reading it applies
 is Cray's typed ruling of 2026-08-30 (see `docs/lessons/0050-*`).
+
+## 9. Session 263 — stage 2c: the matrix completed, and the model ranking inverts
+
+Run 2026-08-30 under Cray's typed §8 host-state go. Two cells, `fleet_maintenance`,
+20 items, `LLM_MAX_OUTPUT_TOKENS=16384`, `--retry-budget 1 --request-timeout 900
+--allow-truncation`, model **`gpt-oss:20b`** (the ADR-0001 pin). Both cells cleared
+the pass/fail read — **fixed before any result existed**: sentinel `rc=0`,
+`TRUNCATION: 0`, deterministic 20/20, scored denominator 14 (so the cells compare
+against 2b), and `DUMP: wrote 20 item records`. The on-disk record of that read
+(`.claude/state/goal.json`, `created` 16:22:16) was written 99 s into the first
+cell, which had started at 16:20:37 and emitted no aggregate line until 16:29:30;
+the second cell started at 16:30:06. Stated this way rather than as "before the
+run" because that is the part a reader can check from disk, and it is the part
+that matters — no criterion could have been tuned to a result none of them had
+yet seen.
+
+### The complete 5-cell matrix
+
+`latency p95` is the **per-BREACH-judgment** figure (the SD-2 acceptance bar), not
+per-call — the same column §8 uses.
+
+| cell | model | β headline | α probe (canon/accept/forbid/other) | consistency | latency p95 | LLM calls | wall |
+|---|---|---|---|---|---|---|---|
+| `full` (pass 1) | qwen | 85.7% | 78.6% (9/2/1/2) | 9/14 | 172.3 s | 34 | 43 m |
+| `full` (pass 2) | qwen | 85.7% | 78.6% (9/2/1/2) | 9/14 | 183.7 s | 34 | 43 m |
+| `think_off` | qwen | 78.6% | 57.1% (8/0/**3**/3) | 8/14 | 353.4 s | 34 | 49 m |
+| `skip` | qwen | 85.7% | 85.7% (10/2/1/1) | 10/14 | 113.3 s | 17 | 27 m |
+| 🔴 **`full`** | **gpt-oss** | **100%** | **100% (14/0/0/0)** | **14/14** | **38.1 s** | 34 | **8 m 53 s** |
+| 🔴 **`skip`** | **gpt-oss** | **100%** | **100% (14/0/0/0)** | **14/14** | **33.1 s** | 17 | **7 m 08 s** |
+
+🔴 **`gpt-oss:20b` is perfect on all three quality axes, in both reasoning modes** —
+every breach item scored, every handler pick canonical, zero forbidden picks, and
+consistency 14/14 under Cray's strict reading (mid band 10/10 `escalate`, owner band
+4/4 `escalate`; no divergence to explain). It is also faster end to end, compared
+**same mode against same mode**: `full` **4.8×** (42 m 59 s → 8 m 53 s), `skip`
+**3.8×** (26 m 53 s → 7 m 08 s). Both figures are `.wrap` START→EXIT deltas. A
+wider-sounding band is available only by comparing cells of *different* reasoning
+modes, which is not a like-for-like speedup and is not claimed here.
+
+⚠️ **This inverts §1's model ranking, but it is NOT a single-variable result.**
+§1 measured gpt-oss at β 10–30% and qwen at 30–80% — on `energy`, before
+`num_predict` existed, with generation cut at a client timeout. §9 changes **two**
+variables at once (dataset `energy` → `fleet`, and cut → correctly bounded
+generation), so it establishes *that the ranking is opposite here*, and **not**
+which of the two changes caused it. Isolating that needs `gptoss` re-run on
+`energy` under the current bound — not run, not scheduled.
+
+### `skip` vs `full` for gpt-oss — a clean single-variable comparison
+
+Same model, dataset and bound; only `--reasoning-mode` differs. β, α and
+consistency are **identical** (100% / 100% / 14/14), so for this model the
+reasoning pass buys **no measurable quality** while costing **double the calls**
+and ~25% more wall clock. This strengthens §8's "`skip` wins" for a *different*
+reason: there `skip` won on quality, here it **ties** on quality and wins on cost.
+The §8 trade-off is unchanged and still unsettled — `skip` emits no reasoning
+trace, and the product surfaces one (`llm_inference`, ADR-010 D3).
+
+The watch lane (unscored calibration) is the one place the two modes differ:
+`full` returned `{echo: 3}`, `skip` returned `{escalate: 1, echo: 2}`.
+
+### Generation demand — a profile shaped nothing like qwen's
+
+| cell | model | reasoning min / median / max | structuring min / median / max |
+|---|---|---|---|
+| `full` | qwen | 1,294 / 1,876 / 2,457 | 360 / 531 / 733 |
+| `think_off` | qwen | 582 / 1,765 / 4,727 | 364 / 519 / 725 |
+| `skip` | qwen | *(no call 1)* | 425 / 592 / 745 |
+| **`full`** | **gpt-oss** | **215 / 540 / 7,247** | **83 / 114 / 148** |
+| **`skip`** | **gpt-oss** | *(no call 1)* | **93 / 142 / 167** |
+
+Two contrasts worth keeping:
+
+- **The 1024 default fails differently per model.** For `qwen/full` 1024 is below
+  the *minimum* demand (1,294), so it cut **every** item. For `gptoss/full` the
+  median is 540 — comfortably under 1024 — while the max is 7,247, so 1024 would
+  have cut **some** items and left others whole. A silent partial cut is the harder
+  failure to notice, because the aggregate still looks plausible.
+- **gpt-oss structures ~5× more cheaply** (max 148/167 vs qwen's 733/745) while its
+  reasoning is far more variable (max 7,247 vs 2,457). A strict cap for
+  `gptoss/full` (100% `stop`, ×1.5 over max) is ≈ **10,900 → 12288**, well above
+  qwen's ≈ 4096.
+
+### Still NOT concluded
+
+- Both `gptoss` cells are **n=1**; their reproducibility is **unverified**. Only
+  `qwen/full` has ever been repeated. The two `gptoss` cells agreeing 14/14 is
+  cross-*mode* agreement under different configurations — it is **not** a
+  determinism check and must not be read as one.
+- `gptoss/think_off` remains **inexpressible** (the model discards a boolean
+  `think`; the harness raises). The matrix is 5 of 5 *runnable* cells, not 6.
+- ⚠️ **`fleet` no longer discriminates for the pinned model.** With β, α and
+  consistency all at ceiling, this dataset can measure a regression in `gpt-oss`
+  but can no longer measure an improvement, and cannot rank two good models. A
+  harder dataset — or harder items in this one — is the prerequisite for any
+  further model comparison on `fleet`.
+- Latency still **misses the SD-2 bar**: p95 38.1 s / 33.1 s against ≤ 30 s. Much
+  closer than qwen's 113–353 s, but `-> OVER` in both cells.
+- Nothing here measures **Thai prose quality**, unchanged from §8.
+
+**Evidence:** `.claude/benchmark-results/s263-2c-gptoss-full`,
+`s263-2c-gptoss-skip` (`.log` + `.jsonl`) — **gitignored**, present only on the dev
+machine, which is why the numbers are transcribed above rather than referenced.
+Wall-clock figures are the `[wrap] START` → `EXIT` deltas in the matching `.wrap`
+files. Consistency is computed by
+`benchmarks/procedure_baseline/tier_consistency.py`.
+
+## 10. Session 263 — the quantization confound, measured
+
+§9 recorded that its model-ranking inversion changed two variables at once. This
+resolves a third one §9 did not raise: `qwen3.8:27b-mtp-q4_K_M` is a **4-bit**
+*post-training compression*, while `gpt-oss:20b` is natively MXFP4 — the build is
+trained for that precision. An **8-bit** qwen (`qwen3.8:27b-mtp-q8_0`) was present
+on MS-S1 and had never been run.
+
+Run 2026-08-30 under Cray's typed §8 go, **one variable changed**: identical to
+`s262-2a-pass1` in dataset, item set, bound, reasoning mode, retry budget and
+timeout — only the model tag differs. All six pass/fail criteria cleared
+(sentinel `rc=0`, `TRUNCATION: 0 of 34`, deterministic 20/20, denominator 14,
+`DUMP: wrote 20 item records`, zero no-judgment).
+
+**Interpretation rule, fixed before the run.** The metrics are counts out of 14,
+so one item is 7.1 points: a change of **±1 item is within the resolution of the
+test and is not a finding**; **≥2 items** is material. Recorded here because the
+result was going to be interpreted, not merely logged.
+
+### The three cells
+
+| cell | β headline | α probe (canon/accept/forbid/other) | consistency | latency p95 | wall |
+|---|---|---|---|---|---|
+| qwen **q4_K_M** | 85.7% | 78.6% (9/2/1/2) | 9/14 | 172.3 s | 42 m 59 s |
+| qwen **q8_0** | 85.7% | **85.7%** (**12**/0/1/1) | **12/14** | 203.1 s | 48 m 52 s |
+| `gpt-oss:20b` | **100%** | **100%** (14/0/0/0) | **14/14** | **38.1 s** | **8 m 53 s** |
+
+**Verdict: the quantization confound was real for α and consistency, and absent
+for β.** α-canonical and consistency each moved **+3 items** — over the
+pre-committed threshold. β did not move at all (12/14 either way). The ranking
+does **not** flip: gpt-oss still leads on all three. But the gap narrows from five
+items to two, and what remains is a different kind of gap.
+
+### What actually changed — the item-level view
+
+q8 corrected **exactly the five items q4 got wrong**, and broke two new ones:
+
+| item | quote | quotes on file | q4 | q8 | movement |
+|---|---|---|---|---|---|
+| `fleet-003` | ฿12,400 | 1 | `tow_to_partner_garage` | `escalate` | → canonical |
+| `fleet-004` | ฿22,800 | 2 | `echo` | `escalate` | → canonical |
+| `fleet-009` | ฿9,800 | 1 | `dispatch_replacement_truck` | `escalate` | → canonical |
+| `fleet-011` | ฿7,300 | 1 | `dispatch_replacement_truck` | `escalate` | → canonical |
+| `fleet-012` | ฿6,900 | 1 | `echo` | `escalate` | → canonical |
+| `fleet-002` | ฿5,200 | 1 | `escalate` | `echo` | → off |
+| `fleet-006` | **฿30,001** | **1** | `escalate` | `tow_to_partner_garage` | → off |
+
+All five q4 errors were the same defect: the sourcing-hygiene gate cited as the
+reason for overriding the escalation, on items **below** the rule's authored
+฿30,000 threshold — a threshold the procedure goal explicitly says is "authored in
+the typed rule, never in this prose". q4 supplied ฿5,001 (the DOA ceiling) in its
+place. At 8-bit that behaviour drops from **five items to one** (`fleet-002`).
+
+### 🔴 `fleet-006` — the trap item, and the only model that saw it
+
+`fleet-006` is ฿30,001 with **one quote in hand**: the single breach item in the
+dataset where the amount clears the ฿30,000 sourcing threshold *and* the quote
+count fails it. The gate genuinely fires there and nowhere else.
+
+**q8 is the only one of the three models that blocked on it.** q4 and gpt-oss both
+escalated straight past.
+
+It is still scored `forbidden`, and correctly so — it picked `tow_to_partner_garage`,
+the dataset's planted decoy verb, and the gate is evaluated **deterministically
+with no LLM** (the step's own description says so), making gate evaluation not the
+model's lane at all. But the error class is categorically different from q4's:
+q4 applied a rule that did not apply, five times; q8 applied a rule that did
+apply, in a lane that is not its own, once. A grader that reports both as "one
+non-canonical pick" is not seeing the distinction.
+
+### What this does and does not settle
+
+- **Settled:** roughly **60% of the qwen-vs-gpt-oss handler gap on this dataset was
+  quantization, not the model.** Any future claim about qwen's judgment quality
+  must name the quantization or it is unfalsifiable.
+- **Settled:** gpt-oss still wins on every axis, and remains **5.3× faster** on the
+  SD-2 bar (38.1 s vs 203.1 s p95) and **5.5× faster** end to end. The ADR-0001 pin
+  is not challenged by this result.
+- **Not settled:** q8 is **n=1** and its reproducibility is unverified, like every
+  cell except `qwen/full` q4.
+- **Not settled:** whether `fleet-002` and `fleet-006` are two samples of one
+  residual behaviour or two different defects. n=1 cannot separate them.
+- **Unchanged from §9:** `fleet` is at ceiling for the pinned model, so it still
+  cannot rank two good models — and this run is an illustration of the cost, since
+  q8's genuine improvement was invisible to β and showed only in α and consistency.
+
+**Evidence:** `.claude/benchmark-results/s263-2d-qwen-q8-full` (`.log` + `.jsonl` +
+`.wrap`), against `s262-2a-pass1` and `s263-2c-gptoss-full` — all **gitignored**.
+Amounts and quote counts read from each item's `measured_value` and
+`context.quotes_obtained` in the dumps. The ฿30,000 threshold is the design
+partner's Q10 figure, held in `verticals/fleet_maintenance/sourcing.py` and
+deliberately absent from the prompt (`procedures.yaml` rule_gate note, ADR-0025 D4).
+
+## 11. Session 263 — the defect was in the DIRECTIVE, and fixing it closed the gap
+
+🔴 **Everything above §11 was measured against a procedure goal that contained a
+contradiction. This section is the other side of that line: numbers from §8–§10 are
+NOT comparable with anything measured after it.**
+
+### What the models were actually told
+
+Reading the assembled prompt (`services/engine/llm/prompt.py`) rather than the
+benchmark's reader-facing summary showed the system instruction is well-built — it
+separates trusted config from untrusted operator data, contains injection with
+explicit delimiters, and carries a full **action catalog with a description per
+handler** (`handler_catalog_enabled` defaults True; `run_benchmark` calls
+`discover_and_register()` and fails closed if a vertical registers nothing). The
+models were not choosing blind.
+
+The defect was one clause of the procedure goal. It told the model to **check** the
+sourcing gate, told it the gate **blocks the spend on failure**, told it the
+threshold is *"authored in the typed rule, never in this prose"* — and the event then
+handed it `quotes_obtained`. The next clause said to route the *compliant* spend.
+
+A reader following that reaches: one quote of three, gate fails, spend blocked, no
+compliant spend to route. **That is what qwen concluded.** The key says `escalate`
+regardless — correctly, because the gate is evaluated **deterministically downstream
+with no LLM** (the step's own description says so). The directive never said that.
+
+**Scale of the mismatch: 11 of the 14 breach items carry fewer than three quotes, so
+the invitation was live on nearly every graded item; the rule it points at fires on
+exactly one (`fleet-006`).**
+
+### The gold set was NOT the defect
+
+Audited before changing anything, because changing the directive and the key together
+would have made the re-measure uninterpretable. The key varies **honestly** on the
+signals it grades — `drivable=True` (9 items) → `acceptable: []` with `tow` forbidden;
+`drivable=False` (5) → `tow_to_partner_garage` acceptable; `load_aboard` (2) →
+`dispatch_replacement_truck` also acceptable. It is **flat on `quotes_obtained`**:
+canonical is `escalate` for all 14 regardless. The key was right; the directive was
+asking for something else.
+
+### The change
+
+`verticals/fleet_maintenance/procedures.yaml`, the goal's third clause only —
+*"check the sourcing-hygiene gate … which blocks the spend on failure"* becomes
+*"note that a sourcing-hygiene gate on competing quotes is applied DOWNSTREAM by the
+engine and not by you — it may block the spend after your recommendation, so route
+the spend as if it will pass and never withhold a routing decision on quote counts"*.
+
+The gate stays *visible* to the model deliberately: ADR-010 D3 surfaces the reasoning
+trace to operators, so the trace should say a gate is still pending rather than imply
+the spend is settled. No ฿ figure and no handler name enters the prose, so ADR-0025
+D4's load-time lint is unaffected — confirmed, along with `goal_coverage` still
+matching `repair`/`quote`, and the full offline gate at CI scope (ruff clean · mypy
+`--strict services/ verticals/` clean on 201 · **pytest 4636 passed, 8 skipped**).
+`fleet_maintenance` is the scaffolder golden donor and **no golden test reddened**.
+
+### The re-measure — one variable, the goal
+
+`qwen3.8:27b-mtp-q8_0`, `full`, identical to §10's cell in every other respect.
+**gpt-oss could not be the test cell: already at ceiling, it was structurally
+incapable of showing an improvement** — the §9 ceiling problem now obstructing
+verification of our own fix.
+
+| cell | β | α (canon/accept/forbid/other) | consistency | latency p95 | wall |
+|---|---|---|---|---|---|
+| q8, old goal | 85.7% | 85.7% (12/0/1/1) | 12/14 | 203.1 s | 48 m 52 s |
+| **q8, fixed goal** | **100%** | **100% (14/0/0/0)** | **14/14** | 396.3 s | 49 m 24 s |
+| `gpt-oss`, old goal | 100% | 100% (14/0/0/0) | 14/14 | 38.1 s | 8 m 53 s |
+
+Pre-committed read, fixed before the run: both `fleet-002` and `fleet-006` returning
+to `escalate` = the fix works; one = partial; neither = the goal was not the cause.
+**Both returned.** Every mechanical criterion cleared (sentinel `rc=0`, `TRUNCATION:
+0 of 34`, deterministic 20/20, denominator 14, `DUMP: wrote 20 item records`, zero
+no-judgment).
+
+### The mechanism, not just the score
+
+| | old goal | fixed goal |
+|---|---|---|
+| items whose reasoning mentions the gate | 17 of 17 | 14 of 17 |
+| breach items where it **overrode** the routing | **2** | **0** |
+| items naming the gate as **downstream** | **0** | **15** |
+
+The model did not stop reasoning about the gate — it started reasoning about it
+*correctly*. It still raises it, now frames it as a downstream step, and no longer
+withholds a routing decision on quote counts. Rationales came out cleaner too:
+*"The quote size requires escalation to the appropriate human approval tier rather
+than terminal approval at this stage."*
+
+### What this costs, and what it does not settle
+
+- ⚠️ **Latency p95 roughly doubled** (203.1 s → 396.3 s) on a mean that barely moved
+  (178.5 → 186.1) — one slow item, not a shift. Recorded rather than explained: n=1
+  cannot tell an outlier from a regression.
+- **n=1**, like every cell but the 4-bit `full` pass.
+- **`gpt-oss` has not been re-run under the fixed goal.** It scored 100% while
+  ignoring the defective clause, so it has nothing to gain — but "nothing to gain" is
+  a prediction, not a measurement.
+- 🔴 **`fleet` is now at ceiling for TWO models.** It could already not measure an
+  improvement; it can no longer separate the two candidates at all. Harder items are
+  now blocking, not merely advisable.
+- Two dataset-hygiene items surfaced by the audit, both independent of this change and
+  **not** acted on: `fleet-006` is keyed as a pure-authorisation item though it is the
+  one item where the gate genuinely fires, with no written ruling saying why; and
+  `forbidden: ['tow']` is declared on only 6 of the 9 `drivable=True` items, so the
+  same wrong answer grades `forbidden` or `other` depending on which item a model errs
+  on — the header's own "dataset convention scoring as a model defect" hazard.
+
+**Evidence:** `.claude/benchmark-results/s263-2e-qwen-q8-goalfix` (`.log` + `.jsonl` +
+`.wrap`) against `s263-2d-qwen-q8-full`. Gate-mechanism counts computed over both
+dumps' `draft` + `rationale` fields. Gold-set audit read from
+`benchmarks/procedure_baseline/dataset/fleet_maintenance.yaml`.
+
+## 12. Session 263 — gpt-oss under the fixed goal: the prediction, measured
+
+§11 predicted that `gpt-oss:20b` had nothing to gain from the goal fix, because it
+scored 100% while ignoring the defective clause — and flagged that "nothing to gain"
+was a prediction, not a measurement. It is now a measurement. Same cell as §9's
+`gptoss/full`, one variable changed (the goal).
+
+| gpt-oss `full` | β | α (canon/accept/forbid/other) | consistency | p95 breach | wall |
+|---|---|---|---|---|---|
+| old goal | 100% | 100% (14/0/0/0) | 14/14 | 38.1 s | 8 m 53 s |
+| **fixed goal** | **100%** | **100% (14/0/0/0)** | **14/14** | 46.1 s | 7 m 12 s |
+
+**Every score is identical.** All six mechanical criteria cleared. The fix is neutral
+for this model, as predicted — and the prediction is now retired as a claim.
+
+### Why it is neutral — the mechanism confirms the story
+
+| gpt-oss | old goal | fixed goal |
+|---|---|---|
+| items whose reasoning mentions the sourcing gate | **1 of 17** | **0 of 17** |
+| items naming it as downstream | 0 | 1 |
+
+Against qwen's 17-of-17 mentions under the same old goal, this is the direct evidence
+for §11's account: **gpt-oss never engaged with the contradictory clause at all.** A
+directive it does not read cannot mislead it, and repairing that directive cannot
+help it. Its 100% under the old goal was compliance-by-omission, not comprehension.
+
+### What did NOT improve — and what that isolates
+
+Its rationales are unchanged in quality. `fleet-004` still reads, verbatim:
+
+> Only truck-04 breaches its threshold; all other readings are safe context.
+
+No amount, no authority tier, no reason. This is the expected result and a useful
+one: it isolates the two defects cleanly. **The goal fix was the remedy for wrong
+actions; it is not a remedy for thin reasoning.** Rationale quality is unmeasured by
+β, α and consistency alike, so nothing in this matrix would ever have caught it —
+that remains open work.
+
+(One rationale did improve: `fleet-006` now names both figures — *"The measured repair
+quote of 30 001 THB is above the threshold of 5 001 THB, triggering an escalation."*
+One item is not a trend.)
+
+### An observation that is NOT a finding
+
+Aggregate reasoning demand looks tighter — max 7,247 → 1,498 tokens. Read per item,
+the 7,247 was **`fleet-016`, a watch item** (unscored calibration), which fell to 872,
+while other items moved both ways (+915, +562, +529) and the **median rose** (540 →
+622).
+
+More importantly: **`gpt-oss` reproducibility has never been measured.** Only the
+4-bit qwen `full` cell was ever repeated. So a per-item token delta between these two
+runs cannot be separated from ordinary run-to-run variation, and no causal claim
+about the goal change's effect on generation length is available from n=1 per side.
+Recorded because the number is visible in the logs and would otherwise be read as a
+result.
+
+### Where this leaves the matrix
+
+🔴 **Both models now sit at 100% / 100% / 14-of-14 on `fleet` under the fixed goal.**
+The dataset can no longer distinguish them on any axis it measures, and this section
+is the second consecutive run where the ceiling prevented a measurement rather than
+merely limiting one. Harder items are the blocking prerequisite for any further
+model, prompt, or quantization comparison on this vertical.
+
+**Evidence:** `.claude/benchmark-results/s263-2f-gptoss-goalfix` (`.log` + `.jsonl` +
+`.wrap`) against `s263-2c-gptoss-full`. Per-item reasoning tokens read from each
+dump's `calls[].eval_count` where `role == "reasoning"`.
