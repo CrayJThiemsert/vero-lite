@@ -609,9 +609,143 @@ result.
 🔴 **Both models now sit at 100% / 100% / 14-of-14 on `fleet` under the fixed goal.**
 The dataset can no longer distinguish them on any axis it measures, and this section
 is the second consecutive run where the ceiling prevented a measurement rather than
-merely limiting one. Harder items are the blocking prerequisite for any further
-model, prompt, or quantization comparison on this vertical.
+merely limiting one.
+
+⚠️ **Corrected 2026-08-31 (session 264).** This section used to close by calling
+harder items the *blocking prerequisite* for any further model, prompt or
+quantization comparison on this vertical. **Superseded, not wrong when written:**
+§13 scores a **fourth axis this dataset never measured** — whether the rationale
+names the human authority the spend routes to — and it separates the two models
+cleanly on the fourteen items already in hand, with no live run. Harder items stay
+necessary for the always-`escalate` exploit — §11 records that `canonical_handler`
+is `escalate` for all fourteen breach items regardless — but they are no longer a
+precondition for comparing models on this vertical.
+
+<!-- retired: "Harder items are the blocking prerequisite" -->
 
 **Evidence:** `.claude/benchmark-results/s263-2f-gptoss-goalfix` (`.log` + `.jsonl` +
 `.wrap`) against `s263-2c-gptoss-full`. Per-item reasoning tokens read from each
 dump's `calls[].eval_count` where `role == "reasoning"`.
+
+---
+
+## 13. Session 264 — the fourth axis: does the rationale name the approver?
+
+§12 left the two models tied at 100% / 100% / 14-of-14, with the matrix unable to
+separate them on any lane it scored. Every one of those lanes grades **which** answer
+the model gave. None grades whether the model's `rationale` carries the facts a human
+approver needs in order to act on it.
+
+This section scores that fourth thing **offline, from the dumps already on disk** — no
+live model, no MS-S1, no `CLAUDE.md` §8 go — and finds a clean separation on the
+fourteen items already in hand.
+
+### What is scored
+
+`benchmarks/procedure_baseline/rationale_regrade.py` reads a run's `--dump-json` file
+and scores each **breach** item's `judgment.rationale` against that item's own facts:
+
+| signal | what it asks |
+|---|---|
+| `names_amount` | does the rationale state the item's own `measured_value`? |
+| `names_threshold` | does it state the item's own `threshold`? |
+| `roles_named` | which goal-supplied human-role phrases does it use? |
+
+All three are literal substring or numeric matches, holding to `grader.py`'s standing
+"all objective — no fuzzy/semantic scoring" discipline. Numeric matching folds
+thousands separators, so `5001`, `5001.0` and `5,001` are one fact.
+
+### Why the role check is fair
+
+The role vocabulary is **not a hand-authored word list**. It is the intersection of a
+candidate phrase set with **the procedure goal's own prose**, so a phrase is only ever
+demanded of a model that was handed it in its prompt. For `governed_repair_approval`
+that yields exactly `head mechanic`, `fleet manager`, `owner` — the three the goal
+names in *"the head mechanic REQUESTS, the fleet manager or the owner APPROVES
+(SoD)"*. Edit the goal and the check follows; a phrase the goal never supplies is
+never required.
+
+🔴 **This also caps how strict the bar can be** — see "The bar", below.
+
+### Comparability across the goal fix
+
+The pre-fix goal (`0a1061f~1`) carries that clause **verbatim and unchanged**, so the
+demanded vocabulary is identical on both sides of the fix and this signal compares
+across all six cells. **§11's comparability line on β / α / consistency is untouched
+and still stands** — nothing here re-grades those lanes, and `grader.py` is not
+modified.
+
+### The measurement — all six cells
+
+Out of 14 breach items each. `CARRIES_CONTENT` is the ratified verdict and equals
+`names_role` by definition.
+
+| cell | model | goal | `names_amount` | `names_threshold` | **`names_role`** | mean chars |
+|---|---|---|---|---|---|---|
+| `s262-2a-pass1` | qwen **q4** | old | 9/14 | 9/14 | 7/14 | 468 |
+| `s263-2d-qwen-q8-full` | qwen **q8** | old | 5/14 | 4/14 | 4/14 | 304 |
+| 🔴 **`s263-2e-qwen-q8-goalfix`** | **qwen q8** | **fixed** | 5/14 | 4/14 | **8/14** | 289 |
+| `s263-2c-gptoss-full` | gpt-oss `full` | old | 3/14 | 3/14 | 1/14 | 131 |
+| `s263-2c-gptoss-skip` | gpt-oss `skip` | old | 3/14 | 3/14 | 1/14 | 181 |
+| 🔴 **`s263-2f-gptoss-goalfix`** | **gpt-oss `full`** | **fixed** | 6/14 | 6/14 | **0/14** | 116 |
+
+🔴 **The models separate in every cell with no overlap** — qwen 4–8, gpt-oss 0–1. The
+ceiling is no longer a blocker for model comparison on this vertical.
+
+Two effects the three existing lanes were blind to:
+
+- the goal fix **doubled** qwen q8's role-naming (4 → 8) while its β stayed pinned at
+  100% — the fix did more than §11 could see
+- **`gpt-oss` names no human role on any of its 14 items under the fixed goal**,
+  though the goal supplies all three phrases. Its `fleet-004` rationale, verbatim:
+  *"Only truck-04 breaches its threshold; all other readings are safe context."*
+  qwen on the same item names the ceiling, the missing approval **and** the tier.
+
+### The bar
+
+**Role-naming alone — Cray-ratified 2026-08-31.** `carries_content` is true iff the
+rationale names at least one goal-supplied role. Deliberately the weakest of the three
+candidate rules, and the reason is a property of the **system**, not of the models:
+the richer criteria an approver would actually want — is this the right supplier, does
+their delivery history support accepting this quote, how does it compare with the
+alternatives — rest on facts **the ontology does not yet carry**. A pass rule may only
+demand what the run supplies, the same fairness principle the vocabulary filter
+applies. Requiring the amount as well would have scored 0/14 against ~3/14 — rejected
+as **unmeasurable, not as undesirable**.
+
+That makes raising this bar an **ontology** move before it is a grader move: each
+supplier-evaluation fact that enters the ontology and the goal makes a stricter rule
+answerable.
+
+### 🔴 The load-bearing negative result
+
+**`names_amount` does not separate the models, and `gpt-oss` scores higher on it**
+(6/14 vs 5/14 under the fixed goal). A check built on the intuitive *"the rationale
+must state the amount"* would have ranked `gpt-oss` the better writer — the reverse of
+what the text shows. Mean rationale length is no better: `gptoss/skip` is longer than
+`gptoss/full` (181 vs 131) at identical role coverage. Of the three signals only the
+role check carries governance weight, and that was not predictable in advance.
+
+### What is NOT settled
+
+- **Observation, not a finding:** qwen **q4** named roles *more* than **q8** under the
+  old goal (7 vs 4), opposite to their β / α ordering. Both cells are n=1 and
+  `gpt-oss` reproducibility has still never been measured (§12), so this cannot be
+  separated from run-to-run variation.
+- **The always-`escalate` exploit is untouched.** A model could write a role-naming
+  rationale and still answer `escalate` on every item for full marks. Harder items
+  remain the fix for that; this axis restores *discrimination*, not *validity*.
+- **`fleet-001` cannot distinguish `names_amount` from `names_threshold`** — its
+  `measured_value` and `threshold` are the same number, so one numeral satisfies both.
+  Flagged by the tool rather than silently double-counted.
+
+**Evidence:** `.claude/benchmark-results/{s262-2a-pass1, s263-2d-qwen-q8-full,
+s263-2e-qwen-q8-goalfix, s263-2c-gptoss-full, s263-2c-gptoss-skip,
+s263-2f-gptoss-goalfix}.jsonl`, scored by
+`benchmarks/procedure_baseline/rationale_regrade.py` (merged in
+[#1323](https://github.com/CrayJThiemsert/vero-lite/pull/1323), `b425bde` + `e141338`).
+Each cell's model identity was confirmed from its own `.log` rather than its filename.
+The instrument's own assertions were witnessed RED under an 8-probe battery
+(`tools/probe_battery`, 27 claims, coverage `COMPLETE`, `GAPS: 0`), with the bar probed
+in both directions. Re-runnable offline at any time — the dumps are gitignored but the
+scorer is not.
