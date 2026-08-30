@@ -340,3 +340,96 @@ machine, which is why the numbers are transcribed above rather than referenced.
 Wall-clock figures are the `[wrap] START` → `EXIT` deltas in the matching `.wrap`
 files. Consistency is computed by
 `benchmarks/procedure_baseline/tier_consistency.py`.
+
+## 10. Session 263 — the quantization confound, measured
+
+§9 recorded that its model-ranking inversion changed two variables at once. This
+resolves a third one §9 did not raise: `qwen3.8:27b-mtp-q4_K_M` is a **4-bit**
+*post-training compression*, while `gpt-oss:20b` is natively MXFP4 — the build is
+trained for that precision. An **8-bit** qwen (`qwen3.8:27b-mtp-q8_0`) was present
+on MS-S1 and had never been run.
+
+Run 2026-08-30 under Cray's typed §8 go, **one variable changed**: identical to
+`s262-2a-pass1` in dataset, item set, bound, reasoning mode, retry budget and
+timeout — only the model tag differs. All six pass/fail criteria cleared
+(sentinel `rc=0`, `TRUNCATION: 0 of 34`, deterministic 20/20, denominator 14,
+`DUMP: wrote 20 item records`, zero no-judgment).
+
+**Interpretation rule, fixed before the run.** The metrics are counts out of 14,
+so one item is 7.1 points: a change of **±1 item is within the resolution of the
+test and is not a finding**; **≥2 items** is material. Recorded here because the
+result was going to be interpreted, not merely logged.
+
+### The three cells
+
+| cell | β headline | α probe (canon/accept/forbid/other) | consistency | latency p95 | wall |
+|---|---|---|---|---|---|
+| qwen **q4_K_M** | 85.7% | 78.6% (9/2/1/2) | 9/14 | 172.3 s | 42 m 59 s |
+| qwen **q8_0** | 85.7% | **85.7%** (**12**/0/1/1) | **12/14** | 203.1 s | 48 m 52 s |
+| `gpt-oss:20b` | **100%** | **100%** (14/0/0/0) | **14/14** | **38.1 s** | **8 m 53 s** |
+
+**Verdict: the quantization confound was real for α and consistency, and absent
+for β.** α-canonical and consistency each moved **+3 items** — over the
+pre-committed threshold. β did not move at all (12/14 either way). The ranking
+does **not** flip: gpt-oss still leads on all three. But the gap narrows from five
+items to two, and what remains is a different kind of gap.
+
+### What actually changed — the item-level view
+
+q8 corrected **exactly the five items q4 got wrong**, and broke two new ones:
+
+| item | quote | quotes on file | q4 | q8 | movement |
+|---|---|---|---|---|---|
+| `fleet-003` | ฿12,400 | 1 | `tow_to_partner_garage` | `escalate` | → canonical |
+| `fleet-004` | ฿22,800 | 2 | `echo` | `escalate` | → canonical |
+| `fleet-009` | ฿9,800 | 1 | `dispatch_replacement_truck` | `escalate` | → canonical |
+| `fleet-011` | ฿7,300 | 1 | `dispatch_replacement_truck` | `escalate` | → canonical |
+| `fleet-012` | ฿6,900 | 1 | `echo` | `escalate` | → canonical |
+| `fleet-002` | ฿5,200 | 1 | `escalate` | `echo` | → off |
+| `fleet-006` | **฿30,001** | **1** | `escalate` | `tow_to_partner_garage` | → off |
+
+All five q4 errors were the same defect: the sourcing-hygiene gate cited as the
+reason for overriding the escalation, on items **below** the rule's authored
+฿30,000 threshold — a threshold the procedure goal explicitly says is "authored in
+the typed rule, never in this prose". q4 supplied ฿5,001 (the DOA ceiling) in its
+place. At 8-bit that behaviour drops from **five items to one** (`fleet-002`).
+
+### 🔴 `fleet-006` — the trap item, and the only model that saw it
+
+`fleet-006` is ฿30,001 with **one quote in hand**: the single breach item in the
+dataset where the amount clears the ฿30,000 sourcing threshold *and* the quote
+count fails it. The gate genuinely fires there and nowhere else.
+
+**q8 is the only one of the three models that blocked on it.** q4 and gpt-oss both
+escalated straight past.
+
+It is still scored `forbidden`, and correctly so — it picked `tow_to_partner_garage`,
+the dataset's planted decoy verb, and the gate is evaluated **deterministically
+with no LLM** (the step's own description says so), making gate evaluation not the
+model's lane at all. But the error class is categorically different from q4's:
+q4 applied a rule that did not apply, five times; q8 applied a rule that did
+apply, in a lane that is not its own, once. A grader that reports both as "one
+non-canonical pick" is not seeing the distinction.
+
+### What this does and does not settle
+
+- **Settled:** roughly **60% of the qwen-vs-gpt-oss handler gap on this dataset was
+  quantization, not the model.** Any future claim about qwen's judgment quality
+  must name the quantization or it is unfalsifiable.
+- **Settled:** gpt-oss still wins on every axis, and remains **5.3× faster** on the
+  SD-2 bar (38.1 s vs 203.1 s p95) and **5.5× faster** end to end. The ADR-0001 pin
+  is not challenged by this result.
+- **Not settled:** q8 is **n=1** and its reproducibility is unverified, like every
+  cell except `qwen/full` q4.
+- **Not settled:** whether `fleet-002` and `fleet-006` are two samples of one
+  residual behaviour or two different defects. n=1 cannot separate them.
+- **Unchanged from §9:** `fleet` is at ceiling for the pinned model, so it still
+  cannot rank two good models — and this run is an illustration of the cost, since
+  q8's genuine improvement was invisible to β and showed only in α and consistency.
+
+**Evidence:** `.claude/benchmark-results/s263-2d-qwen-q8-full` (`.log` + `.jsonl` +
+`.wrap`), against `s262-2a-pass1` and `s263-2c-gptoss-full` — all **gitignored**.
+Amounts and quote counts read from each item's `measured_value` and
+`context.quotes_obtained` in the dumps. The ฿30,000 threshold is the design
+partner's Q10 figure, held in `verticals/fleet_maintenance/sourcing.py` and
+deliberately absent from the prompt (`procedures.yaml` rule_gate note, ADR-0025 D4).
