@@ -56,6 +56,7 @@ statement-capture fixture pins that it stays that way.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from decimal import Decimal
 from typing import Any
 
@@ -162,6 +163,48 @@ class BenefitBucket(BaseModel):
     )
     net_benefit_thb_avg: Decimal = Field(
         description="mean of the extracted net_benefit_thb (per-currency only)"
+    )
+    provisional: bool = Field(
+        default=True,
+        description="always True — a modelled estimate, never authoritative (ADR-0030 D5)",
+    )
+
+
+class ProjectedByRun(BaseModel):
+    """The PROJECTED side of the realized-vs-projected join, aggregated over a run set.
+
+    The per-run ``net_benefit_thb`` sum is an **inner subquery** (``GROUP BY
+    run_id``); only these aggregates escape, so the result stays O(1) and SD-8 (a)
+    holds — the same ordering ``run_duration_totals`` uses, and the reason this is
+    a new primitive rather than a reuse of ``benefit_rollup`` (which groups by
+    currency x procedure x facet-kind x day and yields no per-run figure at all).
+
+    🔴 **Read ``projected_net_benefit_thb`` as a MODELLED AVOIDED COST, not as
+    money that moved.** Every fleet facet is ``overpay_avoided`` — a fraction of
+    the quoted amount that a price comparison is assumed to recover
+    (``verticals/fleet_maintenance/economic_impact.py``), and ``provisional`` is
+    ``True`` by construction for every producer (ADR-0030 D5). Pairing it against
+    an invoice total would compare a modelled *benefit* against an actual *cost*:
+    two different quantities. What the realized side can honestly be paired with
+    is ``projected_governed_exposure_thb`` — the price the model expected to be
+    paid — which is why that field is carried separately rather than derived by
+    the reader.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    run_count: int = Field(
+        description="runs in the requested set that carry any economic_impact facet"
+    )
+    figures_missing: int = Field(
+        description="facets whose net_benefit_thb was absent or non-numeric (skipped from the sums)"
+    )
+    projected_net_benefit_thb: Decimal = Field(
+        description="sum of per-run modelled net benefit — an AVOIDED cost, never money that moved"
+    )
+    projected_governed_exposure_thb: Decimal = Field(
+        description="sum of per-run governed.exposure_thb — the price the model EXPECTED to be "
+        "paid, and the only projected figure an invoice total is comparable with"
     )
     provisional: bool = Field(
         default=True,
@@ -564,6 +607,17 @@ async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
     and ``run_id`` on the **same** ``ExportRow`` (``services/db/repair_spend_export.py``,
     linked via ``RepairCaseRunLink``). Lands on Tab J, which fleet publishes.
 
+    🔴 **A FOURTH constraint, measured s265 and missing from the three above: the
+    join is not expressible yet at all.** Everything this docstring says about the
+    REALIZED side and the pattern to copy is correct and still stands. What it
+    never surfaced is that ONE RUN CARRIES MANY ``economic_impact`` FACETS, one
+    per priced repair — the seeded history run carries two — while an
+    ``ExportRow`` is one invoice for ONE repair. Pairing at ``run_id`` grain
+    therefore mixes an unrelated repair's projection into the figure (measured:
+    off by ฿40,800 on a ฿31,500 row), and the facet carries **no case reference**
+    to pair at case grain instead. Read the block above ``benefit_assumptions``
+    for the measurement and Cray's s265 ruling — attribute the facet first.
+
     _[Rehomed from ``docs/STATUS.md`` at session 235 under R2's carve-out.]_
     """
     elem = _trace_elements()
@@ -614,6 +668,102 @@ async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
         buckets,
         key=lambda b: (b.procedure_id, b.currency or "", b.facet_kind or "", b.period),
     )
+
+
+async def projected_by_run(
+    session: AsyncSession, run_ids: Sequence[str] | None = None
+) -> ProjectedByRun:
+    """The projected ฿ side, summed per run then aggregated over ``run_ids``.
+
+    ``run_ids=None`` means the whole corpus, which is what lets this primitive join
+    the SD-8 (a) statement-capture tuple in
+    ``tests/services/db/test_run_analytics.py::test_aggregation_is_pushed_to_sql_not_python``
+    — that guard calls every primitive as ``primitive(session)``. A new O(runs)
+    reader would NOT redden CI on its own (the tuple is hard-coded), so this
+    function is added to it in the same change that adds the function.
+
+    The per-run SUM is the inner subquery; the outer statement aggregates *those*
+    totals. Absent or non-numeric figures are skipped from the sums and counted in
+    ``figures_missing`` — never an error (S2 never-raise), and never coerced to
+    zero, which would silently report a missing model as a break-even one.
+    """
+    elem = _trace_elements()
+    net_text = elem.c.value["detail"]["net_benefit_thb"].astext
+    governed_text = elem.c.value["detail"]["governed"]["exposure_thb"].astext
+    # Only cast a numeric-literal string; anything else -> NULL -> ignored by
+    # sum/count(expr), and surfaced via figures_missing. Same guard as benefit_rollup.
+    net_numeric = sa.cast(
+        sa.case((net_text.op("~")(_NUMERIC_TEXT), net_text), else_=None), sa.Numeric
+    )
+    governed_numeric = sa.cast(
+        sa.case((governed_text.op("~")(_NUMERIC_TEXT), governed_text), else_=None), sa.Numeric
+    )
+    per_run = (
+        sa.select(
+            StepResult.run_id.label("run_id"),
+            sa.func.count().label("facet_count"),
+            sa.func.count(net_numeric).label("valued"),
+            sa.func.coalesce(sa.func.sum(net_numeric), 0).label("net_thb"),
+            sa.func.coalesce(sa.func.sum(governed_numeric), 0).label("governed_thb"),
+        )
+        .select_from(StepResult)
+        .join(elem, sa.true())
+        .where(elem.c.value["kind"].astext == _ECONOMIC_IMPACT)
+    )
+    if run_ids is not None:
+        per_run = per_run.where(StepResult.run_id.in_(run_ids))
+    per_run_sub = per_run.group_by(StepResult.run_id).subquery()
+    stmt = sa.select(
+        sa.func.count(),
+        sa.func.coalesce(sa.func.sum(per_run_sub.c.facet_count - per_run_sub.c.valued), 0),
+        sa.func.coalesce(sa.func.sum(per_run_sub.c.net_thb), 0),
+        sa.func.coalesce(sa.func.sum(per_run_sub.c.governed_thb), 0),
+    )
+    row = (await session.execute(stmt)).one()
+    run_count, missing, net_total, governed_total = row
+    return ProjectedByRun(
+        run_count=int(run_count),
+        figures_missing=int(missing),
+        projected_net_benefit_thb=Decimal(net_total),
+        projected_governed_exposure_thb=Decimal(governed_total),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# 🔴 `realized_vs_projected` IS NOT BUILT, and the reason is not effort — the
+# join is NOT EXPRESSIBLE over the data on disk today (CLAUDE.md §8: a case the
+# system cannot express is registered as inexpressible, in writing, with its
+# reason). MEASURED s265 against the real seed driven through the real engine,
+# NOT reasoned about:
+#
+#   realized side  — the month-end export carries ONE row for the settled demo
+#                    case: pre-VAT ฿31,500.00 / VAT ฿2,205.00 / total ฿33,705.00.
+#   projected side — the SAME run carries TWO `overpay_avoided` facets:
+#                      #1  baseline ฿48,000 -> governed ฿40,800  (net ฿7,200)
+#                      #2  baseline ฿31,500 -> governed ฿26,775  (net ฿4,725)
+#                    Facet #2 is this repair (฿31,500 matches the accepted quote
+#                    and `amount_pre_vat_thb` exactly). Facet #1 is a DIFFERENT
+#                    repair that happens to share the run.
+#
+# So a pairing at RUN grain — which is the only grain `projected_by_run` above
+# can offer — reports ฿31,500 - ฿67,575 = **-฿36,075**, wrong by ฿40,800, i.e.
+# by one whole unrelated repair. The VAT question that looked like the hard part
+# is ฿2,205 — a rounding error against that.
+#
+# Case grain is the correct grain and CANNOT BE RESOLVED: the facet carries no
+# case reference. Its keys are {detail, kind, step_id, summary}; `detail` holds
+# {assumptions, baseline, basis_refs, currency, governed, kind, net_benefit_thb,
+# provisional}; and BOTH facets above share `step_id == "economic-impact-0"`, so
+# step_id does not disambiguate them either. The only discriminator left is
+# `detail.baseline.components.quoted_repair_thb` — i.e. an exact-match join on a
+# money amount, which is a coincidence detector, not an identity.
+#
+# RULED (Cray, typed, s265): make it expressible first — attribute the facet to
+# its case at emission time — THEN build the pairing. That is a change to a
+# persisted trace shape (historical traces stay unattributed), so it is its own
+# PLAN, not a follow-up commit here. `benefit_rollup`'s three test-pinned
+# constraints below still govern whatever is eventually built.
+# --------------------------------------------------------------------------- #
 
 
 async def benefit_assumptions(session: AsyncSession) -> list[str]:
