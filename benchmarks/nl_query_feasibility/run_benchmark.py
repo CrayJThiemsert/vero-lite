@@ -79,7 +79,9 @@ def _print_summary(row: dict[str, Any]) -> None:
     print(
         f"\n== {row['correct']}/{row['n']} correct | "
         f"expressible {pct(row['expressible_acc'])} | "
-        f"ceiling-rescue {pct(row['ceiling_rescue'])} | "
+        f"ceiling {pct(row['ceiling_acc'])} "
+        f"({row['ceiling_n']} cases, {row['ceiling_translated_n']} translated) | "
+        f"phrase-rescue {pct(row['phrase_rescue'])} (n={row['phrase_rescue_n']}) | "
         f"wrong {row['wrong'] or '[]'} | invalid {row['invalid'] or '[]'} | "
         f"latency p50 {row['latency_p50_s']}s p95 {row['latency_p95_s']}s "
         f"max {row['latency_max_s']}s"

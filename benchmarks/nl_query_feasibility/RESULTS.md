@@ -533,7 +533,7 @@ all** (energy's `nl-12` shape), not a missing **field** on an object type that d
 |---|---|---|
 | **correct** | **7 / 10** | **9 / 10** |
 | expressible (8 cases) | 87.5% (7/8) | **100% (8/8)** |
-| ceiling rescue (2 cases) | 0% (0/2) | 50% (1/2) |
+| `ceiling_acc` (2 cases) | 0% (0/2) | 50% (1/2) |
 | wrong | `fl-03`, `fl-09`, `fl-10` | `fl-10` |
 | latency p50 | **12.92 s** | 30.15 s |
 | latency p95 | 70.26 s | 98.38 s |
@@ -615,5 +615,40 @@ no run has reached its phrase step.
 - **The gold set is now an oracle of the system for 10 cases** — the system's own output
   has been scored against it, which is what the well-formedness test alone could never
   establish.
+
+### s266 — the metric is split, and the BEFORE numbers are restated under it
+
+`ceiling_rescue` is retired **as a name**. Its value survives unchanged as `ceiling_acc`
+(the fraction of ceiling cases scored correct), so every figure recorded before s266 stays
+comparable — only the name changed, because the old one named a step it did not measure.
+
+The ceiling lane now reports three numbers, each with its denominator published, because
+the lane is two cases wide and a bare percentage over n=2 reads as a rate it is not:
+
+| | gpt-oss:20b | qwen3.8:27b-mtp-q4_K_M |
+|---|---|---|
+| ceiling cases (`ceiling_n`) | 2 | 2 |
+| translate emitted a query (`ceiling_translated_n`) | 1 / 2 | **2 / 2** |
+| reached the phrase step, grounded (`phrase_rescue_n`) | **0 / 2** | 1 / 2 |
+| the phrase step rescued it (`phrase_rescue`) | **— never asked** | **100% (1/1)** |
+| `ceiling_acc` — the old `ceiling_rescue` value | 0% | 50% |
+
+**`phrase_rescue` is `None`, never `0.0`, when nothing reached the phrase step.** A 0%
+would read as *"the phrase step failed"* for a step that was never invoked — which is
+exactly the misreading the old single number produced.
+
+**What this changes about the AFTER run.** PLAN-0117 widens the translate vocabulary. Its
+effect should therefore land on `ceiling_translated_n` and `phrase_rescue_n` — the
+translate side — and leave `phrase_rescue` alone. If the AFTER run moves `phrase_rescue`
+instead, something other than vocabulary moved, and the number now says so. Under the old
+metric both would have shown up as the same shifting percentage.
+
+Note the asymmetry the split exposes and the old number hid: **gpt-oss never once handed
+the phrase step material on a ceiling question** (0/2 grounded, and only 1 of 2 even
+emitted a query), while qwen delivered once and the phrase step rescued it perfectly.
+"0% vs 50% rescue" described neither.
+
+These figures are pinned in code, not only in prose:
+`tests/benchmark/test_nl_query_feasibility_summary.py::test_the_s265_before_baseline_ceiling_lane_reproduces`.
 
 *AI-assisted (Claude Code, sessions 265-266); no `Co-Authored-By` per CLAUDE.md §7.*
