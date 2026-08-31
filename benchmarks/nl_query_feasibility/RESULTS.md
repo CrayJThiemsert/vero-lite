@@ -578,6 +578,15 @@ do — and that is precisely the mechanism PLAN-0117 touches. **If gpt-oss passe
 in the AFTER run, that is direct evidence the added vocabulary helped, and helped the
 weaker model specifically.** It is the single most informative cell in the experiment.
 
+<!-- retired: "direct evidence the added vocabulary helped" -->
+<!-- The claim in the paragraph above is DEAD, retired s266 by measurement. PLAN-0117
+     added synonyms to five VENDOR properties; fl-03 is a TRUCK question and
+     truck_class.synonyms is still None, so fl-03 gained no vocabulary and a flip
+     either way says nothing about the unlock. Left in place rather than edited —
+     narrowing the text until the quote stops matching is editing the artifact to
+     satisfy the instrument (docs/conventions/retired-claims.md). The measurement and
+     the corrected read are in the AFTER addendum below. -->
+
 ### 🔴 `ceiling_rescue` measured zero instances of the thing it is named after
 
 The metric is meant to answer *"when the structured query cannot express the question, does
@@ -680,6 +689,10 @@ So the experiment's real shape is:
 - **the harm test** = `fl-01`..`fl-10`, PLAN-0117 F16's explicit worry about a wider prompt
   degrading what already worked
 - **`fl-03`** = an observation about variance, never about vocabulary
+
+<!-- retired: "direct evidence the added vocabulary helped" -->
+<!-- Declared here because this is the correction that killed it. The surviving copy
+     lives in the BEFORE addendum above and carries the same marker. -->
 
 ### 1 — The unlock IS usable
 
