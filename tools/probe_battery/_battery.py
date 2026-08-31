@@ -87,8 +87,66 @@ class BatteryInterruptedError(RuntimeError):
     """
 
 
+class _DeferredInterrupts:
+    """Holds a termination signal for the length of one spawn, instead of raising it.
+
+    **The window this closes.** :class:`subprocess.Popen` forks *and* execs inside its
+    ``__init__``. A SIGTERM handler that raises can therefore fire after the child is
+    already running but before the assignment to ``proc`` completes — leaving a live pytest
+    that no ``except`` clause can reach, because the name is still unbound. Measured
+    2026-08-31 (session 265) under single-CPU contention: 4 of 6 signals landed at
+    ``subprocess.py:_execute_child``, and every one of those orphaned a pytest that then ran
+    its body to completion. The 2 that landed inside ``communicate`` were handled correctly,
+    which is why the hole only ever surfaced as a flaky guard on a loaded runner.
+
+    **Why not :func:`signal.pthread_sigmask`**, which is the textbook answer: a child forked
+    while SIGTERM is blocked *inherits the block*. Measured the same day — the child's
+    ``/proc/<pid>/status`` reported ``SigBlk: 0x4000``. That would leave every pytest
+    subprocess immune to the SIGTERM :func:`reap_child` sends and to the ``pkill`` the
+    scenario suite cleans up with. Deferring in Python touches no process mask, so the child
+    inherits nothing.
+
+    Single-threaded by construction: CPython runs signal handlers on the main thread, which
+    is the thread ``run_battery`` runs on.
+    """
+
+    def __init__(self) -> None:
+        self._deferring = False
+        self._pending: int | None = None
+
+    def defer(self) -> None:
+        """Begin holding SIGTERM/SIGINT rather than raising them."""
+        self._deferring = True
+
+    def record(self, signum: int) -> bool:
+        """Handler hook. Returns whether the signal was held rather than raised."""
+        if not self._deferring:
+            return False
+        if self._pending is None:  # the first arrival is the one reported
+            self._pending = signum
+        return True
+
+    def stand_down(self) -> int | None:
+        """Stop deferring and hand back the held signal, if any, WITHOUT raising.
+
+        The cleanup path needs this: raising out of a ``finally`` would displace whatever
+        exception is already unwinding.
+        """
+        self._deferring = False
+        pending, self._pending = self._pending, None
+        return pending
+
+    def resume(self) -> None:
+        """Stop deferring, and raise the signal that arrived while we were."""
+        pending = self.stand_down()
+        if pending is not None:
+            raise BatteryInterruptedError(
+                f"received {signal.Signals(pending).name} during the probe spawn"
+            )
+
+
 @contextmanager
-def _terminating_signals() -> Iterator[None]:
+def _terminating_signals() -> Iterator[_DeferredInterrupts]:
     """Make SIGTERM/SIGINT raise, for the duration of the battery **and its restore**.
 
     Handlers stay installed across the restore deliberately: a second signal arriving
@@ -97,16 +155,19 @@ def _terminating_signals() -> Iterator[None]:
     non-main thread cannot install handlers, and the battery is still correct there
     because ``try/finally`` covers every non-signal exit.
     """
+    interrupts = _DeferredInterrupts()
     installed: list[tuple[int, _SignalHandler]] = []
 
     def _raise(signum: int, _frame: FrameType | None) -> None:
+        if interrupts.record(signum):
+            return
         raise BatteryInterruptedError(f"received {signal.Signals(signum).name} mid-battery")
 
     for sig in (signal.SIGTERM, signal.SIGINT):
         with suppress(ValueError, OSError, AttributeError):
             installed.append((sig, signal.signal(sig, _raise)))
     try:
-        yield
+        yield interrupts
     finally:
         for restored_sig, previous in installed:
             with suppress(ValueError, OSError):
@@ -283,7 +344,7 @@ def _child_env() -> dict[str, str]:
     return env
 
 
-def _make_pytest_runner(store: RunStore) -> Runner:
+def _make_pytest_runner(store: RunStore, interrupts: _DeferredInterrupts) -> Runner:
     """The real runner, bound to the run's manifest so the child pid is recorded.
 
     Returns ``None`` when pytest produced no report at all — it failed to start, or it was
@@ -309,27 +370,42 @@ def _make_pytest_runner(store: RunStore) -> Runner:
                 "no:cacheprovider",
                 "-q",
             ]
-            proc = subprocess.Popen(  # noqa: S603 — fixed argv from the battery, no shell
-                argv,
-                cwd=str(project_root),
-                env=_child_env(),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            store.set_child(proc.pid, " ".join(argv))
+            proc: subprocess.Popen[bytes] | None = None
+            # The spawn runs with signals DEFERRED — see _DeferredInterrupts. `Popen`
+            # forks and execs inside `__init__`, so a handler that raises here would
+            # abandon a child that `proc` does not yet name.
+            interrupts.defer()
             try:
+                proc = subprocess.Popen(  # noqa: S603 — fixed argv from the battery
+                    argv,
+                    cwd=str(project_root),
+                    env=_child_env(),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                store.set_child(proc.pid, " ".join(argv))
+                # Deferral ends HERE, inside the try — the first point at which the
+                # handlers below can kill what was just spawned. Ending it any earlier
+                # reopens the window by exactly the distance to the `try`.
+                interrupts.resume()
                 proc.communicate(timeout=timeout_s)
             except subprocess.TimeoutExpired:
-                proc.kill()
-                proc.communicate()
+                if proc is not None:
+                    proc.kill()
+                    proc.communicate()
                 return None
             except BaseException:
                 # Includes BatteryInterruptedError raised out of the SIGTERM handler. The
                 # child is holding the mutated tree; leaving it running is the orphan.
-                proc.kill()
-                proc.communicate()
+                if proc is not None:
+                    proc.kill()
+                    proc.communicate()
                 raise
             finally:
+                # Never leave the handler deferring: a spawn that failed for a non-signal
+                # reason would otherwise swallow every later signal. Does not raise, so it
+                # cannot displace an exception already in flight.
+                interrupts.stand_down()
                 store.clear_child()
             if not xml.exists():
                 return None
@@ -440,7 +516,6 @@ def run_battery(
     _validate(battery, index)
 
     store = RunStore.begin(project_root, base)
-    run = runner if runner is not None else _make_pytest_runner(store)
     results: list[ProbeResult] = []
     result: BatteryResult
     # Acquired BEFORE the first mutation and released only after the verified restore, so
@@ -452,7 +527,8 @@ def run_battery(
         f"battery {store.manifest.run_id} started — the Axis-B goal gate will stand down "
         f"while it runs. {len(battery.probes)} probe(s), head={store.manifest.head_sha[:8]}",
     )
-    with _terminating_signals():
+    with _terminating_signals() as interrupts:
+        run = runner if runner is not None else _make_pytest_runner(store, interrupts)
         try:
             for probe in battery.probes:
                 results.append(_run_one(probe, index, store, project_root, timeout_s, run))
