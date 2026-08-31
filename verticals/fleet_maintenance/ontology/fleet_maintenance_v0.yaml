@@ -150,6 +150,111 @@ object_types:
           th: [รหัสผู้ขาย, รหัสอู่]
           en: [vendor code, supplier code, express vendor code]
 
+      # --- PROMOTION PATH (PLAN-0117, SD-1 ruled (c)) -----------------------
+      # Every authored value below is a placeholder, not a partner answer, and is
+      # retired by MEASUREMENT rather than edited by hand. The route is the measured
+      # projection (SD-1 option (b)): aggregate the `repair_case_quote`,
+      # `repair_case_accepted_quote` and closeout rows, joined to this registry on the
+      # free-text `vendor` name by the SAME exact, trimmed, case-insensitive match
+      # `services/db/evidence_pack.py` already uses — never fuzzy, which would merge
+      # vendors the operator meant to keep apart. That export holds one row today, so
+      # the projection cannot stand in for the seed yet. When real volume exists it
+      # replaces these values and each property's stamp is deleted with it: a promoted
+      # fact retires its stamp, an unanswered one keeps it (the
+      # `minor_repair_ceiling_thb` precedent).
+      standing:
+        type: enum
+        values: [approved, probation, suspended]
+        description: >-
+          Whether this garage is currently cleared to receive work.
+          AUTHORED / DEMO SEED, not a partner answer — the intake question that promotes it is
+          "อู่ไหนที่ตอนนี้สั่งงานไม่ได้ และเพราะอะไร". Non-required: a garage nobody has assessed
+          yet has no standing, which is a real state rather than a missing value.
+        synonyms:
+          th: [สถานะอู่, สถานะผู้ขาย, อู่ที่ใช้ได้]
+          en: [standing, vendor status, approval status]
+      is_contracted:
+        type: bool
+        description: >-
+          อู่คู่สัญญา — a garage the operator holds a standing agreement with, rather than one
+          used ad hoc.
+          AUTHORED / DEMO SEED, not a partner answer; the intake question that promotes it is
+          "อู่ไหนเป็นอู่คู่สัญญาบ้าง". Non-required.
+        synonyms:
+          th: [อู่คู่สัญญา, คู่สัญญา, อู่ประจำ]
+          en: [contracted, on contract, contracted garage]
+      repairs_completed_count:
+        type: int
+        description: >-
+          ประวัติงานซ่อม — how many repairs this garage has completed for the fleet.
+          AUTHORED / DEMO SEED, not a partner answer; promoted by counting closeout rows per
+          resolved vendor (see the promotion-path comment above). Non-required — a garage with
+          no history yet is a real state, and that row is what keeps any completeness KPI
+          non-vacuous.
+        synonyms:
+          th: [ประวัติงานซ่อม, จำนวนงานที่ซ่อมเสร็จ, งานที่เคยทำ]
+          en: [repairs completed, jobs completed, repair history]
+      comeback_count:
+        type: int
+        description: >-
+          งานซ่อมซ้ำ — repairs that came back: the same truck returning for the same fault after
+          this garage closed it.
+          AUTHORED / DEMO SEED, not a partner answer; the intake question is "งานที่ต้องกลับมา
+          ซ่อมซ้ำ นับยังไง ภายในกี่วัน" — the window is the operator's to define, and until he
+          defines it this figure cannot be projected from the rows at all. Non-required.
+        synonyms:
+          th: [งานซ่อมซ้ำ, ซ่อมแล้วกลับมาอีก, เคลมซ้ำ]
+          en: [comebacks, rework, repeat repairs]
+      avg_turnaround_days:
+        type: float
+        description: >-
+          รอบเวลาซ่อมเฉลี่ย — average days from handing the truck over to getting it back.
+          AUTHORED / DEMO SEED, not a partner answer; promoted by averaging closeout minus
+          hand-over dates per resolved vendor. Non-required.
+        synonyms:
+          th: [รอบเวลาซ่อมเฉลี่ย, ซ่อมเสร็จเร็วแค่ไหน, เวลาเฉลี่ยต่องาน]
+          en: [average turnaround, turnaround days, cycle time]
+
+      # --- dormant band (PLAN-0117, SD-3a ruled) ----------------------------
+      # Declared but deliberately UNPOPULATED, and deliberately WITHOUT `synonyms`.
+      # Declaring them now means the Ask/translate LLM can use a value the day one
+      # exists, with zero code change; leaving synonyms off keeps the per-list prompt
+      # cost unpaid until the narrative actually brings the Thai term. These carry NO
+      # AUTHORED stamp — nothing is authored for them. Each `description` is the whole
+      # contract, and descriptions are dropped at load, so they cost zero prompt bytes.
+      tax_id:
+        type: string
+        description: >-
+          เลขประจำตัวผู้เสียภาษี — the garage's tax identifier. DECLARED BUT UNPOPULATED: no
+          value is authored here, because a plausible-looking tax number in a public repository
+          is a fake statutory identifier, not demo data. The narrative may bring real ones
+          later; declaring the property now means nothing has to change on the day it arrives.
+      cert_status:
+        type: enum
+        values: [valid, expired, none]
+        description: >-
+          Whether the garage's certification is current. DECLARED BUT UNPOPULATED — the values
+          mirror the procurement donor's, but no fleet vendor carries one: the operator has not
+          said which certification he tracks, and guessing it would author a compliance claim
+          about a real business.
+      sanctions_flag:
+        type: bool
+        description: >-
+          Whether the garage appears on a sanctions / debarment list. DECLARED BUT UNPOPULATED —
+          this is a legal assertion about a real business and must never be authored as demo
+          data. A question filtering on it therefore terminates in the honest no-records answer,
+          which is the correct behaviour rather than a gap.
+      single_source_flag:
+        type: bool
+        description: >-
+          Advisory marker that this garage is the only source for some work. DECLARED BUT
+          UNPOPULATED. The AUTHORITATIVE sole-source record is the per-case
+          RepairCaseJustification (ADR-0034 D4), never this field. This vendor-level flag is
+          ADVISORY and must NEVER be the basis for a gate decision; if it is ever populated its
+          value must be DERIVED from the per-case RepairCaseJustification records and never
+          independently authored — two independently-authored statements of one fact can
+          disagree, and the per-case record wins.
+
   Depot:
     primary_key: depot_id
     title_key: name
