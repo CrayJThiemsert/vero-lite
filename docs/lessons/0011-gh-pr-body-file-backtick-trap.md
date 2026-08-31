@@ -4,7 +4,15 @@
 > **Source:** Direct observation 2026-05-26 ~14:00 +07 in Session 12.
 > `gh pr create --title "..." --body "$(cat /tmp/pr-step2.md)"` shell-expansion path corrupted PR #29's body — every backtick-delimited inline code segment was eaten by bash and re-interpreted as command substitution. The PR was created with the corruption; recovery required a follow-up `gh api --method PATCH` with `-F body=@/tmp/pr-step2.md` (which preserves bytes verbatim).
 > **Severity:** Medium (cosmetic + readability damage; no destructive effect, but the corrupted PR body is the durable record reviewers see).
-> **Cross-references:** Lesson #4 (sibling — WSL `bash -c` variable-expansion trap; different mechanism, same class of "shell ate your content"). CLAUDE.md §7 (this Lesson extends the commit-message hygiene rule to `gh pr` operations).
+> **Cross-references:** Lesson #4 (sibling — WSL `bash -c` variable-expansion trap; different mechanism, same class of "shell ate your content"). CLAUDE.md §7 (this Lesson extends the commit-message hygiene rule to `gh pr` operations). Lesson #0046 §"The prevention half" (session-264 extension, below).
+
+> ### Scope extension — session 264 (2026-08-31): it is not only bodies, and the worst case is not cosmetic
+>
+> The class fired **four times in one session** despite the rule being in `CLAUDE.md` §7 and in this file. Once on a PR body — `gh pr edit --body-file` then aborted with an unrelated Projects-classic GraphQL error, recovered with `gh api repos/<owner>/<repo>/pulls/<N> -X PATCH -F body=@<file>` — and **three times on generated Python written through a heredoc**, where the target was not prose at all.
+>
+> 🔴 **The severity above ("cosmetic + readability damage") holds for bodies only.** The worst incident was a **probe battery** whose pinned first line contained backticked SHAs; it reached disk as `( )`, so the mutation matched zero times. The `tools/probe_battery` driver refused to credit a zero-occurrence mutation — but nothing else in the chain would have. A corrupted body is ugly; a corrupted **verification needle** is a check that passes while proving nothing.
+>
+> **The rule, widened:** build **any** content containing backticks with the **Write tool**, then hand the file path to the consumer (`git commit -F`, `--body-file`, `python <file>`). Never a heredoc, never `--body "$(cat …)"`, regardless of whether a human will read the result. A quoted heredoc delimiter (`<<"PY"`) is **not** sufficient protection — the outer `wsl bash -lc '…'` layer has already processed the string by then.
 
 ## 1. The finding
 

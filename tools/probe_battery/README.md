@@ -105,6 +105,31 @@ Only `WITNESSED` credits a claim.
 | `NO-TESTS` | the node id selected nothing |
 | `MUTATION-ERROR` | `old` was absent, matched more than once, or the write changed no bytes |
 
+### Write the battery AFTER the final format pass
+
+`MUTATION-ERROR` is the outcome you will hit most often while authoring, and its
+commonest cause is not a typo — it is that **the file moved under you between
+writing the battery and running it**. Measured session 264: two probes were
+authored against
+
+```python
+        check
+        for check in checks
+        if not check.advisory and not check.probe and not check.rationale
+```
+
+and `ruff format` then collapsed the comprehension onto one line, so both `old`
+strings matched **zero** times. They were the battery's two most important probes
+— the lane-isolation pair — and the run reported `PROBE-BATTERY: FAIL` with
+`GAPS: 2` rather than a false `6/6`.
+
+So: **run `ruff format` (and any codegen) to completion first, then read the exact
+bytes, then write `old`.** If a probe reports `MUTATION-ERROR`, re-read the
+subject before editing the battery — the byte you remember is not necessarily the
+byte on disk. The same session lost a rotation-battery needle to a shell heredoc
+eating its backticks (Lesson #11's scope extension), which surfaces identically:
+a needle that matches nothing.
+
 ### The witness rule is a conjunction
 
 A RED is a witness only when **the site matches** *and* **the failure is assertion-family**
