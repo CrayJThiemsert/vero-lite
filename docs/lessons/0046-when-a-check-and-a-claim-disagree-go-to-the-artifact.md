@@ -66,6 +66,40 @@ return. Four-of-five is not five, and a missing notification does not announce
 itself. This rule already existed and did not fire, because it had no *moment of
 application* — this sentence is the moment.
 
+### The prevention half: choose a needle that formatting cannot break
+
+*Added session 264, on three more incidents — all in one session, all the same
+shape, all instrument-side.* The rule above says what to do **after** a check and
+a claim disagree. This one keeps the disagreement from being manufactured.
+
+Every one of the three was a verification `grep` reporting **zero hits on content
+that was present**:
+
+| needle used | what the artifact actually held |
+|---|---|
+| `Cray-ratified` | the document said `ratified` — the attribution lived in the code and commit, not the prose |
+| `0-1` | an **en-dash**: `0–1` |
+| `ontology move before it is a grader move` | markdown emphasis split it: `an **ontology** move before …` |
+
+None was a defect in the artifact; all three were defects in the needle. A false
+alarm costs the same as a false pass — both send you to re-check the wrong thing,
+and the third one nearly had a merged PR reported as content-incomplete.
+
+**So: pick needles that are ASCII-only, free of markdown emphasis, and short
+enough not to straddle a wrap.** Prefer a stable identifier (`session: 264`,
+`def role_vocabulary`) over a prose phrase. When a probe *must* quote prose, quote
+the fragment least likely to carry markup, and treat a zero-hit result on content
+you believe is present as a **needle** hypothesis first.
+
+**The same class, one layer down: content built through a shell loses backticks
+before it is ever compared.** Also session 264, four times — a PR body (recovered
+via `gh api PATCH`), and three scripts written by heredoc. The worst was a probe
+battery whose pinned first line arrived on disk as `( )`; the mutation matched
+zero times and the driver correctly refused to credit it. A corrupted PR body is
+cosmetic. A corrupted **needle** is a verification that silently proves nothing.
+Build any content containing backticks with the Write tool — Lesson #11 states
+this for PR bodies; it holds for scripts and battery files too.
+
 ## What this does NOT say
 
 - It does not say check-failures are usually right. Incident 4 says the
