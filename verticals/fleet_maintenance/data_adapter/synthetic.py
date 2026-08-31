@@ -341,6 +341,15 @@ def vendor_records() -> list[dict[str, Any]]:
     accounting opens it in Express — the partner marked the column "รหัสผู้ขาย (ถ้ามี)"
     himself — so this row is what proves AC-9's KPI is not vacuous: an export built only
     from coded vendors would report 100% traceable no matter what.
+
+    **The supplier-evaluation facts (PLAN-0117) are DEMO SEED and the dormant band is
+    deliberately absent.** `standing`, `is_contracted`, `repairs_completed_count`,
+    `comeback_count` and `avg_turnaround_days` carry authored placeholder values.
+    `tax_id`, `cert_status`, `sanctions_flag` and `single_source_flag` are DECLARED in
+    the ontology and carry **no value here by ruling** (SD-3a): a question filtering on
+    one of them must reach the honest no-records answer, and a seeded value would hide
+    that path. `sanctions_flag` in particular is a legal assertion about a real business
+    and must never be authored as demo data.
     """
     return [
         {
@@ -348,18 +357,42 @@ def vendor_records() -> list[dict[str, Any]]:
             # The partner's own contracted garage, named in the narrative.
             "name": "อู่คู่สัญญา ปากช่อง",
             "accounting_code": "V-001",  # DEMO SEED
+            # PLAN-0117 supplier-evaluation facts. Every figure below is DEMO SEED —
+            # authored, not a partner answer — and is retired by the measured
+            # projection recorded in the ontology's promotion-path comment, never by
+            # hand-editing it into something more plausible.
+            "is_contracted": True,  # DEMO SEED — the narrative's อู่คู่สัญญา
+            "standing": "approved",  # DEMO SEED
+            "repairs_completed_count": 24,  # DEMO SEED
+            "comeback_count": 2,  # DEMO SEED
+            "avg_turnaround_days": 3.5,  # DEMO SEED
         },
         {
             "vendor_id": "vendor-02",
             # Named in the quote-provenance comment at the top of this module.
             "name": "ส.เจริญยนต์",
             "accounting_code": "V-002",  # DEMO SEED
+            "is_contracted": False,  # DEMO SEED — used regularly, no standing agreement
+            "standing": "approved",  # DEMO SEED
+            "repairs_completed_count": 9,  # DEMO SEED
+            "comeback_count": 1,  # DEMO SEED
+            "avg_turnaround_days": 5.0,  # DEMO SEED
         },
         {
             "vendor_id": "vendor-03",
             "name": "เจ๊หงส์",
             # No accounting_code ON PURPOSE — see the docstring. Used but not yet opened
             # in Express, which is a real state the export has to report honestly.
+            #
+            # **And NO history facts ON PURPOSE** (PLAN-0117 AC-3, the F9 honesty
+            # pattern). A garage can be used once before anyone has a record for it, so
+            # `repairs_completed_count` / `comeback_count` / `avg_turnaround_days` are
+            # absent rather than zero — absent means "nobody has counted", zero means
+            # "counted, and it was none", and only the first is true here. This row is
+            # what keeps any future completeness KPI over these facts non-vacuous: a
+            # seed where every vendor carried a full history would report 100% covered
+            # no matter what the code did.
+            "standing": "probation",  # DEMO SEED
         },
     ]
 
