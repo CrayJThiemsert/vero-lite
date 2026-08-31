@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-31T02:05:00+07:00
+last_updated: 2026-08-31T10:30:00+07:00
 session: 264
-current_batch: "s264 — TWO PRs (#1323, #1324): the `fleet` ceiling is broken on a FOURTH axis (does the rationale name the approver?), scored offline from dumps already on disk, with ZERO MS-S1 runs."
+current_batch: "s264 — FIVE PRs (#1323-#1327): the `fleet` ceiling broken on a FOURTH axis with ZERO MS-S1 runs, the axis shipped into `grader.py` isolated from beta/alpha, STATUS reclaimed, and two lessons authored."
 current_actor: code
-blocked_on: "Nothing. `main` green at `9cf5549`; 0 open PRs, tree clean. The s263 ceiling blocker is RESOLVED — β/α/consistency still tie, but the rationale axis separates the models cleanly."
-next_action: "Cray's call: B2 — promote the rationale signal into a scored `grader.py` lane (offline); or prepare the ontology for supplier-evaluation facts, which is what lets the bar rise; or harder items for the always-`escalate` exploit (needs MS-S1 + a PLAN)."
-head_commit: 9cf5549
-recent_commits: [9cf5549, b402cbf, a41dbc9, e141338, b425bde, 4cfb267, abed469, 43f707a, d366be1, 0a1061f]
+blocked_on: "Nothing. `main` green at `3cd1609`; 0 open PRs, tree clean."
+next_action: "Cray's call: prepare the ontology for supplier-evaluation facts (the unlock that lets the rationale bar rise — needs a PLAN, G2-gated); or harder `fleet` items for the always-`escalate` exploit (needs MS-S1 + a PLAN); or rehome the Active TODOs, 31 KB and 48% of this file."
+head_commit: 3cd1609
+recent_commits: [3cd1609, 3e067ab, 0a39dc9, 6743b4d, 0148966, ec75c52, 9cf5549, b402cbf, a41dbc9, e141338]
 ---
 
 # vero-lite — Project Status
@@ -18,60 +18,62 @@ recent_commits: [9cf5549, b402cbf, a41dbc9, e141338, b425bde, 4cfb267, abed469, 
 
 ## Current Focus
 
-> **Session 264, 2026-08-31 (`4cfb267` → `9cf5549`) — TWO PRs merged
+> **Session 264, 2026-08-31 (`4cfb267` → `3cd1609`) — FIVE PRs merged
 > ([#1323](https://github.com/CrayJThiemsert/vero-lite/pull/1323),
-> [#1324](https://github.com/CrayJThiemsert/vero-lite/pull/1324)), 0 open, tree
-> clean. **The `fleet` ceiling that blocked model comparison since s263 is
-> broken — on a fourth axis, offline, with ZERO MS-S1 runs.**
+> [#1324](https://github.com/CrayJThiemsert/vero-lite/pull/1324),
+> [#1325](https://github.com/CrayJThiemsert/vero-lite/pull/1325),
+> [#1326](https://github.com/CrayJThiemsert/vero-lite/pull/1326),
+> [#1327](https://github.com/CrayJThiemsert/vero-lite/pull/1327)), 0 open, tree
+> clean. **The `fleet` ceiling that blocked model comparison since s263 is broken
+> — on a fourth axis, offline, with ZERO MS-S1 runs.**
 >
-> 🔴 **The blocker was never "harder items"; it was a missing axis.** Every
-> existing lane (β, α, consistency) grades *which* answer the model gave. None
-> graded whether the `rationale` carries what a human approver needs. Scoring
-> that from the **six dumps already on disk** separates the two tied models in
-> **every cell with no overlap** — qwen **4–8/14**, gpt-oss **0–1/14**.
+> 🔴 **The blocker was never "harder items"; it was a missing axis.** β, α and
+> consistency all grade *which* answer the model gave; none read the `rationale`.
+> Scoring one question over the **six dumps already on disk** — does it name the
+> human authority the spend routes to? — separates the tied models in **every
+> cell, no overlap**: qwen **4–8/14**, gpt-oss **0–1/14**. No §8 go was needed or
+> taken.
 >
-> ✅ **The instrument is fair by construction, not by assertion**
-> (`benchmarks/procedure_baseline/rationale_regrade.py`, `b425bde`). The role
-> vocabulary is the **intersection of a candidate set with the procedure goal's
-> own prose**, so a phrase is only demanded of a model that was handed it —
-> here exactly `head mechanic` / `fleet manager` / `owner`. Verified both ways:
-> the pre-fix goal (`0a1061f~1`) carries the identical clause, so the
-> **vocabulary is unchanged across the goal fix** and the signal compares
-> across all six cells. §11's β/α comparability line is untouched.
+> ✅ **Fair by construction, not by assertion** (`b425bde`). The role vocabulary
+> is the **intersection of a candidate set with the goal's own prose**, so a
+> phrase is only demanded of a model that was handed it — here `head mechanic` /
+> `fleet manager` / `owner`. The pre-fix goal (`0a1061f~1`) carries the identical
+> clause, so the vocabulary is **unchanged across the goal fix** and the signal
+> compares across all six cells; §11's β/α comparability line is untouched.
 >
-> 🔴 **The load-bearing result is a NEGATIVE one.** `names_amount` does **not**
-> separate the models and **gpt-oss scores higher on it** (6/14 vs 5/14). The
-> intuitive rule *"the rationale must state the amount"* would have ranked the
-> models **backwards**. Mean length is no better — `gptoss/skip` is longer than
-> `gptoss/full` at identical role coverage. Only the role check carries
-> governance weight, and that was **not predictable in advance**.
+> 🔴 **The load-bearing result is NEGATIVE.** `names_amount` does **not** separate
+> the models and **gpt-oss scores higher** (6/14 vs 5/14); mean length tracks
+> verbosity. The intuitive *"state the amount"* rule ranks the models
+> **backwards** — a new axis is a hypothesis, not a fix.
 >
-> ✅ **The bar is RULED (Cray, typed, 2026-08-31): role-naming alone**
-> (`e141338`). Deliberately the weakest of three candidates, for a reason about
-> the **system** not the models — the richer criteria (right supplier? delivery
-> history? how does this quote compare?) rest on facts **the ontology does not
-> yet carry**, and a pass rule may only demand what the run supplies. So
-> **raising this bar is an ONTOLOGY move before it is a grader move.**
-> Requiring the amount too would score 0/14 vs ~3/14 — rejected as
-> *unmeasurable*, not undesirable.
+> ✅ **Bar RULED (Cray, typed): role-naming alone** (`e141338`) — the richer
+> criteria rest on facts **the ontology does not carry**, and a rule may only
+> demand what the run supplies. **Raising it is an ONTOLOGY move before a grader
+> move.** Requiring the amount too: 0/14 vs ~3/14 — *unmeasurable*, not
+> undesirable.
 >
-> ✅ **§12's closing claim is RETIRED** (`b402cbf`, #1324) under
-> `docs/conventions/retired-claims.md` — marker plus in-place correction,
-> matching the shape §4 of that document already used. Classified **superseded
-> by new info, not "was an error"**: it was true of every axis then measured.
-> Harder items stay necessary for the always-`escalate` exploit; they are no
-> longer a *precondition* for comparing models.
+> ✅ **§13 records it and §12's blocking-prerequisite claim is RETIRED**
+> (`b402cbf`) under `docs/conventions/retired-claims.md` — classified **superseded
+> by new info, not an error**. ✅ **B2 lands the axis in the shipped grader**
+> (`6743b4d`): a fourth lane with a consumer at every step, `goal` keyword-only
+> and defaulting to `None` so **no goal ⇒ no check ⇒ β/α byte-identical**. The
+> 268-test benchmark suite passing untouched IS that evidence.
 >
-> **Evidence.** Offline gate at CI scope green at both shas — **4652** then
-> **4656 passed**, 8 skipped (each delta exactly the tests added); `mypy
-> --strict services/ verticals/` clean on 201; bare `ruff check .` +
-> `ruff format --check .` clean; CI **pass** at `b425bde`, `e141338`, `b402cbf`.
-> **Probe battery 8/8 `WITNESSED`**, 27 claims, `COMPLETE`, `GAPS: 0`, re-run on
-> the shipped bytes, the verdict probed in **both** directions. Both merges
-> verified by **content** with positive probes *and* a negative control, never
-> by badge. ⚠️ **Observation, not a finding:** qwen **q4** named roles *more*
-> than q8 under the old goal (7 vs 4), opposite to their β/α ordering — n=1 per
-> side, and gpt-oss reproducibility is still unmeasured.
+> ✅ **STATUS reconciled out of its 84-byte corner** (`ec75c52`): 65,452 →
+> 63,203 B, one asserted transaction — pre-flight **15/15**, post-write **13/13**,
+> archives verified by byte **DELTA**, not presence. ✅ **Lessons `#0051`
+> (a saturated benchmark may be missing an AXIS) + `#0052` (a criterion may only
+> demand what the run supplies)** authored, plus scope fixes to `#0046`, `#0011`
+> and `tools/probe_battery/README.md` (`3e067ab`).
+>
+> **Evidence.** Offline gate green at every sha — **4652 → 4656 → 4672 passed**,
+> 8 skipped, each delta exactly the tests added; `mypy --strict services/
+> verticals/` clean on 201 **and `benchmarks/` clean by hand** (CI checks neither);
+> ruff + format clean; CI **pass** at all five shas. **Probe batteries 8/8 and 6/6
+> `WITNESSED`**, `GAPS: 0`, lane isolation probed in **both** directions. Every
+> merge verified by **content** with a negative control, never by badge.
+> ⚠️ **Observation, not a finding:** qwen **q4** named roles *more* than q8 under
+> the old goal (7 vs 4) — n=1 per side, gpt-oss reproducibility still unmeasured.
 
 > **Session 263, 2026-08-30 (`59019f3` → `43f707a`) — ONE PR merged
 > ([#1321](https://github.com/CrayJThiemsert/vero-lite/pull/1321), five
@@ -237,6 +239,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-31 | **s264 — THREE more PRs (#1325, #1326, #1327): the axis becomes a shipped lane, and STATUS gets its headroom back.** ✅ **B2** puts the rationale check in `grader.py` as a **fourth lane with a consumer at every step**, `goal` keyword-only + `None`-default so **no goal ⇒ no check ⇒ β/α byte-identical** — the pre-existing 268-test suite passing untouched is that evidence; lane isolation probed in **both** directions. ✅ **STATUS 65,452 → 63,203 B** (headroom 84 → 2,333) via one asserted transaction, archives verified by byte **DELTA**. ✅ Lessons **#0051** (a saturated benchmark may be missing an AXIS, not needing harder data) + **#0052** (a criterion may only demand what the run supplies) authored. | `3cd1609` / [#1326](https://github.com/CrayJThiemsert/vero-lite/pull/1326) / [#1327](https://github.com/CrayJThiemsert/vero-lite/pull/1327) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-08-31 | **s264 — TWO PRs (#1323, #1324): the `fleet` ceiling is broken on a FOURTH axis, offline, with zero MS-S1 runs.** Scoring the `rationale` from the six dumps already on disk separates the tied models in **every cell, no overlap** — qwen **4–8/14**, gpt-oss **0–1/14**. 🔴 **The load-bearing result is NEGATIVE:** `names_amount` does not separate them and gpt-oss scores *higher*, so the intuitive "state the amount" rule would rank them backwards. ✅ **Bar RULED (Cray, typed): role-naming alone** — the richer criteria rest on facts the ontology lacks, making a higher bar an **ontology move before a grader move**. ✅ §12's *blocking-prerequisite* claim **RETIRED** (superseded, not an error). | `9cf5549` / [#1323](https://github.com/CrayJThiemsert/vero-lite/pull/1323) / [#1324](https://github.com/CrayJThiemsert/vero-lite/pull/1324) / `benchmarks/model_compare/RESULTS-1.6.md` §13 |
 | 2026-08-30 | **s263 — ONE PR (#1321, five commits): stage 2c completed the five-cell matrix, and the matrix then found a defect in OUR OWN procedure.** 🔴 **The `fleet` procedure GOAL told the LLM to check a gate that is evaluated deterministically downstream with no LLM**, withholding its threshold — live on **11 of 14** items, the rule fires on **one**. Rewritten (`0a1061f`, runtime spine), verified on two models: qwen q8 β/α **85.7 → 100%**, consistency **12/14 → 14/14**; gpt-oss identical, its 100% being **compliance-by-omission** (gate named in **1 of 17** items vs **17 of 17**). 🔴 **~60% of the q4 handler gap was COMPRESSION.** 🔴 `fleet` is at **ceiling for both models**. | `43f707a` / [#1321](https://github.com/CrayJThiemsert/vero-lite/pull/1321) / `benchmarks/model_compare/RESULTS-1.6.md` |
 | 2026-08-29 | **s261 — FOUR PRs (#1310–#1313): two of three phase-1.6 audit findings CLOSED; the third's model is on the box, unrun.** 🔴 **`think=False` does NOT turn gpt-oss thinking off — MEASURED** (a **3,105-char** trace on a live 1-item run), so 1.6's `gptoss/full` and `gptoss/think_off` were **one request**: the §4 *"p95 anomaly"* is two runs of one config, and the next matrix has **FIVE cells, not six**. 🔴 `num_predict` was unset, so a deadline **discarded every token produced** — bounded now. 🔴 The shell-hygiene advisory fired on **the idiom it prescribes** (30.8% of 950 commands); FP 3→0. | `41c0d4c` / [#1313](https://github.com/CrayJThiemsert/vero-lite/pull/1313) / `benchmarks/model_compare/RESULTS-1.6.md` |
@@ -246,7 +249,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-26 | **s255 — FOUR PRs (#1293–#1296): PLAN-0115 COMPLETE 10/10 and ARCHIVED — `tools/probe_battery/` ships as ADR-0038 C6's named D2 form-(c) enforcer.** 🔴 **VX-1 DISCHARGED** (owed since PLAN-0021, never answered): a non-blocking Stop-hook `systemMessage` **does** surface as `Stop says: …` to the **user's UI only**, but adopting it breaks **PLAN-0069 AC-3** parity — available, unadopted. 🔴 The instrument found **two defects in itself**; the stale-`.pyc` one passed the full local suite and **only CI reddened**. | `2448f90` / [#1296](https://github.com/CrayJThiemsert/vero-lite/pull/1296) / `docs/plans/done/0115-*.md` |
 | 2026-08-25 | **s254 — FOUR PRs (#1288–#1291): PLAN-0115's four SDs RULED (Cray, typed).** 🔴 **SD-2's two drafted options BOTH failed on measurement** — (a) a hook exiting 0 sends its stderr note to a debug log holding **0 files and a dangling symlink**; (b) trail annotation corrupts **four control-flow reads** in `_goal_gate.py`. Ruled: zero-residue upheld, visibility to **Telegram keyed to the lock**; the *"no Telegram"* clause **struck — no author, no reviewer** (ADR-0018 VX-1). SD-1 effort **~36 → 53 sites / 50 files**, measured. SD-3 **defer**. | `db98126` / [#1288](https://github.com/CrayJThiemsert/vero-lite/pull/1288) / `docs/plans/done/0115-*.md` |
 | 2026-08-25 | **s254 — ADR-0038's W-1 entry is PROMOTED to C6 on its third firing** (#0043, *"a probe's RED must name what broke"*) — the D1.6 promotion obligation discharged, merged by Cray the same session. 🔴 **C6's predicate needed a legibility conjunct:** firing 2's assertion fired correctly at its own site, so crediting it was right — the defect was **unreadable output**; a crediting-only predicate counts two and never triggers. ⚠️ C6 names **PLAN-0115 Step 1 AC-2/AC-4** its D2 form-(c) enforcer, so PR-A now owes enforcement work. | `28f5cc3` / [#1290](https://github.com/CrayJThiemsert/vero-lite/pull/1290) / `docs/adr/0038-*.md` |
-| 2026-08-25 | **s253 — TWO PRs (#1286, #1287): PLAN-0114 Step 1 SHIPPED — the `continue_no_decision_run` chokepoint, purely additive; 14 tests, 17 claims, 14/14 probes witnessed, `orchestrator.py` + `action_step.py` at 0 diff lines.** 🔴 **Two of thirteen probes had been credited for reddening on a CRASH** (`AttributeError`, `KeyError`) rather than on the assertion each claimed — a published `13/13` was overstated and was corrected in-PR with measured evidence. 🔴 The `goal-evaluator` found **five** residual gaps in work already called done; all five real. | `082a6f1` / [#1287](https://github.com/CrayJThiemsert/vero-lite/pull/1287) / `docs/plans/done/0114-empty-gate-continuation-acknowledge-and-complete.md` |
 
 _[The two oldest rows (**s234, s233**) rotated to `docs/status-archive/2026-h1-status.md` at the s243 cont. reconcile, holding the table at ten. Two rows were added: the **s242 backfill** — Cray ruled it in, discharging the gap the s243 reconcile flagged, and its four rulings are no longer carried by narrative alone — and a **second s243 row**, because Step 1 is a BUILD event of a different kind from that session's rulings and folding it into the existing row would have written a row far over R2's ~600-char pointer cap. The oldest row (**s237**) rotated to the same file at the s245 reconcile, holding the table at ten; the s238 row followed at the s246 reconcile for the same reason. The **s239** row followed at THIS (s247) reconcile, again holding the table at ten. **Session 248 discharged the pointer-cap overage this table still carried: 8 of the 10 rows were over R2's ~600-char cap, and are now zero.** Each row's substance — not merely the path it named — was resolved against `git ls-files` before that row was shortened; the one fact tracked nowhere else, s240's *ancestry is not content*, was **rehomed first** into `.claude/skills/git-workflow/SKILL.md`, then re-pointed, then trimmed. All eight full originals are preserved verbatim in `docs/status-archive/2026-h1-status.md` (R4, move-never-drop). The **s240** row rotated to the same file at THIS (s248) reconcile, holding the table at ten. ⚠️ It is the one row whose fact was rehomed the session *before* it rotated — *ancestry is not content* now lives in `.claude/skills/git-workflow/SKILL.md`, and that skill's widened `description` surfaces it automatically — so its rotation drops nothing that STATUS was the sole carrier of. The **s241** row rotated to the same file at THIS (s249) reconcile, holding the table at ten. Its substance keeps two tracked homes — `docs/conventions/retired-claims.md` for the guard it shipped, and the *"the two s241 pre-commit guards are FLOORS, NOT CEILINGS"* entry in §Active TODOs for the live remainder — so it, too, rotates on the count rule alone. The two oldest rows (**s243**, **s242**) rotated to the same file at the **s251** reconcile — a two-session reconcile added two rows (s250, s251), so two left to hold the table at ten. Both rotate on the count rule alone: s243's G-13/G-14 substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, and s242's SD-E reversal, second L1 re-reading and OQ-7(b) each keep a live Active TODO plus `docs/adr/0035-hosting-and-exposure-model.md`, whose own amendment pass records that a LOCKED ruling is amended in place, never edited. The two oldest rows (**s244**'s #1249 ฿-facet row and **s243 cont.**'s #1246 row) rotated to the same file at THIS (s253) reconcile — two s253 rows entered, one build and one governance, so two left to hold the table at ten. Both rotate on the count rule alone, **checked against the artifact before trimming, not assumed**: the #1249 emission fix and its run-scoped `(action_id, facet kind)` ledger are documented in `services/engine/procedures/action_step.py`'s own docstring, and the #1246 `triggered_by: null` / two-probes-on-different-assertions substance lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`. The two oldest rows (**s245**, **s244**) rotated to the same file at THIS (s254) reconcile — two s254 rows entered, one rulings and one governance, so two left to hold the table at ten. Both rotate on the **count rule alone**: s245's *three guards passed while protecting nothing* finding is the one that promoted `CLAUDE.md` §8's witnessed-RED rule, and lives there as binding text; both rows' PLAN-0112 build substance is in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`. The oldest row (**s246**) rotated to the same file at THIS (s255) reconcile — one s255 row entered, so one left to hold the table at ten. It rotates on the **count rule alone**, checked at the artifact rather than assumed: PLAN-0112 is COMPLETE 9/9 and its AC-7(i) finding lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md`, and the week-stale-checkout incident is recorded in `docs/logs/2026-08-22-s246-*.md`, which the row itself names. The oldest row (**s247**) rotated to the same file at THIS (s257) reconcile — one s257 row entered, so one left to hold the table at ten. It rotates on the **count rule alone**: the Active-TODOs pointer cap it records is binding text in `docs/runbooks/memory-architecture.md` §R2 and in its enforcer `.claude/agents/status-scribe.md`. ⚠️ **Its *"R9 is now tracked NOWHERE"* finding was NOT re-checked at this reconcile** — surfaced to Cray rather than asserted resolved; the full row travels verbatim into the archive, so nothing is dropped. The oldest row (**s249**) rotated to the same file at THIS (s260) reconcile — one s259–260 row entered, so one left to hold the table at ten, on the **count rule alone**: PLAN-0112's SD-4 reversal lives in `docs/plans/done/0112-visitor-case-to-governed-run-tab-i-to-tab-h.md` and the ADR-016 amendment it required is Accepted. ⚠️ **Its OQ-1 ruling — Code may append a `## Post-archival amendment` and one inline pointer in `done/`, supersession pointers ONLY — still governs, but the BROADER "may Code edit `done/` at all" question it left open is carried by no Active TODO row** (grepped at this reconcile: the other STATUS hits *use* the mechanism, they do not hold the question). It travels into the archive with the row. The oldest row (**s250**) rotated to the same file at THIS (s261) reconcile — one s261 row entered, so one left to hold the table at ten, on the **count rule alone**. ✅ **Its substance was re-grepped at the artifact, not read off the row's own claim:** the R2 caps are live in `docs/runbooks/memory-architecture.md` (4 hits) **and** in their enforcer `.claude/agents/status-scribe.md` (3 hits for `4,096`/`s141`/`s194`, so both backfills survive), and the `index.lock` root cause is live in `.claude/skills/git-workflow/SKILL.md` (5 hits). ⚠️ Its `53,048 → 48,645 B` figure is a **historical measurement** that now exists only in the archived row. **s261 also discharged a pointer-cap overage in §Active TODOs that s260 had asserted was zero:** eight rows — seven **ticked** ones plus the R2-cap row itself — ran 700–1,850 chars against R2's ~600 cap and were shortened to pointers, each naming the archived PLAN or `docs/logs/` file that holds its full story; **all eight originals travel verbatim to `docs/status-archive/2026-h1-status.md`** (R4, move-never-drop). 🔴 **The PLAN-0109 four-defect row was deliberately NOT shortened** — it is the sole tracked carrier of those defects (the PLAN itself does not yet hold them), so trimming it would drop a live defect list to an archive. The oldest row (**s251**) rotated to the same file at THIS (s263) reconcile — one s263 row entered, so one left to hold the table at ten, on the **count rule alone**: PLAN-0113 is COMPLETE and archived at `docs/plans/done/0113-scope-event-fired-run-to-its-firing-case.md`, and the **fourth load-gate refusal SB-3 does not enumerate** keeps its own live Active TODO row.]_
 
