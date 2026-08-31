@@ -1,6 +1,6 @@
 ---
 name: git-workflow
-description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, recover a corrupted PR body, and commit from a Windows-created (UNC-gitdir) worktree where plain `wsl bash -lc "git …"` fails outright. Use whenever committing, pushing, merging, or creating/editing a PR, issue, or release — whenever a commit fails with `fatal: not a git repository: //wsl.localhost/...` or `` `pre-commit` not found ``, and whenever about to trust that a `git merge` landed its content (a merge can report success while dropping the incoming change, with `merge-base --is-ancestor` still answering YES). Encodes Lessons #4/#10/#11.
+description: vero-lite git/commit/PR mechanics — how to write commit messages (file + `git commit -F`, never inline backtick heredoc), submit PR/issue/release bodies (`--body-file`, never `--body "$(cat …)"`), commit+push hygiene, recover a corrupted PR body, and commit from a Windows-created (UNC-gitdir) worktree where plain `wsl bash -lc "git …"` fails outright. Use whenever committing, pushing, merging, or creating/editing a PR, issue, or release — whenever a commit fails with `fatal: not a git repository: //wsl.localhost/...` or `` `pre-commit` not found ``, and whenever about to trust that a `git merge` landed its content (a merge can report success while dropping the incoming change, with `merge-base --is-ancestor` still answering YES). Also use whenever a git command reports success but the file does not change, when `git status` disagrees with what is on disk, or when a checkout/merge aborts on "local changes" you did not make — check first that git is pointed at the tree you are standing in. Encodes Lessons #4/#10/#11/#0053.
 ---
 
 # Git workflow mechanics (vero-lite)
@@ -86,6 +86,46 @@ Git-for-Windows ships a stale CA bundle, so anything touching the network
 ⚠️ **That default assumes a WSL-native gitdir, and is wrong in a
 Windows-created worktree** — see the next section before committing from one.
 
+## First — confirm git is pointed where you are standing
+
+**Run this before diagnosing anything else** whenever a git command reports
+success and the effect is absent, `git status` disagrees with the disk, or a
+checkout/merge aborts on "local changes" nobody made:
+
+```bash
+cd /home/crayj/work/vero-lite && pwd && git rev-parse --show-toplevel
+```
+
+**Two different answers means every `status` / `diff` / `checkout` / `add` in
+that shell is about a tree you are not looking at.** Measured session 266: a
+stray `core.worktree` in the **shared** `.git/config` pointed the main checkout
+at another session's worktree. `git checkout -- <paths>` returned `rc=0` and
+wrote the files *there*; `git pull` reported `create mode` for a plan file that
+never appeared. Six separate symptoms had already been written up across two
+handoffs as a UNC stat-cache artifact (Lesson #0053).
+
+Clear it with `git config --unset core.worktree` — but note `.git/config` is
+**shared across every worktree**, so it is a repo-level change: get Cray's go
+first.
+
+**When `git status` itself is the thing under suspicion, audit by content:**
+
+```bash
+git ls-files > /tmp/paths.txt
+git hash-object --stdin-paths < /tmp/paths.txt > /tmp/disk.txt
+# join against `git ls-files -s` and compare blob hashes
+```
+
+That bypasses the stat cache *and* the worktree resolution. In session 266 it
+found 6 stale files and 1 tracked file missing from disk that `git status` never
+mentioned.
+
+⚠️ **`git update-index --refresh` is NOT a read-only probe.** On a path whose
+difference is a **mode** difference it writes the new mode into the index — two
+files went from ` M` to `M ` (staged `100755`→`100644`) from a command run purely
+to look. Undo with `git update-index --chmod=+x <paths>` and confirm with
+`git diff --cached HEAD`.
+
 ## Committing from a Windows-created worktree
 
 A worktree created from the Code tab registers its `gitdir` as a UNC path
@@ -109,6 +149,14 @@ git -c core.hooksPath=/home/crayj/work/vero-lite/.git/hooks commit -F /tmp/msg.t
   (CLAUDE.md §8); this recipe exists so you never need it.
 - **`gh` needs `GIT_DIR` exported too.**
 - **Push through WSL** — Windows git dies on the network leg (stale CA bundle).
+
+🔴 **Use the environment variables above — never `git config core.worktree …`.**
+`.git/config` is shared by the main checkout and every worktree, so setting
+`core.worktree` there redirects *everyone's* git at your worktree, silently and
+persistently. Measured session 266: it survived the session that set it, and the
+next session spent ~15 measurements diagnosing the filesystem before checking
+`git rev-parse --show-toplevel` (Lesson #0053). `GIT_WORK_TREE` is scoped to your
+shell and cannot leak.
 
 **If it aborts with `` Unable to create '…/index.lock': File exists ``** inside
 pre-commit's `git write-tree`: **verify `HEAD` first — the commit did not
