@@ -229,8 +229,29 @@ def _print_summary(label: str, summary: Summary) -> None:
         f"({summary.deterministic_correct}/{summary.total} dispositions) | "
         f"by-disposition {summary.by_disposition}"
     )
+    if summary.rationale_graded:
+        _print_rationale_lane(label, summary)
     if summary.watch_graded:
         _print_watch_lane(label, summary)
+
+
+def _print_rationale_lane(label: str, summary: Summary) -> None:
+    """The session-264 rationale lane, on its own line so it can never read as part
+    of β/α — the same isolation the watch lane gets.
+
+    Printed only when the run supplied a procedure goal, because the role vocabulary
+    is derived from that goal (``grader.role_vocabulary``): with no directive there is
+    nothing a model could fairly be asked to name, and a 0/0 line would read as a
+    failure rather than as an absent measurement.
+    """
+    accuracy = (
+        f"{summary.rationale_accuracy:.1%}" if summary.rationale_accuracy is not None else "n/a"
+    )
+    print(
+        f"{label}: rationale names-approver {accuracy} "
+        f"({summary.rationale_correct}/{summary.rationale_graded} breach rationales name a "
+        f"goal-supplied human role) — reported, NOT a bar; never feeds β or α"
+    )
 
 
 def _print_watch_lane(label: str, summary: Summary) -> None:
@@ -272,6 +293,7 @@ def _item_record(result: ItemResult, item: BenchmarkItem | None = None) -> dict[
                 "detail": check.detail,
                 "advisory": check.advisory,
                 "probe": check.probe,
+                "rationale": check.rationale,
             }
             for check in result.grade.checks
         ]
@@ -285,6 +307,7 @@ def _item_record(result: ItemResult, item: BenchmarkItem | None = None) -> dict[
         "graded": result.graded,
         "proposal_correct": result.proposal_correct,
         "probe_correct": result.probe_correct,
+        "rationale_correct": result.rationale_correct,
         "probe_tier": result.probe_tier.value if result.probe_tier is not None else None,
         "watch_graded": result.watch_graded,
         "watch_pass": result.watch_pass,

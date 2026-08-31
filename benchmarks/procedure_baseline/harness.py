@@ -122,6 +122,12 @@ class ItemResult:
     error: str | None = None
     probe_correct: bool | None = None
     probe_tier: HandlerTier | None = None
+    #: The session-264 RATIONALE lane — did the prose name the human authority the
+    #: spend routes to? ``None`` when the run supplied no procedure goal (so no role
+    #: vocabulary could be derived) or the item was not graded. Never feeds
+    #: ``proposal_correct`` (β) or ``probe_correct`` (α) — lane isolation, the same
+    #: rule the watch lane obeys.
+    rationale_correct: bool | None = None
     judgment: LlmJudgment | None = None
     watch_graded: bool = False
     watch_pass: bool | None = None
@@ -457,7 +463,7 @@ async def evaluate_item(
             calls=run.calls,
         )
 
-    grade = grade_proposal(judgment, item.expected)
+    grade = grade_proposal(judgment, item.expected, goal=goal)
     return ItemResult(
         item_id=item.id,
         vertical=vertical,
@@ -469,6 +475,7 @@ async def evaluate_item(
         grade=grade,
         probe_correct=grade.probe_passed,
         probe_tier=grade.handler_tier,
+        rationale_correct=grade.rationale_passed,
         judgment=judgment,
         judgment_latency_s=latency,
         draft=run.draft,
@@ -531,6 +538,15 @@ class Summary:
     deterministic_correct: int
     deterministic_accuracy: float
     by_disposition: dict[str, int]
+    #: The session-264 RATIONALE lane, aggregated over graded breach items whose run
+    #: supplied a procedure goal. Zero-denominator (and ``rationale_accuracy`` None)
+    #: for any run without a goal, which is every offline call site — so this lane
+    #: appearing at all is itself the signal that a real directive was in play.
+    #: Defaulted, and therefore LAST: every field above predates it, and a defaulted
+    #: field in the middle of a dataclass makes every field after it unconstructible.
+    rationale_graded: int = 0
+    rationale_correct: int = 0
+    rationale_accuracy: float | None = None
 
 
 def summarize(results: Sequence[ItemResult]) -> Summary:
@@ -548,6 +564,8 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
     headline_correct = sum(1 for result in headline_basis if result.proposal_correct)
     probed = [result for result in graded if result.probe_correct is not None]
     probe_correct = sum(1 for result in probed if result.probe_correct)
+    rationaled = [result for result in graded if result.rationale_correct is not None]
+    rationale_correct = sum(1 for result in rationaled if result.rationale_correct)
     deterministic_correct = sum(1 for result in results if result.disposition_correct)
 
     by_disposition: dict[str, int] = {disposition.value: 0 for disposition in Disposition}
@@ -582,6 +600,9 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         probe_graded=len(probed),
         probe_correct=probe_correct,
         probe_accuracy=(probe_correct / len(probed)) if probed else None,
+        rationale_graded=len(rationaled),
+        rationale_correct=rationale_correct,
+        rationale_accuracy=(rationale_correct / len(rationaled)) if rationaled else None,
         probe_tiers=probe_tiers,
         watch_graded=len(watch_results),
         watch_scored=len(watch_scored),
