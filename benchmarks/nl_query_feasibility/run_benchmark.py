@@ -7,7 +7,12 @@ change; run only with Cray's go). NOT collected by CI (``pytest`` ``testpaths =
 
 What it measures: feed ~12 plain-language operator questions to the shipped
 ``services.engine.nl_query.answer_question`` (translate -> execute -> phrase)
-over the deterministic energy synthetic data, and report:
+over a vertical's deterministic synthetic data, and report:
+
+The vertical comes from the gold set's own ``vertical:`` key, and the matching
+adapter is registered from ``_ADAPTER_REGISTRARS`` below — ``gold.yaml`` is
+``energy``; ``gold_fleet.yaml`` (s265) is ``fleet_maintenance``, the before/after
+instrument for the ontology experiment.
 
 * **expressible accuracy** — questions a single-object-type ``StructuredQuery``
   can express (filters + list/count); scored on the deterministic executed
@@ -33,12 +38,28 @@ import argparse
 import asyncio
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from benchmarks.nl_query_feasibility.harness import CaseResult, load_gold, run_case, summarize
 from services.engine.llm.client import OllamaClient
 from verticals.energy.data_adapter import register_energy_adapter
+from verticals.fleet_maintenance.data_adapter import register_fleet_maintenance_adapter
+
+#: Gold-set ``vertical`` -> the adapter registration that serves its objects.
+#:
+#: This dispatch exists because the registration used to be a bare
+#: ``register_energy_adapter()`` that ignored the gold file entirely. Pointing
+#: ``--gold`` at another vertical therefore registered ENERGY's data and ran to
+#: completion, scoring one vertical's questions against another vertical's
+#: objects — a full result table, every number meaningless, nothing anywhere
+#: going red. Hence the fail-closed lookup below: an unknown vertical must stop
+#: the run, never fall back to a default that produces a plausible table.
+_ADAPTER_REGISTRARS: dict[str, Callable[[], object]] = {
+    "energy": register_energy_adapter,
+    "fleet_maintenance": register_fleet_maintenance_adapter,
+}
 
 
 def _print_case(r: CaseResult) -> None:
@@ -86,7 +107,15 @@ def _filter_cases(cases: list[dict[str, Any]], only: str | None) -> list[dict[st
 async def _main(args: argparse.Namespace) -> None:
     vertical, cases = load_gold(args.gold)
     cases = _filter_cases(cases, args.only)
-    register_energy_adapter()
+    registrar = _ADAPTER_REGISTRARS.get(vertical)
+    if registrar is None:
+        raise SystemExit(
+            f"gold set declares vertical {vertical!r}, which has no adapter registrar in "
+            f"_ADAPTER_REGISTRARS (known: {sorted(_ADAPTER_REGISTRARS)}). Refusing to run: "
+            "a default registration would score these questions against another vertical's "
+            "objects and still print a complete, plausible result table."
+        )
+    registrar()
     client = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
     print(f"NL-query feasibility spike: {len(cases)} questions, vertical '{vertical}'")
     print(f"model={args.model} @ {args.ollama_host}\n")

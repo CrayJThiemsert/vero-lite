@@ -15,11 +15,12 @@ adapter is registered and only the model transport is stubbed.
 from __future__ import annotations
 
 from collections.abc import Iterator
+from pathlib import Path
 from typing import Any
 
 import pytest
 
-from benchmarks.nl_query_feasibility.harness import load_gold, score_case
+from benchmarks.nl_query_feasibility.harness import GOLD_PATH, load_gold, score_case
 from services.engine.nl_query import (
     PHRASED_BY_DETERMINISTIC,
     AggregateResult,
@@ -65,9 +66,24 @@ def _answer(
     )
 
 
-def test_gold_set_is_well_formed_and_consistent() -> None:
-    vertical, cases = load_gold()
-    assert vertical == "energy"
+#: Every shipped gold set, and the vertical each one must declare.
+#:
+#: Parameterised rather than hard-coded to ``energy`` because a second gold set
+#: (``gold_fleet.yaml``, s265) now ships as the before/after instrument for the
+#: ontology experiment. A test that names one file cannot notice the other going
+#: malformed — and an unchecked gold set is worse than none, because its numbers
+#: still look like measurements.
+_GOLD_SETS = [
+    ("energy", GOLD_PATH),
+    ("fleet_maintenance", GOLD_PATH.parent / "gold_fleet.yaml"),
+]
+
+
+@pytest.mark.parametrize(("expected_vertical", "path"), _GOLD_SETS, ids=lambda v: str(v)[-24:])
+def test_gold_set_is_well_formed_and_consistent(expected_vertical: str, path: Path) -> None:
+    assert path.exists(), f"gold set missing: {path}"
+    vertical, cases = load_gold(path)
+    assert vertical == expected_vertical
     assert len(cases) >= 10
     ids = [c["id"] for c in cases]
     assert len(ids) == len(set(ids)), "duplicate case id"
