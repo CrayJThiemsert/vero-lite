@@ -17,6 +17,8 @@ assertion at a time.
 from __future__ import annotations
 
 import json
+import os
+import signal
 import stat
 import subprocess
 import sys
@@ -30,6 +32,7 @@ from tools.probe_battery import (
     VERDICT_PASS,
     Battery,
     BatteryDefinitionError,
+    BatteryInterruptedError,
     BatteryResult,
     Classification,
     MutationError,
@@ -44,7 +47,7 @@ from tools.probe_battery import (
     restore_pending,
     run_battery,
 )
-from tools.probe_battery._battery import _child_env, _overlaps
+from tools.probe_battery._battery import _child_env, _overlaps, _terminating_signals
 from tools.probe_battery._lock import lock_path
 from tools.probe_coverage import Claim, enumerate_claims
 
@@ -917,3 +920,72 @@ def test_a_battery_file_missing_a_required_probe_field_is_refused(project: Path)
     payload: dict[str, object] = {"claim_sources": ["test_suite.py"], "probes": [{"name": "P1"}]}
     with pytest.raises(BatteryDefinitionError, match="missing required field"):
         Battery.from_json(payload, base=project)
+
+
+# ======================================================================================
+# The spawn deferral — the window where a raising handler orphans a running pytest
+# ======================================================================================
+#
+# `subprocess.Popen` forks and execs inside `__init__`. A SIGTERM handler that raises can
+# fire after the child is running but before `proc` is bound, so no `except` can reach it.
+# Measured s265 under single-CPU contention: 4 of 6 signals landed at
+# `subprocess.py:_execute_child` and orphaned a pytest that then ran its body out.
+#
+# These four are deterministic — `os.kill` on self reaches the handler at the next bytecode
+# boundary, so the window does not have to be raced to be tested. The scenario suite drives
+# the same fix through a real fork/exec under a real signal.
+
+_POSIX_ONLY = pytest.mark.skipif(
+    sys.platform == "win32", reason="POSIX signals — os.kill(SIGTERM) terminates on Windows"
+)
+
+
+@_POSIX_ONLY
+def test_a_signal_arriving_during_a_deferred_spawn_does_not_escape_it() -> None:
+    """🔴 The claim the fix exists for. Recorded rather than raised: an `except` that let
+    the failure through as an error would be swallowed by the harness, not reported."""
+    escaped = False
+    with _terminating_signals() as interrupts:
+        interrupts.defer()
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+        except BatteryInterruptedError:
+            escaped = True
+        finally:
+            interrupts.stand_down()
+    assert escaped is False
+
+
+@_POSIX_ONLY
+def test_the_same_signal_outside_the_deferral_still_raises_immediately() -> None:
+    """🟢 POSITIVE CONTROL for the test above. Without it, that `False` is satisfied by a
+    signal that never reached the handler at all — which is the vacuous reading."""
+    escaped = False
+    with _terminating_signals():
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+        except BatteryInterruptedError:
+            escaped = True
+    assert escaped is True
+
+
+@_POSIX_ONLY
+def test_resume_raises_the_held_signal_so_the_kill_path_can_still_run() -> None:
+    """Deferring must not DISCARD the interrupt. `resume()` is called inside the runner's
+    `try`, so the raise it performs is what routes into the branch that kills the child."""
+    with _terminating_signals() as interrupts:
+        interrupts.defer()
+        os.kill(os.getpid(), signal.SIGTERM)
+        with pytest.raises(BatteryInterruptedError, match="during the probe spawn"):
+            interrupts.resume()
+
+
+@_POSIX_ONLY
+def test_stand_down_hands_back_the_held_signal_without_raising() -> None:
+    """The `finally` path needs a non-raising exit: raising out of a `finally` would
+    displace whatever exception is already unwinding."""
+    with _terminating_signals() as interrupts:
+        interrupts.defer()
+        os.kill(os.getpid(), signal.SIGTERM)
+        held = interrupts.stand_down()
+    assert held == signal.SIGTERM
