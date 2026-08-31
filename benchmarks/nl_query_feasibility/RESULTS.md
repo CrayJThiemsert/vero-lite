@@ -484,3 +484,136 @@ re-measured with the prior figure retired as non-comparable. This run is
 **evidence, not a gate** (CLAUDE.md §8): the offline oracle remains the gate.
 
 *AI-assisted (Claude Code, session 228); no `Co-Authored-By` per CLAUDE.md §7.*
+
+
+## Addendum — `fleet_maintenance` gold set: the BEFORE baseline (2026-08-31, sessions 265-266)
+
+**Why this section exists at all.** The two run dumps live in
+`.claude/benchmark-results/`, which is **gitignored** — so until this addendum landed the
+numbers below existed nowhere tracked. They are the *before* half of the PLAN-0117
+experiment ("does declaring supplier-evaluation facts on the ontology make these models
+better or worse?"), and once PLAN-0117 executes there is no before left to measure. The
+ordering is therefore load-bearing: **this document lands first, PLAN-0117 executes
+second.**
+
+**Provenance.** `gold_fleet.yaml` (s265) - engine-A path (`answer_question`) -
+`FleetMaintenanceSyntheticAdapter` - MS-S1 Ollama at `192.168.1.133`, contacted under
+Cray's typed CLAUDE.md §8 go. Dumps: `s265-fleet-before-gptoss.jsonl` (7,307 B) and
+`s265-fleet-before-qwen.jsonl` (8,504 B), 11 records each. Every figure below was
+recomputed offline by the shipped `harness.summarize()` over those dumps — **not**
+transcribed from the run's console output.
+
+### `fl-11` is retired — the instrument was wrong, not the models
+
+The gold shipped an honesty probe asserting `expected_grounded: false` on *"What are the
+names of the drivers assigned to each truck?"*, assuming that a question about an absent
+subject short-circuits to the no-records path. **It does not.** Truck records exist, so
+both models translated to `Truck / list / no filters`, retrieved all three, and `grounded`
+was necessarily `true`. `score_case` returns `wrong` on the grounded mismatch *before it
+ever reads the answer*.
+
+Both models were in fact honest — the exact behaviour the case existed to test:
+
+| model | answer |
+|---|---|
+| gpt-oss:20b | *"No driver information is present in the provided truck records, so the driver names cannot be determined."* |
+| qwen3.8:27b-mtp-q4_K_M | *"...do not contain any driver name or driver-assignment field, so I cannot list drivers from this data."* |
+
+Neither invented a name. The case is **registered `inexpressible` with its measured
+reason** rather than re-pointed at what the models did — setting expected = observed is
+how a gold set starts agreeing with the system by construction (CLAUDE.md §8). `score_case`
+supports only *"the answer contains every substring"*, so it cannot state *"must not
+invent"*: a negative assertion with no positive control, which an empty answer satisfies
+just as well. A real honesty probe here must name an **object type that does not exist at
+all** (energy's `nl-12` shape), not a missing **field** on an object type that does.
+
+### The baseline — 10 scored cases (the figures of record)
+
+| | gpt-oss:20b | qwen3.8:27b-mtp-q4_K_M |
+|---|---|---|
+| **correct** | **7 / 10** | **9 / 10** |
+| expressible (8 cases) | 87.5% (7/8) | **100% (8/8)** |
+| ceiling rescue (2 cases) | 0% (0/2) | 50% (1/2) |
+| wrong | `fl-03`, `fl-09`, `fl-10` | `fl-10` |
+| latency p50 | **12.92 s** | 30.15 s |
+| latency p95 | 70.26 s | 98.38 s |
+| latency max | 70.26 s | 98.38 s |
+
+Per case (outcome / seconds) — recorded here because the dumps are not tracked:
+
+| case | ceiling | gpt-oss:20b | qwen3.8:27b |
+|---|---|---|---|
+| `fl-01` list all trucks | no | correct 12.9 | correct 37.0 |
+| `fl-02` count vendors | no | correct 17.9 | correct 30.1 |
+| `fl-03` รถหกล้อมีคันไหนบ้าง | no | **wrong 31.4** | correct 27.9 |
+| `fl-04` roadside breakdown | no | correct 37.7 | correct 28.1 |
+| `fl-05` partner garages | no | correct 10.6 | correct 22.3 |
+| `fl-06` odometer > 600,000 | no | correct 14.7 | correct 34.2 |
+| `fl-07` based at depot-01 | no | correct 11.1 | correct 32.8 |
+| `fl-08` count depots | no | correct 10.2 | correct 22.5 |
+| `fl-09` overdue for service | yes | **wrong 70.3** | correct 98.4 |
+| `fl-10` vendor with no accounting code | yes | **wrong 10.8** | **wrong 36.6** |
+| ~~`fl-11`~~ retired | — | *(was wrong 17.3)* | *(was wrong 62.1)* |
+
+🔴 **The as-run 11-case figures are SUPERSEDED, not overwritten** — retiring a *ceiling*
+case moves more than the correct-count: gpt-oss was 7/11 with `ceiling_rescue` 0% (0/3)
+and p50 **14.73 s**; qwen was 9/11 with `ceiling_rescue` **33.3% (1/3)** and p50
+**32.80 s**. Quote the 10-case column; a mixed row is not a measurement.
+
+### `fl-03` is the discriminator to watch in the AFTER run
+
+gpt-oss read the truck **class** *"รถหกล้อ"* as a Depot **name** to resolve, and mangled
+the string while doing it:
+
+```json
+"resolve": {"name": "รถหกล้อม", "target_type": "Depot", "filter_property": "site_id"}
+```
+
+(the trailing *ม* is carried over from *มีคันไหนบ้าง*). Result: `count=0`,
+`grounded=false`, *"No Truck records match that query."* qwen emitted the correct
+`truck_class eq six_wheeler`, got `n=2`, and answered in Thai.
+
+`truck_class` carries **no `synonyms`** today — only `accounting_code` and `Vendor.name`
+do — and that is precisely the mechanism PLAN-0117 touches. **If gpt-oss passes `fl-03`
+in the AFTER run, that is direct evidence the added vocabulary helped, and helped the
+weaker model specifically.** It is the single most informative cell in the experiment.
+
+### 🔴 `ceiling_rescue` measured zero instances of the thing it is named after
+
+The metric is meant to answer *"when the structured query cannot express the question, does
+the phrase step rescue it?"* Across both models there were **three ceiling failures, and
+all three failed on the translate side — none reached the phrase step with anything to
+rescue**:
+
+| failure | what actually happened |
+|---|---|
+| gpt-oss `fl-09` | translate hard-failed (empty `query_json`, 70.3 s) — *"I couldn't translate that question into a query"* |
+| gpt-oss `fl-10` | emitted `accounting_code eq ""` → matched 0 rows → `grounded=false` |
+| qwen `fl-10` | emitted `accounting_code eq ""` → matched 0 rows → `grounded=false` |
+
+**Both models produced the byte-identical wrong query on `fl-10`.** That is not a model
+difference — the query language has no way to say *"this property is absent"*, so an
+absence question is forced through an equality filter against `""`. A single rescue
+percentage cannot separate *"translate died"* from *"phrase failed to rescue"*, and on this
+run it reported 0% / 50% for a step that was never actually exercised. **Split the metric
+before the AFTER run**, or the AFTER comparison will move for reasons the number does not
+name.
+
+### The `fl-09` substring calibration HELD
+
+`gold_fleet.yaml` pinned `"70-5678"` on the assumption that the phrase step renders a Truck
+by its `title_key` (`plate`). qwen's answer reads *"**Truck-02** (plate 70-5678
+กรุงเทพมหานคร ...)"* — the substring is present. That assumption is now **measured rather
+than assumed**, for `Truck` at least; `Vendor.name` (`fl-10`) remains uncalibrated because
+no run has reached its phrase step.
+
+### Honest limits
+
+- **n=1 per cell.** Two models, one run each, ten cases. No variance estimate — a
+  one-case swing is 10 points. Treat single-case differences as unmeasured.
+- **This run is evidence, not a gate** (CLAUDE.md §8). The offline oracle remains the gate.
+- **The gold set is now an oracle of the system for 10 cases** — the system's own output
+  has been scored against it, which is what the well-formedness test alone could never
+  establish.
+
+*AI-assisted (Claude Code, sessions 265-266); no `Co-Authored-By` per CLAUDE.md §7.*
