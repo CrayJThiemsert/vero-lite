@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from ruamel.yaml import YAML
 
 from benchmarks.nl_query_feasibility.harness import GOLD_PATH, load_gold, score_case
 from services.engine.nl_query import (
@@ -103,6 +104,60 @@ def test_gold_set_is_well_formed_and_consistent(expected_vertical: str, path: Pa
     # both lanes must be exercised
     assert any(c["ceiling"] for c in cases)
     assert any(not c["ceiling"] for c in cases)
+
+
+def _gold_register(path: Path) -> list[dict[str, Any]]:
+    """One gold set's ``inexpressible:`` register, read from the file.
+
+    ``load_gold`` returns only ``vertical`` + ``cases``, so until now the
+    register had no reader in the test suite and therefore no grader: a blank
+    reason reddened nothing. The register is where a RETIRED case goes (fl-11,
+    s265), which is exactly why an ungraded one is dangerous — it makes a silent
+    deletion indistinguishable from a documented retirement.
+    """
+    yaml = YAML(typ="safe")
+    with path.open(encoding="utf-8") as handle:
+        data: dict[str, Any] = yaml.load(handle)
+    return list(data.get("inexpressible") or [])
+
+
+def test_every_registered_inexpressibility_carries_a_question_and_a_reason() -> None:
+    """A register entry with no written reason is an undocumented escape hatch.
+
+    CLAUDE.md §8 permits registering a case as inexpressible instead of scoring
+    it, but only *with its reason* — the reason is the whole substance of the
+    admission.
+    """
+    entries = [(path, e) for _v, path in _GOLD_SETS for e in _gold_register(path)]
+    # Non-vacuity: "every entry carries a reason" is satisfied by zero entries.
+    assert entries, "no gold set registers any inexpressible question — check the reader"
+    blank = [
+        f"{path.name}: {str(e.get('question', ''))[:40]!r}"
+        for path, e in entries
+        if not str(e.get("question", "")).strip() or not str(e.get("reason", "")).strip()
+    ]
+    assert not blank, f"register entries missing a question or a written reason: {blank}"
+
+
+def test_a_registered_question_is_not_also_a_scored_case() -> None:
+    """The register and the scored cases must not overlap.
+
+    A question in both would be excused AND graded: the excuse would read as
+    covering a gap that no longer exists, and a retirement that forgot to remove
+    the scored case would look exactly like a successful one.
+    """
+    checked = 0
+    for _vertical, path in _GOLD_SETS:
+        register = {str(e.get("question", "")).strip() for e in _gold_register(path)}
+        if not register:
+            continue
+        _v, cases = load_gold(path)
+        scored = {str(c["text"]).strip() for c in cases}
+        checked += 1
+        both = sorted(register & scored)
+        assert not both, f"{path.name}: questions both scored and registered: {both}"
+    # Non-vacuity: an empty register on every gold set would pass the loop above.
+    assert checked, "no gold set has a non-empty register — the overlap check ran on nothing"
 
 
 def _case(**kw: Any) -> dict[str, Any]:
