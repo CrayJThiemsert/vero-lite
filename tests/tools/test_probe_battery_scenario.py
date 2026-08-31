@@ -234,7 +234,24 @@ def test_the_subject_is_restored_byte_identically_after_sigterm(slow_project: Pa
 def test_the_pytest_child_does_not_outlive_the_sigtermed_driver(slow_project: Path) -> None:
     """🔴 A 30-second sleep still running after the driver exits is an orphan holding
     whatever the test held — the shape behind the 67-minute hang. The driver's
-    kill-on-any-exception path is what prevents it."""
+    kill-on-any-exception path is what prevents it.
+
+    **The check is immediate, and that is deliberate — do not add a grace period here.**
+    This went flaky in CI (s265: run 33361773136 red at 5d679ae, the identical sha green on
+    re-run), and a bounded poll for the child to disappear is the obvious repair. It would
+    have been the wrong one. The driver kills its child with ``proc.kill()`` followed by
+    ``proc.communicate()``, and ``communicate()`` waits — so the child is always reaped
+    *before* the driver itself exits. Once ``proc.wait()`` above has returned there is no
+    reaping still in flight, and anything ``pgrep`` can still see is a genuine orphan.
+
+    What was actually broken was the driver. A SIGTERM landing inside ``Popen.__init__`` —
+    child already forked and exec'd, ``proc`` not yet bound — escaped the kill path
+    entirely, because no ``except`` can reach a name that was never assigned. Measured under
+    single-CPU contention: 9 failures in 12 runs, and every survivor lived out its full
+    30-second body rather than dying milliseconds late. A grace period would not have caught
+    one of them; it would only have made each failure 35 seconds slower to report.
+    ``_DeferredInterrupts`` in ``_battery.py`` closes that window, and this assertion stays
+    immediate so it keeps reddening promptly when a child really does outlive its driver."""
     proc = _armed(slow_project)
     proc.terminate()
     proc.wait(timeout=60)
