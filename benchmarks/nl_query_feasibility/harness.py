@@ -164,9 +164,34 @@ async def run_case(case: dict[str, Any], vertical: str, client: ChatClient) -> C
 
 
 def summarize(results: list[CaseResult]) -> dict[str, Any]:
-    """Aggregate one run: expressible accuracy, ceiling rescue rate, latency."""
+    """Aggregate one run: expressible accuracy, the ceiling lane, latency.
+
+    The ceiling lane is reported as THREE numbers, not one. A ceiling case can
+    fail on either side of the engine, and the single ``ceiling_rescue`` rate
+    this used to publish could not tell them apart:
+
+    * translate never handed the phrase step anything (no query emitted, or a
+      query that retrieved no records), or
+    * the phrase step had records and still failed to carry the expected facts.
+
+    Measured s265 on ``gold_fleet.yaml``: **all three ceiling failures across two
+    models were translate-side, and none reached the phrase step** — so the old
+    metric reported 0% and 50% "rescue" for a step that never ran. Only the
+    second kind is a rescue failure, and only the first is what a wider translate
+    vocabulary (PLAN-0117) can move.
+
+    Every denominator is published as a count, because the ceiling lane is small
+    (2 cases on ``gold_fleet.yaml``) and a bare percentage over n=2 reads as a
+    rate it is not.
+    """
     expressible = [r for r in results if not r.ceiling]
     ceiling = [r for r in results if r.ceiling]
+    # Translate emitted a query at all — an empty `query_json` is the hard-fail
+    # shape (`run_case` also writes it when `answer_question` raised).
+    translated = [r for r in ceiling if r.query_json]
+    # The phrase step can only RESCUE a case it was given records for. `grounded`
+    # is the engine's own record of that, so this reads the SUT, not a proxy.
+    rescuable = [r for r in ceiling if r.grounded]
     latencies = [r.latency_s for r in results]
 
     def acc(rows: list[CaseResult]) -> float | None:
@@ -178,7 +203,16 @@ def summarize(results: list[CaseResult]) -> dict[str, Any]:
         "wrong": [r.qid for r in results if r.outcome == "wrong"],
         "invalid": [r.qid for r in results if r.outcome == "invalid"],
         "expressible_acc": acc(expressible),
-        "ceiling_rescue": acc(ceiling),
+        # Renamed from `ceiling_rescue`, same value: the fraction of ceiling cases
+        # scored correct. Comparable to every figure recorded before s266 — only
+        # the name changed, because the old one named a step it did not measure.
+        "ceiling_acc": acc(ceiling),
+        "ceiling_n": len(ceiling),
+        "ceiling_translated_n": len(translated),
+        # None, never 0.0, when nothing reached the phrase step: a 0% would read
+        # as "the phrase step failed" when it was never asked.
+        "phrase_rescue": acc(rescuable),
+        "phrase_rescue_n": len(rescuable),
         "latency_p50_s": round(percentile(latencies, 50.0), 2) if latencies else 0.0,
         "latency_p95_s": round(percentile(latencies, 95.0), 2) if latencies else 0.0,
         "latency_max_s": round(max(latencies), 2) if latencies else 0.0,
