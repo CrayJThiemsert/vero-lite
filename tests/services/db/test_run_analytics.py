@@ -282,6 +282,64 @@ async def test_aggregation_is_pushed_to_sql_not_python(seeded: _Seeded) -> None:
         )
 
 
+async def test_projected_by_run_aggregates_in_sql_and_returns_one_row(seeded: _Seeded) -> None:
+    """``projected_by_run`` holds SD-8 (a) with a STRONGER shape than the tuple above.
+
+    It cannot join ``test_aggregation_is_pushed_to_sql_not_python``'s primitive
+    tuple, because that guard asserts ``len(result) < 50`` on a *list* and this
+    primitive returns a single aggregate object — O(1), not O(groups). The
+    property still has to be pinned, so it is pinned here rather than left to the
+    hard-coded tuple, which a new reader does not automatically redden.
+    """
+    seeded.statements.clear()
+    result = await ra.projected_by_run(seeded.session)
+
+    selects = [s for s in seeded.statements if s.lstrip().upper().startswith("SELECT")]
+    assert len(selects) == 1, f"emitted {len(selects)} SELECTs, expected 1"
+    assert "GROUP BY" in selects[0].upper(), (
+        "the per-run SUM must be an inner subquery pushed into SQL — an in-Python "
+        "materialize-then-sum over 250 runs would look like this"
+    )
+    assert "LIMIT" not in selects[0].upper(), "no listing shape (SD-8 (a))"
+    assert result.run_count <= seeded.corpus.run_count
+    assert result.provisional is True
+
+
+async def test_projected_by_run_scopes_to_the_requested_run_ids(seeded: _Seeded) -> None:
+    """The month-scoping argument actually narrows — a positive control.
+
+    Without this, ``run_ids`` could be silently ignored (the ``if run_ids is not
+    None`` branch never taken, or the ``IN`` clause dropped) and the whole-corpus
+    call above would still pass. So the assertion is a STRICT inequality against a
+    known-smaller subset, and the empty case is checked separately because an
+    empty ``IN ()`` that matched everything would satisfy a mere ``<=``.
+    """
+    everything = await ra.projected_by_run(seeded.session)
+    assert everything.run_count > 1, (
+        f"corpus contributed {everything.run_count} runs with a ฿ facet — this test "
+        "cannot discriminate on a corpus of 0 or 1. Fix the corpus, not the assert."
+    )
+
+    contributing = (
+        (
+            await seeded.session.execute(
+                sa.select(PipelineRun.run_id).order_by(PipelineRun.run_id).limit(1)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    subset = await ra.projected_by_run(seeded.session, run_ids=list(contributing))
+    assert subset.run_count < everything.run_count, (
+        "scoping to one run returned the same run_count as the whole corpus — "
+        "the run_ids filter is not reaching the query"
+    )
+
+    none_at_all = await ra.projected_by_run(seeded.session, run_ids=[])
+    assert none_at_all.run_count == 0, "an empty run set must aggregate to zero runs"
+    assert none_at_all.projected_net_benefit_thb == Decimal(0)
+
+
 async def test_substrate_exposes_no_listing_primitive() -> None:
     """SD-8 (a): the substrate ships aggregate primitives only — no run listing."""
     assert not hasattr(ra, "list_runs_page")
