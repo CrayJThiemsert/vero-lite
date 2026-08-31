@@ -57,6 +57,7 @@ from services.db.repair_spend_export import CSV_ENCODING, load_monthly_export
 from services.engine import demo_events
 from services.engine.procedures import gate_hooks
 from services.engine.procedures.persistence import load_run
+from tests.support.accounting_month import accounting_month
 from verticals.fleet_maintenance import case_projection
 
 _VERTICAL = "fleet_maintenance"
@@ -597,7 +598,8 @@ async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
 
     # --- the outcome surface (Cray's ruling (a), s244) ------------------------
     now = datetime.now(UTC)
-    export = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    year, month = accounting_month(now)
+    export = await load_monthly_export(db_session, year=year, month=month, now=now)
     mine = [r for r in export.rows if r.case_id == case_id]
     assert len(mine) == 1, f"one governed case, one export row — got {len(mine)}"
     assert mine[0].governed is True, "the case must read as GOVERNED, not as escaped money"
@@ -609,7 +611,7 @@ async def test_the_full_walk_both_gates_the_link_row_and_the_case_surface(
     )
 
     rendered = await client_with_db.get(
-        f"/api/exports/repair-spend/{now.year}/{now.month}.csv", headers=_HEADERS
+        f"/api/exports/repair-spend/{year}/{month}.csv", headers=_HEADERS
     )
     assert rendered.status_code == 200, rendered.text
     csv_rows = list(csv.DictReader(io.StringIO(rendered.content.decode(CSV_ENCODING))))
