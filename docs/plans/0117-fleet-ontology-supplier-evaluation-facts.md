@@ -1,10 +1,10 @@
-# PLAN-0117: Fleet ontology carries supplier-evaluation facts — the rationale-bar unlock, supply side
+# PLAN-0117: Fleet ontology carries supplier-evaluation facts — the Ask-surface unlock; a prerequisite for the rationale bar, not its unlock
 
 **Status:** Draft
-**Owner:** Claude Code — **execution-unblocked, no open SDs.** Cray ruled every SD (typed, 2026-08-31, session 265): SD-1=(c), SD-2=SPLIT (fleet side here; core promotion deferred to its own ADR+PLAN), SD-3 IN-set ruled, SD-4=(a), SD-5=(a), and — later the same session — **SD-3a RULED: declare all four remaining donor properties now, bare + rich `description`, NO synonyms** (see the SD-3a ruling block; it overturns this draft's earlier OUT disposition for those four, lineage preserved).
-**Created:** 2026-08-31 · **Revised:** 2026-08-31 ×2 (same session family, s265 — first pass: rulings + two specialist investigations; second pass: SD-3a ruling closed + propagated)
+**Owner:** Claude Code — **execution-unblocked, no open SDs.** Cray ruled every SD (typed, 2026-08-31, session 265): SD-1=(c), SD-2=SPLIT (fleet side here; core promotion deferred to its own ADR+PLAN), SD-3 IN-set ruled, SD-4=(a), SD-5=(a), and — later the same session — **SD-3a RULED: declare all four remaining donor properties now, bare + rich `description`, NO synonyms** (see the SD-3a ruling block; it overturns this draft's earlier OUT disposition for those four, lineage preserved). In the s265 correction pass, **SD-6 RULED (a): the ontology's effect on the two MS-S1 models is measured on the NL / Ask surface (`benchmarks/nl_query_feasibility/`), not on `procedure_baseline`** (see SD-6 + the Correction record).
+**Created:** 2026-08-31 · **Revised:** 2026-08-31 ×3 (same session family, s265 — first pass: rulings + two specialist investigations; second pass: SD-3a ruling closed + propagated; third pass: **correction** — Code's offline measurement F17 showed the ontology never reaches the procedure agent's prompt, so the theory of change is corrected from "rationale-bar unlock" to "Ask-surface unlock + rationale-bar prerequisite"; SD-6 ruled)
 **Related ADRs:** ADR-006 (Rule of Three — bore on SD-2's *original* reasoning; superseded as the operative ground by the SPLIT ruling), ADR-008 (ontology schema + D1 "may extend" license; D4 many_to_many deferral), ADR-0032 (D1 demo→pilot correction-surface discipline — bears on SD-1), ADR-0033 (**D6 boundary — the deferred core promotion must formally reopen it**; see the Out-of-Scope deferred-core record), ADR-0034 (D4 evidence-alternative — the per-case sole-source record that makes a vendor-level `single_source_flag` a double-statement risk; originally the OUT reason in SD-3, now the **noted residual concern** under the SD-3a ruling)
-**Related PLANs:** PLAN-0109 (Draft, unexecuted — **edits the same YAML file**; see the Coordination section), PLAN-0111 (verified **zero overlap** — Coordination §5 / F14), `done/0036` (the procurement donor), the later grader PLAN this one unlocks (unnumbered; named in Out of Scope), the deferred core-promotion ADR+PLAN (unnumbered; the Out-of-Scope block below is its durable record until they exist)
+**Related PLANs:** PLAN-0109 (Draft, unexecuted — **edits the same YAML file**; see the Coordination section), PLAN-0111 (verified **zero overlap** — Coordination §5 / F14), `done/0036` (the procurement donor), the later grader PLAN this one feeds (unnumbered; named in Out of Scope — this PLAN is a prerequisite for its rationale lane, **not** its unlock: that lane also needs the goal edit (SD-4, that PLAN) and the still-unscoped event/goal carrier, F17), the deferred core-promotion ADR+PLAN (unnumbered; the Out-of-Scope block below is its durable record until they exist)
 
 > **Drafting provenance (ADR-012 D4.3).** Authored by the in-harness `plan-drafter`
 > subagent from a Code-tab dispatch (session-264 follow-on fact-pack, verified by the
@@ -17,7 +17,13 @@
 > ruling and propagate it; the ruling's structural grounds (description dropped at load
 > by design, schema legality of a property `description`, the honest-no-records path)
 > re-verified on disk by this second revision — only the byte figures remain "measured
-> by Code, s265". Independent review: Cray at PR merge. Code commits via PR
+> by Code, s265". **Revised a third time (s265, same subagent) — a correction pass:**
+> Code's offline measurement (F17: the ontology does not reach the procedure agent's
+> prompt; positive-controlled) narrows the theory of change, and Cray's typed SD-6
+> ruling fixes the measurement surface. Every F17 grep count, the positive control, the
+> prompt-builder signatures, the orchestrator near-miss, and the six-vertical `reads:`
+> staleness evidence were re-verified on disk by this revision before citing.
+> Independent review: Cray at PR merge. Code commits via PR
 > (CLAUDE.md §7); the drafter does not commit.
 
 ---
@@ -31,15 +37,39 @@ role-naming alone **because** "is this the right supplier, does their delivery h
 support accepting this quote, how does it compare with the alternatives — rest on facts
 the ontology does not yet carry" (`benchmarks/procedure_baseline/grader.py:83-91`;
 `benchmarks/model_compare/RESULTS-1.6.md:706-718` §13;
-`docs/lessons/0052-a-criterion-may-only-demand-what-the-run-supplies.md:69-74` — "the
-ontology work is now the **named unlock**"). This PLAN retires the **ontology half** of
-that blocker: after it, the facts are declared, Thai-addressable in the translate
-prompt, and served with values, so a later, separate PLAN can raise the demand side.
-Stated honestly per RESULTS §13 ("each supplier-evaluation fact that enters the
-ontology **and the goal** makes a stricter rule answerable"): answerability for the
-rationale lane needs both halves — the goal/dataset/grader half deliberately rides
-together in the later PLAN (SD-4, **RULED (a)**), so supply and demand land in one
-reviewable diff. This PLAN makes the richer criteria *expressible*; it demands nothing.
+`docs/lessons/0052-a-criterion-may-only-demand-what-the-run-supplies.md:69-74`). That
+framing is right that the facts have no home — and this PLAN builds the home. What it
+does **not** do is put those facts in front of the procedure model, because the
+ontology is not on that model's prompt path at all (**F17, measured s265 with a
+positive control**). Stated plainly, in three parts:
+
+- **What this PLAN DOES unlock, and it is real: the NL / Ask surface (Tab C).**
+  `_describe_ontology` genuinely feeds the translate prompt there (F13), and the seed
+  serves the values — a visitor asking "which garage has the most comebacks?" becomes
+  answerable, on a live, visitor-facing surface of the published demo. This is where
+  the ontology's effect on the MS-S1 models will be measured (**SD-6, RULED**:
+  `benchmarks/nl_query_feasibility/`).
+- **What it does NOT unlock on its own: the `procedure_baseline` rationale lane.**
+  The procedure agent's prompt is built from exactly four inputs — a static role
+  string, the `procedures.yaml` goal, the handler catalog, and the event (F17) — and
+  a declared ontology property routes into none of them. Adding properties alone
+  moves **nothing** in that lane.
+- **The missing second half, named as unscoped work:** for supplier facts to reach
+  the procedure model, something must carry them into the **event** (the adapter's
+  event builders, `verticals/fleet_maintenance/data_adapter/synthetic.py:175,198`) or
+  into the **goal** text (`procedures.yaml` — SD-4 deliberately parked goal edits
+  with the later grader PLAN). **Nobody has scoped that carrier.** It is not this
+  PLAN's job; its absence is recorded in Out of Scope so it is visible here, not
+  discovered later.
+
+The rationale-lane statement per RESULTS §13 ("each supplier-evaluation fact that
+enters the ontology **and the goal** makes a stricter rule answerable") therefore
+needs all its halves read literally: the goal/dataset/grader half rides together in
+the later PLAN (SD-4, **RULED (a)**), the value-carrier is unscoped, and this PLAN
+supplies the declaration + Ask-surface half. This PLAN is still worth executing
+exactly as ruled: `Vendor` property declaration is a **prerequisite for anything
+supplier-shaped on either surface** — no carrier, goal edit, or grader move can
+reference a fact that has no declared home. It demands nothing of any model.
 
 Shape, per the s265 rulings: **SD-1=(c)** — the values ship as DEMO-SEED,
 provenance-marked **AUTHORED**, with the measured-projection route recorded in YAML
@@ -50,19 +80,72 @@ the Out-of-Scope deferred-core block below. **SD-3+SD-3a — the declaration is
 two-banded:** the 5 narrative-grounded facts carry Thai synonyms and seed values (the
 "answerable" band above); the donor's 4 remaining compliance properties (`tax_id`,
 `cert_status`, `sanctions_flag`, `single_source_flag`) are declared **bare + rich
-`description`, NO synonyms, NO seed values** — prompt-visible by name so the LLM can
-use them the moment a value exists (Cray's requirement (c)), while an unpopulated one
-routes honestly to the no-records answer (F15) rather than a fabrication.
+`description`, NO synonyms, NO seed values** — prompt-visible by name so the
+Ask/translate LLM can use them the moment a value exists (Cray's requirement (c);
+the procedure model sees no ontology property either way, F17), while an unpopulated
+one routes honestly to the no-records answer (F15) rather than a fabrication.
+
+## Correction record (s265, third pass) — believed, measured, stands
+
+⚠️ **Corrected 2026-08-31 (s265).** Recorded in the house idiom for a corrected
+claim: what was believed, what was measured, what now stands.
+
+- **Believed (this PLAN's own earlier title + Goal):** that this PLAN was "the
+  rationale-bar unlock, supply side" — i.e. that declaring the supplier facts in the
+  ontology was **the** unlock for raising the `procedure_baseline` rationale bar,
+  inheriting `grader.py:83-91`'s "an **ontology** move before it is a grader move"
+  and Lesson 0052's "the ontology work is now the **named unlock**" at face value.
+- **Measured (Code, s265, offline, positive-controlled — F17):** the ontology never
+  reaches the procedure agent's prompt. `build_reasoning_messages` →
+  `build_system_instruction(vertical: str, goal, catalog)` builds it from a static
+  role string, the goal, the handler catalog, and the event — the vertical parameter
+  is a `str` name, never `OntologyMeta`. `grep -c ontology` = 0 on both prompt-path
+  modules while the **same grep returns 18 on `nl_query.py`** (the control that makes
+  the zeros evidence rather than a broken grep). Declaring a property routes it into
+  neither the event nor the goal — the only two channels that reach that model.
+- **Stands:** (i) the sources' literal claims are still true — the facts had no home,
+  and RESULTS §13's own wording already named "the ontology **and the goal**"; (ii)
+  what died is the *reading* that declaration alone puts facts in front of the
+  procedure model; (iii) this PLAN's unlock is the **NL / Ask surface**, where the
+  ontology genuinely feeds the prompt, and that is where the effect is measured
+  (SD-6); (iv) the rationale lane additionally needs the goal edit (SD-4, later PLAN)
+  **and** an unscoped value-carrier into the event or goal (Out of Scope); (v) every
+  AC of this PLAN stands unweakened — **this correction narrows a claim, not a
+  criterion** — and the work is still worth executing: no surface can use a fact
+  that has no declared home. A post-F17 reading note on SD-3a: "the LLM must be able
+  to use them" in Cray's requirement (c) is satisfied on the **Ask/translate model**
+  — the mechanism the ruling itself cites is `_describe_ontology` — not on the
+  procedure model, which sees no ontology property until the carrier exists.
+
+**Retired-claim handling (`docs/conventions/retired-claims.md`, checked — judged NOT
+to emit a marker from this PLAN; stated explicitly, not silently picked):** (1) the
+verbatim source wordings are **not dead claims** — `grader.py:83-91` truly states the
+facts "rest on facts the ontology does not yet carry", and RESULTS §13 names both
+halves — so retiring their text would kill true sentences; what died is a *reading*,
+whose only verbatim home was this PLAN's own pre-amendment title/Goal, rewritten in
+place on the unmerged PR branch — no live stale copy survives for a marker to guard;
+(2) a marker matching `grader.py`'s or Lesson 0052's live wording would fail the
+guard against those files and force cross-file edits this correction pass must not
+make (the grader is this PLAN's own first Out-of-Scope bullet). One candidate stale
+copy IS named for later propagation per the convention's backfill rule: Lesson
+0052:71-72 ("the ontology work is now the named unlock") is now half-true — true for
+the Ask surface, incomplete for the rationale lane — and should gain its
+qualification (with a retire marker if reworded) whenever that lesson or the later
+grader PLAN next touches it. Likewise `orchestrator.py:569`'s stale "every shipped
+procedure is reads-absent" docstring (F17) — noted, not fixed here.
 
 ## Baseline facts (verified on disk 2026-08-31 by this draft — cite, don't re-derive; re-confirm line numbers on the execution branch, the base moves)
 
-- **F1.** The unlock is recorded in three places and is not re-argued here:
+- **F1.** The unlock framing is recorded in three places and is not re-argued here:
   `grader.py:73-96` (`role_vocabulary` — "a model is only ever measured against
   vocabulary its **own prompt handed it**"; the cap on strictness), RESULTS-1.6 §13
   (`:706-718` — "an **ontology** move before it is a grader move"; requiring the amount
   scored 0/14 vs ~3/14, "unmeasurable, not undesirable"), and
   `benchmarks/procedure_baseline/rationale_regrade.py:123-131` ("As supplier-evaluation
-  facts enter the ontology and the goal, each …").
+  facts enter the ontology and the goal, each …"). ⚠️ **Scope corrected s265 (F17 +
+  the Correction record):** these three correctly record the demand-side cap; the
+  supply they call for is two-channel (declared home + a carrier into the goal/event),
+  and this PLAN builds only the first channel.
 - **F2.** Fleet's object types today (`verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml:32-282`):
   Truck, Vendor, Depot, OperationalEvent, Alert, RecommendedAction, AlertEventLink —
   **no supplier-evaluation facts anywhere**. `Vendor` (`:105-151`) carries exactly
@@ -80,6 +163,8 @@ routes honestly to the no-records answer (F15) rather than a fabrication.
   `single_source_flag` bool.
 - **F4.** The run's prompt supply chain (`services/engine/llm/prompt.py:133-156`):
   system = vertical + **goal** + catalog; the event reaches only the untrusted block.
+  The ontology is among **none** of these inputs — measured, with a positive control,
+  as F17.
   Fleet's goal (`verticals/fleet_maintenance/procedures.yaml:133-143`) currently
   instructs: the sourcing gate "is applied DOWNSTREAM by the engine and not by you …
   never withhold a routing decision on quote counts." Any future goal wording that asks
@@ -179,6 +264,41 @@ routes honestly to the no-records answer (F15) rather than a fabrication.
   later grader PLAN's MS-S1 run — which re-baselines the lane anyway (SD-4 ruling) —
   rather than paying for a separate host-state round. Until then, every claim that
   the dormant band is behaviourally free rests on the offline F15 mechanism only.
+  ⚠️ **Recommendation superseded by the SD-6 ruling (s265, kept as lineage):** the
+  ruled surface for measuring the ontology's effect on the MS-S1 models is route (a),
+  `benchmarks/nl_query_feasibility/` — F16's vocabulary-width question rides THAT run
+  (it is a translate-surface effect, so route (a) is also where it is observable),
+  still under its own typed CLAUDE.md §8 go.
+- **F17. 🔴 Measured (Code, s265, offline, positive-controlled; every count and
+  anchor re-verified on disk by this revision — re-verify again before citing, the
+  base moves): the ontology does NOT reach the procedure agent's LLM prompt.** The
+  prompt on that path is built by `build_reasoning_messages` →
+  `build_system_instruction(vertical: str, goal, catalog)`
+  (`services/engine/llm/prompt.py:72-138`) from exactly four inputs: (1) a static
+  `role` string keyed on the vertical **name** — a `str`, never `OntologyMeta`; (2)
+  `goal` — the procedure's directive from `procedures.yaml`; (3) `catalog` —
+  `registry.handler_catalog` (handler names + descriptions); (4) the `event` dict,
+  rendered by `format_event` (`:122`) into the untrusted block. Evidence:
+  `grep -c ontology` → `services/engine/llm/prompt.py` = **0** (0 even
+  case-insensitive), `services/engine/llm/structured.py` = **0** (the single
+  case-insensitive hit is the capitalized English word inside a static
+  `Field(description=...)` at `structured.py:101` — schema prose, not a meta feed),
+  `services/engine/procedures/action_step.py` = **1**, and that hit is a docstring
+  phrase ("ontology-projected keys", `:234`), not a prompt feed. **Positive control
+  (what makes the zeros evidence rather than a broken grep):** the same
+  `grep -c ontology` on `services/engine/nl_query.py` returns **18** — the NL path
+  genuinely consumes the ontology via `load_ontology_meta` → `_describe_ontology`.
+  Near-miss, classified: `services/engine/procedures/orchestrator.py`'s
+  `validate_read_bindings_for_vertical` (`:562-577`) DOES call `load_ontology_meta`
+  (`:574`) — a **validation gate**, not a prompt feed; loading is not prompting.
+  ⚠️ That function's docstring claim "every shipped procedure is reads-absent"
+  (`:569`) is **STALE** — all six verticals declare `reads:` in their
+  `procedures.yaml` (10 occurrences across 6 files; fleet: 3) — noted here because
+  it could mislead a reader re-tracing this measurement; fixing that file is out of
+  scope. **Consequence:** the only channels into the procedure model are the
+  **event** (built by `operational_events` / `_fixture_events`,
+  `verticals/fleet_maintenance/data_adapter/synthetic.py:175,198`) and the **goal**
+  text — declaring an ontology property routes it into neither.
 
 ## Coordination with PLAN-0109 (required — the two PLANs edit the same file)
 
@@ -379,7 +499,17 @@ from the scratchpad copy.
 - ❌ **The grader move.** `benchmarks/procedure_baseline/grader.py`, the rationale
   lane, `rationale_regrade.py`, and any change to `carries_content` or the ratified
   role-naming bar (Cray, typed 2026-08-31). Raising the demand side is a **later,
-  separate PLAN** — this PLAN only makes it expressible.
+  separate PLAN** — this PLAN gives the facts a declared home and makes them
+  answerable on the Ask surface; rationale-lane expressibility additionally needs the
+  goal edit (SD-4, that PLAN) **and** the unscoped carrier (next bullet, F17).
+- ❌ **The procedure-side carrier — unscoped by ANYONE; named so its absence is
+  visible here, not discovered later (F17).** For supplier facts to reach the
+  procedure model at all, something must carry values into the **event** (the
+  adapter's event builders, `synthetic.py:175,198`) or into the **goal** text
+  (`procedures.yaml` — goal edits parked with the grader PLAN by SD-4's ruling).
+  No PLAN owns that carrier today. It is not this PLAN's job to build or scope it —
+  but whoever scopes the later grader PLAN must scope the carrier with it, or the
+  rationale lane stays unmovable regardless of grader edits.
 - ❌ **`procedures.yaml` goal text** (SD-4 — **RULED (a)**, Cray, typed, 2026-08-31,
   s265) — the goal is the vocabulary source `role_vocabulary` caps the lane by
   (F1/F4); it moves **with** the grader PLAN so supply and demand land in one
@@ -388,12 +518,16 @@ from the scratchpad copy.
 - ❌ **The benchmark dataset** (`dataset/fleet_maintenance.yaml`, F11) — mirroring the
   new facts into scenarios is the demand-side lockstep, same later PLAN.
 - ❌ **MS-S1 / any live model run** — host-state, typed Cray go required (CLAUDE.md
-  §8). This PLAN is deterministic-offline end to end; re-measuring the 0/14 vs ~3/14
-  figures belongs to the grader PLAN under its own go — **and so does measuring
-  F16's UNMEASURED vocabulary-width effect** (does the wider translate vocabulary,
-  4 valueless names included, raise the empty-result rate?): fold it into that
-  PLAN's MS-S1 run, which re-baselines the lane anyway (SD-4), rather than paying
-  for a separate host-state round.
+  §8). This PLAN is deterministic-offline end to end. Where the eventual live
+  measurements go, per the s265 rulings: **the ontology's effect on the two MS-S1
+  models is measured on route (a), the NL / Ask surface
+  (`benchmarks/nl_query_feasibility/`) — SD-6, RULED** — and F16's UNMEASURED
+  vocabulary-width effect (does the wider translate vocabulary, 4 valueless names
+  included, raise the empty-result rate?) rides that same route-(a) run.
+  Re-measuring the 0/14 vs ~3/14 rationale-lane figures stays with the grader PLAN
+  under its own go — and is **deferred until the procedure-side carrier is scoped**
+  (previous bullet): before the carrier exists, a procedure-side run would measure a
+  channel that does not exist (F17).
 - ❌ **NOT swept in by the SD-3a ruling** (stated so nothing rides in silently —
   Cray's ruling named exactly four properties, all vendor-level): quote-level
   `warranty` / `on_contract` stay OUT — they are PLAN-0109's block, a **partition
@@ -509,7 +643,9 @@ from the scratchpad copy.
 ## Steps
 
 **All SD gates are lifted — no open SDs** (Cray's typed rulings, 2026-08-31, s265;
-SD-3a ruled later the same session). Step 2 declares **both bands**: the
+SD-3a ruled later the same session; SD-6 ruled in the correction pass — it changes
+**no step** in this PLAN, only where the later live measurement runs). Step 2
+declares **both bands**: the
 synonym-carrying five (SD-3) and the dormant four (SD-3a — bare + `description`, no
 synonyms, no seed values). The earlier preamble text ("under every option the four
 stay undeclared in this PLAN") described the pre-ruling option space and is
@@ -551,8 +687,10 @@ Ruled declarations, band 2 — **the dormant four** (SD-3a, s265): `tax_id` (str
 cost guard), no seed values, and a **rich `description`** per property — schema-legal
 (`ontology_schema.json:79`), dropped at load so it costs zero prompt bytes (F13) —
 explaining that the property is declared-but-unpopulated and why (the narrative may
-bring some, not necessarily all, of these facts later; declaring now means the LLM
-can use a value the day it exists, Cray's requirements (a)-(c)).
+bring some, not necessarily all, of these facts later; declaring now means the
+Ask/translate LLM can use a value the day it exists — Cray's requirements (a)-(c),
+read per the Correction record's SD-3a note: the procedure model sees no ontology
+property either way, F17).
 `single_source_flag`'s description additionally carries the residual-concern
 mitigation verbatim in substance: the per-case `RepairCaseJustification` (ADR-0034
 D4) is the **authoritative** sole-source record; this vendor-level flag is
@@ -601,7 +739,8 @@ closeout, `git mv` to `docs/plans/done/`.
 ## Surfaced decisions — RULED (Cray, typed, 2026-08-31, session 265), original recommendation texts preserved for reasoning lineage
 
 Every SD below carries its ruling inline — **including SD-3a, ruled later in the
-same session; nothing remains open.** Where a ruling's *reasoning* differs from the
+same session, and SD-6, ruled in the s265 correction pass; nothing remains open.**
+Where a ruling's *reasoning* differs from the
 original recommendation (SD-2), or the ruling *overturns* recommendations outright
 (SD-3a overturns both this draft's OUT disposition for the four and Code's own
 "YAML comments only" recommendation), all versions are recorded — this repo keeps
@@ -819,10 +958,11 @@ cost call; `last_engaged_at` stays OUT — derivable, hold until a consumer asks
 
 **⚠️ Asserted-not-verified, UNMEASURED (F16):** the answer-quality effect of the
 wider translate vocabulary — a model may attempt queries that return empty more
-often. Measuring it needs a live MS-S1 run under a typed CLAUDE.md §8 go;
-recommendation: fold it into the later grader PLAN's existing MS-S1 round (which
-re-baselines the lane anyway, SD-4) rather than paying for a separate host-state
-trip.
+often. Measuring it needs a live MS-S1 run under a typed CLAUDE.md §8 go. The
+original recommendation here (fold it into the later grader PLAN's MS-S1 round) is
+**superseded by the SD-6 ruling**, kept as lineage: it now rides the ruled route-(a)
+run on `benchmarks/nl_query_feasibility/` — the surface where a translate-vocabulary
+effect is actually observable.
 
 ### SD-4 — RULED (a) — `procedures.yaml` goal text: pre-thread now, or move with the grader?
 
@@ -853,6 +993,34 @@ on disk by this revision: **PLAN-0111 touches neither the fleet YAML nor
 `ontology/`** (F14, zero grep matches) — the earlier "asserted-not-verified" residual
 note about 0111 is **CLOSED**, and 0111 needs no coordination contract
 (Coordination §5).
+
+### SD-6 — RULED (a) — where is the ontology's effect on the two MS-S1 models measured?
+
+Arose in the s265 correction pass, not in the original draft: the pre-correction
+framing implied the ontology's effect could be read off `procedure_baseline`'s
+rationale lane, and F17's measurement showed the ontology is not on that prompt path
+— a run there would measure a channel that does not exist. Options:
+
+- **(a) The NL / Ask surface — `benchmarks/nl_query_feasibility/`** (harness,
+  `gold.yaml`, `run_benchmark.py` verified on disk by this revision). On this route
+  the declared facts genuinely reach the model: `_describe_ontology` feeds the
+  translate prompt (F13) and the seed serves the values (AC-3/AC-4).
+- **(b) `procedure_baseline`.** Only meaningful after the unscoped event/goal
+  carrier exists (Out of Scope, F17) and the SD-4 goal edit lands — before that, any
+  delta measured there is noise attributed to a channel that is not connected.
+
+Why Cray: this fixes which banked benchmark lane the ontology work is accountable
+to — a measurement-surface ruling of exactly the kind SD-4 protected.
+
+**RULING (Cray, typed, 2026-08-31, s265): (a).** The ontology's effect on the two
+MS-S1 models is measured on the NL / Ask surface, route (a) — **because there the
+facts genuinely reach the model, so the experiment measures the ontology rather
+than measuring a channel that does not exist.** The procedure-side question is
+**deferred until the carrier is scoped** — deferred, not ruled. Consequences
+recorded: F16's vocabulary-width measurement rides this route-(a) run (the earlier
+fold-into-grader-PLAN recommendation is superseded, kept as lineage in F16 and the
+SD-3a block); any live run still requires its own typed CLAUDE.md §8 go; nothing in
+this PLAN's offline ACs moves.
 
 ## Verification
 
