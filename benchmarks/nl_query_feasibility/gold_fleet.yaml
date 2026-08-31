@@ -1,0 +1,229 @@
+# Gold set for the NL-query feasibility spike — fleet_maintenance (session 265).
+#
+# Purpose: the BEFORE/AFTER instrument for "does adding supplier-evaluation
+# facts to the ontology make qwen3.8:27b-mtp-q4_K_M and gpt-oss:20b better or
+# worse?" (Cray's question, s265). Route (a) was ruled the measurement surface
+# because the ontology genuinely reaches THIS prompt — `_describe_ontology`
+# feeds `nl_query.answer_question` — whereas it never reaches the
+# procedure-baseline prompt at all (measured s265; see PLAN-0117).
+#
+# 🔴 THE CONTROL BAND IS THE POINT. Every case below is answerable from the
+# ontology AS IT STANDS TODAY, before PLAN-0117 declares a single new property.
+# That is deliberate: it is the half of the experiment that can detect the
+# answer getting WORSE. PLAN-0117's F16 records that a wider translate
+# vocabulary might degrade questions that already worked, and nothing measured
+# it. These cases measure it. A supplier-fact case can only show improvement;
+# only a control case can show harm.
+#
+# Every expected value is derived from the adapter's ACTUAL output
+# (`FleetMaintenanceSyntheticAdapter.fetch_objects`, dumped s265), not from
+# reading `synthetic.py` by eye:
+#
+#   Truck  (3): truck-01 six_wheeler 412,580 km  due 500,000  roadside_breakdown
+#               truck-02 tractor_head 688,140 km due 685,000  in_service
+#               truck-03 six_wheeler 254,300 km  due 300,000  in_service
+#               ...all three at site_id depot-01
+#   Vendor (3): vendor-01 อู่คู่สัญญา ปากช่อง (V-001)
+#               vendor-02 ส.เจริญยนต์ (V-002)
+#               vendor-03 เจ๊หงส์ — NO accounting_code
+#   Depot  (2): depot-01 ลานจอดสำนักงานใหญ่ (บางพลี)  home_yard
+#               depot-02 อู่คู่สัญญา ปากช่อง          partner_garage
+#
+# ⚠️ Two known traps in this data, both deliberate and both left in:
+#   - depot-02 and vendor-01 share the name "อู่คู่สัญญา ปากช่อง" EXACTLY. A
+#     name-resolution question can land on either type. No case below depends
+#     on resolving that ambiguity; if a future case does, it must say which
+#     type it expects and why.
+#   - truck_class declares `trailer` but NO truck carries it. A "how many
+#     trailers" case would test the honest-zero path, which is NOT the same as
+#     the no-data path — that distinction is uncalibrated, so no case asserts
+#     it (see `calibration_notes` below).
+#
+# ⚠️ `fetch_links` returns [] for this vertical (Phase 2 synthetic: none), so
+# every cross-type JOIN question is INEXPRESSIBLE here — registered rather than
+# silently omitted (CLAUDE.md §8).
+
+vertical: fleet_maintenance
+
+cases:
+  # --- control band, expressible by StructuredQuery (8) ----------------------
+  - id: fl-01
+    text: "List all trucks."
+    category: list-all
+    ceiling: false
+    expected_object_type: Truck
+    expected_operation: list
+    expected_filters: []
+    expected_ids: [truck-01, truck-02, truck-03]
+    expected_count: 3
+    expected_grounded: true
+
+  - id: fl-02
+    text: "How many vendors are on file?"
+    category: count
+    ceiling: false
+    expected_object_type: Vendor
+    expected_operation: count
+    expected_filters: []
+    expected_ids: [vendor-01, vendor-02, vendor-03]
+    expected_count: 3
+    expected_grounded: true
+
+  - id: fl-03
+    text: "รถหกล้อมีคันไหนบ้าง"
+    category: filter-enum-thai
+    ceiling: false
+    expected_object_type: Truck
+    expected_operation: list
+    expected_filters:
+      - {property: truck_class, op: eq, value: six_wheeler}
+    expected_ids: [truck-01, truck-03]
+    expected_count: 2
+    expected_grounded: true
+
+  - id: fl-04
+    text: "Which truck is broken down at the roadside?"
+    category: filter-enum
+    ceiling: false
+    expected_object_type: Truck
+    expected_operation: list
+    expected_filters:
+      - {property: status, op: eq, value: roadside_breakdown}
+    expected_ids: [truck-01]
+    expected_count: 1
+    expected_grounded: true
+
+  - id: fl-05
+    text: "Which depots are partner garages?"
+    category: filter-enum
+    ceiling: false
+    expected_object_type: Depot
+    expected_operation: list
+    expected_filters:
+      - {property: depot_type, op: eq, value: partner_garage}
+    expected_ids: [depot-02]
+    expected_count: 1
+    expected_grounded: true
+
+  - id: fl-06
+    text: "Which trucks have driven more than 600,000 km?"
+    category: filter-numeric
+    ceiling: false
+    expected_object_type: Truck
+    expected_operation: list
+    expected_filters:
+      - {property: odometer_km, op: gt, value: 600000}
+    expected_ids: [truck-02]
+    expected_count: 1
+    expected_grounded: true
+
+  - id: fl-07
+    text: "Which trucks are based at depot-01?"
+    category: filter-ref
+    ceiling: false
+    expected_object_type: Truck
+    expected_operation: list
+    expected_filters:
+      - {property: site_id, op: eq, value: depot-01}
+    expected_ids: [truck-01, truck-02, truck-03]
+    expected_count: 3
+    expected_grounded: true
+
+  - id: fl-08
+    text: "How many depots are there?"
+    category: count
+    ceiling: false
+    expected_object_type: Depot
+    expected_operation: count
+    expected_filters: []
+    expected_ids: [depot-01, depot-02]
+    expected_count: 2
+    expected_grounded: true
+
+  # --- ceiling band: needs the phrase step to rescue it (2) ------------------
+  # Both compare a property against ANOTHER PROPERTY or against absence, which a
+  # conjunctive property-vs-VALUE filter cannot express.
+  - id: fl-09
+    text: "Which truck is overdue for its next service?"
+    category: ceiling-cross-property
+    ceiling: true
+    # odometer_km > next_service_due_km holds for truck-02 ONLY
+    # (688,140 > 685,000). truck-01 412,580 < 500,000; truck-03 254,300 < 300,000.
+    expected_answer_substrings: ["70-5678"]   # Truck.title_key is `plate`
+    expected_grounded: true
+
+  - id: fl-10
+    text: "Which vendor has no accounting code on file?"
+    category: ceiling-absence
+    ceiling: true
+    # vendor-03 is the only record with no `accounting_code` key at all.
+    expected_answer_substrings: ["เจ๊หงส์"]   # Vendor.title_key is `name`
+    expected_grounded: true
+
+  # --- honesty probe (1) -----------------------------------------------------
+  - id: fl-11
+    text: "What are the names of the drivers assigned to each truck?"
+    category: honesty-no-data
+    ceiling: true
+    # There is NO Driver object type in this ontology and no driver property on
+    # Truck. The engine must short-circuit to the deterministic no-records
+    # answer rather than inventing names (PLAN-0013 AC-nlquery).
+    expected_grounded: false
+
+# ---------------------------------------------------------------------------
+# NOT YET AUTHORABLE — the supplier band (the "did it get BETTER?" half)
+# ---------------------------------------------------------------------------
+# These are the cases the experiment exists for, and they CANNOT be written
+# yet: their expected values depend on the values PLAN-0117 seeds into
+# `vendor_records()`, and PLAN-0117 is not executed. Authoring them now would
+# mean inventing an expected answer and then building the data to match it,
+# which is the wrong direction and would make the gold agree with itself.
+#
+# They are recorded here, not left in a closed conversation, so the run that
+# adds them cannot forget what they were for. `load_gold` reads only `vertical`
+# and `cases`, so this key is inert at runtime.
+pending_cases:
+  - id: fl-20
+    text: "Which garages are our contracted ones?"
+    blocked_on: "PLAN-0117 declares Vendor.is_contracted and seeds its values"
+  - id: fl-21
+    text: "Which vendor has the most comebacks?"
+    blocked_on: "PLAN-0117 declares Vendor.comeback_count and seeds its values"
+  - id: fl-22
+    text: "อู่ไหนซ่อมเสร็จเร็วที่สุดโดยเฉลี่ย"
+    blocked_on: "PLAN-0117 declares Vendor.avg_turnaround_days and seeds its values"
+
+# ---------------------------------------------------------------------------
+# INEXPRESSIBLE — registered with reasons (CLAUDE.md §8)
+# ---------------------------------------------------------------------------
+inexpressible:
+  - question: "Which vendor repaired which truck?"
+    reason: >
+      Requires a cross-type join. `FleetMaintenanceSyntheticAdapter.fetch_links`
+      returns [] for every link type (Phase 2 synthetic ships no links), so no
+      join question can be answered on this vertical regardless of the model.
+      This is a DATA gap, not a model or translate gap, and scoring a model
+      against it would measure the fixture.
+  - question: "How many trailers are in the fleet?"
+    reason: >
+      The answer is a legitimate ZERO (truck_class declares `trailer`; no truck
+      carries it). Whether the engine reports an honest zero with
+      grounded=true, or short-circuits to the no-data path with
+      grounded=false, is UNCALIBRATED — and a gold case must not assert a value
+      its author cannot defend. Promote this to a real case once the first live
+      run settles which path a legitimate zero takes.
+
+calibration_notes: >
+  🔴 THIS GOLD SET IS NOT YET AN ORACLE (CLAUDE.md §8): an expected-value set
+  becomes one only when the system's own output has been scored against it.
+  Nothing here has been. The offline well-formedness test compares this file to
+  itself — it reddens on a malformed file and CANNOT redden on a wrong value.
+
+  Specifically uncalibrated and expected to need one correcting pass after the
+  FIRST live run: the two `expected_answer_substrings` in fl-09 and fl-10. Both
+  assume the phrase step renders an entity by its `title_key` (`plate` for
+  Truck, `name` for Vendor). That is the documented title semantics, but it has
+  not been observed on this vertical. If the first run phrases fl-09 as
+  "truck-02" rather than "70-5678", the SUBSTRING is wrong and the model is
+  not — fix the substring, and record that it was the instrument that was
+  wrong, never quietly re-score the model.
