@@ -45,6 +45,7 @@ from services.engine.procedures.action_step import (
     resolve_gated_step,
 )
 from services.engine.procedures.spec import load_procedures
+from tests.support.accounting_month import accounting_month
 from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.sourcing import PASSING_BASES
 
@@ -238,9 +239,13 @@ def _parse(body: bytes) -> tuple[list[str], list[dict[str, str]]]:
 
 
 def _this_month() -> tuple[int, int]:
-    """The Asia/Bangkok accounting month the gate decision just landed in."""
-    now = datetime.now(UTC).astimezone(BKK)
-    return now.year, now.month
+    """The Asia/Bangkok accounting month the gate decision just landed in.
+
+    Delegates to the shared helper so the timezone rule has ONE home. This
+    module had it right; two other modules wrote their own version against the
+    UTC clock and took `main` red at the s266 month boundary.
+    """
+    return accounting_month(datetime.now(UTC))
 
 
 async def test_a_real_approved_repair_reaches_the_month_end_file(

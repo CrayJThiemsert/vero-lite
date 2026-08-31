@@ -62,6 +62,7 @@ from services.engine import demo_events
 from services.engine.procedures import gate_hooks
 from services.engine.procedures.action_step import resolve_gated_step
 from services.engine.procedures.spec import load_procedures
+from tests.support.accounting_month import accounting_month
 from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.operate_seed import (
     DEMO_CASE_ID,
@@ -180,7 +181,8 @@ async def test_approving_the_seeded_gate_puts_a_substantive_row_on_the_report(
     }
 
     now = datetime.now(UTC)
-    before = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    year, month = accounting_month(now)
+    before = await load_monthly_export(db_session, year=year, month=month, now=now)
     assert before.total_thb == 0, (
         "this month already carries spend before the approval — the assertion below "
         "would pass on someone else's row and prove nothing"
@@ -203,7 +205,7 @@ async def test_approving_the_seeded_gate_puts_a_substantive_row_on_the_report(
     assert linked, "the gate resolved but no case↔run link was written"
     assert {row.run_id for row in linked} == {DEMO_RUN_ID}
 
-    after = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    after = await load_monthly_export(db_session, year=year, month=month, now=now)
     ours = next((row for row in after.rows if row.case_id == DEMO_CASE_ID), None)
     assert ours is not None, "the gate resolved but the case never reached the report"
 
@@ -251,7 +253,8 @@ async def test_the_settled_history_case_opens_the_kpi_on_a_real_figure(
     assert await seed_settled_history_case(db_session) is True
 
     now = datetime.now(UTC)
-    export = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    year, month = accounting_month(now)
+    export = await load_monthly_export(db_session, year=year, month=month, now=now)
     row = next((r for r in export.rows if r.case_id == DEMO_HISTORY_CASE_ID), None)
     assert row is not None, "the settled case never reached the month-end report"
 
@@ -385,7 +388,8 @@ async def test_the_seed_writes_no_export_rows_of_its_own(
     await seed_repair_gate_waiting_human_run(db_session, run_id=DEMO_RUN_ID)
 
     now = datetime.now(UTC)
-    export = await load_monthly_export(db_session, year=now.year, month=now.month, now=now)
+    year, month = accounting_month(now)
+    export = await load_monthly_export(db_session, year=year, month=month, now=now)
     assert export.total_thb == 0
     assert export.rows == ()
 
