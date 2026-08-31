@@ -4,7 +4,7 @@ session: 266
 current_batch: "s265-266 — ELEVEN PRs (#1329-#1340): PLAN-0117 executed end to end and its experiment MEASURED on MS-S1; the fleet gold set became an oracle of the system rather than of itself; and a shared-config core.worktree hijack that two handoffs mis-diagnosed was found and fixed."
 current_actor: code
 blocked_on: "Nothing on work. TWO calls sit with Cray: whether fl-21 and fl-22 should score the answer or the query shape, and the Active-TODO rehome that R1 headroom now depends on."
-next_action: "Rehome the Active TODOs — 27,062 B, 43 percent of STATUS across 45 open rows. It is now the BINDING constraint, not a tidy-up: this reconcile landed with 664 B of R1 headroom and there are zero completed rows left to rotate."
+next_action: "Rehome the Active TODOs — 27,062 B, 43 percent of STATUS across 45 open rows. It is now the BINDING constraint, not a tidy-up: this reconcile landed with 260 B of R1 headroom and there are zero completed rows left to rotate."
 head_commit: 668cb1d
 recent_commits: [c16aaae, 3b0fcf4, fdee563, 01f2881, 11093e8, 0d4b4ff, efe08f7, ef6d908, e3108bb, 46cab29]
 ---
