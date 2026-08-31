@@ -652,3 +652,122 @@ These figures are pinned in code, not only in prose:
 `tests/benchmark/test_nl_query_feasibility_summary.py::test_the_s265_before_baseline_ceiling_lane_reproduces`.
 
 *AI-assisted (Claude Code, sessions 265-266); no `Co-Authored-By` per CLAUDE.md §7.*
+
+
+## Addendum — the AFTER run: the PLAN-0117 unlock, measured (2026-08-31, session 266)
+
+Two cells on MS-S1 under Cray's typed CLAUDE.md §8 go: `gpt-oss:20b` and
+`qwen3.8:27b-mtp-q4_K_M`, same host, same gold file, 13 cases each. Dumps:
+`s266-fleet-after-gptoss.jsonl` / `…-qwen.jsonl` (gitignored — that is why the numbers
+live here).
+
+🔴 **The pass/fail read was fixed on disk BEFORE the first model call**
+(`.claude/benchmark-results/s266-after-PASS-FAIL-READ.md`) and is reproduced below, because
+one of its clauses **retires a claim the s265 handoff made** and the run would have been
+misread without it.
+
+### The correction the read had to make first
+
+The s265 handoff named `fl-03` **the** discriminator: *"if gpt-oss passes fl-03 in the AFTER
+run, that is direct evidence the vocabulary helped."* **Measured before the run and wrong as
+stated:** PLAN-0117 added synonyms to five **Vendor** properties. `fl-03` is a **Truck**
+question and `truck_class.synonyms` is still `None`. It gained no vocabulary at all. The only
+thing that changed for it is prompt length — **1,945 → 3,041 bytes, +56%**.
+
+So the experiment's real shape is:
+
+- **the unlock test** = `fl-20`/`fl-21`/`fl-22`, the only cases that depend on the new properties
+- **the harm test** = `fl-01`..`fl-10`, PLAN-0117 F16's explicit worry about a wider prompt
+  degrading what already worked
+- **`fl-03`** = an observation about variance, never about vocabulary
+
+### 1 — The unlock IS usable
+
+| | gpt-oss:20b | qwen3.8:27b-mtp-q4_K_M |
+|---|---|---|
+| `fl-20` contracted garage | ✅ | ✅ |
+| `fl-21` most comebacks | ❌ | ✅ |
+| `fl-22` fastest average turnaround | ❌ | ✅ |
+| **supplier band** | **1 / 3** | **3 / 3** |
+
+Both models filtered on a property that **did not exist before this PLAN**, and qwen used all
+three. The declared-but-unpopulated dormant band was never asked for and never invented.
+
+### 2 — Zero harm. The comparable set did not move at all.
+
+Only `fl-01`..`fl-10` is like-for-like (BEFORE scored 10 cases; AFTER scores 13 — **the totals
+are not comparable and were never compared**).
+
+| | BEFORE | AFTER | wrong BEFORE | wrong AFTER |
+|---|---|---|---|---|
+| gpt-oss:20b | 7 / 10 | **7 / 10** | `fl-03` `fl-09` `fl-10` | `fl-03` `fl-09` `fl-10` |
+| qwen3.8:27b | 9 / 10 | **9 / 10** | `fl-10` | `fl-10` |
+
+**Identical, case for case, on both models.** A +56% prompt degraded nothing. That is F16's
+worry, measured and negative — and it is the half of the experiment a supplier-only case set
+could never have produced.
+
+`fl-03` is unchanged on both models, exactly as the corrected read predicted.
+
+### 3 — 🔴 The split metric earned its keep on its first use
+
+`gpt-oss` `fl-09`, BEFORE: translate **hard-failed** — empty `query_json`, 70.3 s, *"I couldn't
+translate that question."* AFTER: it emitted a valid query in 23.9 s —
+`next_service_due_km lte "odometer_km"` — which still returns nothing, because the filter
+language compares a property to a **literal**, not to another property.
+
+| | gpt-oss BEFORE | gpt-oss AFTER |
+|---|---|---|
+| `ceiling_translated_n` | **1 / 2** | **2 / 2** |
+| `phrase_rescue` | — (n=0) | — (n=0) |
+| `ceiling_acc` | 0% | 0% |
+
+**Under the old single `ceiling_rescue` number this would have read `0% → 0%`: no change.**
+The split shows the model moved from *"cannot translate this at all"* to *"translates it, and
+the query language cannot express it"* — a different, better failure, and the one a wider
+vocabulary could plausibly touch. qwen's ceiling lane is unchanged (2/2 translated,
+`phrase_rescue` 100% n=1).
+
+### 4 — 🔴 The sharpest finding: the two models disagree on query SHAPE, not on the answer
+
+`fl-21` / `fl-22` are where they part, and the dumps say exactly why:
+
+| model | emitted | scored |
+|---|---|---|
+| gpt-oss:20b | `max comeback_count`, **`group_by: null`** | ❌ |
+| qwen3.8:27b | `max comeback_count`, **`group_by: vendor_id`** | ✅ |
+
+**gpt-oss's prose answer was RIGHT** — *"The vendor with the most comebacks is **อู่คู่สัญญา
+ปากช่อง** (vendor-01), which has a comeback_count of **2**."* But that identity came from the
+**phrase step reading the three retrieved records**, not from the structured aggregate: an
+ungrouped `max` yields the value `2` and no vendor.
+
+So the gold is measuring *"did translate produce the query that deterministically identifies
+the vendor"*, and gpt-oss fails that while satisfying the operator. **Both statements are
+true and they are not the same statement.**
+
+⚠️ **Not re-scored after the fact.** Whether these two cases should stay `ceiling: false`
+pinned on the grouped aggregate, or become `ceiling: true` pinned on an answer substring, is a
+**gold-design decision for Cray** — taken with the result already visible, it would be
+relaxing a criterion after seeing the outcome, which CLAUDE.md §8 forbids.
+
+### 5 — Latency
+
+| | gpt-oss BEFORE → AFTER | qwen BEFORE → AFTER |
+|---|---|---|
+| p50 | 12.92 → **12.74 s** | 30.15 → **28.76 s** |
+| max | 70.26 → **45.72 s** | 98.38 → **76.45 s** |
+
+Both slightly faster despite the larger prompt. ⚠️ The denominators differ (10 cases vs 13),
+so treat this as "no latency penalty observed", not as a speed-up.
+
+### What this run does NOT settle
+
+- **n=1 per cell.** Two models, one run each. No variance estimate; a single case flip is
+  10 points and means nothing on its own.
+- Whether a wider vocabulary helps live translate quality **in general**.
+- The product question of `fl-21`/`fl-22` answering with `vendor-01` rather than the garage's
+  Thai name (`_relabel_groups` needs a `ref`-typed `group_by`).
+- **This run is evidence, not a gate** (CLAUDE.md §8). The offline oracle remains the gate.
+
+*AI-assisted (Claude Code, session 266); no `Co-Authored-By` per CLAUDE.md §7.*
