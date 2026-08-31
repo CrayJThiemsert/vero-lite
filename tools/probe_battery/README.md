@@ -207,6 +207,19 @@ Batteries edit real tracked source, so restore is defended twice.
   `try/finally` runs. (Python's *default* SIGTERM disposition kills the interpreter without
   running a single `finally`; that is the case this exists for.) The running pytest is
   killed on the way out rather than orphaned.
+
+  ⚠️ That last clause held only by luck until s265, and the gap is easy to reopen.
+  `subprocess.Popen` forks **and** execs inside `__init__`, so a handler that raises can
+  fire while the child is already running and `proc` is still unbound — and no `except`
+  can reach a name that was never assigned. Measured 2026-08-31 with everything pinned to
+  one CPU under contention: **9 failures in 12 runs**, every orphan living out its full
+  30-second body, with 4 of 6 signals landing at `subprocess.py:_execute_child`. The spawn
+  therefore runs with the signal **deferred** (`_DeferredInterrupts`), released *inside*
+  the `try` that kills the child. Do not hoist the `Popen` back out of that deferral, and
+  do not reach for `signal.pthread_sigmask` — a child forked while SIGTERM is blocked
+  **inherits the block** (measured: the child's `/proc/<pid>/status` reported
+  `SigBlk: 0x4000`), which would make every pytest subprocess immune to the SIGTERM
+  `reap_child` sends.
 - **SIGKILL runs no Python**, so nothing in-process can help. The guarantee there is the
   **persisted manifest**: every snapshot is on disk with its sha256 *before* the matching
   mutation is written. A later `restore` recovers byte-identically — and `run` **refuses to
