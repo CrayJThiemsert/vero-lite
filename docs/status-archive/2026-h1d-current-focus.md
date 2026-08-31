@@ -1992,3 +1992,53 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 > `4023 passed, 486 skipped` and **exit 1** — pytest reports nothing failed and
 > the process fails anyway. That is exactly why the pre-#1305 state was
 > invisible: a collapsed DB layer looked identical to a green run.
+
+### Rotated at the s266 reconcile — the session 259-260 block
+
+Rotated on the **R2 window rule alone** (a fifth block entered; the window is four), not a cap overage: the block measures **3038 B** against the 4,096 B cap. Pinned by its first AND last line, neighbour-bleed checked both directions, the rotation ledger checked OUT of the slice, and checked ABSENT from this file before the write.
+
+> **Session 259–260, 2026-08-27→28 (`5292c99` → `7306f17`) — ONE PR merged
+> ([#1309](https://github.com/CrayJThiemsert/vero-lite/pull/1309), five commits),
+> 0 open, CI green **20/20 at the merged tip**, tree clean. **Cray ratified a
+> 7-phase FDE readiness programme** — deliver governed systems to SME customers
+> in 6 wk–3 mo — and phases 0, 1, 1.5 and 1.6 all shipped. The ratified plan and
+> every ruling live in the gitignored carrier
+> `docs/strategy/private/2026-08-28-fde-readiness-program.md`; **read it before
+> any programme work.****
+>
+> 🔴 **The phase-1.5 verdict is SUPERSEDED by phase 1.6 — `superseded by new
+> info`, not an error.** 1.5 read *keep `gpt-oss:20b`* because the challenger
+> returned 10 of 20 judgments as transport errors. 1.6 measured every one of
+> those "errors" as a **deadline cut** — counts matching exactly 3/3, 2/2, 0/0 —
+> so that count **measured the harness, not the model**. Under a 300 s
+> per-judgment budget qwen produced **zero transport and zero schema failures**,
+> which also closes the Ollama #15260 `think=false`-with-`format` concern.
+>
+> 🔴 **The reasoning pass hurts BOTH models**, which makes it a property of our
+> pipeline rather than of either model: gpt-oss β 10% → **30%** (skip), qwen
+> β 30% → **80%** (think_off). The mechanism is visible in qwen's handler picks —
+> with thinking ON it never once chose the canonical `restart` (escalate ×3,
+> dispatch ×4); with thinking OFF it chose it **6 of 8**.
+>
+> ⚠️ **No winner is declared and NO model is bound.** Every cell is a single
+> repeat, and phase 1.5 put the incumbent's flip rate at **45%** — nine of twenty
+> items changing verdict between identical runs, larger than most of the gaps
+> found. Only `qwen/skip` satisfies Cray's five-minute rule. `energy-002` and
+> `energy-008` were cut in **both** thinking modes — a signal about specific
+> inputs, and the thread for the next investigation.
+>
+> ✅ **A ratified rule was nearly weakened on a FALSE premise, and checking the
+> premise killed it.** SD-B2's breach+watch+ok coverage was to be waived for the
+> new fleet ground-truth set because its judge step declares no `watch_margin` —
+> but **energy's judge step declares none either**, and its dataset carries watch
+> items anyway. The band is authored by the **scenario**, not read from the
+> procedure. Rule restored untouched. ⚠️ **The fleet set is NOT yet an oracle**
+> (§8): 20 items authored, never scored against a live model.
+>
+> ⚠️ **CI cannot be enumerated per intermediate commit, by construction** —
+> `.github/workflows/ci.yml` is `on: pull_request` with
+> `concurrency.cancel-in-progress: true`, so only a push head gets a run and a
+> superseded run is cancelled. `10e7b00` has **no run at all**; `a6a4512`'s was
+> **cancelled** by the push of `6be4db5`; neither failed. The tip is the tree
+> that merges, and the merge was verified by **content** — `git show
+> origin/main:<file>` for strings only the incoming side adds — not by ancestry.
