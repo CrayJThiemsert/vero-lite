@@ -7,8 +7,9 @@
 # feeds `nl_query.answer_question` — whereas it never reaches the
 # procedure-baseline prompt at all (measured s265; see PLAN-0117).
 #
-# 🔴 THE CONTROL BAND IS THE POINT. Every case below is answerable from the
-# ontology AS IT STANDS TODAY, before PLAN-0117 declares a single new property.
+# 🔴 THE CONTROL BAND IS THE POINT. Every case in the control + ceiling bands is
+# answerable from the ontology AS IT STOOD BEFORE PLAN-0117 — not one of them
+# needs a property that PLAN added.
 # That is deliberate: it is the half of the experiment that can detect the
 # answer getting WORSE. PLAN-0117's F16 records that a wider translate
 # vocabulary might degrade questions that already worked, and nothing measured
@@ -23,9 +24,14 @@
 #               truck-02 tractor_head 688,140 km due 685,000  in_service
 #               truck-03 six_wheeler 254,300 km  due 300,000  in_service
 #               ...all three at site_id depot-01
-#   Vendor (3): vendor-01 อู่คู่สัญญา ปากช่อง (V-001)
-#               vendor-02 ส.เจริญยนต์ (V-002)
-#               vendor-03 เจ๊หงส์ — NO accounting_code
+#   Vendor (3): vendor-01 อู่คู่สัญญา ปากช่อง (V-001) is_contracted=true
+#                         standing=approved  repairs=24  comebacks=2  turnaround=3.5
+#               vendor-02 ส.เจริญยนต์ (V-002) is_contracted=false
+#                         standing=approved  repairs=9   comebacks=1  turnaround=5.0
+#               vendor-03 เจ๊หงส์ — NO accounting_code, standing=probation, and NO
+#                         history facts at all (absent, NOT zero — PR #1335)
+#               ...the dormant band (tax_id, cert_status, sanctions_flag,
+#               single_source_flag) is declared and carries NO value by ruling
 #   Depot  (2): depot-01 ลานจอดสำนักงานใหญ่ (บางพลี)  home_yard
 #               depot-02 อู่คู่สัญญา ปากช่อง          partner_garage
 #
@@ -160,35 +166,68 @@ cases:
     expected_answer_substrings: ["เจ๊หงส์"]   # Vendor.title_key is `name`
     expected_grounded: true
 
+  # --- supplier band: the "did it get BETTER?" half (3) -----------------------
+  # The cases the PLAN-0117 experiment exists for. They were held in
+  # `pending_cases` until the ontology declared the properties AND the seed
+  # carried values; both landed in PR #1335, so they are scored cases now,
+  # authored against the adapter's ACTUAL dumped output — not by reading
+  # `synthetic.py` by eye.
+  #
+  # ⚠️ Grouping a type by its OWN primary key yields ID-keyed groups. The engine
+  # relabels group keys to an entity title only when `group_by` names a property
+  # of type `ref` (`_relabel_groups`), and `Vendor.vendor_id` is a plain string
+  # primary key. So fl-21/fl-22 are answered as "vendor-01", never as
+  # "อู่คู่สัญญา ปากช่อง". That is the engine's documented behaviour, not a defect
+  # — but it IS a real thing the operator sees, and it is why these two pin the
+  # aggregate rather than an answer substring.
+  - id: fl-20
+    text: "Which garages are our contracted ones?"
+    category: filter-bool
+    ceiling: false
+    # `is_contracted` is true on vendor-01 ONLY. vendor-02 is explicitly false and
+    # vendor-03 is absent — absent is not false, and the filter must not sweep it in.
+    expected_object_type: Vendor
+    expected_operation: list
+    expected_filters:
+      - {property: is_contracted, op: eq, value: "true"}
+    expected_ids: [vendor-01]
+    expected_count: 1
+    expected_grounded: true
+
+  - id: fl-21
+    text: "Which vendor has the most comebacks?"
+    category: superlative
+    ceiling: false
+    # max `comeback_count` grouped by vendor_id, scanning all 3 vendors.
+    # vendor-01 2, vendor-02 1, vendor-03 ABSENT — and absent must stay OUT of the
+    # groups rather than arriving as a 0. That is why `groups` is pinned exactly
+    # and not just `top`: an absent-treated-as-zero bug leaves `top` correct.
+    expected_object_type: Vendor
+    expected_operation: max
+    expected_count: 3
+    expected_aggregate: {value: 2, top: vendor-01, groups: {vendor-01: 2, vendor-02: 1}}
+    expected_grounded: true
+
+  - id: fl-22
+    text: "อู่ไหนซ่อมเสร็จเร็วที่สุดโดยเฉลี่ย"
+    category: superlative-thai
+    ceiling: false
+    # min `avg_turnaround_days` grouped by vendor_id. vendor-01 3.5, vendor-02 5.0,
+    # vendor-03 absent. 🔴 The same vendor wins fl-21 and fl-22, so `top` ALONE
+    # cannot discriminate them — a model that picks the wrong aggregate property
+    # still lands on vendor-01. `value` and `groups` are what separate them.
+    expected_object_type: Vendor
+    expected_operation: min
+    expected_count: 3
+    expected_aggregate: {value: 3.5, top: vendor-01, groups: {vendor-01: 3.5, vendor-02: 5.0}}
+    expected_grounded: true
+
   # --- honesty band: RETIRED, deliberately empty (0) --------------------------
   # `fl-11` shipped here and was retired to `inexpressible:` below after the
   # FIRST live run (s265) measured the INSTRUMENT wrong, not the models. The
   # band is left empty rather than refilled: the register states what a real
   # honesty probe on this vertical has to look like, and inventing one to keep
   # the band populated is how a gold set starts agreeing with itself.
-
-# ---------------------------------------------------------------------------
-# NOT YET AUTHORABLE — the supplier band (the "did it get BETTER?" half)
-# ---------------------------------------------------------------------------
-# These are the cases the experiment exists for, and they CANNOT be written
-# yet: their expected values depend on the values PLAN-0117 seeds into
-# `vendor_records()`, and PLAN-0117 is not executed. Authoring them now would
-# mean inventing an expected answer and then building the data to match it,
-# which is the wrong direction and would make the gold agree with itself.
-#
-# They are recorded here, not left in a closed conversation, so the run that
-# adds them cannot forget what they were for. `load_gold` reads only `vertical`
-# and `cases`, so this key is inert at runtime.
-pending_cases:
-  - id: fl-20
-    text: "Which garages are our contracted ones?"
-    blocked_on: "PLAN-0117 declares Vendor.is_contracted and seeds its values"
-  - id: fl-21
-    text: "Which vendor has the most comebacks?"
-    blocked_on: "PLAN-0117 declares Vendor.comeback_count and seeds its values"
-  - id: fl-22
-    text: "อู่ไหนซ่อมเสร็จเร็วที่สุดโดยเฉลี่ย"
-    blocked_on: "PLAN-0117 declares Vendor.avg_turnaround_days and seeds its values"
 
 # ---------------------------------------------------------------------------
 # INEXPRESSIBLE — registered with reasons (CLAUDE.md §8)
@@ -242,6 +281,13 @@ calibration_notes: >
   becomes one only when the system's own output has been scored against it.
   Nothing here has been. The offline well-formedness test compares this file to
   itself — it reddens on a malformed file and CANNOT redden on a wrong value.
+
+  🔴 RECORDED, not a defect: fl-21 and fl-22 are answered as `vendor-01`, never as
+  the garage's Thai name. `_relabel_groups` maps group keys to an entity title only
+  when `group_by` names a `ref` property, and `Vendor.vendor_id` is the type's own
+  string primary key. Whether an operator accepts an internal id as the answer to
+  "อู่ไหนซ่อมเสร็จเร็วที่สุด" is a PRODUCT question, deliberately left open here — the
+  gold scores what the engine computes, and the computation is right.
 
   Specifically uncalibrated and expected to need one correcting pass after the
   FIRST live run: the two `expected_answer_substrings` in fl-09 and fl-10. Both
