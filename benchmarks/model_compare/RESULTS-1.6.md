@@ -749,3 +749,107 @@ The instrument's own assertions were witnessed RED under an 8-probe battery
 (`tools/probe_battery`, 27 claims, coverage `COMPLETE`, `GAPS: 0`), with the bar probed
 in both directions. Re-runnable offline at any time — the dumps are gitignored but the
 scorer is not.
+
+---
+
+## 14. Session 267 — the reasoning mode's effect on rationale quality, scored offline
+
+§13 added the rationale axis and scored six cells with it. Three dumps on disk were
+never scored by it, and two of them are the only cells this repo owns that vary the
+**reasoning mode** on a fixed model: `qwen3.8:27b-mtp-q4_K_M` on `fleet`, old goal, in
+`full` / `think_off` / `skip`. Scoring them answers the quality half of "thinking on
+vs off" — **offline, from dumps already paid for, with no MS-S1 run and no §8 go**.
+
+Model identity and reasoning mode were read from each dump's own `.log`, not from its
+filename. All four cells graded **14 breach items**, so no count below moves for a
+shrunken denominator.
+
+### The pass/fail read was fixed on disk before any score existed
+
+`.claude/benchmark-results/s267-a1-PASS-FAIL-READ.md` (gitignored; reproduced in
+substance here). It pre-committed the control, the resolution, and — deliberately —
+what each possible outcome would mean for the plan, so the result could not be
+interpreted to suit it afterwards.
+
+### 🔴 The precondition, measured rather than inherited
+
+§13 states the pre-fix goal carries the role clause "verbatim and unchanged", which
+is what licenses comparing this signal across the `0a1061f` line. That is an
+inherited premise, so it was re-measured: the goal **texts differ** (724 vs 785
+chars) while `role_vocabulary` returns the **identical** set on both sides —
+`head mechanic` / `fleet manager` / `owner`. §13's licence holds.
+
+⚠️ Establishing it needed a direct YAML parse, because `rationale_regrade.extract_goal`
+**cannot** answer the question: it uses only `goal_source.parent.name` and loads the
+goal from the current checkout, so a caller pointing it at a historical
+`procedures.yaml` is silently handed today's goal. That is deliberate (it keeps the
+text identical to the live spine's) but it was not stated; its docstring and `--help`
+now say so.
+
+### The control gated the run
+
+| cell | mode | `names_amount` | `names_role` | mean chars |
+|---|---|---|---|---|
+| `s262-2a-pass1` | `full` | 9/14 | **7/14** | 468 |
+| `s262-2a-pass2` | `full` (repeat) | 9/14 | **7/14** | 468 |
+
+The repeat reproduces the first run on **every** signal, down to the mean, min and max
+rationale length. Two things follow: the scorer is deterministic, so any difference
+below is the model and not the instrument; and s262's byte-identity finding is
+independently reconfirmed through a different instrument. `pass1`'s 7/14 also
+reproduces §13's published figure exactly.
+
+### The measurement
+
+| mode | `names_role` | vs `full` | pre-committed reading |
+|---|---|---|---|
+| `full` (shipped) | **7 / 14** | — | baseline |
+| `think_off` | **4 / 14** | **−3** | 🔴 **MATERIAL** |
+| `skip` | **5 / 14** | −2 | ⚠️ **observed, not established** |
+
+**`think_off` costs rationale quality**, on the one axis that carries governance
+weight, at the resolution fixed before the run.
+
+The `skip` result is reported as unresolved on purpose. `full` was measured
+*bit-exactly reproducible* in s262, so if `skip` is equally deterministic its −2 is
+real — but that determinism is **unmeasured for `skip`**, and one repeat would settle
+it. It is neither promoted to a finding nor discarded.
+
+### 🔴 The load-bearing negative result, for the second time
+
+| | `names_amount` | `names_role` | mean chars |
+|---|---|---|---|
+| `full` | 9/14 | **7/14** | 468 |
+| `think_off` | 11/14 | **4/14** | **507** |
+| `skip` | **14/14** | **5/14** | 474 |
+
+**A bar built on "the rationale must state the amount" would rank `skip` FIRST** — a
+perfect 14 of 14 — while on the ratified bar it is worse than the shipped mode. And
+length inverts too: `think_off` writes the **longest** rationales and names the
+**fewest** roles.
+
+§13 measured this inversion **between two models**. This is the same inversion
+**inside one model, across its own reasoning modes**, on a different set of cells —
+an independent second instance of lesson #0051's warning that an unvalidated axis
+does not merely fail to discriminate, it can rank backwards.
+
+### What this does and does not settle
+
+- **Settles:** turning the reasoning pass off costs rationale quality for this model
+  at this quantisation, materially, on the ratified bar.
+- **Settles:** `names_amount` and mean length are unusable as quality proxies here —
+  now shown twice, on independent cell sets.
+- **Does NOT settle** anything about `gpt-oss` (its `think_off` is inexpressible) or
+  about q8 (no q8 cell exists in `think_off` or `skip`).
+- **Does NOT settle** whether this axis predicts what a human approver values. That
+  is the blind read's job, and it has still never been run.
+- **Bears on the plan as pre-committed:** the case for cutting a q8 `think_off` live
+  cell now rests on measured *quality* as well as on speed and an unverified
+  flag-honour claim. The `skip` question is one repeat away from an answer.
+
+**Evidence:** `.claude/benchmark-results/{s262-2a-pass1, s262-2a-pass2,
+s262-2b-qwen-think-off, s262-2b-qwen-skip}.jsonl`, scored by
+`benchmarks/procedure_baseline/rationale_regrade.py`. Gitignored, which is why every
+figure is transcribed here. Re-runnable offline at any time.
+
+*AI-assisted (Claude Code, session 267); no `Co-Authored-By` per CLAUDE.md §7.*
