@@ -127,6 +127,56 @@ and must be reported separately, never folded into the bars:
 If the bars pick one model and the blind read prefers the other, that is a real
 conflict and it goes to Cray. It is **not** resolved by re-weighting the bars.
 
+### 5a. The rubric at the GATE-ADVISORY position — ruled (Cray, typed, 2026-09-01, session 267)
+
+§5's three criteria are unchanged and stay as written. This adds the rubric for a
+**different surface**: the `llm_assist` gate draft (`gate_advisory.py`), which
+sessions 267+ prioritised alongside the recommender path. §5 was written for the
+procedure-baseline corpus and could not have anticipated this position, because
+this position supplies the model far less than that corpus does.
+
+**What the approver already sees, deterministically, without the model.**
+`GateAdvisoryBuilder._entry` puts `reasons`, `tier`, `approver_role`,
+`resolved_approver_id` and `sod_required` in front of the human on every run. The
+amount, the band, the tier, the required role, the specific approver and the SoD
+requirement are all **already on the screen**.
+
+**What the shipped prompt already asks the model for**, verbatim: *"You brief a
+human approver in 2 short sentences. Explain why this requisition needs THEIR
+level of authority, from the facts given. No numbers you were not given, no
+confidence scores, no recommendation to approve or reject."*
+
+So two things a reader might expect to rule on are **already settled by the
+code**: brevity is specified (2 sentences), and restating figures is forbidden.
+
+🔴 **The ruling: score the CAUSAL LINK, not completeness.** The narrative earns
+its place only by connecting the facts into *why this lands on THIS approver's
+desk* — amount → band → your authority. A brief that repeats facts the sidecar
+already shows scores **low even when it is complete**; a short brief that makes
+the link scores well. "Is there a link?" is the question, not "is it thorough?".
+
+⚠️ **Consequence for the benchmark's fourth axis, stated so it is not assumed to
+transfer.** `names_approver` — the one axis that separates the two models on the
+procedure benchmark (§13, and §14 across reasoning modes) — asks whether the
+prose names a human role. At **this** position the role is sourced
+deterministically, so naming it adds nothing a reader did not already have.
+**That axis is not a proxy for gate-draft quality**, and a panel scoring this
+surface must not reuse it. Whether it transfers to the recommender path is a
+separate question: that path has no equivalent deterministic sidecar, and it has
+not been checked here.
+
+**The pre-commitment holds.** No output from this position exists to tune a
+rubric to: all four call sites construct `GateAdvisoryBuilder()` with no
+arguments, i.e. `client_factory=None`, the deterministic arm. The live arm is a
+seam that has never been wired. This rubric is therefore fixed **before** any
+narrative has ever been generated, which is the property §5 exists to protect.
+
+**Recorded as intent, not built (Cray, same ruling):** this belongs long-term in
+**system preferences**, adjustable by an administrator per deployment, rather
+than as one rubric hard-coded for every operator. The ruling above is what the
+panel scores against *now* so the work can proceed; it is not a claim that one
+answer suits every customer.
+
 ## 6. If the challenger wins — what it costs to actually switch
 
 Binding it for the dry-run is a per-run `--model` / `RECOMMENDER_MODEL` override.
