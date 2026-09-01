@@ -9,10 +9,38 @@ Two pure scoring functions:
   deterministic rule from the headline).
 * :func:`grade_proposal` — the **LLM-graded** headline (SD-B1 graded unit A, "β"):
   objective field checks on the model's :class:`LlmJudgment` (the part the model
-  can get wrong). The headline scores the fields the model genuinely OWNS in the
-  governed **procedure** path — the affected entity (``affected_primary_key``) and
-  the action class (``action_keywords``). Each field is scored only when the item
-  declares it; the proposal passes iff every declared **scoring** check passes.
+  can get wrong). Each field is scored only when the item declares it; the
+  proposal passes iff every declared **scoring** check passes.
+
+  ⚠️ **Corrected 2026-09-01 (session 267).** This paragraph used to say the
+  headline scores the fields the model genuinely OWNS in the governed procedure
+  path, and named ``affected_primary_key`` as one of them. **That was false, and
+  the refutation was already written two paragraphs below** — the reason
+  ``suggested_handler`` is a probe rather than a headline (the product overrides
+  the model's guess) applies to the entity fields verbatim, and was simply never
+  applied to them. Measured at the artifact:
+
+  - ``affected_primary_key`` — **procedure path:** overridden, the loop entity
+    replaces it. **Reactive path:** a *wrong* key is replaced by the deterministic
+    event-subject anchor, so the model's error never ships; a right one is kept
+    canonical. Neither path ships the model's verbatim answer.
+  - ``forbidden_primary_keys`` — **procedure path:** overridden. 🔴 **Reactive
+    path:** a decoy is a REAL entity, so it resolves and **survives** — this half
+    genuinely does reach the envelope, and is the one entity check that measures
+    product behaviour.
+  - ``handler_payload`` — **passes through to the executed envelope on both
+    paths**, and is graded ``advisory=True``. Advisory for a MEASUREMENT reason
+    (payload keys are free-form), never because it does not matter.
+
+  So β's entity half is a **model-capability** signal, not a measure of product
+  behaviour: on neither path does the model's verbatim entity list reach the
+  envelope, and the over-naming it penalises is the very tendency the override
+  exists to absorb. It is kept scoring — the capability is real, and the decoy
+  half genuinely ships on the reactive path — but **no β figure may be quoted as
+  "what the product would have done"**. The lanes are unchanged and **no
+  published number moves**; only the claim about what they mean is corrected.
+
+  The dead sentence is declared retired in a marker below this docstring.
 
 The model's ``suggested_handler`` is graded as a separate **tiered α probe**, NOT
 a headline gate: in the procedure path the executed handler is deterministically
@@ -45,6 +73,14 @@ Under M-2=b (calibration-first) a watch item that declares no handler tiers
 grades **unscored** — the handler is recorded for the per-vertical distribution
 report, never failed. The lane is reported on its own; it never touches β or α.
 """
+
+# retired: "The headline scores the fields the model genuinely OWNS in the"
+# Session 267: the docstring above used to claim the headline grades fields the
+# model OWNS on the procedure path, naming the affected entity as one. Measured
+# false — `action_step._compose_action` overrides `affected_entities` there, and
+# `recommender._compose_llm_record` governed-resolves them on the reactive path.
+# Retired as a single-line span because the guard matches line-bounded text and
+# the original sentence wrapped across two lines.
 
 from __future__ import annotations
 
@@ -282,6 +318,13 @@ def grade_proposal(
     checks: list[FieldCheck] = []
     handler_tier: HandlerTier | None = None
 
+    # ⚠️ MODEL-CAPABILITY, not product behaviour — see the module docstring's s267
+    # correction. Neither product path ships the model's verbatim entity list:
+    # the procedure path overrides it with the loop entity, the reactive path
+    # replaces a wrong key with the event-subject anchor. Scoring it is
+    # legitimate and stays; quoting it as "what the product would have done" is
+    # not. (The `forbidden_primary_keys` half below IS product-visible on the
+    # reactive path, because a decoy resolves and survives.)
     if expected.affected_primary_key is not None:
         keys = sorted(
             {normalize_primary_key(entity.primary_key) for entity in judgment.affected_entities}
