@@ -2042,3 +2042,60 @@ Rotated on the **R2 window rule alone** (a fifth block entered; the window is fo
 > **cancelled** by the push of `6be4db5`; neither failed. The tip is the tree
 > that merges, and the merge was verified by **content** — `git show
 > origin/main:<file>` for strings only the incoming side adds — not by ancestry.
+
+### Rotated at the s267 reconcile — the session 261 block [window rule ALONE: a fifth block entered a four-block window. NO cap overage — the caller re-measured every block as its own contiguous `>` run (2,992 / 3,384 / 3,414 / 3,669 B) and all four sit under the 4,096 B cap. An earlier 7,950 B / '94% over' figure was a measuring artefact that ran a block anchor to the end of the section and swallowed the ledger paragraph; it never reached a tracked file.]
+
+> **Session 261, 2026-08-28→29 (`7306f17` → `41c0d4c`) — FOUR PRs merged
+> ([#1310](https://github.com/CrayJThiemsert/vero-lite/pull/1310)–[#1313](https://github.com/CrayJThiemsert/vero-lite/pull/1313)),
+> 0 open, tree clean. Two of three phase-1.6 audit findings CLOSED; the third's
+> model is on the box, unrun. One asserted claim became measured, and it
+> retroactively rewrites a 1.6 result.**
+>
+> 🔴 **`think=False` did NOT turn thinking off — MEASURED, not asserted.** A live
+> 1-item run returned a **3,105-char reasoning trace** (`aqua-001`, guard fired
+> at `harness.py:258`, model verified `gpt-oss:20b` MXFP4 resident). So 1.6's
+> `gptoss/full` and `gptoss/think_off` were the **SAME request** — the *"p95
+> anomaly"* in `RESULTS-1.6.md` §4 is **two runs of one configuration**, not an
+> anomaly. ⚠️ **The next matrix has FIVE cells, not six:** `gptoss/think_off` is
+> **inexpressible** (§8) and the guard stops any run attempting it. That is the
+> answer, not a failure.
+>
+> **#1312 — a deadline that discarded everything now leaves something
+> gradeable.** `num_predict` was unset, so generation was bounded ONLY by the
+> client-side timeout, which **aborts and discards every token produced**. New
+> `llm_max_output_tokens` (default 1024) is sent as `num_predict`, so a breach
+> leaves a short answer instead of nothing. `think` was `bool | None` while
+> reasoning-effort models take `"low"/"medium"/"high"` and **discard a
+> boolean** — widened to `bool | str | None` in **5 lines** (`ChatClient` is a
+> Protocol, so ~45 duck-typed stubs were untouched). The guard keys on **what the
+> model returned**, never a roster of model names.
+>
+> **#1313 — the instrument fired on the idiom it prescribes.** The shell-hygiene
+> advisory searched the whole command for `$`, so a `$?` **outside** the quoted
+> arg — which is exact, measured `exit 7`→7, `exit 8`→8 — tripped it: **30.8% of
+> 950 sampled commands**, 37.8% of that rule's firings being this false
+> positive. Now quote-span aware, exempts `wsl -e`, fails open; **FALSE_POSITIVES
+> 3→0, MISSED 4→1** on a fixed corpus. Also `tools/ci/wait_for_ci.py`, a CI wait
+> that **cannot report green from silence** (`[]` = NO-RUN 5 · `cancelled` =
+> SUPERSEDED 4 · deadline = TIMEOUT 6 · exit 0 only for a conclusion measured at
+> the named sha), and `pretooluse_ci_wait_deny.py` denying loop∧sleep∧CI-poll
+> (0.74% of commands) on **`Bash` AND `Monitor`**. ⚠️ **The gate only binds a NEW
+> session** — hook registrations are snapshotted at session start; verified here
+> empirically, a matching command ran **un-denied**.
+>
+> **Host-state under Cray's go: the quantisation-matched model is on the box and
+> NOTHING has been run with it.** `qwen3.8:27b-mtp-q4_K_M` **16 GB** Q4_K_M,
+> params **27.3B** — identical params to 1.6's challenger
+> `qwen3.8:27b-mtp-q8_0` **27 GB** Q8_0, so **only quantisation differs**;
+> incumbent `gpt-oss:20b` is **12 GB** MXFP4. 🔴 **Audit finding 3 is NOT
+> closed.** ⚠️ Two handoff-asserted sizes were **wrong when measured** (12 not
+> ~14 GB, 27 not ~30); conclusions unaffected. ⚠️ **Nothing measures Thai prose
+> quality** — which is what phase 2's LLM tasks are; `DECISION.md` reserves it
+> for a blind read **never run**.
+>
+> **Evidence.** Suite **4607 passed, 8 skipped** (4,561 + 46 = 4,607); probe
+> batteries **16/16 WITNESSED** across four runs.
+
+### Rotated at the s267 reconcile — the Current-Focus rotation ledger, PRE-PRUNE and entire [Cray ruled this session that the R2 window rule applies to BOTH rotation ledgers, with a ~900 B per-entry cap. The s260 and s261 entries fell outside the 263/264/265-266/267 window. The whole prior paragraph is archived rather than the two fragments: the entries are prose with no uniform delimiter, so parsing them out would be a fragile extraction. The s263, s264 and s265-266 entries continue in STATUS alongside the new s267 one.]
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **259–260, 261, 263, 264**. **THIS (s260) reconcile rotates the session-255 block** on the **window rule alone, not a cap overage** — measured **1,984 B** against the 4,096 B cap. ✅ **Both directions were checked, never inferred:** the slice was pinned by its first AND last line, checked for neighbour-bleed, checked absent from the target *before* the write, then verified present-in-archive and absent-from-STATUS **separately**, by byte **delta** rather than presence — a presence test passes on a pre-existing copy. Slice **1,984 B** · archive **+3,300 B** · STATUS **−2,644 B** across both rotations at this reconcile (this block and the s249 RD row). Substance keeps tracked homes, re-checked with `git grep`: `docs/plans/done/0115-*.md`, `docs/adr/0038-*.md`, and the stale-`.pyc` hazard in `tools/probe_battery/README.md` plus `_battery.py` / `_snapshot.py`. **THIS (s261) reconcile rotates the session-256 block** on the **window rule alone** — a fifth block entered, the window is four — **not a cap overage**: s260 measured it at **4,055 B**, inside the 4,096 cap. ⚠️ **No byte delta was measured here** — `status-scribe` has no shell; the slice was pinned by its first and last line and returned verbatim, so the **caller owes `wc -c` + append + verify-by-DELTA** (presence passes on a pre-existing copy). Substance is carried by live Active-TODO rows naming `docs/plans/done/0114-*.md` and the three `docs/logs/2026-08-26-*` files — **read off those rows, NOT re-grepped here.** 🔴 **One residue is carried by nothing else and travels into the archive only:** *nowhere records that the battery-lock case was considered for the classifier arm*. **THIS (s263) reconcile rotates the session-257 block** on the **window rule alone** — a fifth entered, the window is four. ✅ **Measured by the caller, not asserted:** slice **3,754 B** (one heading, no neighbour bleed), extracted with `git show` rather than retyped, checked ABSENT from the target *before* the write, then verified by byte **delta** — archive **+3,755 B**, and **+731 B** for the s251 RD row. Substance keeps live rows: PLAN-0107 15/15 (`docs/plans/done/0107-*.md`), the `check_ac_consistency.py` blind spot, the two s241 guards, and the s256-walk residue log. ⚠️ **STATUS skipped s262** — the window is **259–260, 261, 263, 264** and no s262 block is backfilled. **THIS (s264) reconcile rotates the session-258 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: measured **2,852 B** against the 4,096 cap. ✅ **Pinned, asserted, then measured by DELTA:** first AND last line pinned, neighbour-bleed checked, ledger checked OUT of the slice, checked ABSENT from the target *before* the write, then presence-in-archive and absence-from-STATUS verified **separately**. Also rotated: the s253 RD row and **7 completed `[x]` TODO rows** (s250/255/256/258, all older than the window) — archived per R4 rather than dropped, matching recent practice. Substance keeps tracked homes: `benchmarks/model_compare/RESULTS-1.6.md` §13 and `benchmarks/procedure_baseline/rationale_regrade.py` **THIS (s265-266) reconcile rotates the session-259-260 block** on the **window rule alone** — a fifth block entered and the window is four — **not a cap overage**: measured **3,038 B** against the 4,096 B cap. Pinned, asserted, then measured by DELTA: a 13-assertion battery fixed BEFORE any write pinned the slice by its first AND last line, checked neighbour-bleed in both directions, checked this ledger OUT of the slice, and checked the slice ABSENT from the target before the append; sed then extracted the slice and independently reproduced the same 3,038 B. Archive **+3,438 B** (slice plus its rotation header) and the s254 ADR-0038 RD row **+852 B**, both verified present-in-archive and absent-from-STATUS separately. Headroom is the real finding here: with zero completed `[x]` rows left to rotate (s264 took the last seven), the only lever was writing this block **under** the 4,096 cap. **Active TODOs is 27,062 B, 43% of STATUS across 45 open rows** — and it, not the Current-Focus window, is why R1 headroom keeps vanishing. The s264 next_action already named the rehome; it is still unaddressed and is now the binding constraint on the next reconcile.]_
