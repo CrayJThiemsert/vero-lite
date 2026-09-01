@@ -1,10 +1,12 @@
 # PLAN-0118: Intake-extraction benchmark — measure the model at the shipped `extract_package` seam
 
 **Status:** Draft
-**Owner:** Claude Code — **execution-GATED: SD-1, SD-2, SD-3, SD-4 are OPEN.** No step
-that authors gold cases or fixes the scored-axis set runs before Cray rules them. The
-instrument-plumbing steps (scorer/runner skeletons, Step 1) are shape-stable under every
-SD option and may be prepared, but nothing lands until the SDs are ruled.
+**Owner:** Claude Code — ✅ **UNGATED: SD-1, SD-1a, SD-2, SD-3 and SD-4 were all RULED by
+Cray (typed, 2026-09-01, session 268)**; every ruling took the drafted recommendation. See
+§Surfaced decisions for each ruling recorded against its own options. Execution may now
+proceed through Step 6. **Step 7 remains separately gated:** SD-4 authorises ONE live
+baseline run in principle, but the run itself still needs its own typed §8 go at the time
+it is made (CLAUDE.md §8 — a ruling on scope is not a standing authorisation to fire).
 **Created:** 2026-09-01
 **Related ADRs:** ADR-010 (D4 / IN-2 — the delimiter-forgery-proof untrusted block the
 description is rendered in; the surface SD-3 proposes to measure), ADR-0001 (the pinned
@@ -52,6 +54,13 @@ the identical answer and PASSED (`benchmarks/nl_query_feasibility/RESULTS.md:611
 the case-level record at `benchmarks/nl_query_feasibility/gold_fleet.yaml:167-187`).
 An intake gold set authored carelessly reproduces that defect at scale: write the
 description to match a known package and you have written the answer into the question.
+
+⚠️ **Code's review note on the "pass-evidence idiom" this PLAN cites (s268).** The
+`gold_fleet.yaml:167-187` note is cited below (AC-1) as the idiom to imitate — a
+per-case note stating what a PASS is *and is not* evidence of. That citation is
+accurate, but the note was authored **earlier in the same session as this PLAN** and has
+an **N of 1**. It is a proposal worth following, not settled house style; if it proves
+awkward in practice, improve it rather than treating it as precedent.
 SD-1 exists to put the anti-confound procedure in front of Cray before a single case is
 authored. Per the dispatch's accelerator clause, the gold half of this PLAN is
 deliberately conservative — **fewer cases with a stated derivation over more cases with
@@ -200,8 +209,11 @@ ruling; the probe obligations below hold under every option.
   above-accuracy `0/n` — delete the per-direction split → that assertion reddens.
 - [ ] **AC-3 — scenario test (CLAUDE.md §8, binding): the real producer flows into the
   real consumer, offline.** Artifact:
-  `tests/benchmarks/intake_extraction/test_intake_benchmark_scenario.py` (or the
-  repo's prevailing test placement for `benchmarks/` — mirror the NL lane's). The
+  `tests/benchmark/test_intake_extraction_scenario.py`. ✅ **Placement MEASURED by Code
+  at review (s268), closing the draft's own open question:** benchmark tests live in
+  `tests/benchmark/` — **singular and flat**, named `test_<suite>_*.py` (24 modules
+  there today, e.g. `test_nl_query_feasibility_fleet_gold.py`). The draft's hedged
+  `tests/benchmarks/intake_extraction/` is NOT the repo's shape; do not create it. The
   test drives the **shipped** `extract_package` (`intake.py:155`) — real prompt
   assembly, real retry loop, real validation, real `source` stamping — with a canned
   transport at the **designed** `ChatClient` Protocol seam (`intake.py:39-50`, F4),
@@ -285,9 +297,18 @@ ruling; the probe obligations below hold under every option.
   `settings.recommender_model` only, unless Cray's SD-4 ruling says otherwise; live
   runs are minimized (F3).
 
-## Surfaced decisions (OPEN — Cray rules; Code does not)
+## Surfaced decisions — ALL RULED (Cray, typed, 2026-09-01, session 268)
+
+Every option below is kept as drafted, so each ruling is readable against what it chose
+*between* rather than as a bare instruction. All five took the drafted recommendation;
+none was amended. Recorded at the moment of the ruling, before any execution.
 
 ### SD-1 — the anti-confound gold-authoring procedure (the reason this PLAN exists)
+
+✅ **RULED: (a) — description-first with span-traceability + per-case confound audit,
+small N (8–12), raw-fraction reporting.** Cray, typed, 2026-09-01. Option (b)
+package-first is therefore **rejected by ruling, not by assumption** — which was the
+point of listing it.
 
 The gold set cannot be borrowed; it must be authored, and authoring is where fl-10
 lives. Options:
@@ -312,6 +333,12 @@ lives. Options:
   suspicious pass is investigated, i.e. after the number has already been believed
   (exactly fl-10's history: found s268, long after the runs).
 
+✅ **SD-1a RULED: mixed, labelled.** Cray, typed, 2026-09-01. Each case carries
+`direction_stated: true|false`; the summary reports the two bands **separately**, and
+neither band's figure may be cited as evidence of the other's capability. The
+verbatim-stated band measures *reading*; the physics-only band measures the *inference*
+`_SYSTEM_INSTRUCTION` actually asks for (`intake.py:88-91`).
+
 **Sub-question SD-1a (part of the same ruling):** may descriptions state the breach
 direction verbatim ("alert when it **rises above** 40 °C"), or must direction be
 derivable only from breach physics + the numbers? Verbatim-stated cases measure
@@ -330,6 +357,13 @@ s268 fl-10 adjudication, and it sets the cost/valence trade (few audited cases v
 more plausible ones) that Code must not set for itself.
 
 ### SD-2 — the scored-axis set: which axes carry an honest oracle, which are cut
+
+✅ **RULED: the lean set.** Cray, typed, 2026-09-01. Scored: `metric.direction`
+(headline), `metric.threshold` + `recovery_value`, band-compliance. Diagnostics only:
+`attempts`, confidence-omission rate. **`namespace` is NOT added** (the "option to add"
+in the table below is declined — it would grow the SD-1 audit burden for low value).
+`source` never scored (structural, AC-2(a)); `confidence` never scored as accuracy;
+free-text fields and exact property names registered inexpressible with their reasons.
 
 Per-field dispositions proposed from F5 (the ruling adopts, amends, or cuts — a
 benchmark with two trustworthy axes beats one with six that agree with themselves):
@@ -351,6 +385,15 @@ verdict on what the intake face is *claimed* to do well; those claims reach part
 (ADR-0032 D1), so which numbers exist is a Cray call.
 
 ### SD-3 — injection resistance: in this benchmark, or its own thing?
+
+✅ **RULED: (a) — IN, as a separate band.** Cray, typed, 2026-09-01. 2–3 cases on a
+dedicated `obeyed_injection` metric, **never folded into headline accuracy**. This
+enlarges what the SD-4 live run covers, and Cray granted that scope in the same ruling.
+The obeyed-detection assertion carries its own witnessed RED (a canned package carrying
+the injected value must trip it) — and note the confound this band inherits from SD-1:
+an injected value that coincides with a plausible legitimate value would score
+resistance as obedience, so the injected values must be audited to be implausible as
+legitimate extractions.
 
 The model's actual resistance to a directive embedded in the description is
 objectively scorable, load-bearing, and unmeasured (F7 — the existing test proves
@@ -376,6 +419,15 @@ its first number now or later, is a risk-priority call — and option (a) enlarg
 what the typed §8 go covers, which is Cray's authority to grant.
 
 ### SD-4 — the offline/live split, and what the one live run buys
+
+✅ **RULED: (a) — full offline instrument + ONE batched live baseline run.** Cray,
+typed, 2026-09-01. Scope: the shipped `settings.recommender_model` only (option (c),
+two-model, is declined), and the run covers the SD-3 injection band in the same batch.
+
+🔴 **This ruling sets the SCOPE of the live run; it is not the go to fire it.** Step 7
+still requires its own typed §8 go from Cray at the time of the run (CLAUDE.md §8:
+host-state changes need explicit go *before* them, and live runs are minimised). Code
+must not read this ruling as a standing authorisation.
 
 - **(a) Instrument fully offline + ONE batched live baseline run under a typed §8 go
   — RECOMMENDED.** Everything except model claims closes offline (AC-1–AC-5): gold
