@@ -665,7 +665,14 @@ class TimingChatClient:
 
 def percentile(values: Sequence[float], pct: float) -> float:
     """The ``pct``-th percentile (0-100) by the nearest-rank method on sorted
-    values. Empty input -> 0.0. Simple + defensible for a p95 latency bar."""
+    values. Empty input -> 0.0. Simple + defensible for a p95 latency bar.
+
+    ⚠️ Nearest-rank returns the MAXIMUM whenever ``ceil(pct/100 * n) == n``. For
+    ``pct=95`` that is every ``n`` below :data:`P95_MIN_SAMPLES`. The function is
+    correct; reporting its answer as a *percentile* at those sizes is not, which
+    is why :func:`summarize_latency` gates the p95 rather than this helper — p50
+    on a small sample is still a median and must keep working.
+    """
     if not values:
         return 0.0
     ordered = sorted(values)
@@ -673,24 +680,69 @@ def percentile(values: Sequence[float], pct: float) -> float:
     return ordered[rank - 1]
 
 
+P95_MIN_SAMPLES = 20
+"""Below this many samples a nearest-rank p95 IS the sample maximum.
+
+Derivation, so nobody has to re-derive it: nearest-rank picks index
+``ceil(0.95 * n)``, which equals ``n`` exactly when ``0.95 * n > n - 1`` — i.e.
+when ``n < 20``. At ``n = 20`` the rank is 19 and the statistic finally sits
+below the maximum.
+
+This is not a style preference. Every per-judgment ``p95`` published for this
+benchmark was measured at ``n = 14`` (the fleet breach set), so each was one
+item wide and moved whenever that single slowest item moved — which is what
+``RESULTS-1.6.md`` §11 recorded as a p95 "doubling" on a mean that barely
+shifted. Reporting ``None`` follows the sibling precedent in this repo: the NL
+harness's ``phrase_rescue`` and ``model_compare``'s ``flip_rate`` are both
+``None`` rather than a number the sample cannot support.
+"""
+
+
 @dataclass(frozen=True)
 class LatencySummary:
-    """Per-LLM-call latency aggregate for one model's run (SD-B1 p95 ≤ threshold)."""
+    """Per-LLM-call latency aggregate for one model's run (SD-B1 p95 ≤ threshold).
+
+    ``p95_s`` is ``None`` below :data:`P95_MIN_SAMPLES` — never a float the sample
+    cannot support. Read :attr:`tail_s` / :attr:`tail_label` when you need the
+    statistic the threshold was actually judged on, so a small-sample verdict can
+    never be quoted as a p95 verdict.
+    """
 
     calls: int
     mean_s: float
     p50_s: float
-    p95_s: float
+    p95_s: float | None
     max_s: float
     threshold_s: float
     within_threshold: bool
 
+    @property
+    def tail_s(self) -> float:
+        """The tail statistic :attr:`within_threshold` was judged on.
+
+        The p95 when the sample supports one, else the maximum — which is the
+        same number nearest-rank would have returned, now carrying its real name.
+        """
+        return self.max_s if self.p95_s is None else self.p95_s
+
+    @property
+    def tail_label(self) -> str:
+        """``"p95"`` or ``"max"`` — what :attr:`tail_s` is, for any renderer."""
+        return "max" if self.p95_s is None else "p95"
+
 
 def summarize_latency(durations: Sequence[float], *, threshold_s: float = 8.0) -> LatencySummary:
-    """Aggregate per-call durations into the SD-B1 latency report (p95 vs the bar)."""
+    """Aggregate per-call durations into the SD-B1 latency report.
+
+    The threshold is judged against :attr:`LatencySummary.tail_s`, so a run below
+    :data:`P95_MIN_SAMPLES` still gets a verdict — on its maximum, labelled as its
+    maximum. Suppressing the verdict along with the statistic would trade one
+    dishonest number for a missing one.
+    """
     if not durations:
-        return LatencySummary(0, 0.0, 0.0, 0.0, 0.0, threshold_s, True)
-    p95 = percentile(durations, 95.0)
+        return LatencySummary(0, 0.0, 0.0, None, 0.0, threshold_s, True)
+    p95 = percentile(durations, 95.0) if len(durations) >= P95_MIN_SAMPLES else None
+    tail = max(durations) if p95 is None else p95
     return LatencySummary(
         calls=len(durations),
         mean_s=sum(durations) / len(durations),
@@ -698,5 +750,5 @@ def summarize_latency(durations: Sequence[float], *, threshold_s: float = 8.0) -
         p95_s=p95,
         max_s=max(durations),
         threshold_s=threshold_s,
-        within_threshold=p95 <= threshold_s,
+        within_threshold=tail <= threshold_s,
     )

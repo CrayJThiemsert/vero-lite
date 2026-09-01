@@ -43,6 +43,7 @@ from pathlib import Path
 from typing import Any
 
 from benchmarks.nl_query_feasibility.harness import CaseResult, load_gold, run_case, summarize
+from benchmarks.procedure_baseline.harness import P95_MIN_SAMPLES
 from services.engine.llm.client import OllamaClient
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.fleet_maintenance.data_adapter import register_fleet_maintenance_adapter
@@ -72,6 +73,16 @@ def _print_case(r: CaseResult) -> None:
     )
 
 
+def _p95_secs(value: float | None, n: int) -> str:
+    """Render the p95 slot, refusing it below ``P95_MIN_SAMPLES``.
+
+    ``summarize`` returns ``None`` there because nearest-rank would hand back the
+    sample maximum; the refusal carries the n so a reader can see why, with
+    ``max`` printed right beside it for the tail they actually wanted.
+    """
+    return f"{value}s" if value is not None else f"n/a(n={n}<{P95_MIN_SAMPLES})"
+
+
 def _print_summary(row: dict[str, Any]) -> None:
     def pct(v: float | None) -> str:
         return f"{v:.0%}" if v is not None else "—"
@@ -83,7 +94,8 @@ def _print_summary(row: dict[str, Any]) -> None:
         f"({row['ceiling_n']} cases, {row['ceiling_translated_n']} translated) | "
         f"phrase-rescue {pct(row['phrase_rescue'])} (n={row['phrase_rescue_n']}) | "
         f"wrong {row['wrong'] or '[]'} | invalid {row['invalid'] or '[]'} | "
-        f"latency p50 {row['latency_p50_s']}s p95 {row['latency_p95_s']}s "
+        f"latency p50 {row['latency_p50_s']}s "
+        f"p95 {_p95_secs(row['latency_p95_s'], row['n'])} "
         f"max {row['latency_max_s']}s"
     )
 

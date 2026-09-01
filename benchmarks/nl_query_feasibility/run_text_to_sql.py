@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from benchmarks.nl_query_feasibility.harness import load_gold
+from benchmarks.nl_query_feasibility.run_benchmark import _p95_secs
 from benchmarks.nl_query_feasibility.text_to_sql import (
     SqlResult,
     build_db,
@@ -59,7 +60,8 @@ async def _main(args: argparse.Namespace) -> None:
     print(
         f"\n== text-to-SQL {row['correct']}/{row['n']} correct | "
         f"wrong {row['wrong'] or '[]'} | invalid {row['invalid'] or '[]'} | "
-        f"latency p50 {row['latency_p50_s']}s p95 {row['latency_p95_s']}s "
+        f"latency p50 {row['latency_p50_s']}s "
+        f"p95 {_p95_secs(row['latency_p95_s'], row['n'])} "
         f"max {row['latency_max_s']}s"
     )
 

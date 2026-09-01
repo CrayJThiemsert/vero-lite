@@ -33,6 +33,7 @@ from benchmarks.procedure_baseline.consistency import (
     missing_handler_verticals,
 )
 from benchmarks.procedure_baseline.harness import (
+    P95_MIN_SAMPLES,
     ItemResult,
     LatencyRecorder,
     LatencySummary,
@@ -434,9 +435,18 @@ def _print_generation_demand(results: list[ItemResult]) -> None:
             print(f"\nGENERATION [{role}]: no eval_count reported.")
             continue
         ordered = sorted(counts)
+        # Same small-sample defect as the latency p95, in a hand-rolled form: an
+        # index at 0.95*n collapses onto the last element long before n=20, so it
+        # would print the max twice under two different names. Suppressed with its
+        # n rather than dressed up (P95_MIN_SAMPLES carries the derivation).
+        p95_tokens = (
+            str(ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))])
+            if len(ordered) >= P95_MIN_SAMPLES
+            else f"n/a(n={len(ordered)}<{P95_MIN_SAMPLES})"
+        )
         print(
             f"\nGENERATION [{role}]: n={len(ordered)} "
-            f"max={ordered[-1]} p95={ordered[min(len(ordered) - 1, int(len(ordered) * 0.95))]} "
+            f"max={ordered[-1]} p95={p95_tokens} "
             f"median={ordered[len(ordered) // 2]} min={ordered[0]} tokens"
         )
 
@@ -449,6 +459,19 @@ def _print_generation_demand(results: list[ItemResult]) -> None:
         print(f"  {r.item_id}  [{c.role}]  eval_count={c.eval_count}")
 
 
+def _p95_field(latency: LatencySummary) -> str:
+    """Render the p95 slot honestly.
+
+    Below ``P95_MIN_SAMPLES`` the nearest-rank p95 is the sample maximum, so the
+    console says so instead of printing the max under a percentile's name. The n
+    travels with the refusal — a reader who wants the tail still has ``max=``
+    right beside it, and now knows what it is.
+    """
+    if latency.p95_s is None:
+        return f"p95=n/a(n={latency.calls}<{P95_MIN_SAMPLES})"
+    return f"p95={latency.p95_s:.2f}s"
+
+
 def _print_latency(model: str, latency: LatencySummary) -> None:
     """Per-LLM-call latency — now a lever DIAGNOSTIC (the SD-B1 8 s-per-call bar
     was superseded by the SD-2 per-judgment bar; this number still localises which
@@ -456,7 +479,7 @@ def _print_latency(model: str, latency: LatencySummary) -> None:
     print(
         f"\nLATENCY [{model}] per LLM call (lever diagnostic): "
         f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
-        f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s"
+        f"{_p95_field(latency)} max={latency.max_s:.2f}s"
     )
 
 
@@ -464,13 +487,17 @@ def _print_judgment_latency(latency: LatencySummary) -> None:
     """Per-JUDGMENT latency — the re-ratified SD-2 acceptance bar (PLAN-0020): the
     end-to-end two-call exchange wall-clock a human waits on, p95 ≤ 30 s.
     Breach items only (the bar stays breach-scoped — M-4). Reports-not-gates: a
-    p95 over the bar is a logged finding, never a build fail."""
+    p95 over the bar is a logged finding, never a build fail.
+
+    The verdict line names the statistic it was judged on (``tail_label``): below
+    ``P95_MIN_SAMPLES`` that is the maximum, and a reader must not be able to
+    quote a max-based verdict as a p95 verdict."""
     verdict = "PASS" if latency.within_threshold else "OVER"
     print(
         f"\nLATENCY per BREACH judgment (end-to-end exchange — SD-2 acceptance bar): "
         f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
-        f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s | "
-        f"SD-2 p95 <= {latency.threshold_s:.0f}s -> {verdict}"
+        f"{_p95_field(latency)} max={latency.max_s:.2f}s | "
+        f"SD-2 {latency.tail_label} <= {latency.threshold_s:.0f}s -> {verdict}"
     )
 
 
@@ -481,7 +508,7 @@ def _print_watch_judgment_latency(latency: LatencySummary) -> None:
     print(
         f"\nLATENCY per WATCH judgment (M-4 diagnostic — own lane, no bar): "
         f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
-        f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s"
+        f"{_p95_field(latency)} max={latency.max_s:.2f}s"
     )
 
 
