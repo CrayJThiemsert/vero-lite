@@ -170,6 +170,54 @@ class CallMetrics:
     prompt_eval_count: int | None
     content_chars: int
     thinking_chars: int | None
+    #: Server-side timings, in NANOSECONDS exactly as Ollama reports them. Kept raw
+    #: rather than converted because the envelope is the measurement and a converted
+    #: number cannot be checked back against it. ``None`` when the server omitted the
+    #: field — Ollama versions differ, and an absent counter must read as absent.
+    #:
+    #: Why they are worth carrying at all: a wall-clock second is only interpretable
+    #: for the exact prompt and output length that produced it, so every new dataset
+    #: needs its own benchmark. ``eval_count / eval_duration`` is a DECODE RATE and
+    #: ``prompt_eval_count / prompt_eval_duration`` a PREFILL RATE, and those two do
+    #: extrapolate — they let a speed figure survive a change of prompt size instead
+    #: of being retired by it. Every timing this repo has recorded so far lived only
+    #: in a console log, so no dump on disk can answer the question today.
+    #:
+    #: ``load_duration_ns`` earns its place separately: it separates a COLD LOAD from
+    #: a slow model. That compounds with the small-sample p95 defect — a cold load
+    #: into item 1 can BE the reported tail on a 14-item run, and nothing in the
+    #: record would say so.
+    total_duration_ns: int | None = None
+    load_duration_ns: int | None = None
+    prompt_eval_duration_ns: int | None = None
+    eval_duration_ns: int | None = None
+
+    @property
+    def decode_tokens_per_s(self) -> float | None:
+        """Generated tokens per second, or ``None`` when it cannot be computed.
+
+        Guarded on a zero duration as well as on missing fields: a server that
+        reports ``eval_duration = 0`` would otherwise raise, and a benchmark sweep
+        must not die over a derived convenience. ``None`` reads as "not available"
+        downstream, which is the truth in both cases.
+        """
+        if self.eval_count is None or not self.eval_duration_ns:
+            return None
+        return self.eval_count / (self.eval_duration_ns / 1e9)
+
+    @property
+    def prefill_tokens_per_s(self) -> float | None:
+        """Prompt tokens per second, same guards as :attr:`decode_tokens_per_s`.
+
+        Kept apart from the decode rate because the two scale with different things
+        — prefill with the prompt, decode with the answer — and a single blended
+        "tokens/s" hides which of them a longer prompt actually cost. The NL work
+        grew its prompt 56% in one PLAN; a blended rate could not have said where
+        that landed.
+        """
+        if self.prompt_eval_count is None or not self.prompt_eval_duration_ns:
+            return None
+        return self.prompt_eval_count / (self.prompt_eval_duration_ns / 1e9)
 
     @property
     def truncated(self) -> bool:
@@ -197,6 +245,17 @@ def call_metrics(result: ChatResult, *, role: CallRole) -> CallMetrics:
     done_reason = raw.get("done_reason")
     eval_count = raw.get("eval_count")
     prompt_eval_count = raw.get("prompt_eval_count")
+
+    def _ns(key: str) -> int | None:
+        """One server-side duration, or ``None`` if absent or not an integer.
+
+        ⚠️ ``bool`` is a subclass of ``int`` in Python, so a server returning
+        ``true`` for one of these would otherwise be recorded as the duration
+        ``1`` nanosecond — a fabricated measurement rather than an absent one.
+        """
+        value = raw.get(key)
+        return value if isinstance(value, int) and not isinstance(value, bool) else None
+
     return CallMetrics(
         role=role,
         done_reason=done_reason if isinstance(done_reason, str) else None,
@@ -204,6 +263,10 @@ def call_metrics(result: ChatResult, *, role: CallRole) -> CallMetrics:
         prompt_eval_count=prompt_eval_count if isinstance(prompt_eval_count, int) else None,
         content_chars=len(result.content),
         thinking_chars=len(result.thinking) if result.thinking is not None else None,
+        total_duration_ns=_ns("total_duration"),
+        load_duration_ns=_ns("load_duration"),
+        prompt_eval_duration_ns=_ns("prompt_eval_duration"),
+        eval_duration_ns=_ns("eval_duration"),
     )
 
 
