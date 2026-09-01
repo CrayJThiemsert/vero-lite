@@ -79,18 +79,37 @@ def _breach_item() -> BenchmarkItem:
     )
 
 
+#: The server-side timings an Ollama that reports them sends back, in nanoseconds.
+#: Sized to this box rather than to round numbers: a 25 s cold load (the
+#: ``ms-s1-ollama`` skill records ~20-25 s for the 20B), 8 s of prefill over the
+#: envelope's own 1,120 prompt tokens (= 140 tok/s), and 64 s to decode 1,024
+#: (= 16 tok/s), which is the order a 27B q4 actually runs at here.
+_DURATIONS: dict[str, int] = {
+    "total_duration": 97_000_000_000,
+    "load_duration": 25_000_000_000,
+    "prompt_eval_duration": 8_000_000_000,
+    "eval_duration": 64_000_000_000,
+}
+
+
 def _envelope(
     content: str,
     *,
     done_reason: str | None,
     eval_count: int | None,
     thinking: str | None = None,
+    durations: dict[str, int] | None = None,
 ) -> httpx.Response:
     """One realistic Ollama ``/api/chat`` body.
 
     ``done_reason=None`` omits the key entirely rather than sending a null, which
     is how an older server that never reports it actually behaves — the case the
     truncation report must not mistake for a clean run.
+
+    ``durations=None`` omits the four timing keys the same way, for the same
+    reason: whether THIS box's Ollama reports ``prompt_eval_duration`` and
+    ``eval_duration`` is unverified (checking would be a host-state call), so both
+    shapes are exercised and neither is assumed.
     """
     message: dict[str, Any] = {"role": "assistant", "content": content}
     if thinking is not None:
@@ -105,6 +124,8 @@ def _envelope(
         body["done_reason"] = done_reason
     if eval_count is not None:
         body["eval_count"] = eval_count
+    if durations is not None:
+        body.update(durations)
     return httpx.Response(200, json=body)
 
 
@@ -262,3 +283,114 @@ async def test_a_missing_done_reason_is_recorded_as_absent_not_as_clean() -> Non
     # Not vacuous: the content still arrived, so the exchange really ran and the
     # nulls above are the absent ORACLE, not an absent response.
     assert all(c["content_chars"] > 0 for c in record["calls"])
+
+
+async def test_server_side_durations_reach_the_dump_as_rates() -> None:
+    """The timings Ollama already sends survive into the record, raw AND derived.
+
+    Every timing this repo has recorded lived only in a console log, so no dump on
+    disk can say how fast a model decoded. A wall-clock second is interpretable
+    only for the prompt and output length that produced it; a decode rate is not,
+    which is what lets a speed figure survive a change of prompt size.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = _two_call_client(
+        _envelope(_LONG_DRAFT, done_reason="stop", eval_count=1024, durations=_DURATIONS),
+        _envelope(_judgment_json(), done_reason="stop", eval_count=120, durations=_DURATIONS),
+    )
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=1)
+    record = _item_record(result)
+
+    assert record["judgment"] is not None, "precondition: this exchange must have succeeded"
+    reasoning = next(c for c in record["calls"] if c["role"] == "reasoning")
+
+    assert reasoning["load_duration_ns"] == 25_000_000_000  # a cold load is now visible
+    assert reasoning["eval_duration_ns"] == 64_000_000_000
+    assert reasoning["prompt_eval_duration_ns"] == 8_000_000_000
+    assert reasoning["total_duration_ns"] == 97_000_000_000
+    # 1024 tokens / 64 s and 1120 tokens / 8 s — the two rates that extrapolate.
+    assert reasoning["decode_tokens_per_s"] == 16.0
+    assert reasoning["prefill_tokens_per_s"] == 140.0
+
+
+async def test_a_server_that_omits_durations_records_absence_not_zero() -> None:
+    """An older Ollama reports no timings, and the record must say so.
+
+    Whether THIS box's server sends `prompt_eval_duration` / `eval_duration` is
+    unverified — confirming it is a host-state call — so the absent shape is not a
+    hypothetical to guard against later. A zero here would be a measurement that
+    never happened wearing the shape of one that did, and a zero decode rate would
+    read as an infinitely slow model.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = _two_call_client(
+        _envelope(_LONG_DRAFT, done_reason="stop", eval_count=1024),
+        _envelope(_judgment_json(), done_reason="stop", eval_count=120),
+    )
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=1)
+    record = _item_record(result)
+
+    assert record["judgment"] is not None, "precondition: this exchange must have succeeded"
+    for call in record["calls"]:
+        assert call["load_duration_ns"] is None
+        assert call["eval_duration_ns"] is None
+        assert call["decode_tokens_per_s"] is None
+        assert call["prefill_tokens_per_s"] is None
+    # Not vacuous: eval_count still arrived on the same envelopes, so the nulls
+    # above are the absent TIMINGS, not an absent response.
+    assert all(c["eval_count"] is not None for c in record["calls"])
+
+
+async def test_a_zero_duration_yields_no_rate_rather_than_raising() -> None:
+    """A server reporting a zero duration must not kill a sweep with a divide.
+
+    A derived convenience that raises would turn a whole benchmark run into a
+    crash over a field nothing scores — the same reasoning the surrounding
+    optional-tolerant reads already carry. `None` is the honest answer: the rate
+    is genuinely not computable from a zero.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    zeroed = {**_DURATIONS, "eval_duration": 0, "prompt_eval_duration": 0}
+    client = _two_call_client(
+        _envelope(_LONG_DRAFT, done_reason="stop", eval_count=1024, durations=zeroed),
+        _envelope(_judgment_json(), done_reason="stop", eval_count=120, durations=zeroed),
+    )
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=1)
+    record = _item_record(result)
+
+    assert record["judgment"] is not None, "precondition: this exchange must have succeeded"
+    reasoning = next(c for c in record["calls"] if c["role"] == "reasoning")
+    assert reasoning["eval_duration_ns"] == 0  # the zero is recorded as measured
+    assert reasoning["decode_tokens_per_s"] is None  # but no rate is invented from it
+    assert reasoning["prefill_tokens_per_s"] is None
+    # The non-zero siblings still came through, so this is the divide being
+    # guarded and not the whole envelope going missing.
+    assert reasoning["load_duration_ns"] == 25_000_000_000
+
+
+async def test_a_boolean_duration_is_absence_not_one_nanosecond() -> None:
+    """`bool` is a subclass of `int`, so a naive isinstance check records `True` as 1 ns.
+
+    That would be a fabricated measurement — the exact failure mode the
+    surrounding reads exist to avoid — and one nanosecond would compute a decode
+    rate of a billion tokens per second rather than looking obviously wrong.
+    """
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    lying = {**_DURATIONS, "eval_duration": True}  # type: ignore[dict-item]
+    client = _two_call_client(
+        _envelope(_LONG_DRAFT, done_reason="stop", eval_count=1024, durations=lying),
+        _envelope(_judgment_json(), done_reason="stop", eval_count=120, durations=lying),
+    )
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, retry_budget=1)
+    record = _item_record(result)
+
+    assert record["judgment"] is not None, "precondition: this exchange must have succeeded"
+    reasoning = next(c for c in record["calls"] if c["role"] == "reasoning")
+    assert reasoning["eval_duration_ns"] is None  # NOT 1
+    assert reasoning["decode_tokens_per_s"] is None
+    # The well-formed siblings in the same envelope still landed.
+    assert reasoning["load_duration_ns"] == 25_000_000_000

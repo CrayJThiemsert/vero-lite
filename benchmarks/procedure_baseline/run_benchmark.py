@@ -369,6 +369,27 @@ def _item_record(result: ItemResult, item: BenchmarkItem | None = None) -> dict[
                 "content_chars": call.content_chars,
                 "thinking_chars": call.thinking_chars,
                 "truncated": call.truncated,
+                # Server-side timings, raw in nanoseconds, plus the two derived
+                # rates. Both halves are written: the raw is what Ollama said and
+                # is checkable; the rates are what a decision reads, and deriving
+                # them at read time means every future reader re-derives them
+                # differently. `load_duration_ns` is what separates a cold load
+                # from a slow model — on a 14-item run the reported tail IS the
+                # maximum, so a cold load into item 1 can be the whole "tail".
+                "total_duration_ns": call.total_duration_ns,
+                "load_duration_ns": call.load_duration_ns,
+                "prompt_eval_duration_ns": call.prompt_eval_duration_ns,
+                "eval_duration_ns": call.eval_duration_ns,
+                "decode_tokens_per_s": (
+                    round(call.decode_tokens_per_s, 2)
+                    if call.decode_tokens_per_s is not None
+                    else None
+                ),
+                "prefill_tokens_per_s": (
+                    round(call.prefill_tokens_per_s, 2)
+                    if call.prefill_tokens_per_s is not None
+                    else None
+                ),
             }
             for call in result.calls
         ],
