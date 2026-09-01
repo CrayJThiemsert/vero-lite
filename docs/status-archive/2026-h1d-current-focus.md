@@ -2099,3 +2099,52 @@ Rotated on the **R2 window rule alone** (a fifth block entered; the window is fo
 ### Rotated at the s267 reconcile — the Current-Focus rotation ledger, PRE-PRUNE and entire [Cray ruled this session that the R2 window rule applies to BOTH rotation ledgers, with a ~900 B per-entry cap. The s260 and s261 entries fell outside the 263/264/265-266/267 window. The whole prior paragraph is archived rather than the two fragments: the entries are prose with no uniform delimiter, so parsing them out would be a fragile extraction. The s263, s264 and s265-266 entries continue in STATUS alongside the new s267 one.]
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **259–260, 261, 263, 264**. **THIS (s260) reconcile rotates the session-255 block** on the **window rule alone, not a cap overage** — measured **1,984 B** against the 4,096 B cap. ✅ **Both directions were checked, never inferred:** the slice was pinned by its first AND last line, checked for neighbour-bleed, checked absent from the target *before* the write, then verified present-in-archive and absent-from-STATUS **separately**, by byte **delta** rather than presence — a presence test passes on a pre-existing copy. Slice **1,984 B** · archive **+3,300 B** · STATUS **−2,644 B** across both rotations at this reconcile (this block and the s249 RD row). Substance keeps tracked homes, re-checked with `git grep`: `docs/plans/done/0115-*.md`, `docs/adr/0038-*.md`, and the stale-`.pyc` hazard in `tools/probe_battery/README.md` plus `_battery.py` / `_snapshot.py`. **THIS (s261) reconcile rotates the session-256 block** on the **window rule alone** — a fifth block entered, the window is four — **not a cap overage**: s260 measured it at **4,055 B**, inside the 4,096 cap. ⚠️ **No byte delta was measured here** — `status-scribe` has no shell; the slice was pinned by its first and last line and returned verbatim, so the **caller owes `wc -c` + append + verify-by-DELTA** (presence passes on a pre-existing copy). Substance is carried by live Active-TODO rows naming `docs/plans/done/0114-*.md` and the three `docs/logs/2026-08-26-*` files — **read off those rows, NOT re-grepped here.** 🔴 **One residue is carried by nothing else and travels into the archive only:** *nowhere records that the battery-lock case was considered for the classifier arm*. **THIS (s263) reconcile rotates the session-257 block** on the **window rule alone** — a fifth entered, the window is four. ✅ **Measured by the caller, not asserted:** slice **3,754 B** (one heading, no neighbour bleed), extracted with `git show` rather than retyped, checked ABSENT from the target *before* the write, then verified by byte **delta** — archive **+3,755 B**, and **+731 B** for the s251 RD row. Substance keeps live rows: PLAN-0107 15/15 (`docs/plans/done/0107-*.md`), the `check_ac_consistency.py` blind spot, the two s241 guards, and the s256-walk residue log. ⚠️ **STATUS skipped s262** — the window is **259–260, 261, 263, 264** and no s262 block is backfilled. **THIS (s264) reconcile rotates the session-258 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: measured **2,852 B** against the 4,096 cap. ✅ **Pinned, asserted, then measured by DELTA:** first AND last line pinned, neighbour-bleed checked, ledger checked OUT of the slice, checked ABSENT from the target *before* the write, then presence-in-archive and absence-from-STATUS verified **separately**. Also rotated: the s253 RD row and **7 completed `[x]` TODO rows** (s250/255/256/258, all older than the window) — archived per R4 rather than dropped, matching recent practice. Substance keeps tracked homes: `benchmarks/model_compare/RESULTS-1.6.md` §13 and `benchmarks/procedure_baseline/rationale_regrade.py` **THIS (s265-266) reconcile rotates the session-259-260 block** on the **window rule alone** — a fifth block entered and the window is four — **not a cap overage**: measured **3,038 B** against the 4,096 B cap. Pinned, asserted, then measured by DELTA: a 13-assertion battery fixed BEFORE any write pinned the slice by its first AND last line, checked neighbour-bleed in both directions, checked this ledger OUT of the slice, and checked the slice ABSENT from the target before the append; sed then extracted the slice and independently reproduced the same 3,038 B. Archive **+3,438 B** (slice plus its rotation header) and the s254 ADR-0038 RD row **+852 B**, both verified present-in-archive and absent-from-STATUS separately. Headroom is the real finding here: with zero completed `[x]` rows left to rotate (s264 took the last seven), the only lever was writing this block **under** the 4,096 cap. **Active TODOs is 27,062 B, 43% of STATUS across 45 open rows** — and it, not the Current-Focus window, is why R1 headroom keeps vanishing. The s264 next_action already named the rehome; it is still unaddressed and is now the binding constraint on the next reconcile.]_
+
+### Rotated at the s268 reconcile — the session-263 Current-Focus block [on the R2 window rule alone, not a cap overage: the caller measured all four retained blocks as their own contiguous `>` runs at 3,273 / 3,103 / 3,385 / 3,670 B, every one under the 4,096 B per-block cap, and this slice at 2,991 B. The s263 rotation-ledger entry that describes it is deliberately NOT re-appended here: both ledgers were archived whole and PRE-PRUNE at the s267 reconcile, so R4's move obligation for that entry is already discharged and a second copy would duplicate content in a move-only archive.]
+
+> **Session 263, 2026-08-30 (`59019f3` → `43f707a`) — ONE PR merged
+> ([#1321](https://github.com/CrayJThiemsert/vero-lite/pull/1321), five
+> commits), 0 open, tree clean. Stage 2c completed the five-cell matrix — and
+> the matrix then found a defect in OUR OWN procedure, not in a model.**
+>
+> ✅ **`gpt-oss:20b` scores 100% β / 100% α (canonical 14/0/0/0) / 14-of-14
+> consistency**, at **4.84×** (full) and **3.77×** (skip) qwen q4's speed in
+> the same mode. ⚠️ The §9 *"4–6×"* claim shipped with it was **wrong, and
+> self-corrected in-PR** (`6f862a6`).
+>
+> 🔴 **~60% of the handler gap was COMPRESSION, not the model** (`7bc4155`,
+> §10). `qwen3.8:27b-mtp-q8_0` fixed **exactly the five items** the 4-bit build
+> got wrong — α and consistency each **+3 items**, β unchanged.
+>
+> 🔴 **The real defect was in the procedure GOAL — a runtime-spine change**
+> (`0a1061f`, `verticals/fleet_maintenance/procedures.yaml` + §11). The goal
+> told the LLM to CHECK the sourcing-hygiene gate and that the gate **blocks
+> the spend on failure**, while withholding the threshold (*"authored in the
+> typed rule, never in this prose"*) — but that gate is evaluated
+> **deterministically downstream, with no LLM**. **11 of 14** breach items
+> carry fewer than three quotes, so the invitation was live on nearly every
+> graded item; the rule actually fires on **one** (`fleet-006`). ✅ **The gold
+> set was audited and CLEARED as the cause BEFORE anything was edited** — it
+> varies honestly on `drivable`/`load_aboard`, flat on `quotes_obtained`.
+>
+> ✅ **Fix verified on two models, one variable each** (`d366be1`, §12). qwen
+> q8: β/α **85.7 → 100%**, consistency **12/14 → 14/14**, and the *mechanism*
+> moved with it — gate overriding the routing **2 → 0**, naming it downstream
+> **0 → 15**. gpt-oss: **every score identical** — under the OLD goal it named
+> the gate in **1 of 17** items where qwen named it in **17 of 17**. 🔴 **Its
+> 100% was compliance-by-omission, not comprehension.**
+>
+> 🔴 **`fleet` is a BLOCKER now, not a limit.** Both models sit at
+> 100/100/14-of-14, and it obstructed work **twice in one session**: q8's real
+> 3-item gain was invisible to β, and gpt-oss could not be the test cell for
+> our own fix — no room to improve. Worse, the benchmark awards **100% to
+> *"answer `escalate` on every item without reading anything"***:
+> `canonical_handler` is `escalate` for all 14 breach items. 🔴 **A
+> comparability line exists at `0a1061f`** — §8–§10 was measured against the
+> defective directive and does **not** compare with anything after it; only the
+> 4-bit qwen `full` cell has ever been repeated.
+>
+> **Evidence.** Offline gate green **before** the spine change shipped: bare
+> `ruff check .` · `mypy --strict services/ verticals/` clean on 201 files ·
+> **pytest 4636 passed, 8 skipped** · **no golden test reddened** (fleet is the
+> scaffolder golden donor). CI PASS at all five pinned shas.
