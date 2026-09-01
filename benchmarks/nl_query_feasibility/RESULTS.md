@@ -781,6 +781,14 @@ so treat this as "no latency penalty observed", not as a speed-up.
 - Whether a wider vocabulary helps live translate quality **in general**.
 - The product question of `fl-21`/`fl-22` answering with `vendor-01` rather than the garage's
   Thai name (`_relabel_groups` needs a `ref`-typed `group_by`).
+- 🔴 **Every qwen figure on this benchmark — BEFORE and AFTER, both addenda — is the
+  `q4_K_M` build. `qwen3.8:27b-mtp-q8_0` has never been run here at all** (checked against
+  the dumps on disk, not inferred from the prose). That matters because the *procedure*
+  benchmark measured a **+3-item** effect from exactly this quantisation difference on
+  α-canonical and consistency (`benchmarks/model_compare/RESULTS-1.6.md` §10). So the model
+  that outscores `gpt-oss:20b` here (9/10 against 7/10, supplier band 3/3 against 1/3) is
+  qwen's **weaker** build, and the size — and even the direction — of the q4-to-q8 effect on
+  *translate* quality is **unmeasured**. It is one cell.
 - **This run is evidence, not a gate** (CLAUDE.md §8). The offline oracle remains the gate.
 
 *AI-assisted (Claude Code, session 266); no `Co-Authored-By` per CLAUDE.md §7.*
