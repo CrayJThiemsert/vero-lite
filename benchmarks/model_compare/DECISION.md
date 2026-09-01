@@ -218,6 +218,59 @@ caveat closes with it. Nothing is lost on that outcome: the live arm has never
 been wired, so no shipped behaviour changes either way. Sequencing and the rest
 of the ruled work order are state, and live in `docs/STATUS.md` Active TODOs.
 
+---
+
+### 5a-RESULT. The existence test RAN — verdict **DO-NOT-WIRE** (session-268)
+
+**Run offline; MS-S1 was not contacted. Cray granted a §8 go and it went unused,
+because the test needs no live model.** Verdict reviewed against the evidence and
+accepted by Cray before this was written.
+
+**The finding, and it is stronger than the caveat above predicted.** The caveat
+said the rubric rewards paraphrasing a sentence already on the screen. The
+measurement says the model is *structurally incapable of anything else*:
+
+| # | Measured fact | Where anyone can check it |
+|---|---|---|
+| 1 | The model's **entire** user-role input is `" ".join(reasons)` — no requisition, no entity, no line items, no competing quotes, no requester identity | `gate_advisory.py:171` (and there is no second user message) |
+| 2 | That `reasons` list is the **same object** assigned to `detail["reasons"]`, i.e. what the approver is already reading | `gate_advisory.py:150` |
+| 3 | The operator UI renders `detail.reasons` and **never reads** `detail.narrative` | `view-monitor.js:342`, `354-356`; `grep -rn narrative view-monitor.js` → zero hits |
+| 4 | `detail.narrative` has **one writer and zero readers** across `services/`, `verticals/`, `tests/` | `gate_advisory.py:175` is the sole hit |
+
+So the narrative is a function of the sentences already on screen, it is forbidden
+to add facts it was not given (*"No numbers you were not given"*), and its output
+has nowhere to render. **Every question the sidecar leaves open — what is being
+bought and why, whether anything about this case is unusual, whether the selected
+quote beat its alternatives, who the requester is — requires a fact that never
+reaches the model.** The one question a narrative *could* answer, *"why me?"*, is
+closed by reason line 1 before the model is called.
+
+**Method, for whoever re-opens this.** The open questions were written and
+SHA-256-sealed **before** the payload was read, and the seal was re-checked
+unchanged afterwards. They were fixed against **17 real rendered sidecars** — one
+genuine end-to-end procurement hero run plus a branch spread over all four real
+ladder tiers × SoD on/off × quote-basis present/absent — so the questions came
+from real items, not from an abstraction of the template. The renders are
+re-derivable offline at any time; facts 1–4 above are the load-bearing half and
+each is a single grep.
+
+⚠️ **Disclosed contamination.** The author had already seen the prompt's
+*instruction text*, because §5a quotes it verbatim and the same session edited
+this file. The **payload** — the half that decides answerability — was unseen
+until after the seal. Cray weighed this and accepted the result.
+
+**Consequences.**
+
+- **Do not wire the live arm at the gate-advisory position.** Nothing changes in
+  shipped behaviour; the arm was never wired.
+- **§5a's rubric question is moot, not re-ruled.** The caveat above closes here.
+  Do not spend a panel, a corpus, or a §8 go on scoring this position.
+- **This verdict is about the code as it stands.** Rewriting `_entry` to pass a
+  richer payload would make narratives answerable — that is a different feature,
+  and whether to fund it is exactly what this test exists to inform.
+- **Not transferred.** The recommender path has no equivalent deterministic
+  sidecar and was not measured here; this says nothing about it.
+
 ⚠️ **A position fact, so it is not assumed even (measured session-268).** This
 ruling covers ONE position. Of the two whose next consumer is **code**, only one
 is measured at all: the NL-query position runs its real consumer
