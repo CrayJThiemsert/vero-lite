@@ -15,6 +15,7 @@ rate reported 0% / 50% "rescue" for a step that never ran.
 from __future__ import annotations
 
 from benchmarks.nl_query_feasibility.harness import CaseResult, summarize
+from benchmarks.procedure_baseline.harness import P95_MIN_SAMPLES
 
 _A_QUERY = '{"object_type":"Truck","operation":"list","filters":[]}'
 
@@ -163,3 +164,41 @@ def test_the_split_leaves_the_expressible_lane_and_latency_untouched() -> None:
     assert row["wrong"] == ["e2"]
     assert row["invalid"] == []
     assert row["latency_max_s"] == 5.0
+
+
+def test_summarize_withholds_p95_on_a_gold_set_too_small_to_support_one() -> None:
+    """The NL gold sets are 10-13 cases, so a nearest-rank p95 is the MAXIMUM.
+
+    Every NL p95 ever recorded was therefore `latency_max_s` under a percentile's
+    name. `None` is the honest report, and `latency_max_s` still carries the tail
+    a reader actually wanted — asserted here so the two cannot be confused.
+    """
+    row = summarize(
+        [
+            _r("c1", ceiling=False, outcome="correct", latency=1.0),
+            _r("c2", ceiling=False, outcome="correct", latency=2.0),
+            _r("c3", ceiling=False, outcome="correct", latency=9.0),
+        ]
+    )
+    assert row["n"] == 3
+    assert row["latency_p95_s"] is None  # withheld, NOT the 9.0 nearest-rank gives
+    assert row["latency_max_s"] == 9.0  # the tail is still reported, named correctly
+    assert row["latency_p50_s"] == 2.0  # p50 on a small sample is still a median
+
+
+def test_summarize_reports_a_real_p95_once_the_sample_supports_one() -> None:
+    """At P95_MIN_SAMPLES the statistic separates from the maximum.
+
+    Nineteen fast cases and one slow one: a genuine p95 sits on the fast body.
+    If these two ever compare equal the gate has stopped doing anything — this is
+    the positive control for the withholding test above, which on its own would
+    also pass if `latency_p95_s` were hard-coded to None.
+    """
+    results = [_r(f"c{i}", ceiling=False, outcome="correct", latency=1.0) for i in range(19)]
+    results.append(_r("slow", ceiling=False, outcome="correct", latency=100.0))
+    row = summarize(results)
+
+    assert row["n"] == P95_MIN_SAMPLES
+    assert row["latency_p95_s"] == 1.0
+    assert row["latency_max_s"] == 100.0
+    assert row["latency_p95_s"] != row["latency_max_s"]

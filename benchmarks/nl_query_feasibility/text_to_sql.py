@@ -25,6 +25,7 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
+from benchmarks.procedure_baseline.harness import P95_MIN_SAMPLES
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient
 from verticals.energy.data_adapter import synthetic
@@ -271,7 +272,14 @@ def summarize(results: list[SqlResult]) -> dict[str, Any]:
         "wrong": [r.qid for r in results if r.outcome == "wrong"],
         "invalid": [r.qid for r in results if r.outcome == "invalid"],
         "latency_p50_s": round(_pct(latencies, 50.0), 2) if latencies else 0.0,
-        "latency_p95_s": round(_pct(latencies, 95.0), 2) if latencies else 0.0,
+        # None below P95_MIN_SAMPLES — nearest-rank returns the sample maximum
+        # there, so a float would be `latency_max_s` under another name. Fixed
+        # here as well as in the sibling harness deliberately: a correction that
+        # lands in one of two identical call sites is the propagation failure
+        # `docs/conventions/retired-claims.md` exists for.
+        "latency_p95_s": (
+            round(_pct(latencies, 95.0), 2) if len(latencies) >= P95_MIN_SAMPLES else None
+        ),
         "latency_max_s": round(max(latencies), 2) if latencies else 0.0,
     }
 

@@ -14,7 +14,7 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
-from benchmarks.procedure_baseline.harness import percentile
+from benchmarks.procedure_baseline.harness import P95_MIN_SAMPLES, percentile
 from services.engine.llm.structured import ChatClient
 from services.engine.nl_query import AggregateResult, NlAnswer, answer_question
 
@@ -214,6 +214,13 @@ def summarize(results: list[CaseResult]) -> dict[str, Any]:
         "phrase_rescue": acc(rescuable),
         "phrase_rescue_n": len(rescuable),
         "latency_p50_s": round(percentile(latencies, 50.0), 2) if latencies else 0.0,
-        "latency_p95_s": round(percentile(latencies, 95.0), 2) if latencies else 0.0,
+        # None, never a float, below P95_MIN_SAMPLES: nearest-rank returns the
+        # sample MAXIMUM there, so a number here would be `latency_max_s` wearing
+        # a percentile's name. This gold set is 13 cases, so it has never once
+        # been able to support a real p95 — every NL p95 on record was the max.
+        # Same shape as `phrase_rescue` above: absent beats unsupported.
+        "latency_p95_s": (
+            round(percentile(latencies, 95.0), 2) if len(latencies) >= P95_MIN_SAMPLES else None
+        ),
         "latency_max_s": round(max(latencies), 2) if latencies else 0.0,
     }

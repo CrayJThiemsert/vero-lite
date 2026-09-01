@@ -18,6 +18,7 @@ import pytest
 
 from benchmarks.procedure_baseline.grader import GradeResult, HandlerTier, classify_disposition
 from benchmarks.procedure_baseline.harness import (
+    P95_MIN_SAMPLES,
     ItemResult,
     LatencyRecorder,
     ReasoningModeInexpressibleError,
@@ -660,19 +661,55 @@ def test_percentile_nearest_rank() -> None:
     assert percentile([], 95.0) == 0.0  # empty -> 0.0
 
 
-def test_summarize_latency_reports_p95_vs_threshold() -> None:
+def test_summarize_latency_refuses_p95_below_the_minimum_sample() -> None:
+    """Below P95_MIN_SAMPLES the p95 is withheld — the verdict is not.
+
+    Nearest-rank would return the sample MAXIMUM at this n, so a float here would
+    be `max_s` wearing a percentile's name. The tail verdict still has to be
+    reported, on the statistic the sample does support.
+    """
     durations = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 20.0]
     summary = summarize_latency(durations, threshold_s=8.0)
+
     assert summary.calls == 10
-    assert summary.p95_s == 20.0  # the slow tail surfaces in p95
+    assert summary.p95_s is None  # withheld, NOT the 20.0 nearest-rank would give
     assert summary.max_s == 20.0
-    assert not summary.within_threshold  # 20s > 8s bar
+    assert summary.tail_label == "max"  # the verdict names what it judged
+    assert summary.tail_s == 20.0
+    assert not summary.within_threshold  # 20s > 8s bar — a verdict survives
+
+
+def test_summarize_latency_reports_a_real_p95_once_the_sample_supports_one() -> None:
+    """At P95_MIN_SAMPLES the statistic is finally distinct from the maximum.
+
+    Nineteen fast calls and one slow one: a genuine p95 sits on the fast body and
+    ignores the single outlier, which is the entire point of quoting a p95 rather
+    than a max. If these two ever compare equal, the gate has stopped working.
+    """
+    durations = [1.0] * 19 + [100.0]
+    summary = summarize_latency(durations, threshold_s=8.0)
+
+    assert summary.calls == P95_MIN_SAMPLES
+    assert summary.p95_s == 1.0
+    assert summary.max_s == 100.0
+    assert summary.p95_s != summary.max_s  # the defect this gate exists for
+    assert summary.tail_label == "p95"
+    assert summary.within_threshold  # judged on the p95, not the outlier
 
 
 def test_summarize_latency_within_threshold() -> None:
     summary = summarize_latency([2.0, 3.0, 4.0], threshold_s=8.0)
     assert summary.within_threshold
-    assert summary.p95_s <= 8.0
+    assert summary.p95_s is None  # n=3 cannot support one
+    assert summary.tail_s <= 8.0
+
+
+def test_summarize_latency_empty_withholds_p95() -> None:
+    """An empty run reports no p95 either — 0.0 would read as a measured zero."""
+    summary = summarize_latency([], threshold_s=8.0)
+    assert summary.calls == 0
+    assert summary.p95_s is None
+    assert summary.within_threshold
 
 
 async def test_timing_chat_client_records_each_call() -> None:
