@@ -163,6 +163,37 @@ cases:
     category: ceiling-absence
     ceiling: true
     # vendor-03 is the only record with no `accounting_code` key at all.
+    #
+    # 🔴 ORACLE LEAK — a PASS here is NOT evidence that absence was expressed.
+    # Verified s268 against the SEED ITSELF (`vendor_records` in
+    # `verticals/fleet_maintenance/data_adapter/synthetic.py`), not against this
+    # file's own header comment:
+    #
+    #   vendor-03 is the unique record for SIX co-varying reasons, not one. It
+    #   alone has no `accounting_code`, no `is_contracted`, no
+    #   `repairs_completed_count`, no `comeback_count` and no
+    #   `avg_turnaround_days` — and it alone carries `standing=probation`
+    #   (vendor-01 and vendor-02 are both `approved` and carry all five facts).
+    #
+    # Five of those six are ABSENCES, so they sit at the same ceiling as the
+    # target and give nothing away. `standing` is the exception and it is the
+    # leak: `standing eq probation` is a plain property-vs-VALUE filter, well
+    # INSIDE the query language's ceiling, and it retrieves the byte-identical
+    # singleton. Because the oracle here is extensional
+    # (`expected_answer_substrings` + `expected_grounded`, no assertion on the
+    # emitted query), that bypass PASSES without expressing absence in any form.
+    #
+    # Consequences, both directions:
+    #   - `ceiling: true` is a LABEL here, not something the oracle enforces.
+    #   - Any figure citing fl-10 — including the s265 "both models emitted the
+    #     byte-identical wrong query" finding in RESULTS.md, which localised the
+    #     defect to the query language — must be read knowing a passing run need
+    #     never have attempted absence at all.
+    #
+    # Fixing it means de-confounding the seed (which would weaken vendor-03's
+    # other, deliberate jobs — see its docstring) or scoring the QUERY SHAPE
+    # instead of the answer. Neither is ruled; it is the same fork left open for
+    # fl-21/fl-22. Do not quietly re-score the model on either reading.
     expected_answer_substrings: ["เจ๊หงส์"]   # Vendor.title_key is `name`
     expected_grounded: true
 

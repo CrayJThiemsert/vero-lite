@@ -177,6 +177,59 @@ than as one rubric hard-coded for every operator. The ruling above is what the
 panel scores against *now* so the work can proceed; it is not a claim that one
 answer suits every customer.
 
+---
+
+🔴 **Post-ruling caveat — the rubric's reward set may be near-empty. Found by
+Code at the session-267 reconcile, re-verified session-268; this is NOT Cray
+reversing the ruling.**
+
+The paragraph above records what the approver already sees as a list of *field
+names* — `reasons`, `tier`, `approver_role`, `resolved_approver_id`,
+`sod_required`. It never records what `reasons[0]` **says**. Read at
+`services/engine/procedures/gate_advisory.py:69` (`_reasons`), that first element
+is appended **unconditionally**, on every run, and reads:
+
+> *"Spend {amount} {currency} lands in tier '{tier}' (band {band}), **so**
+> approver role '{role}' must sign"*
+
+That is the causal link — amount → band → *your* authority — already rendered
+verbatim before any model is called. A rubric that asks *"is there a link?"*
+therefore rewards **paraphrasing a sentence already on the screen**, and the set
+of narratives it can score above the deterministic baseline may be empty.
+
+**Do not score a panel against §5a until this is resolved.** The rule the ruling
+was protecting still holds — it is fixed before any narrative exists — but a
+pre-committed rubric with an empty reward set is not a usable one.
+
+**The resolution route, ruled by Cray in the same session — the GATE EXISTENCE
+TEST.** It is designed to *dissolve* the question rather than re-rule it, and it
+runs entirely offline:
+
+1. Read the deterministic sidecar **alone**, item by item.
+2. For each, write down the ONE question still open in the approver's head, plus
+   what an answer must name — **fixed before seeing any narrative**, which is the
+   same pre-commitment §5 exists to protect.
+3. Then check whether any 2-sentence narrative under the shipped prompt can
+   answer it.
+
+**If none can → do not wire the live arm at this position at all.** The
+measurement problem disappears instead of needing a better rubric, and this
+caveat closes with it. Nothing is lost on that outcome: the live arm has never
+been wired, so no shipped behaviour changes either way. Sequencing and the rest
+of the ruled work order are state, and live in `docs/STATUS.md` Active TODOs.
+
+⚠️ **A position fact, so it is not assumed even (measured session-268).** This
+ruling covers ONE position. Of the two whose next consumer is **code**, only one
+is measured at all: the NL-query position runs its real consumer
+(`answer_question`) under `benchmarks/nl_query_feasibility/`, while **intake
+extraction has no benchmark of any kind** — `benchmarks/` holds five suites
+(`model_compare`, `nl_query_feasibility`, `procedure_baseline`,
+`procedure_comparison`, `stop_classifier`) and `grep -rn -i intake benchmarks/`
+over `*.py`, `*.md` and `*.yaml` returns **zero hits**, against a shipped engine
+seam at `services/engine/llm/intake.py`. This is a **negative claim with a
+date** — true of the tree at the session-268 reconcile, falsified the moment a
+suite lands. Re-measure it rather than citing it.
+
 ## 6. If the challenger wins — what it costs to actually switch
 
 Binding it for the dry-run is a per-run `--model` / `RECOMMENDER_MODEL` override.

@@ -608,6 +608,20 @@ run it reported 0% / 50% for a step that was never actually exercised. **Split t
 before the AFTER run**, or the AFTER comparison will move for reasons the number does not
 name.
 
+> 🔴 **Read every `fl-10` figure on this page against the case's ORACLE LEAK, found
+> s268 and recorded at the case itself in `gold_fleet.yaml`.** vendor-03 is the unique
+> record for **six** co-varying reasons, not one — and one of them,
+> `standing=probation`, is a plain property-vs-VALUE filter well *inside* the query
+> language's ceiling. `standing eq probation` retrieves the byte-identical singleton
+> and **passes this file's extensional oracle without expressing absence at all**.
+>
+> The finding above **survives** — both models did emit `accounting_code eq ""`, and
+> the language does lack an absence form, so the localisation to the query language
+> holds. What does **not** follow is any read of `fl-10` as evidence that a model
+> **can** express absence: a passing run need never have tried. Treat `fl-10` as
+> evidence about the language, never as a scored test of the model's absence
+> handling, until the case is de-confounded or re-scored on query shape.
+
 ### The `fl-09` substring calibration HELD
 
 `gold_fleet.yaml` pinned `"70-5678"` on the assumption that the phrase step renders a Truck
