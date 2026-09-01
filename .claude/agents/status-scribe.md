@@ -144,10 +144,20 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
    story (Cray s141); **In-Flight Discussions** holds **only discussions still
    OPEN**, **≤ 6 entries**, each **≤ ~600 chars** — an entry announcing its own
    closure (`CLOSED`, `COMPLETE`, `ARCHIVED`) has stopped being in flight and
-   rotates out (Cray s250); and the trailing **rotation ledger** paragraph under
-   Current Focus keeps only the rotations of the **4 sessions currently in the
-   window** — an entry whose block has already rotated travels with that block
-   into the archive (Cray s250). Content older than the window is **rotated, not
+   rotates out (Cray s250); **BOTH trailing rotation-ledger paragraphs** — the
+   one under Current Focus **and** the one under Recent Decisions — keep only the
+   rotations of the **4 sessions currently in the window**, an entry whose
+   content has already rotated travelling into the archive with it (Cray s250
+   for Current Focus, **extended to Recent Decisions by Cray s267**: that one had
+   never been pruned in its history and stood at **8,143 B**, larger than the
+   Current-Focus ledger it was written beside); and **each individual ledger
+   entry is ≤ ~900 B** (Cray s267 — the window bounds how MANY entries a ledger
+   holds, nothing bounded how LARGE one may be, which is the same gap the s194
+   per-block cap closed one section over; legitimate entries measured
+   696–1,175 B and one reconcile wrote **2,262 B**, putting STATUS over R1's
+   ceiling). A retained prior entry that predates the cap is **left alone** — it
+   rotates out on its own, and rewriting it would edit history rather than
+   record it. Content older than the window is **rotated, not
    deleted**: remove it from STATUS.md and emit it VERBATIM in your final
    message (*Rotated content* section) for the caller to append to
    `docs/status-archive/` (R4). **Deleting without archiving remains
@@ -222,9 +232,12 @@ now_iso, carried-forward next_action). If none, write "None.">
 (sessions A–B) / rotated M` · `CF blocks over the 4,096 B per-block cap: N`
 (measured per contiguous `>` run) · `RD rows: kept N / rotated M` · `Active
 TODOs over ~600 chars: N` · `In-Flight: N entries (cap 6), N over ~600 chars,
-N announcing their own closure (must be 0)` · `rotation ledger: covers
-sessions A–B only: yes|no` · `frontmatter: all 3 fields single-line ≤200
-chars: yes|no`. If nothing rotated, say so.>
+N announcing their own closure (must be 0)` · `CF ledger: kept N / rotated M,
+largest entry ~N chars (cap ~900 B)` · `RD ledger: kept N / rotated M, largest
+entry ~N chars (cap ~900 B)` — report BOTH ledgers separately, since s267
+extended the window rule to the Recent-Decisions one and a single combined line
+hid for six sessions that it was never being pruned · `frontmatter: all 3 fields
+single-line ≤200 chars: yes|no`. If nothing rotated, say so.>
 
 ## Rotated content (verbatim — caller appends to docs/status-archive/)
 

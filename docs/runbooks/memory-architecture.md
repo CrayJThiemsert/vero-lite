@@ -366,6 +366,46 @@ measured 2026-06-10), not the 256 KB byte cap.
     control proving the grep finds a rule that *is* there). Both sections happen
     to be compliant today — but not because the enforcer was enforcing them. A
     rule absent from its enforcer's input is, for that enforcer, not written.
+- **Ratified extension (Cray, 2026-09-01 — session 267): the window rule covers
+  BOTH rotation ledgers, and an individual ledger ENTRY is capped.** s250 capped
+  the Current-Focus ledger by *window*; two gaps survived it, and both were
+  measured at s267 when STATUS reached **260 B of headroom** and a routine
+  reconcile could not fit.
+  - **The Recent-Decisions rotation ledger was still ungoverned.** s250's
+    extension names only the Current-Focus one, so the trailing
+    `_[The two oldest rows …]_` paragraph under Recent Decisions grew every
+    reconcile and had **never been pruned in its history**: measured s267 at
+    **8,143 B**, against the Current-Focus ledger's 6,793 B. Together
+    **14,936 B — 22% of the file.** It now keeps the **current window** on the
+    same terms: an entry describing a rotation outside the window travels into
+    the archive with the content it describes. First prune, s267: **thirteen
+    entries**, back to the s243 continuation reconcile, leaving **1,425 B**.
+  - **A per-ENTRY cap of ~900 B.** The window bounds how *many* entries a ledger
+    holds; nothing bounded how *large* one may be — the same gap s194 closed for
+    blocks, one section over. Measured s267: the legitimate entries ran
+    **696 / 771 / 804 / 850 / 1,175 B** and a single reconcile wrote one at
+    **2,262 B**, which is what put the file over R1's ceiling. 900 B is chosen
+    to sit just above the observed norm (≈600 characters of prose, matching the
+    pointer cap every other section already obeys); the existing 1,175 B entry
+    is left alone and rotates out on its own, because editing a retained prior
+    entry rewrites history rather than recording it.
+  - 🔴 **Measure a block as its own contiguous `>` run — never
+    header-to-header.** Rehomed here from `.claude/agents/status-scribe.md`,
+    which has carried it since #1264 and is the only place it lived. A
+    header-to-header measure makes the **last** block swallow the trailing
+    rotation ledger and over-report it — #1263 read a 2,567 B block as 4,936 B,
+    and s267 repeated it exactly, reading a **3,414 B** block as **7,950 B** and
+    concluding from that phantom overage that the reconcile "was never blocked".
+    Neither wrong figure reached a tracked file, but only because the reconcile
+    was reverted whole and a pre-write assertion aborted the second attempt.
+    **This is the s250 consumer note in mirror image:** the warning was in the
+    *scribe's* input and absent from the *runbook*, so for Code — who does the
+    measuring, because the scribe has no shell — it was not written.
+  - **R4 and the R2 carve-out bind here unchanged:** a pruned entry is
+    **moved**, never deleted. A ledger paragraph may be archived **whole**
+    rather than as parsed fragments — s267 did — because ledger entries are
+    prose with no uniform delimiter, and a fragile per-entry parse is a worse
+    risk than an archive header stating which entries continue in STATUS.
 
 ### R3 — Frontmatter terseness (binding)
 
