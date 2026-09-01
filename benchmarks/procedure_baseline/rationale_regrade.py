@@ -194,6 +194,23 @@ def extract_goal(goal_source: Path, procedure: str | None = None) -> str:
 
     Uses the runtime spine's own loader so the text is exactly what
     ``build_reasoning_messages`` would render — never a re-parse that could drift.
+
+    ⚠️ **``goal_source`` supplies the VERTICAL NAME, not the file contents.** Only
+    ``goal_source.parent.name`` is used; the goal is then loaded from
+    ``verticals/<that name>/procedures.yaml`` **as it stands on the current
+    checkout**. That is deliberate — it is what makes the text identical to the
+    live spine's — but it means a caller who points this at a historical or
+    alternative ``procedures.yaml`` (say, to re-grade an old dump "under the goal
+    that run actually saw") is silently handed TODAY's goal instead, and nothing
+    in the output says so.
+
+    Re-grading across a goal change is therefore only sound once the demanded
+    vocabulary has been shown to be the same on both sides — which is a separate
+    measurement, not something this function can establish. Session 267 measured
+    it for ``governed_repair_approval`` across ``0a1061f``: the goal TEXTS differ
+    (724 vs 785 chars) while ``role_vocabulary`` is identical on both
+    (``head mechanic`` / ``fleet manager`` / ``owner``), which is what licenses
+    the cross-goal comparison in RESULTS-1.6.md sections 13 and 14.
     """
     from services.engine.procedures.spec import load_procedures
 
@@ -252,7 +269,12 @@ def main() -> None:
         "--goal-source",
         type=Path,
         required=True,
-        help="Path to a vertical's procedures.yaml — supplies the role vocabulary.",
+        help=(
+            "Path INSIDE a vertical dir; only the parent dir NAME is used, and the goal "
+            "is loaded from that vertical's procedures.yaml on the CURRENT checkout. "
+            "Pointing this at a historical file does NOT re-grade under a historical "
+            "goal — see extract_goal's docstring."
+        ),
     )
     parser.add_argument("--procedure", default=None, help="Procedure name, if the spec has many.")
     parser.add_argument(
