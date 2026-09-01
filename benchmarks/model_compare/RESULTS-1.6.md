@@ -853,3 +853,72 @@ s262-2b-qwen-think-off, s262-2b-qwen-skip}.jsonl`, scored by
 figure is transcribed here. Re-runnable offline at any time.
 
 *AI-assisted (Claude Code, session 267); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## 15. Session 267 — what β's entity half actually measures, and what it does not
+
+🔴 **Every β figure in §8–§14 stands. What changes is the sentence a reader is
+allowed to write next to one.** No lane moved, no number moved, no run was
+re-scored.
+
+### The defect, and where it was already refuted
+
+`grader.py`'s module docstring claimed the headline scores *the fields the model
+genuinely owns in the governed procedure path*, naming `affected_primary_key` as
+one of them. Measured false. And the refutation was **already written two
+paragraphs below it**: the reason `suggested_handler` is a probe rather than a
+headline — the product overrides the model's guess — applies to the entity fields
+verbatim. It was simply never applied to them.
+
+This is not a new theory about the benchmark. It is an **internal inconsistency
+in the module's own stated rationale**, carried since the lane was written.
+
+### What each field's fate actually is
+
+| field | procedure path | reactive path |
+|---|---|---|
+| `affected_primary_key` | **overridden** — the loop entity replaces it | a **wrong** key is replaced by the deterministic event-subject anchor; a right one is kept canonical |
+| `forbidden_primary_keys` | **overridden** | 🔴 a decoy is a **real** entity, so it resolves and **survives** |
+| `handler_payload` | **passes through** | **passes through** |
+
+Sources: `action_step._compose_action` (its docstring names both overrides) and
+`recommender._compose_llm_record` (its docstring: the entities are
+*"governed-resolved … NOT the model's verbatim list"*).
+
+### 🔴 The inversion, stated plainly
+
+**The headline grades a field neither path ships verbatim; the one model-owned
+field that does reach the executed envelope — `handler_payload` — is graded
+`advisory=True`.** The advisory flag is there for a *measurement* reason (payload
+keys are free-form), never because the field does not matter, and that reason is
+sound. But the two together mean the benchmark's most prominent number is its
+least product-facing one.
+
+### What follows, and what deliberately does not
+
+- **β's entity half is kept scoring.** The capability is real, the over-naming it
+  penalises is exactly why the override exists, and the `forbidden_primary_keys`
+  half genuinely ships on the reactive path.
+- 🔴 **No β figure may be quoted as "what the product would have done."** It is a
+  model-choice instrument. That distinction is now written at the module
+  docstring and at the check site, with the dead sentence declared retired.
+- **Nothing was re-laned.** Moving the entity checks off the headline would retire
+  every β figure this repo has published — the #1149 precedent, where a prompt
+  change cost the whole engine-A accuracy lineage. A correction that costs the
+  comparability line has to be worth more than the misreading it fixes, and a
+  relabelling is not.
+- **Open, deliberately not taken here:** whether a genuine product-behaviour axis
+  should exist, built on `handler_payload` plus the prose. That is an additive
+  lane and a separate decision.
+
+### How it was found
+
+Four specialist reviews (Fable 5, read-only) of a proposed selection criterion.
+One of them proposed this; **its specific claim about the reactive path was
+wrong** — it said that path uses the model's guess, when the docstring says the
+entities are governed-resolved there. Checking the artifact rather than relaying
+the claim made the finding **stronger**: not "one path discards it" but *neither
+path ships it verbatim*, with the decoy half as the single exception.
+
+*AI-assisted (Claude Code, session 267); no `Co-Authored-By` per CLAUDE.md §7.*
