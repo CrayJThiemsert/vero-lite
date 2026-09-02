@@ -218,7 +218,7 @@ ruling; the probe obligations below hold under every option.
   the direction axis outcome flips (the probe names the output it changes); (d) in a
   scratch summary over canned outcomes, an all-`below`-answering result set shows
   above-accuracy `0/n` — delete the per-direction split → that assertion reddens.
-- [ ] **AC-3 — scenario test (CLAUDE.md §8, binding): the real producer flows into the
+- [x] **✅ CLOSED s270 — AC-3 — scenario test (CLAUDE.md §8, binding): the real producer flows into the
   real consumer, offline.** Artifact:
   `tests/benchmark/test_intake_extraction_scenario.py`. ✅ **Placement MEASURED by Code
   at review (s268), closing the draft's own open question:** benchmark tests live in
@@ -239,7 +239,7 @@ ruling; the probe obligations below hold under every option.
   flips to `wrong` (mutation reaches the code and names its output); feed canned
   invalid-then-valid responses → `attempts == 2` reddens if the runner stops driving
   the real retry loop.
-- [ ] **AC-4 — the live runner exists and every non-live behaviour of it is verified
+- [x] **✅ CLOSED s270 — AC-4 — the live runner exists and every non-live behaviour of it is verified
   offline.** Artifact: `benchmarks/intake_extraction/run_benchmark.py` + a
   **recording pass-through client** (delegates to the real `OllamaClient`, records
   each attempt's raw `content` — transport-level observation, the seam stays the
@@ -253,6 +253,25 @@ ruling; the probe obligations below hold under every option.
   raw-attempt capture → the artifact-completeness assertion reddens; make the canned
   transport raise → the runner records a transport-failure outcome distinct from a
   validation-exhaustion one, and collapsing them reddens the test.
+
+  ✅ **Step 4 closure record (s270).** Artifacts:
+  `benchmarks/intake_extraction/run_benchmark.py` (the recording pass-through client,
+  `run_case`, `case_artifact`, `run_benchmark`, `write_artifacts`, the manual-only CLI)
+  and `tests/benchmark/test_intake_extraction_scenario.py` (10 tests). The battery grew
+  **23 → 31 probes** and `claim_sources` gained the scenario module, so the coverage
+  denominator **widened 81 → 121 claims** — the honest direction; narrowing it is the
+  failure the driver exists to prevent. **31/31 hit their declared outcome (22 WITNESSED
+  + 9 declared GREEN), 0 MISFIRE / CRASHED / MUTATION-ERROR.** Both AC-4 witnessed-RED
+  obligations above are discharged by name: the raw-attempt cut is **S3**, and the
+  collapse of the two failure kinds is **S1** (plus **S5** on the summary node, where the
+  same merge drives `unscored_transport` to 0 and the denominator lies silently). **S1c**
+  is the declared-GREEN control on the happy path — the green that rules out "something
+  unrelated broke". Two probes beyond the AC, because the assertions were load-bearing
+  and unwitnessed without them: **S6** drops the `source` stamp in `intake.py`, which is
+  what proves the scenario drives SHIPPED code rather than a re-implementation of it, and
+  **S7** proves an unparseable body reads UNKNOWN rather than "confidence omitted".
+  🔴 `PROBE-BATTERY: FAIL` exit 1 remains, on **coverage only** — expected, and NOT to be
+  "fixed" by shrinking `claim_sources`.
 - [ ] **AC-5 — offline gates, at their true scopes.** Commands, each output to a file:
   bare `uv run ruff check . 2>&1` (covers `benchmarks/`, `ci.yml:55-56`); **hand-run**
   `uv run mypy --strict benchmarks/intake_extraction/ 2>&1` → clean (named explicitly

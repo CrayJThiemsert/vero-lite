@@ -1,7 +1,8 @@
 {
   "claim_sources": [
     "tests/benchmark/test_intake_extraction_gold.py",
-    "tests/benchmark/test_intake_extraction_harness.py"
+    "tests/benchmark/test_intake_extraction_harness.py",
+    "tests/benchmark/test_intake_extraction_scenario.py"
   ],
   "probes": [
     {
@@ -113,7 +114,7 @@
       "new": "    \"_confidence_disabled\": (\n",
       "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor",
       "expect": "GREEN",
-      "note": "control: the mirror of P7c \u2014 each guard is independently load-bearing",
+      "note": "control: the mirror of P7c — each guard is independently load-bearing",
       "expect_claim": "test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor|pytest.raises(ScorerMisuseError)|#0"
     },
     {
@@ -142,7 +143,7 @@
       "new": "        below = [s for s in scored if s.direction_expected == \"above\"]\n",
       "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_an_always_above_model_shows_4_of_4_and_0_of_4_not_a_blend",
       "expect_claim": "test_an_always_above_model_shows_4_of_4_and_0_of_4_not_a_blend|str(axis.below) == \"0/4\"|#0",
-      "note": "AC-2(d): collapse the split. The above assert (4/4) still passes, so ONLY the below assert may redden \u2014 one mutation, one claim"
+      "note": "AC-2(d): collapse the split. The above assert (4/4) still passes, so ONLY the below assert may redden — one mutation, one claim"
     },
     {
       "name": "P11-injection-fraction-honours-the-flag",
@@ -218,6 +219,79 @@
       "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_the_two_failure_kinds_are_not_collapsed",
       "expect_claim": "test_the_two_failure_kinds_are_not_collapsed|axis.unscored_transport == 1|#0",
       "note": "Cray's s269 ruling, reporting half: a case that left the denominator must stay VISIBLE. Zeroing the count hides it, and that must redden"
+    },
+    {
+      "name": "S1-collapse-failure-kinds",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    except IntakeExtractionError as exc:\n",
+      "new": "    except (IntakeExtractionError, OllamaError) as exc:\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_transport_error_and_validation_exhaustion_stay_distinct",
+      "expect_claim": "test_transport_error_and_validation_exhaustion_stay_distinct|transport_outcome.result.kind == \"transport_error\"|#0",
+      "note": "THE SD-5 correctness probe. Both exceptions derive from RuntimeError, so one broad handler merges Cray's two rulings; this is that bug exactly. A transport failure then reports as validation_exhausted and silently enters the denominator"
+    },
+    {
+      "name": "S1c-collapse-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    except IntakeExtractionError as exc:\n",
+      "new": "    except (IntakeExtractionError, OllamaError) as exc:\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_gold_flows_through_the_shipped_seam_into_the_real_scorer",
+      "expect": "GREEN",
+      "expect_claim": "test_gold_flows_through_the_shipped_seam_into_the_real_scorer|scored.axes[\"metric_direction\"] == \"correct\"|#0",
+      "note": "control: the happy path never enters either handler, so the collapse cannot reach it. This green is what rules out 'something unrelated broke' for S1"
+    },
+    {
+      "name": "S2-exhaustion-kind-mislabelled",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            kind=\"validation_exhausted\", detail=str(exc), attempts=len(client.attempts)\n",
+      "new": "            kind=\"transport_error\", detail=str(exc), attempts=len(client.attempts)\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_transport_error_and_validation_exhaustion_stay_distinct",
+      "expect_claim": "test_transport_error_and_validation_exhaustion_stay_distinct|exhausted_outcome.result.kind == \"validation_exhausted\"|#0",
+      "note": "the other half of the distinctness claim, and it needs its own probe: under this mutation the transport label stays CORRECT, so the earlier assert holds and only the exhaustion label reddens. One mutation, one assertion"
+    },
+    {
+      "name": "S3-raw-attempt-capture-cut",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        self.attempts.append(AttemptRecord(index=index, content=result.content, model=result.model))\n",
+      "new": "        pass  # probe: raw-attempt capture cut\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_artifact_carries_every_raw_attempt",
+      "expect_claim": "test_the_artifact_carries_every_raw_attempt|record[\"attempt_count\"] == 2|#0",
+      "note": "AC-4's artifact completeness. Without the raw capture a scoring dispute is no longer re-adjudicable offline and would cost another live run (a §8 go) to settle"
+    },
+    {
+      "name": "S4-retry-loop-not-driven",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        result = await extract_package(client, str(case[\"description\"]), retry_budget=retry_budget)\n",
+      "new": "        result = await extract_package(client, str(case[\"description\"]), retry_budget=1)\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_real_validation_retry_loop_is_driven",
+      "expect_claim": "test_the_real_validation_retry_loop_is_driven|scored.attempts == 2|#0",
+      "note": "proves the attempt count comes from the REAL loop in intake.py rather than a number the runner invented: starve the budget and invalid-then-valid can no longer reach two attempts"
+    },
+    {
+      "name": "S5-transport-count-stays-visible",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    except IntakeExtractionError as exc:\n",
+      "new": "    except (IntakeExtractionError, OllamaError) as exc:\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_every_summary_keeps_both_excluded_counts_visible",
+      "expect_claim": "test_every_summary_keeps_both_excluded_counts_visible|summary.unscored_transport == n_scored|#0",
+      "note": "same mutation as S1, different claim: with the kinds merged the unscored-transport count falls to zero and the denominator lies without any number looking wrong"
+    },
+    {
+      "name": "S6-source-stamp-is-shipped-code",
+      "subject": "services/engine/llm/intake.py",
+      "old": "                package=package.model_copy(update={\"source\": \"ms_s1_live\"}),\n",
+      "new": "                package=package,\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_shipped_source_stamp_survives_the_round_trip",
+      "expect_claim": "test_the_shipped_source_stamp_survives_the_round_trip|outcome.result.package.source == \"ms_s1_live\"|#0",
+      "note": "the scenario-integrity probe: the stamp exists only in SHIPPED code, never in the canned body, so this reddening is what proves the test really drives extract_package instead of a re-implementation of it"
+    },
+    {
+      "name": "S7-confidence-absence-is-not-omission",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    return None\n",
+      "new": "    return True\n",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_confidence_omission_is_read_from_the_raw_attempt_only",
+      "expect_claim": "test_confidence_omission_is_read_from_the_raw_attempt_only|confidence_was_omitted([unparseable]) is None|#0",
+      "note": "a negative diagnostic needs its own control: with no parseable JSON the answer is UNKNOWN, not 'omitted'. The two earlier asserts return before this line and stay green, isolating the absence-of-evidence branch"
     }
   ],
   "exemptions": {}
