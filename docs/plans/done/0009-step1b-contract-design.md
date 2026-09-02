@@ -234,7 +234,7 @@ Three hook changes land in Step 5 (execution phase). Step 1b specs them; Step 5 
 ### H2 — new subagent-scoped write-path deny (`pretooluse_plan_subagent_write_deny.py`)
 
 - **File (new):** `.claude/hooks/pretooluse_plan_subagent_write_deny.py`
-- **Wiring:** referenced in `plan-drafter` frontmatter `hooks.PreToolUse` (subagent-scoped per Step 1a Q5 — cleaner than project-level matcher gated on `agent_type == "plan-drafter"`)
+- **Wiring:** referenced in `plan-drafter` frontmatter `hooks.PreToolUse` (subagent-scoped per Step 1a Q5 — cleaner than project-level matcher gated on `agent_type == "plan-drafter"`) _[Corrected s273, `was an error` — see §Post-archival amendment below]_
 - **Matcher:** `Write|Edit`
 - **Logic:**
   ```python
@@ -244,7 +244,7 @@ Three hook changes land in Step 5 (execution phase). Step 1b specs them; Step 5 
       return any(path.startswith(p) for p in ALLOWED_PREFIXES) and path.endswith(".md")
   ```
 - **Pattern source:** extends C4 `pretooluse_research_path_deny.py` (PLAN-0007) — same exit-2-on-deny convention; same fail-closed-on-malformed-input discipline
-- **Bypass-immunity:** fires regardless of `permissionMode` (ADR-013 D2 — Step 5 includes a `bypassPermissions` × `plan-drafter` `Write` outside allowlist negative test)
+- **Bypass-immunity:** fires regardless of `permissionMode` (ADR-013 D2 — Step 5 includes a `bypassPermissions` × `plan-drafter` `Write` outside allowlist negative test) _[Corrected s273, `was an error` — see §Post-archival amendment below]_
 
 ### `SubagentStart` / `SubagentStop` event wiring (AC-5 notification)
 
@@ -464,3 +464,21 @@ If any of these surfaces a new bug, post-merge hardening PR is the recommended r
 PLAN-0009 Step 1b **meets the verification-rigor bar** with the 4 named residual risks (5 was closed in Phase 1.5). Composed G5 check covers all 4 identity cases by design + by test; H2 + G5 + harness allowlist form a 3-layer defense for subagent commit/write boundary; SubagentStop + Telegram wiring closes the AC-5 in-harness arm partially (full end-to-end is Cray-driven). The plan is **ready to archive** to `docs/plans/done/` pending Cray's PR-merge ratification.
 
 **Cray ratification:** [pending at PR merge — sign here at merge time]
+
+---
+
+## Post-archival amendment — 2026-09-02 (session 273)
+
+Additive record per Cray's s249 ruling for archived PLANs (inline pointer beside the superseded text + this section; original words never edited). Classification: **`was an error`** (CLAUDE.md §6) — false from the day it was written until 2026-09-02, with nothing external changing to make it false.
+
+**The defect.** H2 (`.claude/hooks/pretooluse_plan_subagent_write_deny.py`) was wired **only** through `plan-drafter`'s frontmatter `hooks:` block, and that block was written **flat** (`matcher` + `command` on one item, never the documented nested shape) from creation (2026-05) until PR #1362 (`ad47f49`, s271). Client 2.1.247 silently discarded the flat block and loaded the agent **unguarded**; client 2.1.255 refused the whole agent fail-closed (the s269/s270 registry disappearance). Worse: after #1362 fixed the shape, the hook **still did not run** — s272 instrumented the guard script to append a trace line on every invocation and measured **0 invocations (trace 8 → 8)** while the sibling `goal-evaluator`'s write succeeded (`evaluations[]` 0 → 1). **Frontmatter `hooks:` are inert in this harness.**
+
+**The §5 judgment that inverted.** "Subagent-scoped … cleaner than project-level matcher gated on `agent_type == \"plan-drafter\"`" is precisely what PR #1363 (`55792a6`, s272) reversed: the **project-level matcher gated on `agent_type` is the only form this harness actually runs**. `.claude/settings.json` now registers `pretooluse_subagent_write_dispatch.py` on `PreToolUse` `Write|Edit`; it reads the payload's `agent_type` (for a custom agent, its frontmatter `name`) and hands the raw payload to the matching guard script — all three guard scripts **unchanged**. Settings-level hooks do fire for subagent tool calls and do carry `agent_type` + `agent_id`, vindicating this PLAN's §1 identity finding.
+
+**What was always right.** The H2 allowlist itself (`docs/adr/` | `docs/plans/`, `.md`, fail-closed on malformed input), the script, its unit tests, and the G5 commit-block (settings-level, therefore real throughout — the `plan-drafter` never could commit). Bypass-immunity was likewise a correct property *of the script*; it simply was never reached. Only the **wiring/activation** claim is corrected.
+
+**Enforced from #1363; witnessed s273** (PR #1364, `e751efb`): `goal-evaluator` in both directions (allowed `goal.json` edit passed, `evaluations[]` 0 → 1; forbidden `.claude/state/` write denied with the guard's own reason forwarded verbatim, file absent), and `status-scribe`'s allowed `docs/STATUS.md` edit passed un-denied (PR #1365). **`plan-drafter`'s allowed write is being witnessed by this very amendment** — this edit is a `plan-drafter` `Write|Edit` under `docs/plans/`, which the live dispatcher permitted.
+
+**References.** Lesson #0057 — §"The situation", §"Resolution (session 271)", §"Resolution, part 2 (session 272)", and the "Witnessed live (session 273)" paragraph closing §"Resolution, part 2 (session 272)"; PRs #1362, #1363, #1364, #1365. Companion corrections: `docs/adr/0018-axis-b-verification-loop.md` §Amendment (2026-09-02) — the primary record — and `docs/plans/done/0034-g2-drafting-friction-rootfix.md` §Post-archival amendment. Pinned by `tests/handoffs/test_settings_hook_wiring.py` + `tests/handoffs/test_pretooluse_subagent_write_dispatch.py`.
+
+**Author≠reviewer disclosure (ADR-012 D4.3).** Drafted by the in-harness `plan-drafter` subagent from Code's fact-pack; Code authored the measurements, so drafter and fact-author are not independent. **Cray at PR merge is the independent reviewer.** Separation: **partially intact**.
