@@ -29,7 +29,9 @@ maxTurns: 30
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
-      command: ".claude/hooks/pretooluse_goal_evaluator_write_deny.py"
+      hooks:
+        - type: command
+          command: "python .claude/hooks/pretooluse_goal_evaluator_write_deny.py"
 ---
 
 # goal-evaluator — the Axis-B critic subagent

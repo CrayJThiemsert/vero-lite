@@ -1,9 +1,10 @@
 # Lesson #0057 — a perfect correlation is not a cause; ask when it changed
 
-**Session:** 270 (2026-09-02) · **Subject:** three subagents vanished from the harness
-registry (`goal-evaluator`, `plan-drafter`, `status-scribe`)
-**Status:** advisory. Carries one **do-not-act** instruction (§4), homed here because a
-gitignored handoff is not a surface anyone greps.
+**Session:** 270 (2026-09-02); **resolved session 271** (same day) · **Subject:** three
+subagents vanished from the harness registry (`goal-evaluator`, `plan-drafter`, `status-scribe`)
+**Status:** advisory. The **do-not-act** instruction it carried was **discharged s271** once the
+client change was confirmed — see "Resolution". It lives here because a gitignored handoff is
+not a surface anyone greps.
 
 ---
 
@@ -25,8 +26,8 @@ same way. Each of these was a clean 4/4:
 | # | Hypothesis | Why it looked right | What killed it |
 |---|---|---|---|
 | 1 | **exec bit stripped** — the known WSL-UNC hazard in this repo | the session opened with `tools/notify/*.sh` showing pure `100755 → 100644` mode drift, so the hazard was demonstrably live; all three declared hook scripts are `100644` | `stop_continuation.py` is **also** `100644` and was firing the goal gate all session. A control on a known-working instance |
-| 2 | **`hooks:` in the frontmatter** — present on exactly the 3 missing, absent from the 1 present | a genuinely clean 4/4 split, and the only frontmatter key that splits that way (`effort` covers just 1 of 3) | `git log -S` dates the blocks to **2026-05-26 / 06-03 / 06-10**. They worked for three months |
-| 3 | **`command:` lacks the `python` prefix** that `settings.json` uses on every hook | a real inconsistency, and a plausible load-time validation failure | same dates. It has always been written that way |
+| 2 | **`hooks:` in the frontmatter** — present on exactly the 3 missing, absent from the 1 present | a genuinely clean 4/4 split, and the only frontmatter key that splits that way (`effort` covers just 1 of 3) | `git log -S` dates the blocks to **2026-05-26 / 06-03 / 06-10**. They worked for three months. _[**was an error**, s271: the *agents* worked for three months; the *hooks block* never did — the old client discarded it at load. Right property, wrong mechanism — see Resolution]_ |
+| 3 | **`command:` lacks the `python` prefix** that `settings.json` uses on every hook | a real inconsistency, and a plausible load-time validation failure | same dates. It has always been written that way. _[s271: irrelevant — the flat form fails identically with `python` added; the schema rejects the shape, not the spelling]_ |
 | 4 | **`Write`/`Edit` in `tools:`** — declared by all 3 missing, by neither the 1 present | fits 4/4, and a plausible policy tightening | `statusline-setup` (Tools: Read, **Edit**) and `general-purpose` (Tools: `*`) **are registered** in the same session |
 
 A fifth, file size, also splits 4/4 (5,245 B present; 9,319 / 9,525 / 14,661 B missing) and
@@ -66,15 +67,102 @@ different kind of evidence rather than more of the same. (Lesson
 same shape from the other side — more agreement through one instrument is still one
 measurement.)
 
-## 🔴 Do not "fix" the agent definition files
+## Resolution (session 271) — the client's tolerance moved, not the files
 
-**Binding for whoever meets this next:** do **not** edit `.claude/agents/*.md` to restore
-the three subagents — not the `hooks:` block, not the `command:` spelling, not the tool
-lists. Those files are proven not to be the cause. Editing them would change something
-already exonerated, discard this diagnosis, and risk breaking the one agent that still
-works. Nothing is deleted; all four files are present and tracked.
+Session 271 ran the procedure below and closed every step:
 
-## The test procedure, in cost order
+1. **New conversation** (the registry is rebuilt only at session start): still absent. A
+   deliberately failing spawn made the runtime say so — `Agent type 'goal-evaluator' not found.
+   Available agents: …` — while `explore-research` spawned and answered in the same batch, the
+   positive control without which two errors could have meant "the Agent tool is broken".
+2. **The client updated.** Every transcript record carries the client version. Session 269's
+   own log starts on **2.1.247**, spawns `status-scribe` at 18:00:35Z (→ `9cffe2c`), then flips
+   to **2.1.255** at **2026-09-02T02:27:58Z** mid-session. Thirteen sessions on ≤ 2.1.247 spawned
+   these agents; none on 2.1.255 did.
+3. **What 2.1.255 rejects — in the client's own words.** The Desktop app keeps its bundled CLIs
+   at `%APPDATA%\Claude\claude-code\<version>\claude.exe`, and `claude.exe -p noop --debug-file
+   <f>` logs agent loading *before* it reaches auth, so this needed no API call:
+
+   > `[ERROR] Agent 'goal-evaluator' not loaded: hooks.PreToolUse.0: Hook matcher "hooks" must
+   > be an array of hook entries; received undefined — a PreToolUse/PermissionRequest hook that
+   > cannot be loaded may be what guards the permissions declared beside it, so nothing it sits
+   > in is applied until the entry is fixed or removed`
+
+   The three files wrote the hooks block **flat** — `matcher:` and `command:` on the same list
+   item. The documented shape (sub-agents docs, hooks docs, and this repo's own
+   `settings.json`) is `matcher:` plus a nested `hooks:` array of `{type: command, command}`.
+   The flat form was never documented anywhere. Same six-file probe set, both bundled binaries:
+
+   | agent file | 2.1.247 | 2.1.255 |
+   |---|---|---|
+   | flat hooks (the repo's) | `Invalid hooks in agent … expected array, received undefined` logged at **DEBUG**; block **discarded, agent loaded** | same failure logged at **ERROR**; **agent refused** |
+   | flat + `python` prefix | same | same — the prefix is irrelevant |
+   | nested (documented) | loaded | loaded |
+   | no hooks block | loaded | loaded |
+
+   Hypothesis #2 had the right property and the wrong mechanism: the block did not *start*
+   failing on 2026-09-02 — it had failed validation since the day it was written, and every
+   earlier client swallowed the failure at DEBUG level. 2.1.255 turned that into fail-closed,
+   for exactly the reason its message gives. The repo never changed; the client's tolerance did.
+   (The changelog carries no section for 2.1.255 at all — the change was unannounced.)
+
+**The fix** (the PR that carries this section): the three blocks rewritten to the documented
+nested shape, with the `python` prefix `settings.json` already uses on every hook. Verified
+offline against the real 2.1.255 binary with a flat-shape control **refused in the same run**;
+the three converted files loaded. **Do not reintroduce the flat form.**
+
+### The uncomfortable corollary — the three write-deny guards never ran in-harness
+
+Under 2.1.247 the block was discarded at load, so `goal-evaluator`, `plan-drafter` and
+`status-scribe` ran **without** the PreToolUse deny hooks that ADR-0018 SD-1, PLAN-0009 H2 and
+PLAN-0034 prong 2 describe as enforcing their write scopes. Measured for 2.1.247 (in use from
+2026-08-30); for the May–August clients it is an inference from the shape never having matched
+the documented schema — strong, but not measured. The hook *scripts* have unit tests; the
+*wiring* was never witnessed RED — the largest instance yet of `CLAUDE.md` §8's rule that a
+load-bearing green is not evidence until its assertion has been seen to redden. 2.1.255 refusing
+the whole agent is the client doing what this repo's constitution says to do: fail closed
+rather than run unguarded. Recording that in ADR-0018 / PLAN-0034 is a **separate Cowork
+dispatch** (Cray, s271: lesson + STATUS first).
+
+**Measured the same session, after the harness hot-reloaded the edited files** (it watches
+`.claude/agents/` — a file edit refreshes the registry mid-conversation; a client restart does
+not): all three spawned (3/3), **but the guard did not fire.** `goal-evaluator`, told to Write
+`.claude/state/s271-deny-probe.txt`, got `File created successfully`. The hook *script* is not
+the reason: run directly on Windows from the same UNC cwd with the same PreToolUse payload it
+returned exit 0 and `"permissionDecision": "deny"` with the SD-1 reason. So the harness never
+invoked the frontmatter hook. Not yet separated: (i) a hot-reload attaches the agent but not its
+hooks; (ii) the documented frontmatter-hook trust gate ("stricter than settings hooks — trusting
+a parent folder isn't enough") — with a concrete lead: `~/.claude.json` holds **two** trust
+entries for this folder, the backslash-UNC spelling `true` and the forward-slash spelling
+`false`; (iii) the Desktop/SDK harness not applying subagent frontmatter hooks at all. The Desktop session writes no hook debug log, so this needs a **new conversation**
+with the fix merged: spawn `goal-evaluator`, repeat the probe, pre-committed read = **denied**.
+If it still succeeds, (i) is dead and the guards must move to `settings.json` — a project-level
+`PreToolUse` on `Write|Edit` whose script dispatches on the payload's `agent_type` field, which
+the docs say carries the agent's `name`. Until then the guards are **unwitnessed**, and every
+claim that they enforce stays a claim.
+
+## How to check cheaply — three instruments, and one false green
+
+- **Live, decisive, one call:** spawn a *known-absent* agent name; the error lists the registry
+  verbatim. Spawn a known-present one in the same batch as the positive control.
+- **Offline, no API, names the reason:** the `--debug-file` run above, in a directory holding
+  copies of the agent files, then grep `\[ERROR\] Agent '…' not loaded`. The Desktop app keeps
+  the previous version beside the current one, so a before/after is one more run. Use a
+  **scratch copy, not the repo** — a headless session still fires the repo's SessionStart hooks.
+- **`claude plugin validate .claude/agents` is a FALSE GREEN for this defect.** It passed the
+  flat-shape files. It checks YAML, `name` and `description`, not the hooks schema. Do not cite
+  it as evidence that an agent file loads.
+- **A registered agent is not a guarded agent.** Registration and hook attachment are separate
+  facts; the only probe of the guard is a forbidden write whose tool result you read back.
+  Then run the hook script directly with the same payload — if it denies, the harness skipped it.
+
+Two instrument failures from s271, for the next reader: a transcript scan whose *own command
+text* contains the needle matches itself (exclude the running session's file); and the system
+prompt — the agent registry included — is **not** recorded in `.jsonl` transcripts, so grepping
+them for registry state measures prose, not state. A `subagent_type` inside a `tool_use` record
+is the recorded signal.
+
+## The test procedure, in cost order (as written s270; every step executed s271 — see Resolution)
 
 1. **Restart the Claude Code session.** The agent registry is built at session start, so a
    restart is both the cheapest diagnostic and the most likely fix. If the three return, it
@@ -85,7 +173,7 @@ works. Nothing is deleted; all four files are present and tracked.
    declare does editing the files become correct — and that edit then needs its own
    evidence, recorded here.
 
-## While they are missing — what still works
+## While they were missing (s269 → the fix) — what still worked
 
 - **`plan-drafter` absent** → a *new* PLAN or ADR cannot be drafted in-harness. Editing an
   **existing Draft** PLAN is not G2-gated and needs no drafter.
@@ -105,3 +193,6 @@ works. Nothing is deleted; all four files are present and tracked.
   whole mechanism.
 - Session-269 handoff §7 recorded the disappearance and the "check before assuming"
   instruction that made this diagnosis happen at all.
+- Claude Code docs — sub-agents ("Hooks in subagent frontmatter", "Subagent files Claude Code
+  skips") and hooks ("Hooks in skills and agents"): the nested shape is the only one documented,
+  and the documented skip-reason list does not include a hooks-schema failure.
