@@ -486,6 +486,39 @@ Why Cray, not Code: per SD-2's own reasoning, which numbers exist — and what t
 denominator means — is a scope verdict on what the intake face is *claimed* to do, and
 those claims reach partners (ADR-0032 D1).
 
+### SD-6 — the third gold domain: is `biomass_boiler` Cray's pick or Code's assumption? (ruled s270)
+
+✅ **RULED: `biomass_boiler` is RATIFIED as the third domain.** Cray, typed, 2026-09-02
+(session 270). `bo-01`, `bo-02` and `inj-03` stand as authored; nothing is re-authored.
+
+Asked because Step 2 requires **≥ 3 distinct domains** while Cray had named only two —
+telecom base-station power and the rice mill. Code chose the third and said so, but the
+choice was recorded **nowhere the next session would read**: `gold.yaml` carried the
+`domain:` field and not its provenance, so a reader could not tell a Cray pick from a
+Code assumption. That gap is what this ruling closes; the provenance is now stated at
+the head of `gold.yaml`'s case list.
+
+**What a veto would have cost, measured against the shipped `gold.yaml` before the
+question was put** (so the ruling reads against a real price, not an estimate):
+
+| | before | after a veto |
+|---|---|---|
+| distinct domains | 3 | **2** — Step 2's `≥ 3` fails outright |
+| extraction cases | 8 | 6 |
+| `above` / `below` expected values | 4 / 4 | 3 / 3 — AC-1(b)'s `≥ 3 each` survives with **zero margin** |
+| the `direction_stated: true × discordant` cell | `bo-01` | **empty** — the stated band could no longer test a discordant cue at all |
+| discordant cases | 3 | 2, both `direction_stated: false` |
+| injection band | 3 | 2 — `inj-03` dies with `bo-01`, and with it the **only** worked demonstration of the confound SD-3's own ruling warns about |
+
+**The domain is also not arbitrary**, which is the fact that made the question worth
+putting rather than assuming: `bo-01`'s description is *"two rice-husk-fired boilers
+supplying process steam to the mill next door"* — husk-fired steam raising adjacent to
+the rice mill Cray did pick, not an unrelated fourth industry.
+
+Why Cray, not Code: a gold set's subject matter is a claim about what the lane is
+evidence *for*, and AC-6's live baseline will be quoted against these domains. Code may
+author cases; it may not decide what the benchmark is a benchmark *of*.
+
 ## Steps
 
 **SD gate:** Steps 2, 3(b), and 6 take their final shape from SD-1/SD-1a, SD-2, SD-3;
