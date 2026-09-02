@@ -183,6 +183,60 @@ Full incident set:
 [`docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md`](../../../docs/lessons/0046-when-a-check-and-a-claim-disagree-go-to-the-artifact.md).
 For the aggregate-before-synthesis half, see the `fan-out-dispatch` skill.
 
+#### The prior depends on the instrument's age — and it is not 50/50
+
+s241's "wrong in both directions" was measured on **shipped guards** that had been
+running against the repo. s269 measured a different population: **instruments written
+minutes earlier for this one check** — a byte-delta criterion, a verification regex,
+two merge-verification tokens, a positive control. There the score was **7 disagreements,
+7 times the instrument was wrong, 0 times the artifact.**
+
+> **A guard that has been running is a real hypothesis. A script you just wrote is a
+> draft.** Read the artifact either way, but when the instrument is fresh, read *it*
+> first — you will usually be reading your own bug.
+
+#### Two mechanics that make the disagreement cheap (or prevent it)
+
+**1 — an instrument passes a control on known content before you trust its first
+reading.** The silent failures are the expensive ones: an uncontrolled instrument does
+not fail loudly, it fails *confidently*. s269's regex reported one number in a
+description that holds three (a trailing lookahead rejected any number ending a
+sentence) and that figure was on its way into an acceptance criterion. The repair opens
+with the control:
+
+```python
+FIXTURE = "Clean bags sit around 0.6. By 2.4 the fan stalls; back at 1.0. 240 sites."
+EXPECT  = ["0.6", "2.4", "1.0", "240"]
+if NUM.findall(FIXTURE) != EXPECT:
+    raise SystemExit("instrument failed its own control - no figure below is trustworthy")
+```
+
+A control pays twice: it catches your bug, **and** it makes a later agreement with an
+independent figure mean something. Once controlled, that regex reproduced a prior
+session's `4 of 8` exactly — which is what established the *earlier* instrument had
+been right all along.
+
+**2 — print the values, never a bare verdict.** Every s269 disagreement was diagnosed
+in one follow-up probe because the report already showed the number:
+
+```
+[A5] the ledger IOU is gone (both ledgers): pre=2 post=2 -> FAIL
+```
+
+`pre=2` *is* the diagnosis — the phrase was in a retained neighbour the runbook forbids
+rewriting. A bare `FAIL` starts a hunt. **A verification report that prints only
+PASS/FAIL is withholding the evidence it just collected.**
+
+⚠️ **Also from s269 — count the variety before coding against one instance.** Two of the
+seven were a single example generalised to a set (one ledger rotation read as the
+pattern for all; one injection case read as the shape of a three-shape band). Such code
+works *perfectly* on the example you read. `grep -c` the field and list its distinct
+values before writing the branch.
+
+Full incident set + the four-class taxonomy:
+[`docs/lessons/0056-suspect-the-instrument-before-the-artifact.md`](../../../docs/lessons/0056-suspect-the-instrument-before-the-artifact.md).
+
+
 ### Judge a lint gate on the tracked tree, not on your checkout
 
 `ruff` is a **gate**, so the thing under judgement must be the tree CI will see.
