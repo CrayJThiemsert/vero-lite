@@ -171,9 +171,19 @@ ruling; the probe obligations below hold under every option.
   wearing a new hat);
   (c) **the swap control** — `threshold != recovery_value` in every case (equal
   values would let a model that swaps the two fields pass both);
-  (d) **the distractor control** — ≥ 2 cases whose description contains at least two
-  plausible numbers of the threshold's magnitude, so numeric axes cannot pass by
-  grabbing the only number in the text;
+  (d) **the distractor control** — ≥ 2 cases whose description carries, besides the
+  expected answers, **a reading in the threshold's own unit**, so numeric axes cannot
+  pass by grabbing the only number in the text. 🔴 **CORRECTED s269 — the criterion is
+  *same reading, same unit*, NOT *same magnitude*.** The shipped Step-2 check used a
+  magnitude window (`thr/3 .. thr*3`) as a proxy; measured on the shipped gold set it
+  is wrong in the direction that matters — a **false negative**. It excluded `rm-02`'s
+  `0.6` kPa clean-bag reading, the same reading in the same unit as its `2.4` kPa
+  threshold and precisely the distractor wanted, while every case it *did* admit was a
+  true positive (4 admitted, 5 qualify). Units cannot be inferred from prose, so each
+  qualifying case declares `same_unit_distractors: [{value, span, why}]` and the test
+  verifies the declaration **against the description** — span verbatim in the text,
+  value inside that span, value neither expected answer. A wrong declaration reddens;
+  the guard reads the artifact, never its own constant;
   (e) **the anti-borrow tripwire** — no case's expected package equals either
   prebaked default (`services/api/intake_defaults/*.json`), field-for-field on the
   scored axes (F6: those files were not authored from descriptions; matching one is
@@ -184,8 +194,9 @@ ruling; the probe obligations below hold under every option.
   **Witnessed RED (one probe per assertion):** (a) blank one derivation note →
   reddens naming the case+field while (b)-(e) stay green; (b) flip all `above` cases
   to `below` in a scratch copy → the both-directions assertion reddens; (c) set one
-  case's `recovery_value` equal to its threshold → reddens naming the case; (d) drop
-  the second number from both distractor descriptions → reddens; (e) paste
+  case's `recovery_value` equal to its threshold → reddens naming the case; (d) corrupt
+  a declared distractor's `span` so it no longer matches its description → reddens
+  naming the case, while (a)-(c) stay green; (e) paste
   `solar_farm.json`'s scored fields into a scratch case → reddens.
 - [ ] **AC-2 — the scorer is pure, per-axis, and structurally refuses the two known
   non-signals.** Artifact: `benchmarks/intake_extraction/harness.py` — a pure
@@ -448,6 +459,32 @@ must not read this ruling as a standing authorisation.
 Why Cray, not Code: the live run is host-state (CLAUDE.md §8) — its existence,
 timing, and model scope are literally the typed-go authority; Code may not schedule
 it by recommendation.
+
+### SD-5 — how a case with no package is counted (ruled s269)
+
+✅ **RULED: split by kind.** Cray, typed, 2026-09-02 (session 269). Asked because the
+PLAN ruled that AC-4's *runner* records transport-failure and validation-exhaustion as
+distinct outcomes, but never ruled how `summarize` treats either in the accuracy
+**denominator** — and that choice changes what the headline number claims.
+
+| Case | Counted as | Ground |
+|---|---|---|
+| `validation_exhausted` — the model answered and its JSON failed the schema through the whole retry budget | **`wrong`**, stays in the denominator | that is model capability, which is what this lane measures |
+| `transport_error` — the box was unreachable (`intake.py` deliberately does not retry these) | **`unscored`**, leaves the denominator | the pipe's fault, not the model's |
+
+**Both counts are reported on every axis, always** (`wrong_validation_exhausted`,
+`unscored_transport`). A number that left the denominator has to stay visible or the
+denominator lies — the failure shape the s267 p95 finding already cost this repo once.
+
+Options declined, recorded so the ruling reads against what it chose between:
+**(b) count everything `wrong`** — one fixed denominator, trivially comparable across
+runs, but a dropped network reads as a stupider model; **(c) exclude both from the
+denominator** — honest about what was measurable, but `n` shrinks silently and accuracy
+flatters the system, which is the `p95-that-was-really-a-maximum` shape in miniature.
+
+Why Cray, not Code: per SD-2's own reasoning, which numbers exist — and what their
+denominator means — is a scope verdict on what the intake face is *claimed* to do, and
+those claims reach partners (ADR-0032 D1).
 
 ## Steps
 

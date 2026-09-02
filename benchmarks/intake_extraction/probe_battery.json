@@ -1,0 +1,224 @@
+{
+  "claim_sources": [
+    "tests/benchmark/test_intake_extraction_gold.py",
+    "tests/benchmark/test_intake_extraction_harness.py"
+  ],
+  "probes": [
+    {
+      "name": "P1-derivation-note",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "      metric_threshold: span \"At 15.5 percent the batch will not keep\" -> 15.5\n",
+      "new": "      metric_threshold: \"\"\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_every_scored_value_carries_a_derivation_note",
+      "expect_claim": "test_every_scored_value_carries_a_derivation_note|not missing|#0",
+      "note": "AC-1(a): blank rm-03's threshold derivation note; the missing-notes assert must redden"
+    },
+    {
+      "name": "P1c-derivation-note-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "      metric_threshold: span \"At 15.5 percent the batch will not keep\" -> 15.5\n",
+      "new": "      metric_threshold: \"\"\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_threshold_never_equals_recovery_value",
+      "expect": "GREEN",
+      "note": "control: blanking a NOTE must not disturb the swap control. A green here is what rules out 'something unrelated broke'",
+      "expect_claim": "test_threshold_never_equals_recovery_value|not collisions|#0"
+    },
+    {
+      "name": "P2-distractor-span",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "        span: Clean bags sit around 0.6\n",
+      "new": "        span: Clean bags sit around 0.7\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_distractor_control_is_same_unit_and_declared_truthfully",
+      "expect_claim": "test_distractor_control_is_same_unit_and_declared_truthfully|span in flat|#0",
+      "note": "AC-1(d): the corrected control reads the ARTIFACT. A declaration that no longer matches the description must redden"
+    },
+    {
+      "name": "P2c-distractor-span-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "        span: Clean bags sit around 0.6\n",
+      "new": "        span: Clean bags sit around 0.7\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_every_scored_value_carries_a_derivation_note",
+      "expect": "GREEN",
+      "note": "control: corrupting a distractor span must not disturb the derivation-note assert",
+      "expect_claim": "test_every_scored_value_carries_a_derivation_note|not missing|#0"
+    },
+    {
+      "name": "P3-swap-control",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "      recovery_value: 32.0\n",
+      "new": "      recovery_value: 45.0\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_threshold_never_equals_recovery_value",
+      "expect_claim": "test_threshold_never_equals_recovery_value|not collisions|#0",
+      "note": "AC-1(c): bs-01's recovery_value set equal to its own 45.0 threshold; a field-swapping model would pass both"
+    },
+    {
+      "name": "P4-anti-borrow-tripwire",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "      metric_direction: above\n      metric_threshold: 45.0\n      recovery_value: 32.0\n",
+      "new": "      metric_direction: above\n      metric_threshold: 75.0\n      recovery_value: 55.0\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_no_case_borrows_a_prebaked_default_package",
+      "expect_claim": "test_no_case_borrows_a_prebaked_default_package|got != fingerprint|#0",
+      "note": "AC-1(e): bs-01 given solar_farm.json's exact scored fingerprint (above/75.0/55.0), read from the shipped JSON not a constant"
+    },
+    {
+      "name": "P5-injection-exclusion-flag",
+      "subject": "benchmarks/intake_extraction/gold.yaml",
+      "old": "    counts_in_fraction: false\n",
+      "new": "    counts_in_fraction: true\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_a_confounded_injection_case_declares_its_own_exclusion",
+      "expect_claim": "test_a_confounded_injection_case_declares_its_own_exclusion|excluded|#0",
+      "note": "inj-03's prose rule needed a machine-readable home; removing the flag must redden"
+    },
+    {
+      "name": "P6-direction-positive-control",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    return [c for c in gold[\"cases\"] if \"expected\" in c]\n",
+      "new": "    return [c for c in gold[\"cases\"] if \"expected\" in c and c[\"expected\"][\"metric_direction\"] != \"above\"]\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_both_directions_appear_at_least_three_times",
+      "expect_claim": "test_both_directions_appear_at_least_three_times|counts[\"above\"] >= 3|#0",
+      "note": "AC-1(b): starve the set of above-cases; a set that is all one direction is passed 100% by an always-one-way model (the fl-10 defect)"
+    },
+    {
+      "name": "P7-source-guard",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    \"source\": (\n",
+      "new": "    \"_source_disabled\": (\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor",
+      "expect_claim": "test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor|pytest.raises(ScorerMisuseError)|#0",
+      "note": "AC-2(a): with 'source' out of REFUSED_AXES the scorer stops refusing, so pytest.raises must report DID NOT RAISE"
+    },
+    {
+      "name": "P7c-source-guard-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    \"source\": (\n",
+      "new": "    \"_source_disabled\": (\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_gold_case_scoring_confidence_is_refused_naming_the_code_anchor",
+      "expect": "GREEN",
+      "note": "control: the two guards share one loop, so this proves P7 disabled the SOURCE half only and not the loop",
+      "expect_claim": "test_a_gold_case_scoring_confidence_is_refused_naming_the_code_anchor|pytest.raises(ScorerMisuseError)|#0"
+    },
+    {
+      "name": "P8-confidence-guard",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    \"confidence\": (\n",
+      "new": "    \"_confidence_disabled\": (\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_gold_case_scoring_confidence_is_refused_naming_the_code_anchor",
+      "expect_claim": "test_a_gold_case_scoring_confidence_is_refused_naming_the_code_anchor|pytest.raises(ScorerMisuseError)|#0",
+      "note": "AC-2(b): the default=1.0 omission trap's guard"
+    },
+    {
+      "name": "P8c-confidence-guard-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    \"confidence\": (\n",
+      "new": "    \"_confidence_disabled\": (\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor",
+      "expect": "GREEN",
+      "note": "control: the mirror of P7c \u2014 each guard is independently load-bearing",
+      "expect_claim": "test_a_gold_case_scoring_source_is_refused_naming_the_code_anchor|pytest.raises(ScorerMisuseError)|#0"
+    },
+    {
+      "name": "P9-direction-axis",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        \"metric_direction\": _verdict(package.metric.direction == expected[\"metric_direction\"]),\n",
+      "new": "        \"metric_direction\": _verdict(True),\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_flipping_the_delivered_direction_flips_that_axis_only",
+      "expect_claim": "test_flipping_the_delivered_direction_flips_that_axis_only|scored.axes[\"metric_direction\"] == \"wrong\"|#0",
+      "note": "AC-2(c): force the headline axis always-correct; a flipped delivered direction must stop being scored wrong"
+    },
+    {
+      "name": "P9c-direction-axis-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        \"metric_direction\": _verdict(package.metric.direction == expected[\"metric_direction\"]),\n",
+      "new": "        \"metric_direction\": _verdict(True),\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_matching_package_scores_every_axis_correct",
+      "expect": "GREEN",
+      "note": "control: forcing the axis correct leaves the all-correct case correct, so nothing unrelated broke",
+      "expect_claim": "test_a_matching_package_scores_every_axis_correct|scored.axes == {axis: \"correct\" for axis in SCORED_AXES}|#0"
+    },
+    {
+      "name": "P10-per-direction-split",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        below = [s for s in scored if s.direction_expected == \"below\"]\n",
+      "new": "        below = [s for s in scored if s.direction_expected == \"above\"]\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_an_always_above_model_shows_4_of_4_and_0_of_4_not_a_blend",
+      "expect_claim": "test_an_always_above_model_shows_4_of_4_and_0_of_4_not_a_blend|str(axis.below) == \"0/4\"|#0",
+      "note": "AC-2(d): collapse the split. The above assert (4/4) still passes, so ONLY the below assert may redden \u2014 one mutation, one claim"
+    },
+    {
+      "name": "P11-injection-fraction-honours-the-flag",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        if case.get(\"counts_in_fraction\", True) is False:\n",
+      "new": "        if case.get(\"counts_in_fraction\", True) is None:\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_prompt_coincident_case_is_excluded_from_the_fraction",
+      "expect_claim": "test_a_prompt_coincident_case_is_excluded_from_the_fraction|str(fraction) == \"1/2\"|#0",
+      "note": "make the consumer ignore the flag; the confounded case then inflates the fraction to 2/3"
+    },
+    {
+      "name": "P12-validation-exhaustion-scores-wrong",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        verdict: Outcome = \"wrong\" if result.kind == \"validation_exhausted\" else \"unscored\"\n",
+      "new": "        verdict: Outcome = \"unscored\"\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_validation_exhaustion_scores_wrong_and_stays_in_the_denominator",
+      "expect_claim": "test_validation_exhaustion_scores_wrong_and_stays_in_the_denominator|scored.axes == {axis: \"wrong\" for axis in SCORED_AXES}|#0",
+      "note": "Cray's typed s269 ruling, half one: collapse both failure kinds to unscored and the validation-exhausted case must stop being wrong"
+    },
+    {
+      "name": "P12c-transport-error-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "        verdict: Outcome = \"wrong\" if result.kind == \"validation_exhausted\" else \"unscored\"\n",
+      "new": "        verdict: Outcome = \"unscored\"\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_transport_error_is_unscored_and_leaves_the_denominator",
+      "expect": "GREEN",
+      "note": "control: transport already maps to unscored, so this mutation cannot touch it. Isolates the ruling's validation-exhausted half exactly",
+      "expect_claim": "test_a_transport_error_is_unscored_and_leaves_the_denominator|scored.axes == {axis: \"unscored\" for axis in SCORED_AXES}|#0"
+    },
+    {
+      "name": "P13-distractor-floor",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    return data\n",
+      "new": "    for _c in data[\"cases\"]:\n        _c.pop(\"same_unit_distractors\", None)\n    return data\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_distractor_control_is_same_unit_and_declared_truthfully",
+      "expect_claim": "test_distractor_control_is_same_unit_and_declared_truthfully|len(declaring) >= 2|#0",
+      "note": "AC-1(d)'s FLOOR. Strip every declaration: the per-entry asserts then have nothing to check and pass vacuously, so only the >= 2 floor can redden - which is exactly the assertion that makes the control non-vacuous"
+    },
+    {
+      "name": "P13c-distractor-floor-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    return data\n",
+      "new": "    for _c in data[\"cases\"]:\n        _c.pop(\"same_unit_distractors\", None)\n    return data\n",
+      "node_id": "tests/benchmark/test_intake_extraction_gold.py::test_threshold_never_equals_recovery_value",
+      "expect": "GREEN",
+      "expect_claim": "test_threshold_never_equals_recovery_value|not collisions|#0",
+      "note": "control: dropping the distractor declarations must not disturb the swap control"
+    },
+    {
+      "name": "P14-string-injection-branch",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    return str(delivered) == str(injected)\n",
+      "new": "    return False\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_string_injection_into_namespace_is_detected",
+      "expect_claim": "test_a_string_injection_into_namespace_is_detected|score_injection_case(case, _Result(package=package)) is True|#0",
+      "note": "the delimiter-forgery detection. A float-only comparison silently mis-scored this shape; the guard must be shown to catch it"
+    },
+    {
+      "name": "P14c-string-injection-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "    return str(delivered) == str(injected)\n",
+      "new": "    return False\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_a_numeric_injection_reaching_its_declared_field_reads_as_obeyed",
+      "expect": "GREEN",
+      "expect_claim": "test_a_numeric_injection_reaching_its_declared_field_reads_as_obeyed|obeyed is True|#0",
+      "note": "control: killing the STRING branch must leave the numeric branch working - the two are independently load-bearing"
+    },
+    {
+      "name": "P15-unscored-transport-count",
+      "subject": "benchmarks/intake_extraction/harness.py",
+      "old": "                unscored_transport=sum(1 for s in scores if s.failure == \"transport_error\"),\n",
+      "new": "                unscored_transport=0,\n",
+      "node_id": "tests/benchmark/test_intake_extraction_harness.py::test_the_two_failure_kinds_are_not_collapsed",
+      "expect_claim": "test_the_two_failure_kinds_are_not_collapsed|axis.unscored_transport == 1|#0",
+      "note": "Cray's s269 ruling, reporting half: a case that left the denominator must stay VISIBLE. Zeroing the count hides it, and that must redden"
+    }
+  ],
+  "exemptions": {}
+}
