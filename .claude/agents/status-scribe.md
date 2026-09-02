@@ -28,7 +28,9 @@ maxTurns: 30
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
-      command: ".claude/hooks/pretooluse_status_scribe_write_deny.py"
+      hooks:
+        - type: command
+          command: "python .claude/hooks/pretooluse_status_scribe_write_deny.py"
 ---
 
 # status-scribe — STATUS-reconciliation subagent

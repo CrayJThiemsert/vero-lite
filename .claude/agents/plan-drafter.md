@@ -24,7 +24,9 @@ maxTurns: 30
 hooks:
   PreToolUse:
     - matcher: "Write|Edit"
-      command: ".claude/hooks/pretooluse_plan_subagent_write_deny.py"
+      hooks:
+        - type: command
+          command: "python .claude/hooks/pretooluse_plan_subagent_write_deny.py"
 ---
 
 # plan-drafter — governance-drafting subagent
