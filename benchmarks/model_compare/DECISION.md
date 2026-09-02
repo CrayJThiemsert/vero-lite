@@ -127,6 +127,64 @@ and must be reported separately, never folded into the bars:
 If the bars pick one model and the blind read prefers the other, that is a real
 conflict and it goes to Cray. It is **not** resolved by re-weighting the bars.
 
+### 5-RULED (s270). The Thai gap is ACCEPTED; the blind read waits for a 20-pair re-run
+
+Two rulings, Cray, typed, 2026-09-02 (session 270), taken together because they
+are the two halves of §5 and were open for the same reason — §5 has never run.
+
+**(1) Criterion (c) — Thai prose quality — is an ACCEPTED, RECORDED GAP.** No
+Thai corpus is built. Consequence, stated plainly so it is never quoted away:
+**Thai prose quality is unmeasured, and no model choice made today may be
+defended on it.** `blind_read.py` already refuses to fake it — its docstring
+omits criterion (c) from the generated sheet because the procedure-baseline
+corpus is English, and records that the same instrument serves a Thai read
+against a Thai corpus without modification. The instrument is ready; only the
+corpus is absent, and it stays absent by ruling rather than by drift.
+
+🔴 **Two stale claims cleared by the same ruling, because both would have
+mis-routed the next session:**
+
+- **The gate that was said to hold this is MOOT.** `STATUS.md` carried "the
+  Thai-brief rubric — brevity vs completeness — gates the ratified Thai-corpus
+  option". That rubric is §5a's **gate-advisory** rubric (#1349), and §5a-RESULT
+  below closes it: *"§5a's rubric question is moot, not re-ruled … Do not spend a
+  panel, **a corpus**, or a §8 go on scoring this position."* A dead gate held a
+  live question.
+- **"the *ratified* Thai-corpus option" was never ratified.** Searched at s270
+  across all of `docs/` (ADRs, PLANs, `plans/done/`, all twelve
+  `status-archive/` files), the gitignored FDE-readiness carrier doc, and every
+  handoff: **zero hits.** The s267 handoff says the opposite — the corpus was
+  *deliberately not started*. The word was unbacked and is withdrawn.
+
+**(2) The human half runs only after a 20-pair re-run — not on today's dumps.**
+The blind read needs the same items' `judgment` blobs from **both** models. They
+are tracked (`evidence/s259-mc-gptoss-1.jsonl`, `evidence/s259-mc-qwen-1.jsonl`),
+so no §8 go is needed to *prepare* a sheet — but measured at s270:
+
+```
+[gptoss] records=20  judgment non-null=19  errors=1
+[qwen]   records=20  judgment non-null=10  errors=10
+PAIRABLE_N=9
+```
+
+**Nine pairs of twenty**, and the loss is not random: the missing eleven are
+exactly the items where qwen failed **B2**, so the surviving nine are biased
+toward the items qwen could complete. A preference count over them would read as
+"k of 9" and would flatter the challenger by construction. Cray ruled the
+re-run rather than the small-n read.
+
+🔴 **The re-run has two preconditions, and neither is satisfied today.** (i) Its
+own **typed CLAUDE.md §8 go** at the time it is fired — this ruling scopes the
+work, it does not authorise contacting the box. (ii) A **fix for the cause**:
+qwen's failures are timeouts (per-call p95 120.1 s sitting *on* the client
+timeout, §B6), so re-running unchanged reproduces the same ten errors. Raising
+the timeout or changing quantization is its own piece of work and must land
+first, or the re-run spends a §8 go to measure nothing.
+
+**This does not disturb the standing verdict.** `RESULTS.md` keeps
+`gpt-oss:20b` on **B2** and **B6**, bars read before accuracy or stability;
+neither ruling here touches them.
+
 ### 5a. The rubric at the GATE-ADVISORY position — ruled (Cray, typed, 2026-09-01, session 267)
 
 §5's three criteria are unchanged and stay as written. This adds the rubric for a
@@ -166,10 +224,22 @@ separate question: that path has no equivalent deterministic sidecar, and it has
 not been checked here.
 
 **The pre-commitment holds.** No output from this position exists to tune a
-rubric to: all four call sites construct `GateAdvisoryBuilder()` with no
-arguments, i.e. `client_factory=None`, the deterministic arm. The live arm is a
-seam that has never been wired. This rubric is therefore fixed **before** any
-narrative has ever been generated, which is the property §5 exists to protect.
+rubric to: all **three** production call sites construct `GateAdvisoryBuilder()`
+with no arguments, i.e. `client_factory=None`, the deterministic arm:
+`services/engine/scaffolder/package.py:374`,
+`verticals/fleet_maintenance/procedures_factory.py:119`, and
+`verticals/procurement/hero_demo/run.py:267`. The live arm is a seam that has
+never been wired. This rubric is therefore fixed **before** any narrative has
+ever been generated, which is the property §5 exists to protect.
+_[Corrected s270, `was an error`: this read "all four call sites" and named
+none of them. Re-counted 2026-09-02 against the tree — `git grep
+GateAdvisoryBuilder` over `services/ verticals/ tools/ benchmarks/` — there are
+**three** production constructions, not four; the fourth appears to have counted
+`tests/verticals/procurement/test_gate_advisory.py`, which is a test, not a
+wire. **The claim's substance is unaffected and the DO-NOT-WIRE verdict stands**:
+every one of the three passes no argument, so every one runs the deterministic
+arm. The sites are now named so the next reader re-counts instead of trusting a
+bare number.]_
 
 **Recorded as intent, not built (Cray, same ruling):** this belongs long-term in
 **system preferences**, adjustable by an administrator per deployment, rather

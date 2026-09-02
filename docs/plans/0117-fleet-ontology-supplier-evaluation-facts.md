@@ -1022,6 +1022,56 @@ fold-into-grader-PLAN recommendation is superseded, kept as lineage in F16 and t
 SD-3a block); any live run still requires its own typed CLAUDE.md §8 go; nothing in
 this PLAN's offline ACs moves.
 
+### SD-7 — RULED (decide from the standing principle) — `fl-21`/`fl-22`: score the answer or the query? (ruled s270)
+
+✅ **RULED: decide it from the lane's principle, blind to these two results.** Cray,
+typed, 2026-09-02 (session 270). Applying that ruling closes the question **without a
+new criterion**, because the principle already exists and predates the cases.
+
+The question, as STATUS carried it since s265-266: gpt-oss emits `group_by: null` on
+`fl-21`/`fl-22` while qwen emits `group_by: vendor_id`; gpt-oss's **prose answer is
+right** (the identity came from the phrase step reading records, not from the
+aggregate). STATUS flagged the hazard itself — *"deciding it now, with the result
+visible, would relax a criterion after seeing the outcome"* — i.e. HARK, the same class
+CLAUDE.md §8 forbids when it says never repair by relaxing the criterion that just
+failed.
+
+**The standing principle, quoted from where it lives** — `harness.py::score_case`'s
+docstring:
+
+> `ceiling=false` → `result_ok`: the executed result (count + id set) equals the
+> hand-verified gold — invariant to how the filter was phrased.
+> `ceiling=true` → `answer_ok`: the phrased answer carries every expected substring.
+
+**It is uncontaminated, and this is checkable rather than asserted** (`git log -S`):
+
+| commit | date | what |
+|---|---|---|
+| `ff5bab8` | **2026-06-14** | the `ceiling=false → executed result` principle enters `harness.py` |
+| `31b90d9` | 2026-08-31 | `fl-21` is authored |
+| `01f2881` | 2026-08-31 | the `fl-21`/`fl-22` result is recorded |
+
+The criterion was fixed **78 days before the case existed** and 78 before any of these
+outputs were seen. Nothing about it can have been tuned to them.
+
+**Therefore, mechanically:** `fl-21` and `fl-22` both carry `ceiling: false`, so they
+score the **executed result** — `expected_aggregate`, `groups` included — and **not**
+the prose answer. `_aggregate_ok` returns `False` on an empty `agg.groups` before it
+reaches the `top` comparison, so `group_by: null` is **wrong** on both, right prose
+notwithstanding. No gold edit and no scorer edit follow from this ruling; the lane
+already behaves as ruled.
+
+🔴 **The residual, stated so it is not mistaken for an oversight.** A model that hands
+the operator the correct answer by a route the query shape does not capture scores
+`wrong` here **by design** — that is what separating `ceiling` from expressible cases
+is *for*. If that capability is later worth crediting, the mechanism is a **separate
+`ceiling: true` case** measuring the phrase-step rescue on its own denominator. It is
+**not** relaxing `fl-21`/`fl-22`, which would retro-fit a criterion to a known result.
+
+Why Cray, not Code: the question was whether to re-open a scoring criterion after
+seeing which model it favours. Only Cray can authorise that, and the ruling was that it
+is not re-opened.
+
 ## Verification
 
 1. **Declared and addressable:** AC-1's exact 12-name property list (both bands)

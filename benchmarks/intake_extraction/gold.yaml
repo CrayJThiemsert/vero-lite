@@ -89,16 +89,27 @@
 version: 1
 suite: intake_extraction
 
+# PROVENANCE of the domain set (PLAN-0118 SD-6, ruled by Cray, typed, 2026-09-02, s270).
+# Recorded because the `domain:` field alone cannot tell a reader whether a domain was
+# Cray's pick or Code's assumption, and the two carry different authority. Cray named
+# telecom_power and rice_mill; Step 2 requires >= 3 distinct domains, so Code proposed
+# biomass_boiler and it was RATIFIED at s270 rather than inherited silently.
 domains:
   telecom_power: >
     Mobile-network base stations with battery + generator backup. Chosen for a
     voltage parameter, which the instruction does not name in either direction.
+    PROVENANCE: Cray's pick.
   rice_mill: >
     Paddy drying and milling with husk aspiration. Carries both discordant cases:
     a temperature whose breach is a FALL and a pressure whose breach is a RISE.
+    PROVENANCE: Cray's pick.
   biomass_boiler: >
     Rice-husk-fired steam boiler. Pairs naturally with the mill (husk is its fuel)
     and carries a second pressure-rises-is-bad case under a different asset shape.
+    PROVENANCE: proposed by Code, RATIFIED by Cray (typed, 2026-09-02, s270) under
+    PLAN-0118 SD-6, which records what a veto would have cost: domains 3 -> 2 (Step 2
+    fails), the direction_stated-true x discordant cell emptied, and inj-03 lost with
+    bo-01 - the only worked demonstration of SD-3's own confound.
 
 cases:
 
