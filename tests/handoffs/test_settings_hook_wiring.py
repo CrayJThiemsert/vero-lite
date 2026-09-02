@@ -288,3 +288,47 @@ def test_classifier_dispatch_is_not_re_registered_on_pretooluse() -> None:
         "non-deterministic model call. If this is intentional, retire this test "
         "with the reasoning, do not just delete the assertion."
     )
+
+
+# --- session 272: the subagent write guards' ONLY live route ------------------
+
+
+def test_subagent_write_dispatch_is_registered_for_write_and_edit() -> None:
+    """The three subagent write guards reach the harness ONLY through this route.
+
+    Session 272 measured (Lesson #0057, "Resolution, part 2") that the agents'
+    frontmatter ``hooks:`` blocks never run in this harness: an instrumented
+    guard recorded zero invocations while the evaluator's allowed ``goal.json``
+    write succeeded. Settings-level hooks do run for subagent calls and carry
+    ``agent_id`` + ``agent_type``, so the dispatcher on this registration IS the
+    enforcement — drop it and all three allowlists are decorative again.
+    """
+    matchers = {
+        str(entry.get("matcher"))
+        for entry in _entries_invoking("PreToolUse", "pretooluse_subagent_write_dispatch.py")
+    }
+    assert "Write|Edit" in matchers, (
+        f"the subagent write-guard dispatcher lost its PreToolUse Write|Edit "
+        f"registration — goal-evaluator, plan-drafter and status-scribe are now "
+        f"unguarded (their frontmatter hooks do not run); got {sorted(matchers)}"
+    )
+
+
+def test_subagent_guard_scripts_are_not_registered_directly() -> None:
+    """Pinned absence beside the retention above (the module's pairing rule).
+
+    Each guard script says it "intentionally does not inspect agent_id /
+    agent_type" and that moving it to project level must fail loudly: registered
+    directly, an allowlist would bind the MAIN agent — ``goal.json`` would become
+    the only file Code could write. The dispatcher exists so that never happens.
+    """
+    for script in (
+        "pretooluse_goal_evaluator_write_deny.py",
+        "pretooluse_plan_subagent_write_deny.py",
+        "pretooluse_status_scribe_write_deny.py",
+    ):
+        assert not _entries_invoking("PreToolUse", script), (
+            f"{script} is registered directly in settings.json — its allowlist "
+            f"would now bind the main Code agent. Route it through "
+            f"pretooluse_subagent_write_dispatch.py instead."
+        )
