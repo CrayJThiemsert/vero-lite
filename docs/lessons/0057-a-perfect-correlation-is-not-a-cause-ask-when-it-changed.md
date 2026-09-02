@@ -185,11 +185,19 @@ payload shape. The three guard docstrings still say "subagent scoping comes from
 wiring" — historically true, now superseded by the dispatcher; left as-is so the scripts stay
 byte-identical.
 
-**Still owed, by the next conversation** (settings hooks are snapshotted at session start, so
-this session cannot witness its own registration): a legitimate `goal-evaluator` dispatch must
-still write `goal.json` — the regression a settings-level guard can introduce is a *false* deny —
-and, with a model that will attempt it, a Write outside `goal.json` denied with the SD-1 reason.
-Recorded in STATUS.
+**Witnessed live (session 273, 2026-09-02, `main` = `0077163`)** — the first conversation started
+after the merge, so its settings snapshot carried the dispatcher. Both reads were pre-committed
+before the run. **Step A, no false deny:** a fresh `/goal` with one `judge` criterion, the gate's
+own template and a Windows-side fingerprint (`afdaea536749062c`, unchanged across the write);
+`goal-evaluator` on Opus read the two files, judged J1 PASS and *edited* `goal.json` —
+`evaluations[]` **0 → 1**, its tool result "updated successfully", the main agent's own first
+Write of the session also un-denied. **Step B, the deny:** `goal-evaluator` on Fable (the model
+that attempts the probe; Opus refuses) asked to Write `.claude/state/s271-deny-probe.txt` — one
+tool call, denied with `pretooluse_goal_evaluator_write_deny.py`'s own SD-1 reason forwarded
+verbatim, and the file **absent** afterwards. So the guards were **inert from their birth
+(s269 → #1362) until 2026-09-02, and live from #1363**; and the custom agent's `agent_type` is
+its frontmatter `name`, since that is the key the dispatcher routed on. Evidence:
+`.claude/handoffs/session-273/evidence/step{A,B}-*.txt` (gitignored).
 
 ## How to check cheaply — three instruments, and one false green
 

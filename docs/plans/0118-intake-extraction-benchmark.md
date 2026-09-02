@@ -156,7 +156,8 @@ each preferring a mutation under which the sibling assertion stays green, restor
 the scratchpad copy. ACs marked **[SD-gated]** take their final shape from the named
 ruling; the probe obligations below hold under every option.
 
-- [ ] **AC-1 — the gold set exists and its structural invariants are enforced.**
+- [x] **✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
+  `0077163` — see the Step 3 closure record below AC-5) — AC-1 — the gold set exists and its structural invariants are enforced.**
   **[SD-1-gated]** Artifact: `benchmarks/intake_extraction/gold.yaml` + an offline
   validation test module. Each case carries: the free-text description; the expected
   value for **every scored axis** (per the SD-2 ruling); a **per-field derivation
@@ -198,7 +199,8 @@ ruling; the probe obligations below hold under every option.
   a declared distractor's `span` so it no longer matches its description → reddens
   naming the case, while (a)-(c) stay green; (e) paste
   `solar_farm.json`'s scored fields into a scratch case → reddens.
-- [ ] **AC-2 — the scorer is pure, per-axis, and structurally refuses the two known
+- [x] **✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
+  `0077163` — see the Step 3 closure record below AC-5) — AC-2 — the scorer is pure, per-axis, and structurally refuses the two known
   non-signals.** Artifact: `benchmarks/intake_extraction/harness.py` — a pure
   `score_case(case, result)` (offline-testable, NL-lane pattern) producing per-axis
   outcomes plus reported-only diagnostics (`attempts`, latency, `model`). Two
@@ -272,13 +274,47 @@ ruling; the probe obligations below hold under every option.
   **S7** proves an unparseable body reads UNKNOWN rather than "confidence omitted".
   🔴 `PROBE-BATTERY: FAIL` exit 1 remains, on **coverage only** — expected, and NOT to be
   "fixed" by shrinking `claim_sources`.
-- [ ] **AC-5 — offline gates, at their true scopes.** Commands, each output to a file:
+- [x] **✅ CLOSED s273 (gates first run #1357 s269; re-run on `main` `0077163` — closure
+  record below) — AC-5 — offline gates, at their true scopes.** Commands, each output to a file:
   bare `uv run ruff check . 2>&1` (covers `benchmarks/`, `ci.yml:55-56`); **hand-run**
   `uv run mypy --strict benchmarks/intake_extraction/ 2>&1` → clean (named explicitly
   because neither CI nor pre-commit covers `benchmarks/` — F8; a "CI is green"
   read does NOT close this AC); full `uv run pytest tests/ 2>&1` on the checkout that
   owns the test DB. Probe-battery coverage report for every witnessed-RED above
   captured for the PR body.
+
+  ✅ **Step 3 closure record (AC-1 / AC-2 / AC-5, written s273).** The work shipped in
+  #1357 (s269) and its PR body carried the gates, but the three boxes were never ticked —
+  copied as "unhomed" through the s270, s271 and s272 handoffs. A tick is a claim, so
+  each obligation was re-checked against the artifacts on `main` `0077163` before ticking,
+  not read off the PR body. **AC-1:** `benchmarks/intake_extraction/gold.yaml` — 8 scored
+  cases (`above` 4 / `below` 4) + 3 injection-band cases across 3 domains, 5 cases
+  declaring `same_unit_distractors`; validation module
+  `tests/benchmark/test_intake_extraction_gold.py` (13 tests) carries one assertion per
+  clause — (a) `test_every_scored_value_carries_a_derivation_note`, (b)
+  `test_both_directions_appear_at_least_three_times`, (c)
+  `test_threshold_never_equals_recovery_value`, (d)
+  `test_distractor_control_is_same_unit_and_declared_truthfully` (the s269-corrected
+  same-unit form, read against the description), (e)
+  `test_no_case_borrows_a_prebaked_default_package`, plus the confound-audit /
+  pass-evidence-note check. Witnessed RED by name: **P1** (a), **P6** (b), **P3** (c),
+  **P2** + **P13** (d), **P4** (e). **AC-2:** `harness.py` — pure `score_case`
+  (`harness.py:218`), `reject_non_signal_axes` naming `intake.py:186` for `source` and
+  `intake_assembler.py:183-184` for `confidence` (`ScorerMisuseError`), `AxisSummary`
+  with separate `above` / `below` tallies rendered as raw fractions;
+  `tests/benchmark/test_intake_extraction_harness.py` (24 tests). Witnessed RED by
+  name: **P7** (a), **P8** (b), **P9** (c), **P10** (d), with **P7c/P8c/P9c** the
+  sibling-green controls. **AC-5, re-run s273 from the repo root via WSL, each to a
+  file:** `mypy --strict benchmarks/intake_extraction/` → `Success: no issues found in
+  3 source files` (HAND-RUN — CI does not cover it); bare `ruff check .` → `All checks
+  passed!`; `ruff format --check .` → 713 files already formatted; the three intake
+  modules → 53 passed; full `pytest tests/` on the DB-owning checkout → **4795 passed,
+  8 skipped** (s272, on the tree #1363 merged from — `main` has since gained only
+  docs). Probe battery re-run s273 through `tools/probe_battery`: **31/31 hit their
+  declared outcome (22 WITNESSED + 9 declared GREEN), 0 MISFIRE / CRASHED /
+  MUTATION-ERROR**; coverage 22 / 121 claims with 99 GAPS → exit 1 on coverage only,
+  the same honest denominator as the Step 4 record; working tree clean before and
+  after (0 → 0 porcelain lines). Nothing here is evidence about any model — AC-6 only.
 - [ ] **AC-6 — the live baseline run. [SD-4-gated; typed CLAUDE.md §8 go required —
   this AC does not run without it.]** One batched run over the full gold set against
   the shipped configuration (`settings.recommender_model`, `routers/intake.py:62`),
