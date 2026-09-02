@@ -156,8 +156,8 @@ each preferring a mutation under which the sibling assertion stays green, restor
 the scratchpad copy. ACs marked **[SD-gated]** take their final shape from the named
 ruling; the probe obligations below hold under every option.
 
-- [x] **✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
-  `0077163` — see the Step 3 closure record below AC-5) — AC-1 — the gold set exists and its structural invariants are enforced.**
+- [x] **AC-1 — ✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
+  `0077163` — see the Step 3 closure record below AC-5) — the gold set exists and its structural invariants are enforced.**
   **[SD-1-gated]** Artifact: `benchmarks/intake_extraction/gold.yaml` + an offline
   validation test module. Each case carries: the free-text description; the expected
   value for **every scored axis** (per the SD-2 ruling); a **per-field derivation
@@ -199,8 +199,8 @@ ruling; the probe obligations below hold under every option.
   a declared distractor's `span` so it no longer matches its description → reddens
   naming the case, while (a)-(c) stay green; (e) paste
   `solar_farm.json`'s scored fields into a scratch case → reddens.
-- [x] **✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
-  `0077163` — see the Step 3 closure record below AC-5) — AC-2 — the scorer is pure, per-axis, and structurally refuses the two known
+- [x] **AC-2 — ✅ CLOSED s273 (work merged #1357, s269; ticked after re-verification on `main`
+  `0077163` — see the Step 3 closure record below AC-5) — the scorer is pure, per-axis, and structurally refuses the two known
   non-signals.** Artifact: `benchmarks/intake_extraction/harness.py` — a pure
   `score_case(case, result)` (offline-testable, NL-lane pattern) producing per-axis
   outcomes plus reported-only diagnostics (`attempts`, latency, `model`). Two
@@ -220,7 +220,7 @@ ruling; the probe obligations below hold under every option.
   the direction axis outcome flips (the probe names the output it changes); (d) in a
   scratch summary over canned outcomes, an all-`below`-answering result set shows
   above-accuracy `0/n` — delete the per-direction split → that assertion reddens.
-- [x] **✅ CLOSED s270 — AC-3 — scenario test (CLAUDE.md §8, binding): the real producer flows into the
+- [x] **AC-3 — ✅ CLOSED s270 — scenario test (CLAUDE.md §8, binding): the real producer flows into the
   real consumer, offline.** Artifact:
   `tests/benchmark/test_intake_extraction_scenario.py`. ✅ **Placement MEASURED by Code
   at review (s268), closing the draft's own open question:** benchmark tests live in
@@ -241,7 +241,7 @@ ruling; the probe obligations below hold under every option.
   flips to `wrong` (mutation reaches the code and names its output); feed canned
   invalid-then-valid responses → `attempts == 2` reddens if the runner stops driving
   the real retry loop.
-- [x] **✅ CLOSED s270 — AC-4 — the live runner exists and every non-live behaviour of it is verified
+- [x] **AC-4 — ✅ CLOSED s270 — the live runner exists and every non-live behaviour of it is verified
   offline.** Artifact: `benchmarks/intake_extraction/run_benchmark.py` + a
   **recording pass-through client** (delegates to the real `OllamaClient`, records
   each attempt's raw `content` — transport-level observation, the seam stays the
@@ -274,8 +274,8 @@ ruling; the probe obligations below hold under every option.
   **S7** proves an unparseable body reads UNKNOWN rather than "confidence omitted".
   🔴 `PROBE-BATTERY: FAIL` exit 1 remains, on **coverage only** — expected, and NOT to be
   "fixed" by shrinking `claim_sources`.
-- [x] **✅ CLOSED s273 (gates first run #1357 s269; re-run on `main` `0077163` — closure
-  record below) — AC-5 — offline gates, at their true scopes.** Commands, each output to a file:
+- [x] **AC-5 — ✅ CLOSED s273 (gates first run #1357 s269; re-run on `main` `0077163` — closure
+  record below) — offline gates, at their true scopes.** Commands, each output to a file:
   bare `uv run ruff check . 2>&1` (covers `benchmarks/`, `ci.yml:55-56`); **hand-run**
   `uv run mypy --strict benchmarks/intake_extraction/ 2>&1` → clean (named explicitly
   because neither CI nor pre-commit covers `benchmarks/` — F8; a "CI is green"
