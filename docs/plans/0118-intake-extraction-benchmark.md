@@ -203,7 +203,17 @@ ruling; the probe obligations below hold under every option.
   `0077163` — see the Step 3 closure record below AC-5) — the scorer is pure, per-axis, and structurally refuses the two known
   non-signals.** Artifact: `benchmarks/intake_extraction/harness.py` — a pure
   `score_case(case, result)` (offline-testable, NL-lane pattern) producing per-axis
-  outcomes plus reported-only diagnostics (`attempts`, latency, `model`). Two
+  outcomes plus reported-only diagnostics (`attempts`, latency, `model`).
+  _[Corrected s273, `was an error` — **`latency` was never built and this tick did
+  not check it.** `benchmarks/intake_extraction/{run_benchmark,harness}.py` contain
+  zero timing instrumentation (measured s273: 0 hits for
+  `latency`/`elapsed`/`perf_counter`/`monotonic`) and the per-case artifact has no
+  time field. The s273 tick above verified purity, both structural guards and the
+  per-direction split — the three clauses with their own witnessed-RED probes — and
+  read past the word `latency` in this same sentence. The rest of AC-2 stands and is
+  evidence-backed; only this diagnostic is unbuilt. It surfaced at AC-6, where the
+  deliverable names it again. Cray's call, stated at AC-6 below: narrow the clause,
+  or build the timing and re-run under a second §8 go.]_ Two
   structural guards, each its own test assertion:
   (a) a gold case that declares `source` as a scored field is **rejected** (raises,
   naming `intake.py:186` in the message) — the scorer cannot be talked into
@@ -328,6 +338,34 @@ ruling; the probe obligations below hold under every option.
   run is evidence whatever the scores are; the only failure mode is an instrument
   failure (missing artifacts, unscored cases), asserted by re-running the AC-4
   artifact-completeness check over the live outputs.
+
+  🔴 **Step 7 RUN RECORD (s273, 2026-09-02) — the run HAPPENED and its pass read
+  PASSED; the box stays unticked on ONE clause. Cray's call.** Fired under Cray's
+  typed §8 go, once, no repeats: `gpt-oss:20b` @ `192.168.1.133:11434`, shipped
+  config verified against `services/api/config.py` before firing, driven by AC-4's
+  runner through the shipped `extract_package`, as a `systemd --user` unit.
+  Wall clock **449 s**, rc=0. **Pass read (fixed pre-run, instrument control-tested
+  BEFORE the run — GREEN on known-sound synthetic content and each of its five
+  criteria reddened by its own separate mutation): INSTRUMENT-SOUND, 0 failures** —
+  11/11 artifacts, every one ≥1 raw attempt, **0 transport errors**, all four axes on
+  every scored case, model tag on every produced package. Deliverable written:
+  `benchmarks/intake_extraction/RESULTS.md` — per-axis raw fractions
+  (`metric_direction` / `metric_threshold` / `recovery_value` **7/8**,
+  `band_compliance` **3/8**), per-direction split, per-case table, the model tag as
+  reported by the box, the F9 register, and three findings the lane was built to
+  surface (empty emission is the failure mode, not wrong answers — **11 of 20
+  attempts returned an empty body**; `band_compliance` fails **systematically** at
+  `site_role.properties=0` in 4 of 5 misses; the injection band was **obeyed** in
+  both cases that answered).
+  **Why it is NOT ticked:** the deliverable this AC names includes per-case
+  **`latency`**, and the shipped runner has **no timing instrumentation at all** —
+  the same unbuilt diagnostic AC-2's wording promises (see the `was an error`
+  correction there). Every other element of AC-6 is delivered. Ticking now would
+  claim a deliverable clause that is absent, so the box waits on **Cray's ruling**:
+  **(a)** narrow AC-2 + AC-6 to drop `latency` (it is a diagnostic, never a scored
+  axis; the run answers everything else) and tick — **RECOMMENDED**, F3 minimises
+  live runs; or **(b)** add timing to the runner and spend a **second typed §8 go**
+  on a re-run. No third option: latency cannot be recovered from these artifacts.
 
 ## Out of Scope
 
