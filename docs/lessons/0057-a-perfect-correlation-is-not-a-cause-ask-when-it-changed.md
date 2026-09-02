@@ -139,7 +139,57 @@ with the fix merged: spawn `goal-evaluator`, repeat the probe, pre-committed rea
 If it still succeeds, (i) is dead and the guards must move to `settings.json` — a project-level
 `PreToolUse` on `Write|Edit` whose script dispatches on the payload's `agent_type` field, which
 the docs say carries the agent's `name`. Until then the guards are **unwitnessed**, and every
-claim that they enforce stays a claim.
+claim that they enforce stays a claim. _[Executed s272 — part 2 below: still inert from a fresh
+load, so the guards moved.]_
+
+### Resolution, part 2 (session 272) — the nested shape made the files LOAD, not the hooks RUN
+
+Two probes in a **new conversation** on the merged fix (`main` = `5db546f`, client 2.1.255, cwd =
+the backslash-UNC spelling whose trust entry is `true`), neither needing a forbidden write:
+
+1. **Frontmatter hook: inert.** `pretooluse_goal_evaluator_write_deny.py` was instrumented
+   (uncommitted) to append one JSON line on every invocation — at entry and at each decision,
+   with a fallback path — and controlled first by two direct runs (allow → empty stdout + trace;
+   deny → the SD-1 JSON + trace; `4 → 8` lines). Then a *legitimate* dispatch (an active `/goal`
+   with one `judge` criterion, the gate's own template and fingerprint) made `goal-evaluator`
+   write `goal.json`: `evaluations[]` **0 → 1**, trace **8 → 8**, no fallback file. The harness
+   never ran the script. Hypothesis (i) is dead — this registry was built fresh from the valid
+   files; (ii) vs (iii) is not separated and no longer needs to be.
+2. **Settings hook: live, with identity, and no edit was needed to see it.** The existing
+   `pretooluse_git_deny.py` prints `agent_type` and `agent_id` inside its deny reason, so a
+   `git commit --dry-run` from `general-purpose` and from `claude` (haiku) was the instrument:
+   both DENIED, `agent_id` **equal to the agentId the Agent tool returned** for that spawn and
+   `agent_type` equal to the `subagent_type`; the same command from the main agent ran. Settings
+   hooks fire for subagent tool calls, and the payload says who is calling.
+
+Two instrument lessons, each paid for with a run: the "ask the agent for a forbidden write" probe
+is **model-confounded** — on Opus, `goal-evaluator` refused to attempt it (no Write call → no hook
+trigger → nothing learned) while s271's parent had complied — so the discriminator is the agent's
+*allowed* write through a real dispatch plus an instrument on the hook; and **control the
+instrument's input too** — the first control runs both returned the fail-closed "malformed JSON"
+deny because a heredoc'd payload had lost one backslash layer in a UNC `cwd` (`\\u…` became a
+broken escape). Forward slashes in probe payloads, and the control reads before the real one.
+
+**The fix (this PR).** `.claude/hooks/pretooluse_subagent_write_dispatch.py`, registered in
+`settings.json` on `PreToolUse` `Write|Edit` beside the research-path and governance gates. It
+reads the payload's `agent_type`; for `goal-evaluator` / `plan-drafter` / `status-scribe` it hands
+the raw payload to that agent's guard script in a subprocess and forwards the verdict verbatim —
+the three scripts are **unchanged** and still frontmatter-wired (harmless; double coverage if a
+client ever applies them). Fail-closed where identity is known (a missing, crashing or timed-out
+guard → deny); pass-through where it is not (main agent, other subagents, malformed stdin — the
+harness serialises the payload, so no agent reaches a bypass there). The registration is pinned
+both ways in `tests/handoffs/test_settings_hook_wiring.py` (dispatcher present; guards never
+registered directly — the boundary inversion their docstrings warn about), and the scenario test
+executes the command `settings.json` actually names, from the repo root, with the s272-recorded
+payload shape. The three guard docstrings still say "subagent scoping comes from the frontmatter
+wiring" — historically true, now superseded by the dispatcher; left as-is so the scripts stay
+byte-identical.
+
+**Still owed, by the next conversation** (settings hooks are snapshotted at session start, so
+this session cannot witness its own registration): a legitimate `goal-evaluator` dispatch must
+still write `goal.json` — the regression a settings-level guard can introduce is a *false* deny —
+and, with a model that will attempt it, a Write outside `goal.json` denied with the SD-1 reason.
+Recorded in STATUS.
 
 ## How to check cheaply — three instruments, and one false green
 
@@ -153,8 +203,10 @@ claim that they enforce stays a claim.
   flat-shape files. It checks YAML, `name` and `description`, not the hooks schema. Do not cite
   it as evidence that an agent file loads.
 - **A registered agent is not a guarded agent.** Registration and hook attachment are separate
-  facts; the only probe of the guard is a forbidden write whose tool result you read back.
-  Then run the hook script directly with the same payload — if it denies, the harness skipped it.
+  facts. The forbidden-write probe is model-confounded (s272: Opus refuses to attempt it); the
+  robust probe is an instrument on the hook script plus the agent's *allowed* write through a real
+  dispatch — zero invocations beside a successful write is the reading. Then run the script
+  directly with the same payload — if it denies, the harness skipped it.
 
 Two instrument failures from s271, for the next reader: a transcript scan whose *own command
 text* contains the needle matches itself (exclude the running session's file); and the system
@@ -187,6 +239,9 @@ is the recorded signal.
 
 ## References
 
+- `.claude/settings.json` `PreToolUse` `Write|Edit` → `pretooluse_subagent_write_dispatch.py`
+  (s272) — the live wiring of the three guards; `tests/handoffs/test_settings_hook_wiring.py`
+  pins it both ways.
 - `CLAUDE.md` §4 (a do-not-act instruction must live on a tracked, scanned surface),
   §6 (an inherited premise a decision rests on is a claim, not context).
 - `docs/adr/0018-axis-b-verification-loop.md` D6 — why the evaluator's independence is the
