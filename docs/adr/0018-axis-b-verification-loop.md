@@ -1,7 +1,7 @@
 # ADR-0018: Axis-B Verification Loop — `/goal` Stop-hook gate + `goal-evaluator` subagent
 
 **Status:** Accepted
-**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below)
+**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below); **Amendment** 2026-09-02 (factual correction, `was an error` — the SD-1 deny hook never ran in-harness until #1363; see §Amendment 2026-09-02 below)
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-013 (autonomy-axis relocation — harness primitives are Code-built per D1; **this ADR applies that boundary**: the gate + evaluator are Code-authored), ADR-009 (D1 — this ADR is Cowork-drafted under the interim process; D2 — only Code commits; D3 — K-1/K-2 workflow used for the companion handoff), ADR-0017 (track-1 precedent off the same harness review; D7 harness-as-plugin forward link → OQ-8 here), ADR-0016 (D5 product-side `Procedure.goal` — a **distinct concept**; see D2 NB below), ADR-012 (D4.3 author≠reviewer disclosure), PLAN-0008 (in `done/` — the `Stop` continuation loop + Sonnet classifier this gate composes with), PLAN-0009 (subagent topology — the Step 5c dispatch-block spawn pattern + Step 1b subagent contract reused here), PLAN-0010 (scheduled-task autonomy loop — the unattended-run scope in D5), CLAUDE.md §6 (tier table), §7 (PR flow — explicitly NOT gated in v1, D5). Authoring dispatch: `.claude/handoffs/session-51/2026-06-10-0147-code-axisb-verification-loop-adr-dispatch.md`.
 
@@ -194,8 +194,13 @@ Code-authored (ADR-013 D1), following the established contract
   `evaluations[]` trail of `.claude/state/goal.json` — its `Write` is
   narrowed to that single file by a dedicated PreToolUse deny hook
   (`pretooluse_goal_evaluator_write_deny.py`), exactly the `status-scribe`
-  single-file pattern. *(See SD-1 below — this refines the pre-draft
-  consultation direction.)*
+  single-file pattern. _[Corrected s273, `was an error` — the hook was built
+  and unit-tested, but the frontmatter `hooks:` wiring it relied on never
+  executed in this harness (flat shape until #1362; frontmatter hooks measured
+  inert regardless — 0 invocations, s272), so this narrowing was unenforced
+  from 2026-06-10 until #1363 (2026-09-02) re-registered it settings-level;
+  witnessed live s273. Full account: §Amendment (2026-09-02) below.]_ *(See
+  SD-1 below — this refines the pre-draft consultation direction.)*
 - **Tool posture:** `tools: Read, Grep, Glob, Write` (Write
   hook-narrowed to `goal.json`); `disallowedTools: Bash, WebFetch, Agent`.
   **The evaluator does not run the app or the tests** — it has no Bash by
@@ -221,6 +226,11 @@ Code-authored (ADR-013 D1), following the established contract
 > drafted D3 posture stands; the strict read-only + main-agent-transcription
 > alternative is **not taken**. T2 builds the
 > `pretooluse_goal_evaluator_write_deny.py` single-file deny hook accordingly.
+> _[Corrected s273, `was an error` — T2 did build the hook and its tests, but
+> the frontmatter wiring that was to activate it never ran in this harness, so
+> the ratified narrowing was carried by prompt and convention only until #1363
+> (2026-09-02) moved enforcement to a settings-level dispatcher. The SD-1
+> decision itself stands. Full account: §Amendment (2026-09-02) below.]_
 
 - **Rationale:** distinct agent + own context + refute-prompting is the
   external grounding's core lesson; reusing the sibling contract
@@ -462,7 +472,13 @@ Frontmatter: `tools: Read, Grep, Glob, Write`; `disallowedTools: Bash,
 WebFetch, Agent`; `model: inherit`; `maxTurns: 30`; PreToolUse
 `Write|Edit` → `pretooluse_goal_evaluator_write_deny.py` (allow only
 `.claude/state/goal.json` — `status-scribe` single-file pattern; subject to
-SD-1). Body: the D3 receive/return/record contract, the refute-not-bless
+SD-1). _[Corrected s273, `was an error` — a frontmatter `hooks:` block is not
+an activation in this harness: the block was written in a flat (undocumented)
+shape until #1362, and even in the correct nested shape it was measured inert
+(0 invocations, s272). The hook is registered in `.claude/settings.json` via
+`pretooluse_subagent_write_dispatch.py` since #1363; the spec line above is
+true again from that PR onward. Full account: §Amendment (2026-09-02) below.]_
+Body: the D3 receive/return/record contract, the refute-not-bless
 prompt posture, the D6 disk-evidence rule, the sibling-convention output
 schema (disclosure stamp, bounded summary, Surfaced decisions, Residual
 gaps), and an adversarial-hardening section.
@@ -946,6 +962,119 @@ stands down, it never blocks).
 - **Superseded drafting vehicle:** `docs/adr/0030-axis-b-v2-enforcing.md`
   (uncommitted; deleted after this merge per SD-0 — number 0030 returns to
   the pool).
+
+## Amendment (2026-09-02, session 273): the SD-1 deny hook never ran in-harness until #1363 — `was an error`
+
+**What was claimed.** Three places in this ADR assert that the evaluator's
+`Write` is *mechanically* narrowed: D3 — "its `Write` is narrowed to that
+single file by a dedicated PreToolUse deny hook
+(`pretooluse_goal_evaluator_write_deny.py`), exactly the `status-scribe`
+single-file pattern"; SD-1 — "T2 builds the
+`pretooluse_goal_evaluator_write_deny.py` single-file deny hook accordingly";
+§3 — "PreToolUse `Write|Edit` → `pretooluse_goal_evaluator_write_deny.py`
+(allow only `.claude/state/goal.json`…)". The D3 tool-posture line's
+parenthetical "(Write hook-narrowed to `goal.json`)" carries the same claim.
+
+**What was measured.**
+
+1. The three subagent write guards — `pretooluse_goal_evaluator_write_deny.py`
+   (this ADR's SD-1), `pretooluse_plan_subagent_write_deny.py` (PLAN-0009
+   Step 1b §5 "H2"), `pretooluse_status_scribe_write_deny.py` — were wired
+   **only** through each agent file's frontmatter `hooks:` block. That block
+   was written **flat** (`matcher` + `command` on one item, never the
+   documented nested shape) from its creation (`git log -S` dates the blocks
+   to 2026-05) until PR #1362 (`ad47f49`, s271, 2026-09-02) rewrote it nested.
+   Client 2.1.247 discarded the flat block at DEBUG and loaded the agents
+   **unguarded**; client 2.1.255 (arrived mid-s269) refuses the whole agent
+   fail-closed — which is why the three agents vanished from the registry in
+   s269/s270.
+2. After #1362 the agents loaded but the hooks still did **not run**. s271's
+   CLAUDE.md §8 scenario went **RED**: the evaluator's forbidden `Write`
+   *succeeded* in-harness while the same deny script, run directly from the
+   same cwd with the same payload, denied. s272 measured it decisively in a
+   fresh conversation on the merged nested-shape files: the guard script,
+   instrumented to append a trace line on **every** invocation, recorded
+   **0 invocations (trace 8 → 8)** while the evaluator's legitimate
+   `goal.json` write succeeded (`evaluations[]` **0 → 1**). Frontmatter
+   `hooks:` are inert in this harness; settings-level hooks **do** fire for
+   subagent tool calls and carry `agent_type` + `agent_id`.
+3. The fix — PR #1363 (`55792a6`, s272) registered
+   `.claude/hooks/pretooluse_subagent_write_dispatch.py` in
+   `.claude/settings.json` on `PreToolUse` `Write|Edit`; it reads the
+   payload's `agent_type` and hands the raw payload to the matching guard
+   script (all three guard scripts **unchanged**, still frontmatter-wired too
+   — harmless double coverage), fail-closed where identity is known,
+   pass-through for the main agent.
+4. Witnessed live, s273 (PR #1364, `e751efb`): **Step A** — `goal-evaluator`
+   (Opus) on a fresh `/goal` edited `goal.json`, `evaluations[]` **0 → 1**, no
+   false deny; **Step B** — `goal-evaluator` (Fable) asked to `Write`
+   `.claude/state/s271-deny-probe.txt` made one tool call, was **denied** with
+   this ADR's own SD-1 narrowed-`Write` reason forwarded verbatim, file absent
+   afterwards. In the same session `status-scribe`'s allowed Edit of
+   `docs/STATUS.md` passed un-denied (PR #1365). A custom agent's `agent_type`
+   is its frontmatter `name`.
+
+**Classification — `was an error`, not `superseded by new info`** (CLAUDE.md §6
+"Verification is hygiene, not a verdict"). The enforcement claim was **false at
+every moment from the day it was written (2026-06-10) until 2026-09-02**, and
+nothing external changed to make it false — the wiring shape never worked in
+this harness. The sibling `status-scribe` single-file pattern that D3 cites as
+precedent **shared the same defect**, so the precedent did not warrant the
+claim either. No `<!-- retired -->` marker is added: the present-tense wording
+is **true again** since #1363, so no live sentence is dead; the correction is
+about the *period* and the *mechanism*.
+
+**What stands.** D3's decision to give the evaluator a narrowed `Write` (and
+SD-1's ratification of it over the read-only + main-agent-transcription
+alternative); D3's "separate the critic from the creator" rationale; D6's
+disk-evidence rule; the guard script itself and its unit tests (correct
+throughout — they exercised the script directly, not the wiring); and the SD-1
+deny reason text, which is now the text actually forwarded to the model on a
+real deny (witnessed s273 Step B). Only the *enforcement-mechanism* claim is
+corrected.
+
+**Consequence for readers.** Any evaluation recorded in
+`.claude/state/goal.json` between **2026-06-10 and 2026-09-02** was made by an
+evaluator whose write scope was enforced **by prompt and by convention only**,
+not mechanically. The trail is not thereby wrong — no out-of-scope evaluator
+write is known — but the property was **not guaranteed**, and goal-file
+evaluations from that window should be read with that caveat.
+
+**Where the mechanism now lives.** `.claude/settings.json` → `PreToolUse`
+`Write|Edit` → `pretooluse_subagent_write_dispatch.py` → the unchanged
+`pretooluse_goal_evaluator_write_deny.py`. Pinned by
+`tests/handoffs/test_settings_hook_wiring.py` +
+`tests/handoffs/test_pretooluse_subagent_write_dispatch.py`; the CLAUDE.md §8
+scenario now executes the **exact registered command**, so a future rewiring
+regression reddens the scenario rather than passing on a script invoked
+out-of-band.
+
+**References.** Lesson #0057
+(`docs/lessons/0057-a-perfect-correlation-is-not-a-cause-ask-when-it-changed.md`)
+— §"The situation", §"Resolution (session 271)", §"Resolution, part 2
+(session 272)", and the "Witnessed live (session 273)" paragraph closing
+§"Resolution, part 2 (session 272)"; PRs **#1362** (nested shape), **#1363**
+(settings-level dispatcher — the actual fix), **#1364** (live witness),
+**#1365** (STATUS record). Companion corrections on the same defect:
+`docs/plans/done/0009-step1b-contract-design.md` (H2) and
+`docs/plans/done/0034-g2-drafting-friction-rootfix.md` (facts 6/7, AC-4).
+**ADR-013 D2** ("ADR-009 D2 is preserved and hook-reinforced — deterministic
+PreToolUse deny") needs **no** correction: the deterministic-deny property held
+throughout for **settings-level** hooks such as G5 (`pretooluse_git_deny.py`)
+and the G1/G2 classifier dispatch, and it is only the **frontmatter-wired**
+hooks that were inert — the commit boundary D2 speaks to was never at risk.
+
+### Author≠reviewer disclosure (ADR-012 D4.3)
+
+The fact-pack for this amendment (the s271 RED, the s272 0-invocation
+measurement, the s273 live witness) is **Code's own** empirical work; the
+amendment text was drafted by the in-harness `plan-drafter` subagent from
+Code's dispatch, so drafter and fact-author are **not** independent. **Cray at
+PR merge is the independent reviewer**, and Code is asked to re-verify every
+`file:line`, PR number and SHA cited above against the merged tree before
+commit. Separation: **partially intact** — drafting is separated from the
+measurement's author only at the tooling level, and the sole external check is
+Cray's review.
 
 ## References
 
