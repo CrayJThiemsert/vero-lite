@@ -61,10 +61,19 @@ class CannedTransport:
         *,
         model: str = "canned-model",
         raises: Exception | None = None,
+        envelopes: list[dict[str, Any]] | None = None,
+        thinkings: list[str | None] | None = None,
     ) -> None:
         self._contents = contents
         self._model = model
         self._raises = raises
+        # `envelopes` is the Ollama response envelope `ChatResult.raw` carries — the
+        # generation accounting (`done_reason`, `eval_count`, the ns durations) the
+        # recorder reads via `call_metrics`. Default `{}` keeps every pre-existing
+        # test on the optional-tolerant path, which is itself the behaviour a live
+        # server with an older envelope would produce.
+        self._envelopes = envelopes
+        self._thinkings = thinkings
         self.calls = 0
 
     async def chat(
@@ -79,7 +88,18 @@ class CannedTransport:
         if self._raises is not None:
             raise self._raises
         index = min(self.calls - 1, len(self._contents) - 1)
-        return ChatResult(content=self._contents[index], thinking=None, model=self._model, raw={})
+
+        def _pick(seq: list[Any] | None, default: Any) -> Any:
+            if seq is None:
+                return default
+            return seq[min(self.calls - 1, len(seq) - 1)]
+
+        return ChatResult(
+            content=self._contents[index],
+            thinking=_pick(self._thinkings, None),
+            model=self._model,
+            raw=_pick(self._envelopes, {}),
+        )
 
 
 # --------------------------------------------------------------------------- fixtures
@@ -356,3 +376,149 @@ async def test_every_summary_keeps_both_excluded_counts_visible(gold: dict[str, 
         assert summary.unscored_transport == n_scored
         assert summary.wrong_validation_exhausted == 0
         assert summary.overall.total == 0
+
+
+# ------------------------------------------- generation accounting (s273 follow-on)
+#
+# These exist because the s273 live run could not explain its own headline result:
+# 11 of 20 attempts returned an EMPTY body and nothing on disk could separate "the
+# model ran into the num_predict cap while reasoning" from "the model chose to emit
+# nothing". `ChatResult.raw` carried the answer the whole time and the recorder
+# dropped it. Every assertion below is about a field that discriminates those two.
+
+#: A realistic Ollama envelope for a call that hit the cap: `done_reason == "length"`,
+#: a large `eval_count` (the model generated plenty) beside an EMPTY body.
+_ENVELOPE_TRUNCATED: dict[str, Any] = {
+    "done_reason": "length",
+    "eval_count": 1024,
+    "prompt_eval_count": 412,
+    "total_duration": 31_400_000_000,
+    "eval_duration": 30_100_000_000,
+}
+#: The contrasting envelope: the model ended on its own, having generated little.
+_ENVELOPE_STOP: dict[str, Any] = {
+    "done_reason": "stop",
+    "eval_count": 260,
+    "prompt_eval_count": 412,
+    "total_duration": 8_200_000_000,
+    "eval_duration": 7_400_000_000,
+}
+
+
+@pytest.mark.asyncio
+async def test_the_recorder_captures_the_generation_accounting(
+    boiler_case: dict[str, Any],
+) -> None:
+    """Every counter the envelope carries reaches the attempt record."""
+    client = RecordingChatClient(
+        CannedTransport([_matching_body(boiler_case)], envelopes=[_ENVELOPE_STOP])
+    )
+
+    await run_case(boiler_case, client)
+
+    attempt = client.attempts[0]
+    assert attempt.done_reason == "stop"
+    assert attempt.eval_count == 260
+    assert attempt.prompt_eval_count == 412
+    assert attempt.total_duration_ns == 8_200_000_000
+    assert attempt.eval_duration_ns == 7_400_000_000
+
+
+@pytest.mark.asyncio
+async def test_an_empty_body_at_the_cap_is_distinguishable_from_a_deliberate_stop() -> None:
+    """THE discriminator the s273 run lacked.
+
+    Both attempts below deliver an empty body — indistinguishable in the s273
+    artifacts. Under the envelope they are not the same event at all: one generated
+    1024 tokens and was cut, the other generated 260 and stopped itself.
+    """
+    client = RecordingChatClient(
+        CannedTransport(
+            ["", ""],
+            envelopes=[_ENVELOPE_TRUNCATED, _ENVELOPE_STOP],
+        )
+    )
+
+    await client.chat([{"role": "user", "content": "x"}])
+    await client.chat([{"role": "user", "content": "x"}])
+
+    cut, stopped = client.attempts
+    assert cut.content == stopped.content == ""
+    assert cut.truncated is True
+    assert stopped.truncated is False
+    assert cut.eval_count == 1024
+    assert stopped.eval_count == 260
+
+
+@pytest.mark.asyncio
+async def test_thinking_chars_records_how_much_of_the_generation_was_reasoning() -> None:
+    """`gpt-oss:20b` reasons unconditionally (s261), and reasoning shares the one
+    `num_predict` budget on this single-call path — so the reasoning size is the
+    quantity the cap hypothesis is about."""
+    client = RecordingChatClient(
+        CannedTransport([""], envelopes=[_ENVELOPE_TRUNCATED], thinkings=["r" * 3105])
+    )
+
+    await client.chat([{"role": "user", "content": "x"}])
+
+    assert client.attempts[0].thinking_chars == 3105
+
+
+@pytest.mark.asyncio
+async def test_a_transport_failure_records_no_accounting() -> None:
+    """There is no envelope when the call never returned — every counter stays
+    None. A zero here would be a measurement that never happened wearing the shape
+    of one that did."""
+    client = RecordingChatClient(CannedTransport([], raises=OllamaUnreachableError("box is down")))
+
+    with pytest.raises(OllamaUnreachableError):
+        await client.chat([{"role": "user", "content": "x"}])
+
+    attempt = client.attempts[0]
+    assert attempt.error is not None
+    assert attempt.done_reason is None
+    assert attempt.eval_count is None
+    assert attempt.total_duration_ns is None
+    assert attempt.truncated is False
+
+
+@pytest.mark.asyncio
+async def test_an_envelope_without_counters_degrades_to_none_rather_than_raising() -> None:
+    """Ollama versions differ in what they put in the envelope. A missing counter
+    must read as absent, never crash a run over a field nothing scores."""
+    client = RecordingChatClient(CannedTransport([""], envelopes=[{}]))
+
+    await client.chat([{"role": "user", "content": "x"}])
+
+    attempt = client.attempts[0]
+    assert attempt.done_reason is None
+    assert attempt.eval_count is None
+    assert attempt.total_duration_ns is None
+
+
+@pytest.mark.asyncio
+async def test_the_artifact_carries_the_accounting_for_every_attempt(
+    boiler_case: dict[str, Any],
+) -> None:
+    """The whole point is re-adjudication without a re-run, so the counters have to
+    survive into the per-case file — not just live on the in-memory record."""
+    client = RecordingChatClient(
+        CannedTransport(
+            ["{not json", _matching_body(boiler_case)],
+            envelopes=[_ENVELOPE_TRUNCATED, _ENVELOPE_STOP],
+        )
+    )
+
+    outcome = await run_case(boiler_case, client)
+    record = case_artifact(boiler_case, outcome)
+
+    assert [a["done_reason"] for a in record["attempts"]] == ["length", "stop"]
+    assert [a["truncated"] for a in record["attempts"]] == [True, False]
+    assert [a["eval_count"] for a in record["attempts"]] == [1024, 260]
+    assert [a["total_duration_ns"] for a in record["attempts"]] == [
+        31_400_000_000,
+        8_200_000_000,
+    ]
+    # `content_chars` beside `eval_count` is what makes an empty body legible:
+    # plenty generated, none of it content.
+    assert record["attempts"][0]["content_chars"] == len("{not json")

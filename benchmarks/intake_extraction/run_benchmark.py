@@ -55,7 +55,7 @@ from benchmarks.intake_extraction.harness import (
     summarize,
     summarize_injection,
 )
-from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
+from services.engine.llm.client import ChatResult, OllamaClient, OllamaError, call_metrics
 from services.engine.llm.intake import (
     ChatClient,
     ExtractionResult,
@@ -71,12 +71,54 @@ class AttemptRecord:
     ``content`` is the model's unparsed message body. ``error`` is set instead when
     the call itself raised (a transport failure), so an artifact distinguishes "the
     model emitted this and it was rejected" from "there was no answer at all".
+
+    🔴 **The generation-accounting fields exist because the s273 live run could not
+    explain its own headline result** (PLAN-0118 AC-6): **11 of 20 attempts returned
+    an EMPTY body**, and the loop reported *"output was not valid JSON"* — which is
+    what parsing ``""`` raises, so the message read as a JSON-quality problem when
+    the body was simply blank. Nothing on disk could separate the two candidate
+    causes: the model ran into the shared ``num_predict`` cap while reasoning
+    (``gpt-oss:20b`` discards a boolean ``think`` and reasons anyway — measured s261),
+    or it genuinely chose to emit nothing. ``ChatResult.raw`` carried the answer the
+    whole time and this recorder dropped it.
+
+    ``done_reason`` is the **truncation oracle** — ``"length"`` iff generation hit the
+    cap, ``"stop"`` iff the model ended on its own — and ``eval_count`` is the tokens
+    it actually generated, i.e. its DEMAND. Together with ``content_chars`` they
+    discriminate: a large ``eval_count`` beside an empty body says the model generated
+    plenty and none of it was content; a small one beside ``"stop"`` says it chose
+    silence. ``thinking_chars`` says how much of that generation was reasoning.
+    Durations stay in **nanoseconds exactly as Ollama reports them** (the
+    ``CallMetrics`` discipline: the envelope is the measurement, and a converted
+    number cannot be checked back against it) — ``total_duration_ns`` is the per-call
+    latency AC-6 asks for.
+
+    Every field is ``None``-tolerant by construction (``call_metrics`` degrades rather
+    than raises on an envelope that omits a counter), and all of them are ``None`` on
+    a transport failure, where there is no envelope at all.
     """
 
     index: int
     content: str | None
     model: str | None
     error: str | None = None
+    done_reason: str | None = None
+    eval_count: int | None = None
+    prompt_eval_count: int | None = None
+    thinking_chars: int | None = None
+    total_duration_ns: int | None = None
+    eval_duration_ns: int | None = None
+
+    @property
+    def truncated(self) -> bool:
+        """True iff generation stopped on the cap rather than on the model.
+
+        Keyed on the string the server returned, never on a comparison against the
+        configured ``num_predict``: the configured value and the value the server
+        applied can differ (an env override, a per-model default), so a derived
+        answer could report a truncation that never happened — or miss one that did.
+        """
+        return self.done_reason == "length"
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -84,6 +126,14 @@ class AttemptRecord:
             "content": self.content,
             "model": self.model,
             "error": self.error,
+            "done_reason": self.done_reason,
+            "truncated": self.truncated,
+            "eval_count": self.eval_count,
+            "prompt_eval_count": self.prompt_eval_count,
+            "content_chars": len(self.content) if self.content is not None else None,
+            "thinking_chars": self.thinking_chars,
+            "total_duration_ns": self.total_duration_ns,
+            "eval_duration_ns": self.eval_duration_ns,
         }
 
 
@@ -124,7 +174,24 @@ class RecordingChatClient:
             detail = f"{type(exc).__name__}: {exc}"
             self.attempts.append(AttemptRecord(index=index, content=None, model=None, error=detail))
             raise
-        self.attempts.append(AttemptRecord(index=index, content=result.content, model=result.model))
+        # The generation accounting rides on the SAME result the seam already
+        # returned — `call_metrics` only reads `ChatResult.raw`, so this stays a
+        # transport-level observation and the measured seam is untouched. Role is
+        # "structuring": the intake call carries a `response_format` (`intake.py:182`).
+        metrics = call_metrics(result, role="structuring")
+        self.attempts.append(
+            AttemptRecord(
+                index=index,
+                content=result.content,
+                model=result.model,
+                done_reason=metrics.done_reason,
+                eval_count=metrics.eval_count,
+                prompt_eval_count=metrics.prompt_eval_count,
+                thinking_chars=metrics.thinking_chars,
+                total_duration_ns=metrics.total_duration_ns,
+                eval_duration_ns=metrics.eval_duration_ns,
+            )
+        )
         return result
 
 
