@@ -2148,3 +2148,62 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 > `ruff check .` · `mypy --strict services/ verticals/` clean on 201 files ·
 > **pytest 4636 passed, 8 skipped** · **no golden test reddened** (fleet is the
 > scaffolder golden donor). CI PASS at all five pinned shas.
+
+### Rotated at the s269-273 reconcile — the session-264 Current-Focus block [on the R2 window rule alone, not a cap overage: the caller measured the four retained blocks as their own contiguous `>` runs at 3,020 / 3,274 / 3,101 / 3,573 B, every one under the 4,096 B per-block cap, and this slice at 3,668 B. The s264 rotation-ledger entry that describes it is deliberately NOT re-appended here: both ledgers were archived whole and PRE-PRUNE at the s267 reconcile, so R4's move obligation for that entry is already discharged and a second copy would duplicate content in a move-only archive.]
+
+> **Session 264, 2026-08-31 (`4cfb267` → `3cd1609`) — FIVE PRs merged
+> ([#1323](https://github.com/CrayJThiemsert/vero-lite/pull/1323),
+> [#1324](https://github.com/CrayJThiemsert/vero-lite/pull/1324),
+> [#1325](https://github.com/CrayJThiemsert/vero-lite/pull/1325),
+> [#1326](https://github.com/CrayJThiemsert/vero-lite/pull/1326),
+> [#1327](https://github.com/CrayJThiemsert/vero-lite/pull/1327)), 0 open, tree
+> clean. **The `fleet` ceiling that blocked model comparison since s263 is broken
+> — on a fourth axis, offline, with ZERO MS-S1 runs.**
+>
+> 🔴 **The blocker was never "harder items"; it was a missing axis.** β, α and
+> consistency all grade *which* answer the model gave; none read the `rationale`.
+> Scoring one question over the **six dumps already on disk** — does it name the
+> human authority the spend routes to? — separates the tied models in **every
+> cell, no overlap**: qwen **4–8/14**, gpt-oss **0–1/14**. No §8 go was needed or
+> taken.
+>
+> ✅ **Fair by construction, not by assertion** (`b425bde`). The role vocabulary
+> is the **intersection of a candidate set with the goal's own prose**, so a
+> phrase is only demanded of a model that was handed it — here `head mechanic` /
+> `fleet manager` / `owner`. The pre-fix goal (`0a1061f~1`) carries the identical
+> clause, so the vocabulary is **unchanged across the goal fix** and the signal
+> compares across all six cells; §11's β/α comparability line is untouched.
+>
+> 🔴 **The load-bearing result is NEGATIVE.** `names_amount` does **not** separate
+> the models and **gpt-oss scores higher** (6/14 vs 5/14); mean length tracks
+> verbosity. The intuitive *"state the amount"* rule ranks the models
+> **backwards** — a new axis is a hypothesis, not a fix.
+>
+> ✅ **Bar RULED (Cray, typed): role-naming alone** (`e141338`) — the richer
+> criteria rest on facts **the ontology does not carry**, and a rule may only
+> demand what the run supplies. **Raising it is an ONTOLOGY move before a grader
+> move.** Requiring the amount too: 0/14 vs ~3/14 — *unmeasurable*, not
+> undesirable.
+>
+> ✅ **§13 records it and §12's blocking-prerequisite claim is RETIRED**
+> (`b402cbf`) under `docs/conventions/retired-claims.md` — classified **superseded
+> by new info, not an error**. ✅ **B2 lands the axis in the shipped grader**
+> (`6743b4d`): a fourth lane with a consumer at every step, `goal` keyword-only
+> and defaulting to `None` so **no goal ⇒ no check ⇒ β/α byte-identical**. The
+> 268-test benchmark suite passing untouched IS that evidence.
+>
+> ✅ **STATUS reconciled out of its 84-byte corner** (`ec75c52`): 65,452 →
+> 63,203 B, one asserted transaction — pre-flight **15/15**, post-write **13/13**,
+> archives verified by byte **DELTA**, not presence. ✅ **Lessons `#0051`
+> (a saturated benchmark may be missing an AXIS) + `#0052` (a criterion may only
+> demand what the run supplies)** authored, plus scope fixes to `#0046`, `#0011`
+> and `tools/probe_battery/README.md` (`3e067ab`).
+>
+> **Evidence.** Offline gate green at every sha — **4652 → 4656 → 4672 passed**,
+> 8 skipped, each delta exactly the tests added; `mypy --strict services/
+> verticals/` clean on 201 **and `benchmarks/` clean by hand** (CI checks neither);
+> ruff + format clean; CI **pass** at all five shas. **Probe batteries 8/8 and 6/6
+> `WITNESSED`**, `GAPS: 0`, lane isolation probed in **both** directions. Every
+> merge verified by **content** with a negative control, never by badge.
+> ⚠️ **Observation, not a finding:** qwen **q4** named roles *more* than q8 under
+> the old goal (7 vs 4) — n=1 per side, gpt-oss reproducibility still unmeasured.
