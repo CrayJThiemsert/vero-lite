@@ -2207,3 +2207,66 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250); ear
 > merge verified by **content** with a negative control, never by badge.
 > ⚠️ **Observation, not a finding:** qwen **q4** named roles *more* than q8 under
 > the old goal (7 vs 4) — n=1 per side, gpt-oss reproducibility still unmeasured.
+
+---
+
+## Rotated at the session-275 reconcile (2026-09-04) — the session 265-266 block
+
+Window rule: a fifth block entered (s274-275), the window is four.
+
+> **Session 265-266, 2026-08-31 (`da06b17` to `668cb1d`) — TWELVE PRs merged
+> ([#1329](https://github.com/CrayJThiemsert/vero-lite/pull/1329)-[#1340](https://github.com/CrayJThiemsert/vero-lite/pull/1340)),
+> 0 open. Every merge gated on a CI conclusion measured **at a pinned sha** and
+> verified on `main` **by content, not ancestry**. Tree clean. **PLAN-0117 is
+> EXECUTED end to end, and the experiment it exists for is MEASURED.**
+>
+> **The unlock.** `Vendor` went 3 to 12 properties in two ruled bands: five
+> synonym-carrying and four **dormant** — declared with a rich `description`,
+> deliberately **no synonyms, no values**. All nine ACs closed; **16 of 16
+> WITNESSED**. Measured on the built prompt: the five render with Thai synonyms,
+> the four render name+type with **no aka clause**, and **no provenance prose
+> reaches the prompt at all** — the dormant descriptions cost zero bytes, exactly
+> as SD-3a bet.
+>
+> **The AFTER run (MS-S1, typed §8 go).** The unlock is **usable** — supplier band
+> gpt-oss **1 of 3**, qwen **3 of 3**; both filtered on a property that did not
+> exist before the PLAN. **Zero harm:** on the only like-for-like set both models
+> scored **identically to BEFORE, case for case** (7 of 10 and 9 of 10, same cases
+> wrong) despite a **+56% prompt** — PLAN-0117 F16's worry, measured and negative.
+> Full read: `benchmarks/nl_query_feasibility/RESULTS.md`.
+>
+> 🔴 **A claim the s265 handoff made is RETIRED by measurement.** It named `fl-03`
+> *the* discriminator. `fl-03` is a **Truck** question and `truck_class.synonyms`
+> is still `None`; PLAN-0117 added synonyms to **Vendor** only, so a flip says
+> nothing. Declared with a `retired:` marker beside the surviving copy (#1338).
+>
+> **The split metric earned its keep on first use.** `ceiling_rescue` measured zero
+> instances of the step it was named after, so it became `ceiling_acc`,
+> `ceiling_translated_n` and `phrase_rescue` with its own denominator. gpt-oss
+> `fl-09` moved from *translate hard-failed* to *translated, and the query language
+> cannot express it* — the old single number reads **0% to 0%**: no change at all.
+>
+> ✅ **CLOSED s270 — it was never actually open.** Cray ruled: decide `fl-21`/`fl-22`
+> from the lane's standing principle, blind to these results. That principle already
+> exists (`score_case`: `ceiling=false → executed result`) and `git log -S` dates it
+> to **`ff5bab8`, 2026-06-14 — 78 days before `fl-21` was authored**, so it cannot
+> have been tuned to them. Both cases are `ceiling: false` → they score the executed
+> aggregate, and `group_by: null` is **wrong** on both. **No gold or scorer edit
+> follows.** Full ruling incl. the residual: `docs/plans/done/0117-*.md` **SD-7**.
+>
+> **The tree was lying, and two handoffs mis-diagnosed why** — a stray
+> `core.worktree` in the shared git config, not the "UNC stat-cache artifact" both
+> recorded. Fixed under Cray's go; the record and the `show-toplevel` pre-flight
+> are lesson **#0053** and the `git-workflow` skill.
+>
+> **Evidence.** Suite **4681 to 4707 passed**, 0 failed, arithmetic checked at
+> every step. Probe batteries **20 of 20 WITNESSED** across four runs.
+>
+>
+> **And `main` went red on the clock alone** at the month boundary: the export
+> windows its month in Asia/Bangkok while five test call sites named the month
+> from the UTC clock, and those disagree for the last seven hours of every UTC
+> month. Product unaffected — the route takes the month as a path parameter. One
+> module already had the rule right, so it now has one home (#1340).
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **265-266, 267, 268, 269-273**. ⚠️ **STATUS skipped s262** — the window is **259–260, 261, 263, 264** and no s262 block is backfilled. **THIS (s265-266) reconcile rotates the session-259-260 block** on the **window rule alone** — a fifth block entered and the window is four — **not a cap overage**: measured **3,038 B** against the 4,096 B cap. Pinned, asserted, then measured by DELTA: a 13-assertion battery fixed BEFORE any write pinned the slice by its first AND last line, checked neighbour-bleed in both directions, checked this ledger OUT of the slice, and checked the slice ABSENT from the target before the append; sed then extracted the slice and independently reproduced the same 3,038 B. Archive **+3,438 B** (slice plus its rotation header) and the s254 ADR-0038 RD row **+852 B**, both verified present-in-archive and absent-from-STATUS separately. Headroom is the real finding here: with zero completed `[x]` rows left to rotate (s264 took the last seven), the only lever was writing this block **under** the 4,096 cap. **Active TODOs is 27,062 B, 43% of STATUS across 45 open rows** — and it, not the Current-Focus window, is why R1 headroom keeps vanishing. The s264 next_action already named the rehome; it is still unaddressed and is now the binding constraint on the next reconcile. **THIS (s267) reconcile rotates the session-261 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: the caller re-measured each block as its own contiguous `>` run (2,992 / 3,384 / **3,414** / 3,669 B), **all under** the 4,096 B cap; the earlier *7,950 B / 94% over* figure was a measuring bug that ran to the end of the SECTION and swallowed this ledger. 🔴 **The growth was the LEDGERS, not Active TODOs** (caller-measured: CF 6,793 + RD 8,143 B, ~22% of the file; the RD one **never pruned until now**). Per Cray's typed s267 ruling both ledgers now carry the **current window only** at **~900 B per entry**; out-of-window entries were returned **verbatim** for archiving (R4). ⚠️ **No byte delta measured here — no shell; the caller owes `wc -c` + append + verify-by-DELTA.** **THIS (s268) reconcile rotates the session-263 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, s267 **3,103** · s265-266 **3,385** · s264 **3,670** · s263 **2,993 B**, all under the 4,096 B cap. 🔴 **Its s263 entry here is NOT re-archived — the pre-write assertion caught it:** both ledgers were archived **whole and PRE-PRUNE** at s267 (R2 permits it), so R4's move duty is discharged; a second copy would duplicate a move-only archive. ⚠️ **STATUS was PARTIALLY updated during s268** (`377b3c0`/`fd0cb42` touched Active TODOs / Next Steps), so this completes the **frontmatter + CF + RD** half. ✅ **Caller-measured:** from **61,774 B**, still under R1; CF archive **+3,586 B**, byte-identical to `git show HEAD:`, present-once and absent-from-STATUS verified separately. **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately.]_
