@@ -1,8 +1,8 @@
 # PLAN-0117: Fleet ontology carries supplier-evaluation facts — the Ask-surface unlock; a prerequisite for the rationale bar, not its unlock
 
-**Status:** Draft
-**Owner:** Claude Code — **execution-unblocked, no open SDs.** Cray ruled every SD (typed, 2026-08-31, session 265): SD-1=(c), SD-2=SPLIT (fleet side here; core promotion deferred to its own ADR+PLAN), SD-3 IN-set ruled, SD-4=(a), SD-5=(a), and — later the same session — **SD-3a RULED: declare all four remaining donor properties now, bare + rich `description`, NO synonyms** (see the SD-3a ruling block; it overturns this draft's earlier OUT disposition for those four, lineage preserved). In the s265 correction pass, **SD-6 RULED (a): the ontology's effect on the two MS-S1 models is measured on the NL / Ask surface (`benchmarks/nl_query_feasibility/`), not on `procedure_baseline`** (see SD-6 + the Correction record).
-**Created:** 2026-08-31 · **Revised:** 2026-08-31 ×3 (same session family, s265 — first pass: rulings + two specialist investigations; second pass: SD-3a ruling closed + propagated; third pass: **correction** — Code's offline measurement F17 showed the ontology never reaches the procedure agent's prompt, so the theory of change is corrected from "rationale-bar unlock" to "Ask-surface unlock + rationale-bar prerequisite"; SD-6 ruled)
+**Status:** Complete
+**Owner:** Claude Code — **execution-unblocked, no open SDs.** Cray ruled every SD (typed, 2026-08-31, session 265): SD-1=(c), SD-2=SPLIT (fleet side here; core promotion deferred to its own ADR+PLAN), SD-3 IN-set ruled, SD-4=(a), SD-5=(a), and — later the same session — **SD-3a RULED: declare all four remaining donor properties now, bare + rich `description`, NO synonyms** (see the SD-3a ruling block; it overturns this draft's earlier OUT disposition for those four, lineage preserved). In the s265 correction pass, **SD-6 RULED (a): the ontology's effect on the two MS-S1 models is measured on the NL / Ask surface (`benchmarks/nl_query_feasibility/`), not on `procedure_baseline`** (see SD-6 + the Correction record). **s275 addendum (2026-09-03):** the implementation landed and merged at s265-266 (PRs #1329-#1340; `61b0edc`, `42f3843` — per the s275 dispatch, not re-derivable by this drafter); the nine AC boxes stay **unticked** pending the re-witness; **SD-8 RULED (a) later in s275 (Cray, typed, 2026-09-03): the landed `:127` text assertion runs as a 16th probe** — the re-witness is now **16** (15 in-battery + AC-1(a) by hand), superseding Cray's own typed 15 of s274 (`superseded by new info`, not `was an error`: 15 was correct for the scope known then; SD-8 surfaced a claim that scope had not accounted for, and Cray widened it — see the SD-8 block). **No open SDs.**
+**Created:** 2026-08-31 · **Revised:** 2026-08-31 ×3 (same session family, s265 — first pass: rulings + two specialist investigations; second pass: SD-3a ruling closed + propagated; third pass: **correction** — Code's offline measurement F17 showed the ontology never reaches the procedure agent's prompt, so the theory of change is corrected from "rationale-bar unlock" to "Ask-surface unlock + rationale-bar prerequisite"; SD-6 ruled) · **2026-09-03 (s275) — closeout-precondition pass:** eight surgical corrections to the ACs/Steps (C1-C8) so each witnessed-RED probe states something that can actually fire, applied **before** the ruled 15-probe re-witness runs; no checkbox ticked, Status unchanged — see the s275 correction record · **2026-09-03 (s275, fifth touch — surgical):** SD-8 ruled (a) and propagated (15 → 16 probes; 72 → 71 expected exemptions), Code's measured s275 results recorded where the PLAN states expected outcomes; no checkbox ticked, Status unchanged
 **Related ADRs:** ADR-006 (Rule of Three — bore on SD-2's *original* reasoning; superseded as the operative ground by the SPLIT ruling), ADR-008 (ontology schema + D1 "may extend" license; D4 many_to_many deferral), ADR-0032 (D1 demo→pilot correction-surface discipline — bears on SD-1), ADR-0033 (**D6 boundary — the deferred core promotion must formally reopen it**; see the Out-of-Scope deferred-core record), ADR-0034 (D4 evidence-alternative — the per-case sole-source record that makes a vendor-level `single_source_flag` a double-statement risk; originally the OUT reason in SD-3, now the **noted residual concern** under the SD-3a ruling)
 **Related PLANs:** PLAN-0109 (Draft, unexecuted — **edits the same YAML file**; see the Coordination section), PLAN-0111 (verified **zero overlap** — Coordination §5 / F14), `done/0036` (the procurement donor), the later grader PLAN this one feeds (unnumbered; named in Out of Scope — this PLAN is a prerequisite for its rationale lane, **not** its unlock: that lane also needs the goal edit (SD-4, that PLAN) and the still-unscoped event/goal carrier, F17), the deferred core-promotion ADR+PLAN (unnumbered; the Out-of-Scope block below is its durable record until they exist)
 
@@ -23,6 +23,21 @@
 > ruling fixes the measurement surface. Every F17 grep count, the positive control, the
 > prompt-builder signatures, the orchestrator near-miss, and the six-vertical `reads:`
 > staleness evidence were re-verified on disk by this revision before citing.
+> **Revised a fourth time (2026-09-03, s275, same subagent) — a closeout-precondition
+> pass:** eight AC/Step corrections (C1-C8) from the s274 four-specialist audit and
+> Cray's typed 15-probe re-witness ruling. Every `file:line` this pass cites — the two
+> landed test modules, the seed rows, `ci.yml`, `conftest.py`, `pyproject.toml`, the
+> probe-battery driver and README, `nl_query.py`'s no-data text — was re-read on disk
+> by this revision; the figures it could not re-derive without a shell (the 86-claim
+> denominator, the commit hashes, the generated-artifact timestamps) are marked
+> "measured by Code, s275". **Touched a fifth time (2026-09-03, s275, same subagent) —
+> surgical:** SD-8's ruling recorded and propagated (15 → 16 probes; 72 → 71 expected
+> exemptions), and Code's measured s275 results (the 14-probe battery, AC-1(a), AC-7,
+> AC-8 step 3, the AC-3(a) cross-green) recorded where the PLAN states expected
+> outcomes — figures per the s275 follow-on dispatch, marked "measured by Code, s275";
+> the ruling's anchors (`nl_query.py:1103`, `test_vendor_facts_scenario.py:120-129`,
+> `test_ontology_data_contract.py:164,234`, `conftest.py:190`) re-read on disk by this
+> touch. Outline originator: Code (s275 dispatch).
 > Independent review: Cray at PR merge. Code commits via PR
 > (CLAUDE.md §7); the drafter does not commit.
 
@@ -133,6 +148,83 @@ the Ask surface, incomplete for the rationale lane — and should gain its
 qualification (with a retire marker if reworded) whenever that lesson or the later
 grader PLAN next touches it. Likewise `orchestrator.py:569`'s stale "every shipped
 procedure is reads-absent" docstring (F17) — noted, not fixed here.
+
+## Correction record (s275, closeout-precondition pass) — eight corrections, each classified
+
+⚠️ **Corrected 2026-09-03 (s275).** The implementation landed and merged at s265-266
+(`61b0edc`, `42f3843`; PRs #1329-#1340 — hashes per the s275 dispatch, not
+re-derivable by this drafter; `61b0edc` since **confirmed by Code, s275** as the YAML-edit
+commit — `feat(fleet): Vendor carries the supplier-evaluation facts (PLAN-0117 Step 2)`,
+105 insertions to `fleet_maintenance_v0.yaml` — so C7's reconstruction command cites
+the right SHA) and nobody returned to tick the boxes. A four-specialist
+audit (s274) found that several witnessed-RED probes, re-run **as the ACs state
+them**, cannot fire or cannot fail. Cray ruled a **full 15-probe re-witness** (typed,
+s274) — **widened to 16 by SD-8, ruled (a) later in s275** (`superseded by new info`; both
+counts are Cray's own typed rulings — see the SD-8 block). This pass makes each AC state something that can actually be witnessed,
+**before** any probe runs — it ticks nothing and weakens nothing. Every correction is
+either **`was an error`** (the text was wrong when written) or **`superseded by new
+info`** (the text was right; the landed code moved the ground under it) — handled
+distinctly, never flattened to "stale" (CLAUDE.md §6). Each row's marker also sits
+inline at the corrected text, so the table is the index, not the only record.
+
+| # | Where | Class | What was wrong (measured s275) | What now stands |
+|---|---|---|---|---|
+| C1 | AC-4, dormant case | `was an error` | Pass read said "grounded-but-empty"; the landed test asserts `ans.grounded is False` (`test_vendor_facts_scenario.py:122`) and its docstring (`:105-110`) already records the divergence | Pass read = the six landed assertions (`:120-123`, `:127`, `:129`); the **operative** requirement — honest no-records, never a fabricated fact — is unchanged; only the `grounded` parenthetical was wrong |
+| C2 | AC-3 probe (a) | `was an error` | "Blank the **sole** carrying row" — no synonym-band property has a sole carrier (`synthetic.py:356-395`: `standing` ×3, the other four ×2); one blanked row leaves another carrying → driver reports `GREEN` (README `:102`) | One multi-line `old` spanning **both** carriers of `avg_turnaround_days` (`:368-379`); values set to `None`, keys **not** deleted (keeps the `_HISTORY_FACTS` positive control at `:234` green — `:164` lists that property) |
+| C3 | AC-4 dormant probe | `was an error` | `expect_claim` pointed at the text assert `:127`; the run dies first at `:121` (`result_count == 0`) → `MISFIRE` (README `:99`) | `expect_claim` = `:121`; `:127` is a separate claim needing its own probe — **SD-8, ruled (a) s275: it runs as the 16th, `AC-4-dormant-no-records-TEXT` (Step 5)**; ⚠️ AC-3a(b) seeds `false`, this seeds `true` — not mergeable |
+| C4 | AC-1(c) | `was an error` | Read said `≥ 5`; the landed test asserts **equality** (`test_ontology_data_contract.py:352`) — `≥` would pass on a stray sixth stamp the test rejects | `== 5`; latent, non-blocking: `_raw_vendor_yaml_lines()` (`:326-327`) reads the **whole file**, so a stamp on `Truck` reddens it for a non-`Vendor` reason (flagged, not fixed) |
+| C5 | AC-8 | `was an error` | Commands lacked `--no-sync` (a bare `uv run` uninstalls the dev tools mid-run, `ci.yml:52-54`); `pytest tests/` disarms the AC-12 DB floor (`conftest.py:181,192` compares args to `["tests"]`); four offline CI steps absent | Seven CI-faithful commands (`ci.yml:56,59,74,91,100,113,137`) with `--no-sync`, bare `pytest -q`, `CI=1`; `--strict` and the two alembic steps explicitly checked and **not** added (redundant / DB-bound) |
+| C6 | AC-7 positive control | `was an error` | `grep "standing" generated/schema.json` already hits **today with no codegen run** (count 1, measured s275; the gitignored artifact from s265 persists) — the control was vacuous | Delete-first: `rm -rf` the gitignored dir → grep **must fail** → codegen → grep passes; pattern quoted `'"standing"'` (bare `standing` ⊂ `outstanding`) |
+| C7 | AC-1(b) baseline RED; AC-6 | `superseded by new info` | Sound against an unexecuted PLAN; post-landing the baseline command returns all 12 names (GREEN), and AC-6 compares the tree with itself — no test asserts a type **count** (`len(...object_types\|link_types)` over `tests/` = 0 matches) | Both marked **un-re-witnessable at closeout**, reason inline; the only genuine AC-1(b) re-witness is `git show 61b0edc~1:…` piped into the loader — out of scope unless Cray rules otherwise; nothing deleted, no substitute invented |
+| C8 | Step 5 enumeration | `was an error` | Listed 13 probes; dropped AC-1(c1)/(c2), which AC-1 itself defines as "two mutations, two assertions" | **15** = 14 in-battery + AC-1(a) outside the driver (its subject is a pre-commit hook, not a pytest node); equals Cray's ruled 15; the `:127` probe would be a **16th** — raised as SD-8, not absorbed. **See SD-8, ruled (a) s275: the 16th runs — 16 = 15 in-battery + AC-1(a)**; this row's 14-in-battery was right for the ruled 15 and is `superseded by new info`, not re-classified |
+
+**Known gaps, deliberately unprobed at this closeout** (recorded here so the
+coverage report's exemptions are written from a list, not improvised at run time).
+**SD-8's ruling (a), s275, resolved one of the two claim-level gaps this pass
+registered and not the other:** the `:127` text assertion — formerly a provisional
+exemption naming SD-8 (Step 5) — is now **probed** (the 16th) and is no longer a gap;
+AC-2's `:203`/`:204` (first bullet) remain named-by-AC-2 and unprobed — the ruling did
+not touch them:
+
+- **AC-2's two provenance-exclusion asserts** — `test_ontology_data_contract.py:203`
+  `assert "AUTHORED / DEMO SEED" not in described` and `:204`
+  `assert "PROMOTION PATH" not in described` — are named by AC-2's own pass read but
+  carry **no probe**. They need **written exemptions** in the battery (README `:79`:
+  `stable_key` → the reason no probe can reach it) — or probes, if Code finds an
+  isolating mutation (injecting a stamp phrase into one rendered `synonyms` list is
+  the obvious candidate; not scoped here, and not silently chosen).
+- **The coverage denominator is the whole module, not the probe count.** Measured
+  by Code, s275, via `python -m tools.probe_battery keys` (`__main__.py:139`):
+  `test_ontology_data_contract.py` = **32** claims, `test_vendor_facts_scenario.py` =
+  **17**, `test_golden_e2e.py` = **37** — **86** in total. Every claim neither
+  credited by a `WITNESSED` probe nor exempted with a written reason is a GAP, and
+  any GAP makes `passed` false (`_battery.py:570`: `complete and not overlaps and
+  all(r.passed …)`) → `PROBE-BATTERY: FAIL`. Arithmetic, under SD-8 ruled (a):
+  86 − **15** in-battery credits = **71 exemption lines** — the pre-ruling figure was
+  72 = 86 − 14, correct for the ruled 15 (`superseded by new info`), and was **measured**
+  by Code s275 at the 14-probe stage: `claims: 86 · witnessed RED: 14 · exempted: 72 ·
+  GAPS: 0 · stale ids: 0`, `PROBE-BATTERY: PASS`, `PROBE-COVERAGE: COMPLETE`. AC-1(a)
+  is **outside** the 86 (no `Claim` — C8), so the count is 86 = 15 + 71, not 86 − 16 =
+  70: a 70 would subtract a probe from a denominator it is not in; the 16-probe run's
+  printed `exempted:` value is the reading to trust, and this line is corrected by
+  deriving, never by relaxing, if they disagree (CLAUDE.md §8); the dispatch's "~50-70"
+  estimate is therefore a floor, not the figure. Do **not** narrow `claim_sources`
+  to shrink the denominator — `tools/probe_coverage.py:25-30` names that move as
+  "the moment to have someone else check"; and the AC-5 probe's node lives in
+  `test_golden_e2e.py`, so that module is in the denominator by construction.
+- **Verification §5 demands the coverage report in the PR body, but no AC requires
+  it** — an unhomed requirement. The report is **stdout only**: `_battery.py:577`
+  prints it, `BatteryResult.report` is returned, nothing is written to disk — so the
+  run must be captured with `2>&1` into a file or the report is unrecoverable. Step 5
+  now names the capture. It stays homed in Step 5 + Verification §5 rather than
+  gaining a tenth AC (a Code judgment, stated: the report is *evidence for* the nine
+  ACs, not a criterion of its own).
+- **The DB floor's second gate** (found while verifying C5; stricter, not a
+  relaxation): `db_floor_verdict` also returns `None` unless `os.environ.get("CI")`
+  is set (`conftest.py:190,209`). A local AC-8 run arms the floor only as
+  `CI=1 uv run --no-sync pytest -q` — recorded so a green local run is not mistaken
+  for a floor-armed one. **Confirmed by Code, s275**, against `conftest.py:190`
+  (`if not ci: return None`) — the full-suite command in AC-8 (7) carries `CI=1`.
 
 ## Baseline facts (verified on disk 2026-08-31 by this draft — cite, don't re-derive; re-confirm line numbers on the execution branch, the base moves)
 
@@ -351,9 +443,15 @@ seed values + AUTHORED stamps; **the dormant set** (SD-3a) = `tax_id`, `cert_sta
 the synonym-carrying five; the dormant four have their own contract (AC-3a). Every
 witnessed-RED probe below runs through the shipped driver `tools/probe_battery/`
 (CLAUDE.md §8 — never a from-scratch script), one mutation per assertion, restore
-from the scratchpad copy.
+from the scratchpad copy. ⚠️ **s275:** the implementation is merged; the boxes below
+stay **unticked** until Code witnesses each probe under the corrected wording (the
+s275 correction record, C1-C8) — a box ticked against the pre-s275 prose would tick
+a criterion the system does not satisfy (C1) or a probe that cannot fire (C2/C3/C6).
+Every `uv run` below is read as `uv run --no-sync` (C5's ground, `ci.yml:52-54`: a
+bare `uv run` re-syncs without the dev extra and strips pytest mid-run — it fails
+loudly, not falsely green, so the pre-existing commands are not rewritten one by one).
 
-- [ ] **AC-1 — the YAML declares BOTH ruled bands on `Vendor`, schema-valid.**
+- [x] **AC-1 — the YAML declares BOTH ruled bands on `Vendor`, schema-valid.**
   Artifact: `verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml`.
   Command (a): `uv run --no-sync pre-commit run check-jsonschema --all-files 2>&1`
   → exit 0 (this also witnesses that a property-level `description` is schema-legal,
@@ -361,26 +459,44 @@ from the scratchpad copy.
   `uv run python -c "from services.engine.ontology_meta import load_ontology_meta; m=load_ontology_meta('fleet_maintenance'); print(sorted(p.name for o in m.object_types if o.name=='Vendor' for p in o.properties))"`
   → pass read fixed pre-run: exactly the 3 baseline names (F2) plus the
   synonym-carrying five plus the dormant four:
-  `['accounting_code', 'avg_turnaround_days', 'cert_status', 'comeback_count', 'is_contracted', 'name', 'repairs_completed_count', 'sanctions_flag', 'single_source_flag', 'standing', 'tax_id', 'vendor_id']`.
+  `['accounting_code', 'avg_turnaround_days', 'cert_status', 'comeback_count', 'is_contracted', 'name', 'repairs_completed_count', 'sanctions_flag', 'single_source_flag', 'standing', 'tax_id', 'vendor_id']`
+  (pinned as `_RULED_VENDOR_PROPERTIES`, `test_ontology_data_contract.py:310-323`).
+  ⚠️ **s275 C7 (`superseded by new info`):** the "witnessed baseline RED" Step 1
+  attached to this command is **un-re-witnessable post-landing** — see Step 1; the
+  removal probe (b) below is this AC's witness at closeout.
   Command (c) — **the SD-1(c) comment contract** (two assertions):
   `grep -c "AUTHORED / DEMO SEED" verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml 2>&1`
-  → ≥ 5 (one stamp per synonym-carrying property; the dormant four carry **no**
-  AUTHORED stamp — nothing is authored for them, their `description` is their
-  contract, AC-3a(c)), and
+  → **exactly 5** — `== 5`, not `≥ 5`. ⚠️ **s275 C4 (`was an error`):** the pre-s275
+  read said `≥ 5`; the landed test asserts **equality**
+  (`test_ontology_data_contract.py:352`, `len(stamped) == len(_SYNONYM_BAND)`), so an
+  `≥` read would have passed on a stray sixth stamp that the test rejects. (One stamp
+  per synonym-carrying property — today at YAML `:170,181,190,202,212`; the dormant
+  four carry **no** AUTHORED stamp — nothing is authored for them, their `description`
+  is their contract, AC-3a(c)), and
   `grep -n "PROMOTION PATH" verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml 2>&1`
-  → exactly one block, naming the SD-1(b) measured-projection route.
+  → exactly one block (today `:153`), naming the SD-1(b) measured-projection route.
+  **Latent, non-blocking (s275 C4 — flagged, NOT fixed in this PLAN):** the test's
+  reader `_raw_vendor_yaml_lines()` (`:326-327`) does
+  `_YAML_PATH.read_text().splitlines()` — the **whole YAML file**, not the `Vendor`
+  block — so an `AUTHORED / DEMO SEED` stamp added to `Truck` (or any other object)
+  would redden this test for a reason unrelated to `Vendor`.
   **Witnessed RED (one probe per assertion):** (a) a scratch undeclared key inside a
   Vendor property block → the hook exits non-zero naming the file
-  (`additionalProperties: false`, per 0109 F12); (b) remove exactly **one** declared
+  (`additionalProperties: false`, per 0109 F12) — **measured (Code, s275, by hand
+  outside the driver): baseline exit 0 → mutated exit 1, the failure naming
+  `fleet_maintenance_v0.yaml` → restored exit 0, mutation gone, porcelain 0**; (b) remove exactly **one** declared
   property from the YAML — **pick a dormant one** (e.g. `tax_id`), so the five's
   synonyms are genuinely untouched and AC-2 stays green under this mutation (the
   cross-green that isolates the probe; the second s265 revision repaired this probe —
   removing a synonym-carrying property would have reddened AC-2 as well, voiding the
-  isolation the original text claimed); (c1) strip one property's AUTHORED stamp → the count drops below 5
-  while the PROMOTION PATH grep stays green; (c2) delete the PROMOTION PATH comment
-  line → that grep exits non-zero while the stamp count stays ≥ 5 — two mutations,
-  two assertions, each with the other's green as isolation.
-- [ ] **AC-2 — the facts are Thai-addressable in the translate prompt.**
+  isolation the original text claimed); (c1) strip one property's AUTHORED stamp → the count becomes 4 ≠ 5
+  (`:352` reddens) while the PROMOTION PATH grep stays green; (c2) delete the
+  PROMOTION PATH comment line → that grep exits non-zero (`:364` reddens) while the
+  stamp count stays **exactly 5** (`:352` green) — two mutations, two assertions, each
+  with the other's green as isolation. ⚠️ **s275 C8:** (c1) and (c2) are two of the
+  ruled probes (15 at s274; 16 after SD-8, ruled (a) s275) — the pre-s275 Step 5
+  enumeration dropped them; see Step 5.
+- [x] **AC-2 — the facts are Thai-addressable in the translate prompt.**
   Artifact: a new test in `tests/verticals/fleet_maintenance/test_ontology_data_contract.py`
   (the `:120-134` pattern) asserting `_describe_ontology(meta)` contains one designated
   Thai synonym **per synonym-carrying property** (the five — e.g. `ประวัติงานซ่อม`,
@@ -390,7 +506,7 @@ from the scratchpad copy.
   **Witnessed RED:** delete only the `synonyms` block of one ruled property → this test
   reddens on that synonym while AC-1(b) stays green (the property remains declared) —
   one mutation, one assertion, other-assertion-green.
-- [ ] **AC-3 — the seed carries values for the synonym-carrying five (closing F8's named gap for non-required properties).**
+- [x] **AC-3 — the seed carries values for the synonym-carrying five (closing F8's named gap for non-required properties).**
   Artifact: `verticals/fleet_maintenance/data_adapter/synthetic.py` (`vendor_records`)
   + a new presence test in `test_ontology_data_contract.py`: for **each**
   synonym-carrying property, at least one vendor row carries a non-null value (the
@@ -401,13 +517,40 @@ from the scratchpad copy.
   non-vacuous). The existing generic direction-2 guard (`:58-67`) covers undeclared
   keys.
   Command: same module, same pytest command as AC-2.
-  **Witnessed RED (two assertions, two probes):** (a) blank the sole carrying row's
-  value for one ruled property → the presence test reddens naming that property
+  **Witnessed RED (two assertions, two probes):** (a) ⚠️ **s275 C2 (`was an error`)
+  — the pre-s275 wording "blank the sole carrying row's value" cannot redden: no
+  synonym-band property has a sole carrier.** Measured in `vendor_records()`
+  (`synthetic.py:356-395`): `standing` is carried by all three rows (`:365,376,395`);
+  `is_contracted`, `repairs_completed_count`, `comeback_count` and
+  `avg_turnaround_days` by two each (`vendor-01` `:364-368`, `vendor-02` `:375-379`;
+  `vendor-03` omits the history facts by design — the F9 honesty row). Blank one row
+  and the other still carries, the presence assertion
+  (`test_ontology_data_contract.py:218`) stays green, and the driver reports `GREEN`
+  — "the mutation reached disk and nothing reddened — the guard may be vacuous"
+  (README `:102`) — a probe failure, not a pass. **Corrected probe:** one multi-line
+  `old` string spanning **all carriers of one property**, so a single mutation removes
+  that property's values from the whole seed. Recommended property:
+  `avg_turnaround_days` — the smallest span (two carriers, `:368-379`) and, unlike
+  `standing` / `is_contracted`, not referenced by `test_vendor_facts_scenario.py`'s
+  pinned expectations (`EXPECTED_APPROVED_IDS`, `EXPECTED_CONTRACTED_ID`, `:44-46`),
+  so the mutation stays isolated to the assertion it probes. Mutation shape: set both
+  values to `None` — do **not** delete the keys — because the presence test reads
+  `r.get(prop) is not None` (`:216`) while the honesty test's positive control reads
+  key membership (`history <= set(r)`, `:233-234`) and `_HISTORY_FACTS` includes
+  `avg_turnaround_days` (`:164`): `None`-ing reddens only `:218`; deleting would also
+  redden `:234` and void the isolation. **Measured (Code, s275) — the cross-green
+  checked by hand, because the driver runs ONE node per probe and cannot report it:**
+  under the `None`-ing mutation the declared node reddened (exit 1) and the exempted
+  honesty claim at `:234` stayed **GREEN** (exit 0); restored to 0 porcelain lines.
+  That witnessed green is what makes `:234`'s exemption text ("live and green") true
+  rather than assumed; Code re-confirmed the `:164` 3-tuple and `:234`'s
+  `history <= set(r)` against the file before writing the probe. Write `old`
+  **after** the final `ruff format` pass (README `:108-131`). → the presence test reddens naming `avg_turnaround_days`
   (YAML untouched → AC-1/AC-2 stay green); (b) add a scratch key `x_scratch` to one
   vendor row → the **existing** `test_no_row_carries_a_property_the_ontology_never_declared`
   reddens — witnessing that the pre-existing guard, not a new copy of it, patrols
   direction 2.
-- [ ] **AC-3a — the dormant band contract (SD-3a): declared, prompt-visible,
+- [x] **AC-3a — the dormant band contract (SD-3a): declared, prompt-visible,
   synonym-free, unpopulated, description-carrying.** Artifact: a new dormant-band
   test in `test_ontology_data_contract.py` (it may read the raw YAML — descriptions
   are dropped at load, F13, so loaded meta cannot check assertion (c)). Command:
@@ -439,7 +582,7 @@ from the scratchpad copy.
   one of the four → this assertion reddens while (a) stays green (the property
   still renders) — the isolation that proves the redden is about synonyms, not
   declaration.
-- [ ] **AC-4 — scenario test (CLAUDE.md §8, binding): a supplier-evaluation question is
+- [x] **AC-4 — scenario test (CLAUDE.md §8, binding): a supplier-evaluation question is
   answerable end-to-end offline.** Artifact:
   `tests/verticals/fleet_maintenance/test_vendor_facts_scenario.py`. Real producer →
   real consumer: the registered fleet synthetic adapter through
@@ -452,19 +595,60 @@ from the scratchpad copy.
   fixture constant). **Plus the dormant case (SD-3a requirement (b), riding F15's
   existing machinery):** a question filtering on a dormant property (e.g. vendors
   with `sanctions_flag == true`) terminates in the honest no-records answer
-  (`_no_data_nlanswer`, `nl_query.py:1369-1371`) — grounded-but-empty, never a
-  fabricated fact. Makes **no claim** any live model emits the translation — that is
+  (`_no_data_nlanswer`, `nl_query.py:1369-1371` → `:1280`; text composed at `:1103`)
+  — never a fabricated fact. ⚠️ **s275 C1 (`was an error`): the pre-s275 prose
+  called this outcome "grounded-but-empty"; the engine returns `grounded=False`.**
+  Measured: the landed test asserts `ans.grounded is False`
+  (`test_vendor_facts_scenario.py:122`), and its docstring (`:105-110`) already
+  records the divergence — "the engine actually returns `grounded=False` with
+  `result_count=0` via the no-data path … only the AC's parenthetical description of
+  `grounded` does not [hold]". **Pass read for the dormant case, restated as the six
+  assertions the landed test makes:** `ans.query is not None` (`:120` — the green
+  control: translate produced a query); `ans.result_count == 0` (`:121`);
+  `ans.grounded is False` (`:122`); `set(ans.source_object_ids) == set()` (`:123`);
+  the deterministic text `"No Vendor records match that query." in ans.answer`
+  (`:127` — the positive control separating the real no-data path from a crashed
+  run, which also yields an empty count and id set); and no seeded garage name in
+  the answer (`:129`). The **operative** requirement — an honest no-records answer,
+  never a fabricated fact — holds unchanged; only the `grounded` parenthetical was
+  wrong, and ticking this AC against the old prose would tick a criterion the system
+  does not satisfy. (Where the word came from, kept as lineage: F15 and
+  `_no_data_nlanswer`'s own docstring at `:1281`, "A grounded-but-empty answer", use
+  "grounded" colloquially — no invented fact — not as the `NlAnswer.grounded` field.)
+  Makes **no claim** any live model emits the translation — that is
   MS-S1 territory and out of scope (the vocabulary-width effect on live translate
   quality is explicitly UNMEASURED, F16).
   Command: `uv run pytest tests/verticals/fleet_maintenance/test_vendor_facts_scenario.py -x 2>&1`.
   **Witnessed RED / named changing output:** flip one seed row's `standing` → the
-  asserted count changes by exactly 1 — the probe's mutation reaches the code and
-  names the output it changes. **Dormant-case probe (its own mutation):** author
-  `sanctions_flag: true` onto one seed row → the no-records assertion reddens (the
-  answer now carries a record) — proving the case exercises the live no-data path,
-  not a constant; AC-3a(b) reddens on the same mutation in ITS run, which is exactly
-  the two-guard agreement expected, not a confound.
-- [ ] **AC-5 — the golden oracle stays green with ZERO exemption growth.**
+  asserted count changes by exactly 1 (`:76` reddens; `:75` `grounded is True` stays
+  green) — the probe's mutation reaches the code and names the output it changes.
+  **Dormant-case probe (its own mutation):** author `sanctions_flag: true` onto one
+  seed row → the no-records assertion reddens (the answer now carries a record) —
+  proving the case exercises the live no-data path, not a constant; AC-3a(b) reddens
+  on the same mutation in ITS run, which is exactly the two-guard agreement expected,
+  not a confound. ⚠️ **s275 C3 (`was an error`): this probe's `expect_claim` must be
+  `:121` (`assert ans.result_count == 0`), NOT the text assert at `:127`.** Measured:
+  seeding `sanctions_flag: true` makes `result_count == 1`; pytest stops at the
+  **first** failed assert, so the run dies at `:121` and never reaches `:127` —
+  declared against `:127`, the driver returns `MISFIRE` ("an assertion failed, but
+  not the declared one", README `:99`). Consequently `:127` is a **separate claim** in
+  the coverage denominator and, under CLAUDE.md §8's one-mutation-one-assertion rule,
+  needs **its own probe** under a mutation that keeps `:121` green — a candidate is
+  the no-data template at `nl_query.py:1103`
+  (`f"No {query.object_type} records match that query."`), which leaves the count at
+  0 and the id set empty while reddening `:127` alone. Whether that probe runs (a
+  **16th**, exceeding the ruled 15) or `:127` is exempted with a written reason was
+  **SD-8 — RULED (a) (Cray, typed, 2026-09-03, s275): it runs as the 16th**,
+  `AC-4-dormant-no-records-TEXT` — subject `nl_query.py:1103`, node `:96`,
+  `expect_claim` `:127`; the reworded string leaves `result_count` 0, `grounded`
+  False and the id list empty (`:120-123` stay green) and carries no vendor name
+  (`:129` stays green) — `:127` is the only assertion that reddens (Step 5). ⚠️ **Not mergeable with AC-3a(b)'s
+  probe, though they look it:** AC-3a(b) seeds `sanctions_flag: false` — its
+  assertion is key-membership (`test_ontology_data_contract.py:258`, `p in r`); this
+  probe seeds `sanctions_flag: true` — its assertion is the `== "true"` filter's
+  result count. Seeding `false` here would leave the filter empty and this probe
+  `GREEN`.
+- [x] **AC-5 — the golden oracle stays green with ZERO exemption growth.**
   Artifacts: `tests/services/engine/scaffolder/test_golden_e2e.py` — **unmodified**.
   Command (a): `uv run pytest tests/services/engine/scaffolder/ -x 2>&1` → green.
   Command (b): `git diff --stat tests/services/engine/scaffolder/ 2>&1` → empty (the
@@ -474,25 +658,242 @@ from the scratchpad copy.
   object type `ScratchObject` to the fleet YAML → the set-equality assertion (`:348`)
   reddens naming it; restore from scratchpad. This is the probe for the surface this
   PLAN promises not to touch.
-- [ ] **AC-6 — the rest of the vertical is untouched, relative to the branch baseline.**
+- [x] **AC-6 — the rest of the vertical is untouched, relative to the branch baseline.**
   Command: `uv run pytest tests/verticals/fleet_maintenance/ 2>&1` → green with zero
   modified assertions in pre-existing tests; object-type count and link-type count
   equal the branch baseline captured in Step 1 (7/7 links pre-0109, 10/7 post-0109 —
   asserted relative, per Coordination §4).
   **Witnessed RED:** covered by AC-5's scratch-object probe (the count read moves on
-  the same mutation); no second mutation needed for the same surface.
-- [ ] **AC-7 — codegen produces zero committed drift, with a positive control.**
+  the same mutation); no second mutation needed for the same surface. ⚠️ **s275 C7
+  (`superseded by new info`) — un-re-witnessable at closeout; ticking this AC is an
+  honest statement about a tautological green, not a claimed witness.** Sound when
+  written against an unexecuted PLAN with a branch baseline still to capture; after
+  landing, "the baseline" and "the tree" are the same tree, so the count read
+  compares the tree with itself. Worse, measured s275: **no test asserts the
+  object-type or link-type count at all** (`grep -E 'len\([^)]*(object_types|link_types)\)' tests/`
+  → 0 matches; `test_golden_e2e.py:348-349` asserts **set** equality against the
+  donor YAML — that is AC-5's oracle, not a count), and the AC-5 `ScratchObject`
+  mutation leaves the whole fleet suite green — every fleet contract test iterates
+  `synthetic.OBJECT_SOURCES` (`test_ontology_data_contract.py:53,65`) and looks
+  declared types up by name, so a type declared in YAML but never served enters no
+  loop. The count clause is a manual eyeball wearing an AC's clothes: there is no
+  pytest assertion for a `Claim.stable_key` to address, so the battery cannot carry
+  it (the s274 audit reports `BatteryDefinitionError` — `_battery.py:74` — on the
+  attempt; asserted by the audit, not re-traced by this pass). **Not deleted and no
+  substitute probe invented:** the pass read that remains honest is "fleet suite
+  green, zero modified assertions in pre-existing tests"; the count clause is
+  recorded as tautological post-landing and is not what a tick of this box claims.
+- [x] **AC-7 — codegen produces zero committed drift, with a positive control.**
   Command: run fleet codegen via the console script (`uv run vero-lite …` — never
   `python -m`), then `git status --porcelain 2>&1` written to a file → **empty** (F6:
   fleet's outputs are gitignored). **Positive control (an absence claim needs one —
-  CLAUDE.md §8):** `grep -n "standing" verticals/fleet_maintenance/generated/schema.json 2>&1`
-  (or the ruled set's first property) → present, proving the regen actually ran and
-  expressed the new facts; an empty porcelain from a codegen that did nothing would
-  otherwise pass vacuously.
-- [ ] **AC-8 — full offline gate at CI scope.**
-  Commands: bare `uv run ruff check . 2>&1`; full `uv run mypy services/ verticals/ 2>&1`;
-  full `uv run pytest tests/ 2>&1` on the checkout that owns the test DB. Pass read:
-  all green — partial-scope greens do not close this AC.
+  CLAUDE.md §8), restated delete-first — ⚠️ s275 C6 (`was an error`): the pre-s275
+  control was itself vacuous.** Measured s275 with codegen **not** run this session:
+  `grep '"standing"' verticals/fleet_maintenance/generated/schema.json` already hits
+  (count 1). The directory holds seven artifacts from the s265 run
+  (`context_pack.md`, `mcp_tools.json`, `models.py`, `orm.py`, `schema.json`,
+  `schema.sql`, `types.ts` — dated Aug 31 18:20 per Code's listing, s275), and because
+  it is gitignored by construction (`code_generator.py:900-914` — `_ORM_COMMITTED_DEST`
+  = {energy, core}, `_PYDANTIC_COMMITTED_DEST` = {core}) a stale artifact simply
+  persists. A control that passes before the thing it controls for has happened
+  proves nothing about the regen. **Corrected sequence — three reads, each value
+  printed, never a bare PASS:** (1) `rm -rf verticals/fleet_maintenance/generated/`
+  — free and reversible: the tree is gitignored and fully regenerable; (2)
+  `grep -n '"standing"' verticals/fleet_maintenance/generated/schema.json 2>&1` →
+  **must FAIL** (no such file) — this is the real control: it proves the instrument
+  can report absence; (3) run codegen, then the same grep → **present**, proving the
+  regen ran and expressed the new facts. Pattern **quoted** — `'"standing"'` — because
+  bare `standing` is a substring of `outstanding` and would match prose. An empty
+  porcelain from a codegen that did nothing would otherwise pass vacuously.
+  **Measured (Code, s275, delete-first as corrected):** the stale-artifact grep
+  returned **1** with codegen never run (C6's vacuous pass, reproduced); after
+  `rm -rf`, the control grep exited **2** — it can report absence;
+  `uv run --no-sync vero-lite generate fleet_maintenance` exit 0, 7 artifacts; the
+  quoted `"standing"` grep then hit, and `tax_id`, `cert_status`, `sanctions_flag`,
+  `single_source_flag`, `avg_turnaround_days` were each present in the regenerated
+  `schema.json`; `git status --porcelain -- verticals/` = **0** lines, `-- tests/` =
+  **0**.
+- [x] **AC-8 — full offline gate at CI scope.** ⚠️ **s275 C5 (`was an error`): the
+  pre-s275 command list — `uv run ruff check .`, `uv run mypy services/ verticals/`,
+  `uv run pytest tests/` — was NOT at CI scope.** Measured against
+  `.github/workflows/ci.yml`: (i) **every** CI step runs `uv run --no-sync`, and the
+  comment at `ci.yml:52-54` says why — a bare `uv run` re-syncs **without** the dev
+  extra and uninstalls pytest/ruff/mypy mid-job; the old list dropped `--no-sync`
+  from all three commands while AC-1(a) in this same PLAN had it right; (ii) CI's
+  test step is bare `uv run --no-sync pytest -q` (`ci.yml:137`), and the old
+  `pytest tests/` **disarmed the AC-12 DB-collapse floor**: `tests/conftest.py:181`
+  pins `_FULL_SUITE_ARGS = ["tests"]` and `:192` compares
+  `list(args) != _FULL_SUITE_ARGS` — the string `"tests/"` is not `"tests"`, so
+  `db_floor_verdict` returned `None` and the floor never fired; bare `pytest -q`
+  matches because `pyproject.toml:111` sets `testpaths = ["tests"]`; (iii) four
+  further offline-runnable CI gates were absent. **Commands (CI-faithful; from the
+  repo root, on the checkout that owns the test DB; each `2>&1` to a file with the
+  exit code echoed — CLAUDE.md §8):**
+  1. `uv run --no-sync ruff check . 2>&1` (`ci.yml:56`)
+  2. `uv run --no-sync ruff format --check . 2>&1` (`:59`)
+  3. `node --check` over every `services/api/static/assets/*.js`, floored at
+     non-empty exactly as `ci.yml:74-83` does (`shopt -s nullglob`; error if the glob
+     matched nothing — a vacuous-pass guard, not decoration).
+     **Measured (Code, s275) — closed with a *controlled* instrument, not an install:**
+     `node` is absent from this WSL, but `node.exe` v22.16.0 already exists on the
+     Windows side and reads the repo over its UNC path, so the host-state change was
+     **zero** (Cray had approved an install under CLAUDE.md §8; none was needed).
+     Three controls preceded the real reading: a deliberately broken file → exit 1; a
+     valid file → exit 0; **a non-existent path → exit 1** — the control that proves a
+     resolve failure is not silently read as a pass. Real run: **21 assets enumerated
+     from disk, 0 failed**, matching the 21 `ci.yml` measured.
+  4. `uv run --no-sync python tools/ci/cache_bust_diff_check.py 2>&1` (`:91`; the
+     check compares the PR's two revisions — CI checks out depth 2 — so run it on
+     the branch with its parent present)
+  5. `uv run --no-sync mypy services/ verticals/ 2>&1` (`:100`)
+  6. `uv run --no-sync pre-commit run detect-secrets --all-files 2>&1` (`:113`)
+  7. `CI=1 uv run --no-sync pytest -q 2>&1` (`:137`) — bare, no path argument, so
+     `session.config.args == ["tests"]`; `CI=1` because the floor's other gate is
+     `os.environ.get("CI")` (`conftest.py:190,209`) — without it a local run is green
+     with the floor **disarmed** (a drafter addition beyond the dispatch's stated
+     fix; stricter, recorded so a local green is not mistaken for a floor-armed one)
+  (`ci.yml:116`'s `check-jsonschema` step is AC-1(a)'s own command — run once,
+  credited to both.) Pass read: all seven green — partial-scope greens do not close
+  this AC. **Two things deliberately NOT "fixed" — checked s275, recorded so no later
+  reader reopens them:** CI runs `mypy --strict services/ verticals/` (`:100`) and
+  command 5 omits `--strict` — **not a defect**: `pyproject.toml:94` sets
+  `strict = true` under `[tool.mypy]` (`:92`), so the CLI flag is redundant; and CI's
+  `alembic upgrade head` (`:121`) + `alembic check` (`:131`) need a live database and
+  are correctly **out of scope** for an AC that is explicitly the *offline* gate.
+
+## Closeout evidence (s275, 2026-09-03) — what each tick above rests on
+
+Every figure here was **printed by a command run this session** on base `52d4432`
+with a clean tree. A prior handoff's "14 of 14" is deliberately **not** cited: Cray
+ruled a full re-witness (typed, s274) precisely because s266's per-probe verdicts do
+not survive, and none of them are reused below.
+
+### The battery — 16 probes, `PROBE-BATTERY: PASS`
+
+`python -m tools.probe_battery run` printed
+`claims: 86 · witnessed RED: 15 · exempted: 71 · GAPS: 0 · stale ids: 0`,
+`PROBE-COVERAGE: COMPLETE`, `PROBE-BATTERY: PASS`. All fifteen in-battery probes
+returned **`WITNESSED`** — no `GREEN`, no `MISFIRE`, no `CRASHED`, no
+`SETUP/COLLECT-ERROR`, no crash-credit. Tree before and after the run differed only
+by this PLAN file; `probe_battery status` reported `no unrestored runs`.
+
+| probe | AC | claim it reddened |
+|---|---|---|
+| `AC-1b-declared-set` | AC-1(b) | `sorted(p.name …) == _RULED_VENDOR_PROPERTIES` (`:338`) |
+| `AC-1c1-authored-stamp` | AC-1(c1) | `len(stamped) == len(_SYNONYM_BAND)` (`:352`) |
+| `AC-1c2-promotion-path` | AC-1(c2) | `len(marked) == 1` (`:364`) |
+| `AC-2-thai-synonym` | AC-2 | `not missing` (`:200`) |
+| `AC-3a-presence` | AC-3(a) | `not unsupplied` (`:218`) |
+| `AC-3b-undeclared-key` | AC-3(b) | `not undeclared` (`:71`) |
+| `AC-3a-a-prompt-visible` | AC-3a(a) | `not absent` (`:245`) |
+| `AC-3a-b-unpopulated` | AC-3a(b) | `not seeded` (`:259`) |
+| `AC-3a-c1-description-present` | AC-3a(c1) | `not blank` (`:274`) |
+| `AC-3a-c2-residual-mitigation` | AC-3a(c2) | `"RepairCaseJustification" in description` (`:287`) |
+| `AC-3a-d-synonym-cost-guard` | AC-3a(d) | `not carrying` (`:303`) |
+| `AC-4-main-count-moves` | AC-4 | `ans.result_count == len(EXPECTED_APPROVED_IDS)` (`:76`) |
+| `AC-4-dormant-no-records` | AC-4 dormant | `ans.result_count == 0` (`:121`) |
+| `AC-5-golden-oracle-alive` | AC-5 | `set(emitted["object_types"]) == donor_core` (`:348`) |
+| `AC-4-dormant-no-records-TEXT` | AC-4 `:127` | `"No Vendor records match that query." in ans.answer` (`:127`) — the 16th, SD-8 (a) |
+
+**AC-1(a), the sixteenth, ran by hand** — its subject is a pre-commit hook, not a
+pytest node, so `tools/probe_battery/` has no `Claim` handle on it and it sits outside
+the 86. Measured: baseline exit **0** → with a scratch undeclared key inside a `Vendor`
+property block exit **1**, the failure naming `fleet_maintenance_v0.yaml` → restored
+exit **0**, the scratch key gone (grep count 0), porcelain 0.
+
+### Three probe definitions were repaired before the run, and the repairs were load-bearing
+
+Each had been predicted to fail by the s274 audit; each was then observed to behave
+exactly as predicted, so these are measurements rather than precautions.
+
+- **AC-3(a)** as written could not redden — no synonym-carrying property has a sole
+  carrier. Corrected to span both carriers of `avg_turnaround_days`, and on review
+  corrected again to set them to `None` rather than delete the keys: `_HISTORY_FACTS`
+  (`:164`) is a 3-tuple including this property and the honesty control at `:234` is
+  `history <= set(r)`, so a deletion would have reddened a claim this battery **exempts
+  as "live and green"** — the exemption would have asserted something false.
+  **The isolation was then checked by hand**, because the driver runs one node per probe
+  and cannot check it: under the mutation the declared node exited **1** and `:234`
+  exited **0**, restoring to 0 porcelain lines.
+- **AC-4's dormant probe** declared `:127`; seeding the flag makes `result_count` 1 and
+  the run dies at `:121`, so the driver would have returned `MISFIRE`. Declared at `:121`.
+- **AC-1(b)'s `old`** initially spanned only part of the `tax_id` block, leaving orphaned
+  description continuation lines; the first run returned `SETUP/COLLECT-ERROR` on a
+  `ruamel` `ScannerError`, not a witness. Corrected to span the whole block.
+
+### AC-7 — the delete-first control, and what it exposed
+
+The AC's original control was **itself vacuous**: with codegen never run this session,
+`grep -c '"standing"' verticals/fleet_maintenance/generated/schema.json` already returned
+**1**, because the directory is gitignored by construction and still held artifacts dated
+Aug 31 18:20. Reproduced, then corrected. Measured: `rm -rf` the directory → the control
+grep exits **2** (it *can* report absence — that is the reading the old control never
+took) → `uv run --no-sync vero-lite generate fleet_maintenance` exits **0**, 7 artifacts →
+the quoted `"standing"` grep hits, and `tax_id`, `cert_status`, `sanctions_flag`,
+`single_source_flag`, `avg_turnaround_days` are each present in the regenerated
+`schema.json` → `git status --porcelain -- verticals/` = **0** lines, `-- tests/` = **0**.
+
+### AC-8 — at true CI scope
+
+| command | exit |
+|---|---|
+| `uv run --no-sync ruff check .` (bare) | 0 |
+| `uv run --no-sync ruff format --check .` | 0 |
+| `node --check` over 21 JS assets | 0 — **21 checked, 0 failed** |
+| `uv run --no-sync python tools/ci/cache_bust_diff_check.py` | 0 |
+| `uv run --no-sync pre-commit run detect-secrets --all-files` | 0 |
+| `uv run --no-sync pre-commit run check-jsonschema --all-files` | 0 |
+| `uv run --no-sync mypy --strict services/ verticals/` | 0 |
+| `CI=1 uv run --no-sync pytest -q` | **0** — `4801 passed, 8 skipped, 2 warnings in 721.38s` |
+
+**`node` is absent from this WSL**, but `node.exe` v22.16.0 already existed on the Windows
+side and reads the repo over its UNC path, so the host-state change was **zero** (an install
+was approved and turned out to be unnecessary). The instrument was controlled before its
+first real reading: a file with a real syntax error → exit 1; a valid file → exit 0; and
+**a path that does not exist → exit 1**, which is what rules out a resolve failure being
+read as 21 clean parses of nothing.
+
+🔴 **An earlier full-suite reading is VOID and is recorded rather than deleted.** It
+reported `4 failed, 4793 passed, 8 skipped, 5 errors`. Every one was DB schema contention:
+`DROP SCHEMA public CASCADE` deadlocked between two processes in one database, then
+`relation "repair_case" / "step_results" / "pipeline_runs" does not exist` followed from a
+schema dropped under a live session. The second session was **the Axis-B goal gate's own
+`pytest` criterion**, which fires at every Stop — a gate that corrupts the run it is
+watching. The criterion was retired and the suite re-run alone; the clean run above is the
+one AC-8 is ticked on.
+
+**The DB-collapse floor genuinely armed** — "no floor message" alone cannot distinguish
+*armed and cleared* from *never armed*, which is the exact distinction the C5 correction is
+about, so it was controlled. Driving `db_floor_verdict` with the real run's `(ci, args)`:
+`executed=0` → **message**; `executed=399` (floor is 400) → **message**; `executed=400` →
+silent; `ci=None` → silent; `args=["tests/"]` → silent. The last two reproduce, by
+measurement, the two C5 defects.
+
+### Two ACs are ticked as un-re-witnessable, not as witnessed
+
+**AC-1(b)'s "witnessed baseline RED"** and **AC-6** cannot fail if run today (C7). Their
+inline records state the reason. AC-1(b)'s *probe* is separate and was witnessed above;
+only its Step-1 baseline is un-re-witnessable, and the one command that would genuinely
+reconstruct it — `git show 61b0edc~1:…` piped into the loader — is recorded and out of
+scope. `61b0edc` was confirmed this session as the YAML-edit commit
+(`feat(fleet): Vendor carries the supplier-evaluation facts (PLAN-0117 Step 2)`,
+105 insertions).
+
+### One correction to this session's own record
+
+The 16th probe's note originally said the replacement text left `:129` "green as well".
+It does not: `:129` sits **after** `:127`, the run stops at the first failed assert, so
+`:129` was **never reached** and its state is unknown. `was an error`, raised by the
+`goal-evaluator`. Only `:120`–`:123` are witnessed green, and they are witnessed precisely
+because the failure site is `:127`. The printed battery report keeps the original wording —
+it is the authentic artifact of that run and is not rewritten after the fact.
+
+### Registered gap, deliberately not closed
+
+AC-2's two provenance-exclusion asserts (`:203`, `:204`) are named by AC-2's own pass read
+and carry no probe; they hold written exemptions. SD-8 resolved the `:127` gap and did not
+touch these two.
+
 
 ## Out of Scope
 
@@ -661,6 +1062,20 @@ type counts (AC-6's relative baseline), and whether PLAN-0109 has landed (Coordi
 §4 — if it has, re-verify F2/F7 line anchors before editing). Confirm `git status` in
 the first tool batch per standing hygiene.
 
+⚠️ **s275 C7 (`superseded by new info`) — the "witnessed baseline RED" above is
+un-re-witnessable at closeout.** Sound when written: this step ran before the YAML
+edit, so the 12-name pass read was genuinely RED. The YAML edit landed 2026-08-31
+(`61b0edc`, per the s275 dispatch); running AC-1(b)'s stated command today returns all
+12 names → **GREEN**, not RED. The **only** command that would genuinely re-witness the
+baseline is a reconstruction —
+`git show 61b0edc~1:verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml`
+written to a scratch path and fed to the loader in place of the tracked file — a
+materially different command from the one the AC states, and **out of scope for this
+closeout unless Cray rules otherwise**. Ticking AC-1(b) at closeout therefore credits
+its **removal probe** (the dormant-property mutation — one of the ruled 15), not this
+baseline, which is recorded as an honest tautological green. Nothing deleted, no
+substitute invented. The same classification covers AC-6's relative count (see AC-6).
+
 ### Step 2 — Author the `Vendor` extension in the YAML (AC-1, AC-2)
 
 Inside the existing `Vendor` block only (Coordination §1): declare the ruled IN-set
@@ -721,12 +1136,65 @@ no-records case (`TranslateOnlyStub` precedent:
 
 ### Step 5 — Probe battery (every witnessed RED above)
 
-Run the AC-1(a)/(b), AC-2, AC-3(a)/(b), AC-3a(a)/(b)/(c1)/(c2)/(d), AC-4 (both
-mutations), AC-5 probes through
-`tools/probe_battery/` — one claim per probe, `Claim.stable_key` addressing,
-scratchpad-backed restore, coverage report captured for the PR body (CLAUDE.md §8;
-module README, PLAN-0115). If a probe fails its pre-fixed criterion, repair the
-instrument — never relax the criterion after seeing the result.
+⚠️ **s275 C8 (`was an error`): the pre-s275 enumeration — "AC-1(a)/(b), AC-2,
+AC-3(a)/(b), AC-3a(a)/(b)/(c1)/(c2)/(d), AC-4 (both mutations), AC-5" — counted 13
+and silently dropped AC-1(c1) and AC-1(c2), which AC-1 itself defines as "two
+mutations, two assertions".** The corrected total was **15**, equal to the count Cray ruled
+for the full re-witness (typed, s274) — **and is 16 under SD-8, RULED (a) (Cray, typed,
+2026-09-03, s275; verbatim: "(a) 16 probe เลย"): 15 in-battery + AC-1(a) by hand.**
+Lineage, kept explicit: 15 was correct for the scope known at s274; SD-8 surfaced a claim
+that scope had not accounted for, and Cray widened it — `superseded by new info`, not
+`was an error`; 16 was not always the number. C8's 14-in-battery becomes 15 in-battery:
+
+| AC | probes | node / mutation (in-battery unless marked) |
+|---|---|---|
+| AC-1(a) | 1 | **outside the driver** — its subject is the `check-jsonschema` pre-commit hook, not a pytest node, so `tools/probe_battery/` has no `Claim` to address. Run by hand under the same discipline: scratch key → hook exits non-zero naming the file → restore; evidence file + printed exit code |
+| AC-1(b) | 1 | `test_the_vendor_block_declares_exactly_the_ruled_property_set` (`test_ontology_data_contract.py:330`) — remove one dormant property from the YAML |
+| AC-1(c1) | 1 | `test_every_authored_value_carries_its_demo_seed_stamp` (`:341`) — strip one stamp → 4 ≠ 5 |
+| AC-1(c2) | 1 | `test_the_promotion_path_is_recorded_exactly_once` (`:358`) — delete the PROMOTION PATH line |
+| AC-2 | 1 | `test_the_translate_prompt_carries_a_thai_name_for_every_supplier_fact` (`:192`) — delete one `synonyms` block |
+| AC-3(a) | 1 | `test_every_supplier_fact_has_at_least_one_carrying_row` (`:207`) — `None` both `avg_turnaround_days` values (C2) |
+| AC-3(b) | 1 | the existing `test_no_row_carries_a_property_the_ontology_never_declared` (F8, `:58-67`) — `x_scratch` on one row |
+| AC-3a(a)/(b)/(c1)/(c2)/(d) | 5 | `:237`, `:248`, `:262`, `:277`, `:291` — exactly as AC-3a states them |
+| AC-4 count | 1 | `test_counting_approved_garages_runs_on_real_rows` (`test_vendor_facts_scenario.py:64`) — flip one `standing`; `expect_claim` `:76` |
+| AC-4 dormant | 1 | `test_a_dormant_property_reaches_the_honest_no_records_answer` (`:96`) — seed `sanctions_flag: true`; `expect_claim` **`:121`** (C3) |
+| AC-4 dormant TEXT — **the 16th (SD-8, ruled (a) s275)** | 1 | `AC-4-dormant-no-records-TEXT` — subject `services/engine/nl_query.py:1103` (`_no_data_answer`: `return f"No {query.object_type} records match that query."`); node `test_a_dormant_property_reaches_the_honest_no_records_answer` (`:96`); `expect_claim` **`:127`**. Mutation: reword the string in place — `result_count` stays 0, `grounded` stays False, the id list stays empty, so `:120/:121/:122/:123` stay GREEN; the replacement carries no vendor name, so `:129` stays green; `:127` is the only assertion that reddens |
+| AC-5 | 1 | `test_golden_e2e.py:348` — `ScratchObject` in the fleet YAML |
+| **Total** | **16** | **15 in-battery + 1 outside the driver (AC-1(a))** — was 15 = 14 + 1 under the s274 ruling (C8), widened by SD-8 |
+
+Run the 15 through `tools/probe_battery/` — one claim per probe, `Claim.stable_key`
+addressing, scratchpad-backed restore — and AC-1(a) by hand with the same evidence
+discipline (CLAUDE.md §8; module README, PLAN-0115). Write every `old` **after** the
+final `ruff format` pass (README `:108-131`). If a probe fails its pre-fixed
+criterion, repair the instrument — never relax the criterion after seeing the result.
+
+**The 16th — SD-8, RULED (a) (Cray, typed, 2026-09-03, s275):** the landed dormant
+test's text assert (`test_vendor_facts_scenario.py:127`) is a separate claim that the
+AC-4 dormant probe cannot credit (C3), and it now carries its own probe,
+`AC-4-dormant-no-records-TEXT` (table row above). **Why its own probe rather than
+riding `:121`:** an empty result set and an empty id list are also what a CRASHED run
+produces; the deterministic no-records TEXT is the one thing only the real no-data
+path emits (the test's own comment, `:124-126`). Lineage: as drafted pre-ruling, the
+15 ran as enumerated with `:127` under a **provisional exemption whose text named
+SD-8** — a flagged disposition, never a silent one — and the 14-probe run Code
+measured at that stage (`PROBE-BATTERY: PASS`; `claims: 86 · witnessed RED: 14 ·
+exempted: 72 · GAPS: 0 · stale ids: 0`; `PROBE-COVERAGE: COMPLETE`; every probe
+`WITNESSED`, no GREEN / MISFIRE / CRASHED) stands as the pre-ruling baseline. The
+provisional exemption is **retired** — `:127` is credited by its probe, not exempted.
+The 16-probe re-run's result is Code's to record from the printed report, not this
+draft's.
+
+**Coverage report capture (the unhomed Verification-§5 requirement, homed here):** the
+report is **stdout only** (`_battery.py:577`; nothing is written to disk) — capture the
+run with `2>&1` into a file under the scratchpad *and* the session handoff directory;
+the passed run's report is the PR-body artifact Verification §5 names, and it is
+unrecoverable otherwise. Expect **71 written exemptions** (86 claims measured by Code
+s275 − **15** in-battery credits under SD-8 ruled (a); the pre-ruling 72 = 86 − 14 is
+the figure the 14-probe run printed; AC-1(a) is outside the 86, so not 86 − 16 = 70 —
+the s275 record's arithmetic note) — every unexplained GAP
+makes the verdict `PROBE-BATTERY: FAIL` (`:570`), and two of the 71 are AC-2's own
+provenance-exclusion asserts (`:203-204`; the s275 record's known-gaps note). Do not
+narrow `claim_sources` to shrink the denominator (`tools/probe_coverage.py:25-30`).
 
 ### Step 6 — Regenerate, gate, close (AC-5, AC-6, AC-7, AC-8)
 
@@ -739,7 +1207,8 @@ closeout, `git mv` to `docs/plans/done/`.
 ## Surfaced decisions — RULED (Cray, typed, 2026-08-31, session 265), original recommendation texts preserved for reasoning lineage
 
 Every SD below carries its ruling inline — **including SD-3a, ruled later in the
-same session, and SD-6, ruled in the s265 correction pass; nothing remains open.**
+same session, SD-6, ruled in the s265 correction pass, SD-7 (ruled s270) and SD-8
+(ruled s275); nothing remains open.**
 Where a ruling's *reasoning* differs from the
 original recommendation (SD-2), or the ruling *overturns* recommendations outright
 (SD-3a overturns both this draft's OUT disposition for the four and Code's own
@@ -1072,13 +1541,74 @@ Why Cray, not Code: the question was whether to re-open a scoring criterion afte
 seeing which model it favours. Only Cray can authorise that, and the ruling was that it
 is not re-opened.
 
+### SD-8 — RULED (a) — does the landed `:127` text assertion make the re-witness 16 probes, exceeding the ruled 15? (ruled s275)
+
+Arose in the s275 closeout-precondition pass (C3 + C8); the only open SD in this PLAN
+until Cray ruled it later the same session (ruling below; options kept for lineage).
+AC-4's dormant case landed as **six** assertions (`test_vendor_facts_scenario.py:120-129`),
+and the AC's single "dormant-case probe" (seed `sanctions_flag: true`) can credit only
+the first one it reddens — `:121` (`result_count == 0`). The deterministic-text assert
+at `:127` (`"No Vendor records match that query." in ans.answer`) is a separate claim
+in the coverage denominator; under CLAUDE.md §8's one-mutation-one-assertion rule it
+is credited only by its own probe, under a mutation that keeps `:121` green. Such a
+mutation exists — the no-data template at `nl_query.py:1103`
+(`f"No {query.object_type} records match that query."`): the count stays 0, the id set
+stays empty, `:127` alone reddens. Options:
+
+- **(a) Run it as a 16th probe — RECOMMENDED (Code, s275 draft).** Reason: `:127` is
+  the positive control the test's own comment (`:124-126`) says separates the real
+  no-data path from a crashed run; an exemption would assert "no probe can reach it"
+  when one demonstrably can — the exact reason-rot the exemption rule exists to
+  stop (`_battery.py:219-221`). Cost: one engine-side mutation (restored by the
+  driver) and one report line. It **exceeds the typed 15** — which is precisely why
+  it is Cray's call and not this draft's.
+- **(b) Exempt `:127` with a written reason** — "credited transitively: the `:121`
+  probe shows the no-data path is live; the text is that path's output" — and hold
+  the battery at 15. Honest but weaker: it exempts a reachable claim.
+- **(c) Re-read "15" as "the PLAN's probes, however many assertions each covers"** —
+  rejected by this draft: it re-interprets a typed ruling after the fact.
+
+Why Cray, not Code: Cray typed the number; adding a probe changes the scope of a typed
+ruling, and the alternative — an exemption on a reachable claim — is exactly the
+coverage-report quality the ruling was protecting. As drafted pre-ruling: the battery
+ran at 15 and `:127` carried a *provisional* exemption whose text named SD-8 — a
+flagged gap in the report, not a silent one; recommendation (a) was contingent on
+Cray's ratification, and the draft was written so either ruling is a one-line battery
+change.
+
+**RULING (Cray, typed, 2026-09-03, s275): (a) — verbatim: "(a) 16 probe เลย".** The
+`:127` text assertion runs as the **16th probe**, `AC-4-dormant-no-records-TEXT`
+(Step 5): subject `services/engine/nl_query.py:1103` (`_no_data_answer`'s
+`return f"No {query.object_type} records match that query."`), node
+`tests/verticals/fleet_maintenance/test_vendor_facts_scenario.py::test_a_dormant_property_reaches_the_honest_no_records_answer`
+(`:96`), `expect_claim` = the `:127` text assertion. The mutation rewords the string
+in place, so `result_count` stays 0, `grounded` stays False and the id list stays
+empty — `:120/:121/:122/:123` all stay GREEN — and the replacement carries no vendor
+name, so `:129` stays green too; `:127` is the only assertion that reddens. **Why it
+needed its own probe rather than riding `:121`:** an empty result set and an empty id
+list are also what a CRASHED run produces; the deterministic no-records TEXT is the
+one thing only the real no-data path emits. **Supersession, recorded as lineage:**
+this ruling widens Cray's own typed count of **15** (s274) to **16** —
+`superseded by new info`, NOT `was an error`. The 15 was correct for the scope known
+at s274; SD-8 surfaced a claim that scope had not accounted for, and Cray widened it.
+16 was not always the number, and this PLAN does not read as though it were.
+Consequences recorded: Step 5's total is **16 = 15 in-battery + AC-1(a) by hand**
+(C8's 14-in-battery becomes 15); the expected exemption count is **71 = 86 − 15**
+(AC-1(a) is outside the 86 — the s275 record's arithmetic note); the provisional
+exemption on `:127` is retired; the Owner line, C3, C8, AC-1, AC-4, Step 5 and
+Verification §3/§5 are updated in place; **no SD remains open**; no checkbox is
+ticked and Status is unchanged — the 16-probe re-run's result is Code's to record.
+
 ## Verification
 
-1. **Declared and addressable:** AC-1's exact 12-name property list (both bands)
-   after its witnessed baseline RED; schema hook green with its own red probe; Thai
-   synonyms rendered for the five (AC-2) with the synonyms-only mutation; the
-   SD-1(c) comment contract — ≥ 5 AUTHORED stamps + exactly one PROMOTION PATH
-   block — present with its two removal probes (AC-1(c1)/(c2)).
+1. **Declared and addressable:** AC-1's exact 12-name property list (both bands) —
+   its Step-1 baseline RED is un-re-witnessable post-landing (C7); the
+   dormant-property removal probe is the witness; schema hook green with its own red
+   probe (AC-1(a), run outside the driver — C8); Thai synonyms rendered for the five
+   (AC-2) with the synonyms-only mutation; the SD-1(c) comment contract — **exactly
+   5** AUTHORED stamps (C4) + exactly one PROMOTION PATH block — present with its
+   two removal probes (AC-1(c1)/(c2), both in the ruled set — 15 at s274, 16 after
+   SD-8).
 2. **Answerable, not just advertised:** every synonym-carrying property has a valued
    seed row (AC-3, closing F8's named gap), and a supplier-evaluation question
    round-trips grounded through the real translate→execute→phrase chain offline
@@ -1088,10 +1618,19 @@ is not re-opened.
    unpopulated in the seed, each carrying its `description` — with the
    `RepairCaseJustification`-authoritative sentence on `single_source_flag`
    (AC-3a's five probes); a dormant-property question terminates in the honest
-   no-records answer, reddening when a value is authored (AC-4's dormant case).
+   no-records answer — `grounded=False`, `result_count=0`, the deterministic text
+   (C1) — reddening at `:121` when a value is authored (AC-4's dormant case,
+   `expect_claim` `:121` — C3; the `:127` text claim is probed on its own as the
+   16th, `AC-4-dormant-no-records-TEXT` — SD-8, ruled (a) s275).
 4. **The promised non-events, witnessed:** golden oracle green with a zero exemption
-   diff and a live scratch-object red probe (AC-5); vertical counts unchanged relative
-   to baseline (AC-6); zero committed codegen drift with the positive control proving
-   the regen ran (AC-7).
-5. **Gate:** CI-scope ruff/mypy/pytest green (AC-8); all probes through
-   `tools/probe_battery/` with the coverage report in the PR body.
+   diff and a live scratch-object red probe (AC-5); fleet suite green with zero
+   modified pre-existing assertions (AC-6 — its count clause is tautological
+   post-landing, C7, and is not what the tick claims); zero committed codegen drift
+   with the **delete-first** positive control — grep fails on the emptied dir, then
+   passes after the regen (AC-7, C6).
+5. **Gate:** the seven CI-faithful offline commands green (AC-8, C5 — `--no-sync`
+   throughout, `CI=1 … pytest -q`); all **16** probes (15 through
+   `tools/probe_battery/` + AC-1(a) by hand — C8, widened by SD-8 ruled (a) s275)
+   with the coverage report — stdout only, captured `2>&1` — in the PR body, **71**
+   written exemptions expected (86 − 15 in-battery; this demand is homed in Step 5,
+   not in an AC; recorded as such in the s275 record).
