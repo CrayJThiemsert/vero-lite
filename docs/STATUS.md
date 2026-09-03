@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-09-02T20:27:11+07:00
+last_updated: 2026-09-03T11:15:00+07:00
 session: 273
-current_batch: "s269–s273 — NINE PRs (#1357–#1366): PLAN-0118 Steps 3–6 shipped, AC-1–AC-5 closed; the three subagent write guards never ran in-harness — moved to settings.json (#1363), witnessed live, marked `was an error` (#1366)."
+current_batch: "s269–s273 — TWELVE PRs (#1357–#1370): PLAN-0118 COMPLETE 6/6, archived; the empty body is MEASURED as the num_predict cap and is the CALL PATH, not the model; the write guards are live and witnessed."
 current_actor: code
-blocked_on: "NOTHING structural. PLAN-0118 AC-6 (Step 7) waits on a NEW typed §8 go; the 20-pair human-half re-run waits on §8 go + a timeout fix."
-next_action: "PLAN-0118 Step 7 / AC-6 — the ONE live baseline run — once Cray types a §8 go; until then, rank the next-work candidates (next-work-analyst) against the four streams."
-head_commit: cd6e438
-recent_commits: [cd6e438, a0741e7, 04336ad, c25bd62, e53b1f3, e019fda, e751efb, 0077163, 55792a6, 5db546f]
+blocked_on: "NOTHING. PLAN-0119 (local-model serving policy) is being drafted; the 20-pair human-half re-run still waits on a §8 go + a timeout fix."
+next_action: "Review the PLAN-0119 draft (five-class local-model serving policy) and commit it via PR; its first work is the OFFLINE instrument repair, before any further live run."
+head_commit: 8ac17f5
+recent_commits: [8ac17f5, bff7a55, 27372a6, af7b5c4, a105333, 2a11218, 4c0fc56, 6fc9783, cd6e438, a0741e7]
 ---
 
 # vero-lite — Project Status
@@ -18,8 +18,8 @@ recent_commits: [cd6e438, a0741e7, 04336ad, c25bd62, e53b1f3, e019fda, e751efb, 
 
 ## Current Focus
 
-> **Session 269–273, 2026-09-02 (`a0b743b` → `cd6e438`) — NINE PRs merged
-> ([#1357](https://github.com/CrayJThiemsert/vero-lite/pull/1357)–[#1366](https://github.com/CrayJThiemsert/vero-lite/pull/1366)),
+> **Session 269–273, 2026-09-02/03 (`a0b743b` → `8ac17f5`) — TWELVE PRs merged
+> ([#1357](https://github.com/CrayJThiemsert/vero-lite/pull/1357)–[#1370](https://github.com/CrayJThiemsert/vero-lite/pull/1370)),
 > 0 open, MS-S1 never contacted. What it established: a guard that is never
 > invoked reports nothing, and a benchmark's own criterion can be the false
 > negative.**
@@ -234,7 +234,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-09-02 | **s269–273 — NINE PRs (#1357–#1366): PLAN-0118 AC-1–AC-5 CLOSED, and the subagent write guards were found never to have run — marked `was an error` on ADR-0018 SD-1 / PLAN-0009 H2 / PLAN-0034 prong 2 (#1366; Cray ruled SD-1 covered, SD-2 no marker).** ✅ Steps 3–6 shipped (scorer, gold controls, runner, §8 scenario); **AC-1(d) corrected to same-unit** after a measured false negative; **AC-6 closed s273 on two live runs and the PLAN is COMPLETE 6/6, archived** — the second run measured the empty body as the `num_predict` cap (45 of 45 empty attempts `done_reason=length`, `eval_count` 1024, across three arms) and showed it is the single-call path, not the model. 🔴 **Guards inert since birth:** #1362 restored registration, #1363 moved them to `settings.json` behind an `agent_type` dispatcher, s273 **witnessed a real deny live**. ✅ §8 widened (#1358); the four s269 items ruled (#1359). | `cd6e438` / [#1363](https://github.com/CrayJThiemsert/vero-lite/pull/1363) / `docs/plans/done/0118-intake-extraction-benchmark.md` · `benchmarks/intake_extraction/RESULTS.md` · Lesson #0057 · ADR-0018 §Amendment (2026-09-02) · `DECISION.md` §5-RULED |
+| 2026-09-03 | **s269–273 — TWELVE PRs (#1357–#1370): PLAN-0118 COMPLETE 6/6 and archived; the empty-body failure is MEASURED as the `num_predict` cap, and it is the CALL PATH, not the model.** 45 of 45 empty attempts carry `done_reason=length` with `eval_count` 1024 across three arms, and both Qwen arms are **worse** than `gpt-oss` (74% / 75% vs 53%). 🔴 **Three of Code's own claims were withdrawn on re-measurement** (#1370) — `eval_count` was never broken, the arithmetic was Code's; the reasoning-ate-the-budget mechanism is unsupported; a second-segment budget is CONTESTED and open. ✅ The three subagent write guards are live and witnessed (#1362/#1363), marked `was an error` (#1366). | `8ac17f5` / [#1369](https://github.com/CrayJThiemsert/vero-lite/pull/1369) / `docs/plans/done/0118-intake-extraction-benchmark.md` · `benchmarks/intake_extraction/RESULTS.md` · Lesson #0057 · ADR-0018 §Amendment |
 | 2026-09-01 | **s267 tail + s268 — EIGHT PRs (#1348–#1355): three are one lesson — a claim is only as good as the surface its consumer reads.** 🔴 **The `llm_assist` gate advisory is DO-NOT-WIRE** — the model's whole input is `" ".join(reasons)`, already on the approver's screen, and `detail.narrative` has **one writer, zero readers**; #1349's rubric, ruled that morning, scored a position #1352 cut that night. Offline, **§8 go UNUSED**. ✅ **PLAN-0118 drafted (#1353), five SDs RULED (#1354), Steps 1–2 shipped (#1355)** — 11 intake cases, 8 scored. 🔴 The Step-2 authoring check was **vacuous by construction** (8 of 8 → honest **4 of 8**). | `a0b743b` / [#1352](https://github.com/CrayJThiemsert/vero-lite/pull/1352) / [#1355](https://github.com/CrayJThiemsert/vero-lite/pull/1355) / `benchmarks/model_compare/DECISION.md` §5a-RESULT |
 | 2026-09-01 | **s267 — FOUR PRs (#1343–#1346): two published numbers were measuring the apparatus.** 🔴 **A p95 below 20 samples IS the sample maximum** — nearest-rank `ceil(0.95n)` = `n` for `n < 20`, so the n=14 procedure bar and the NL lane published maxima under a percentile's name in **every run ever made**; fixed at the reporting layer (`tail_s`/`tail_label`), 4 call sites, NL half previously untested. 🔴 **`think_off` costs rationale quality** — qwen q4 `fleet`: `full` 7/14 · `think_off` 4/14 · `skip` 5/14, control-gated; `names_amount` still **inverts** the ratified bar, now inside one model. Batteries 11/11 WITNESSED. | `8843000` / [#1344](https://github.com/CrayJThiemsert/vero-lite/pull/1344) / [#1346](https://github.com/CrayJThiemsert/vero-lite/pull/1346) / `benchmarks/model_compare/RESULTS-1.6.md` |
 | 2026-08-31 | **s265-266 — TWELVE PRs (#1329-#1340): PLAN-0117 EXECUTED and its experiment MEASURED.** `Vendor` 3 to 12 properties in two ruled bands; all 8 ACs closed, 14 of 14 WITNESSED. The AFTER run on MS-S1 (typed §8 go) shows the unlock **usable** (supplier band gpt-oss 1 of 3, qwen 3 of 3) and **zero harm** — `fl-01`..`fl-10` identical to BEFORE case-for-case on both models despite a +56% prompt. 🔴 The s265 handoff's `fl-03` discriminator claim is **RETIRED by measurement** (`truck_class` gained no synonyms). 🔴 **OPEN:** whether `fl-21` and `fl-22` should score the answer or the query shape. | `docs/plans/0117-fleet-ontology-supplier-evaluation-facts.md` · `benchmarks/nl_query_feasibility/RESULTS.md` · [#1335](https://github.com/CrayJThiemsert/vero-lite/pull/1335) · [#1337](https://github.com/CrayJThiemsert/vero-lite/pull/1337) |
@@ -306,7 +306,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Next Steps
 
-> **Immediate next action is PLAN-0118 Step 7 / AC-6** — the one live baseline run — once Cray types a §8 go (the `was an error` marker landed #1366; nothing else from s269–s273 is owed). Until the go arrives, rank the next-work candidates against the four streams (`next-work-analyst`). See the **first Active TODO** above. The items below are the long-horizon register and none of them gates it.
+> **Immediate next action is the PLAN-0119 draft** — a five-class local-model serving policy (Gate / Structure / Judge / Narrate / Author), commissioned by Cray after the PLAN-0118 findings and drafted by `plan-drafter`. Its FIRST work is the **offline instrument repair**, before any further live run: the benchmark recorder drops `load_duration` and `prompt_eval_duration` that `CallMetrics` already computes, and there is no flag to set a cap at all. Nothing from s269–s273 is owed. The items below are the long-horizon register and none of them gates it.
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework, mapping layer, ORM emitter, base-Postgres → the custom-Postgres image, registry discovery). _[Corrected s153: dropped the stale "→ ADR-011+" and "→ PLAN-002 (≥ADR-014)" pointers — **ADR-011 does not exist** (earmark only, per the Active TODO above) and **PLAN-002 was never drafted** with its ADR floor moot; each item's corrected status lives in Active TODOs.]_
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
