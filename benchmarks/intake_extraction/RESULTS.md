@@ -240,9 +240,42 @@ as the baseline. Artifacts: `.claude/benchmark-results/intake-s273b-{gptoss,qwen
 **Zero exceptions in 66 attempts across two model families and three quantizations.**
 `eval_count` on every single empty attempt is **exactly 1024** — the configured
 `settings.llm_max_output_tokens`, sent as `num_predict`. On the attempts that
-delivered content it is 135–381. `thinking_chars` on the empty ones is
-**3,295–4,513 characters**: the budget went to reasoning, and there was nothing left
-to emit the JSON with.
+delivered content it is 135–381 — **but see the correction below before reading that
+second figure as a demand.** `thinking_chars` on the empty ones is **3,295–4,513
+characters**, which at 1024 tokens is **3.22–4.41 characters per token** — ordinary
+tokenization. So on a truncated call the whole budget rendered as reasoning text and
+`content_chars` is 0: nothing was left to emit the JSON with.
+
+#### 🔴 Correction (same session, prompted by Cray asking how the three numbers relate)
+
+Doing that arithmetic on the **delivering** attempts shows it does not hold there,
+and two things written above and in this PR's first draft were wrong.
+
+- **`eval_count` under-reports on a `"stop"` response.** The 21 delivering attempts
+  report 135–381 tokens while carrying 1,860–4,032 characters of thinking plus
+  457–1,130 of content — **8.6 to 25 characters per token**, which no tokenizer
+  produces. Concretely, `bo-01` attempt 2: `eval_count=135` beside 2,054 characters
+  of thinking and 457 of content. The counter evidently excludes the reasoning
+  channel when the model stops on its own. **The 135–381 figure is therefore
+  withdrawn as a measure of what a successful call demands.** It is reported here
+  only because it is what the envelope said.
+- **"Reasoning ate the budget" over-claims the mechanism.** Thinking length overlaps
+  heavily between the two groups: truncated 3,295–4,513 (median 3,783), delivering
+  1,860–4,032 (median 3,133). **6 of 21** delivering attempts reasoned inside the
+  truncated range and **3** reasoned longer than the truncated median. So the failing
+  calls did not simply think more.
+
+**What survives unchanged:** that the empty bodies are truncations. `done_reason` is
+the server's own statement of why generation stopped, not a figure derived here, and
+it reads `"length"` on 45 of 45 empty attempts and `"stop"` on 21 of 21 delivering
+ones. The cross-arm result (Qwen worse than `gpt-oss` ⟹ path, not model) is likewise
+untouched — it rests on empty-body counts, not on token accounting.
+
+**What is now explicitly open:** *why* some calls finish inside the budget and others
+do not. This run cannot answer it, because the one counter that would — total tokens
+generated including reasoning — is the counter shown here to be unreliable on exactly
+the calls that succeed. A follow-on needs a trustworthy total (or a per-channel
+split) before any "raise the cap by N" conclusion is drawn.
 
 The hypothesis the baseline could only offer is now measured. The retry loop's
 message — *"output was not valid JSON"* — was describing an empty string the whole
