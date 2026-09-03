@@ -78,3 +78,38 @@ def test_both_advisories_can_be_emitted_together() -> None:
     assert hygiene is not None, "expected the pipe-to-truncator rule to fire too"
     assert venv is not None
     assert hygiene != venv, "the two advisories must be distinguishable"
+
+
+def test_prose_that_merely_mentions_a_bare_uv_run_is_silent() -> None:
+    """🔴 REGRESSION, measured s276 one minute after the advisory shipped.
+
+    The unanchored predicate fired on this feature's own PR-creation command — a
+    ``gh pr create --title "…name a bare uv run the moment it empties…"`` — because
+    it matched the words inside a quoted argument, next token ``the``. An advisory
+    that fires on *talking about* the hazard is one its reader learns to skip,
+    which the sibling advisory's own docstring records happening at a 30.8%
+    firing rate.
+
+    So ``uv run`` must sit at a COMMAND position: start of string, after a
+    separator, after a newline, or directly after an opening quote (the
+    ``bash -lc "uv run …"`` shape). Reached by a space, in prose, it is not a
+    command.
+    """
+    prose = [
+        'gh pr create --title "name a bare uv run the moment it empties the venv"',
+        "echo the rule is: never a bare uv run here",
+        'git commit -m "fix: stop a bare uv run from stripping the venv"',
+    ]
+    for cmd in prose:
+        assert observer._venv_strip_warning(cmd) is None, f"false positive on prose: {cmd!r}"
+
+
+def test_the_command_position_shapes_all_still_fire() -> None:
+    """🟢 The control for the anchoring above: tightening must not have made the
+    guard blind. Each of these is a real shape an agent writes."""
+    for cmd in (
+        "uv run pytest -q",
+        "cd ~/work/vero-lite && uv run python tools/x.py",
+        'wsl bash -lc "uv run pytest"',
+    ):
+        assert observer._venv_strip_warning(cmd) is not None, f"missed a real command: {cmd!r}"

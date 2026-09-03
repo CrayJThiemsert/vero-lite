@@ -461,7 +461,13 @@ _ANY_DOLLAR_RE = re.compile(r"\$")
 #: bare form appears ZERO times in `.pre-commit-config.yaml` and ZERO in
 #: `ci.yml` — the only tracked uses left are in `scripts/bootstrap.sh`, where a
 #: fresh clone has no venv to strip.
-_UV_RUN_RE = re.compile(r"\buv\s+run\s+(?P<next>\S+)")
+#:
+#: ⚠️ Anchored at a COMMAND position — start, a separator, a newline, or an
+#: opening quote (the `bash -lc "uv run …"` shape). Measured s276, one minute
+#: after this shipped: the unanchored form fired on a `gh pr create --title`
+#: whose PROSE contained the words `uv run the`. An advisory that fires on
+#: talking about the hazard is one its reader learns to skip.
+_UV_RUN_RE = re.compile(r"(?:^|[;&|]\s*|\n\s*|['\"]\s*)uv\s+run\s+(?P<next>\S+)")
 
 
 def _venv_strip_warning(command: str) -> str | None:
