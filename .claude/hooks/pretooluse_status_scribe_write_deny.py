@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """PreToolUse hook — restrict ``status-scribe`` subagent writes to ``docs/STATUS.md``.
 
-Subagent-scoped hook wired in ``.claude/agents/status-scribe.md`` frontmatter
-under ``hooks.PreToolUse`` with matcher ``Write|Edit``. Mirrors the H2
+Subagent-scoped hook reached via ``pretooluse_subagent_write_dispatch.py``
+(registered in ``.claude/settings.json`` for ``Write|Edit``), which routes on
+the payload's ``agent_type``. The frontmatter route this originally used was
+measured **dead** in session 272 (Lesson #0057). Mirrors the H2
 write-path allowlist pattern established by
 ``pretooluse_plan_subagent_write_deny.py`` (PLAN-0009 Step 1b §5), narrowed to
 the single file ``status-scribe`` is allowed to touch.
@@ -26,10 +28,19 @@ construction.
 Bypass-immunity: the hook fires regardless of ``permissionMode`` (including
 ``bypassPermissions``).
 
-This hook intentionally does **not** inspect ``agent_id`` / ``agent_type``.
-Subagent scoping comes from the frontmatter wiring; if a future change moves
-the hook to project-level the test suite must fail loudly so the boundary
-inversion is caught at review time.
+This hook intentionally does **not** inspect ``agent_id`` / ``agent_type``
+itself. 🔴 **Corrected s275 (`was an error`):** scoping does *not* come from
+the frontmatter wiring. Measured session 272 (Lesson #0057): a subagent's
+frontmatter ``hooks:`` block never fires in this harness. The block in the
+agent file is well-formed — ``ad47f49`` rewrote all three to the documented
+nested shape, which is why the agents load at all — but it is inert. The live
+route is ``pretooluse_subagent_write_dispatch.py``, registered in
+``.claude/settings.json`` for ``Write|Edit``, which reads the payload's
+``agent_type`` and calls this module. The identity check therefore *does*
+happen, one level up; this hook is right to skip it only because the dispatcher
+already made it. Remove that registration and this allowlist stops being
+reached at all — a silent boundary inversion, which is why
+``tests/handoffs/test_settings_hook_wiring.py`` pins it.
 """
 
 from __future__ import annotations
