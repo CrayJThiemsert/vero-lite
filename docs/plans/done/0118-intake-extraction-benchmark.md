@@ -1,6 +1,8 @@
 # PLAN-0118: Intake-extraction benchmark — measure the model at the shipped `extract_package` seam
 
-**Status:** Draft
+**Status:** Complete — 6/6 ACs closed (s269–s273). Archived to `docs/plans/done/` at the
+Step 7 close-out. **Completed:** 2026-09-02 (s273) — AC-1/2/5 #1357+#1364, AC-3/4 #1360,
+AC-6 the two live runs (#1368 baseline, and the three-arm accounting run that explained it).
 **Owner:** Claude Code — ✅ **UNGATED: SD-1, SD-1a, SD-2, SD-3 and SD-4 were all RULED by
 Cray (typed, 2026-09-01, session 268)**; every ruling took the drafted recommendation. See
 §Surfaced decisions for each ruling recorded against its own options. Execution may now
@@ -213,7 +215,12 @@ ruling; the probe obligations below hold under every option.
   read past the word `latency` in this same sentence. The rest of AC-2 stands and is
   evidence-backed; only this diagnostic is unbuilt. It surfaced at AC-6, where the
   deliverable names it again. Cray's call, stated at AC-6 below: narrow the clause,
-  or build the timing and re-run under a second §8 go.]_ Two
+  or build the timing and re-run under a second §8 go. ✅ **CLOSED the same session —
+  Cray chose to BUILD it:** the recorder now carries `total_duration_ns` (plus
+  `done_reason`, `eval_count`, `prompt_eval_count`, `thinking_chars`) via the shipped
+  `call_metrics()`, witnessed RED by probes A1–A8, and the second run measured it. The
+  clause this tick read past turned out to be the one that explained the whole
+  benchmark — see AC-6's resolution note.]_ Two
   structural guards, each its own test assertion:
   (a) a gold case that declares `source` as a scored field is **rejected** (raises,
   naming `intake.py:186` in the message) — the scorer cannot be talked into
@@ -325,7 +332,7 @@ ruling; the probe obligations below hold under every option.
   MUTATION-ERROR**; coverage 22 / 121 claims with 99 GAPS → exit 1 on coverage only,
   the same honest denominator as the Step 4 record; working tree clean before and
   after (0 → 0 porcelain lines). Nothing here is evidence about any model — AC-6 only.
-- [ ] **AC-6 — the live baseline run. [SD-4-gated; typed CLAUDE.md §8 go required —
+- [x] **AC-6 — ✅ CLOSED s273 — the live baseline run. [SD-4-gated; typed CLAUDE.md §8 go required —
   this AC does not run without it.]** One batched run over the full gold set against
   the shipped configuration (`settings.recommender_model`, `routers/intake.py:62`),
   driven by AC-4's runner. Deliverable: `benchmarks/intake_extraction/RESULTS.md`
@@ -357,15 +364,32 @@ ruling; the probe obligations below hold under every option.
   attempts returned an empty body**; `band_compliance` fails **systematically** at
   `site_role.properties=0` in 4 of 5 misses; the injection band was **obeyed** in
   both cases that answered).
-  **Why it is NOT ticked:** the deliverable this AC names includes per-case
-  **`latency`**, and the shipped runner has **no timing instrumentation at all** —
-  the same unbuilt diagnostic AC-2's wording promises (see the `was an error`
-  correction there). Every other element of AC-6 is delivered. Ticking now would
-  claim a deliverable clause that is absent, so the box waits on **Cray's ruling**:
-  **(a)** narrow AC-2 + AC-6 to drop `latency` (it is a diagnostic, never a scored
-  axis; the run answers everything else) and tick — **RECOMMENDED**, F3 minimises
-  live runs; or **(b)** add timing to the runner and spend a **second typed §8 go**
-  on a re-run. No third option: latency cannot be recovered from these artifacts.
+  **Why it was NOT ticked at the first run:** the deliverable this AC names includes
+  per-case **`latency`**, and the shipped runner had **no timing instrumentation at
+  all** — the same unbuilt diagnostic AC-2's wording promises (see the `was an error`
+  correction there). Every other element of AC-6 was delivered. Ticking then would
+  have claimed a deliverable clause that was absent, so the box waited on Cray's
+  ruling between narrowing the ACs or building the timing.
+
+  ✅ **RESOLVED — Cray chose (b) (typed, 2026-09-02): build the timing, spend a
+  second §8 go.** Done, and it turned the blocked clause into the run's main result.
+  The recorder (never `intake.py`) gained `done_reason`, `eval_count`,
+  `prompt_eval_count`, `thinking_chars`, `total_duration_ns`, `eval_duration_ns` via
+  the shipped `call_metrics()`; +6 tests (53 → 59 in the three intake modules), a
+  10-probe battery **10/10 as declared (8 WITNESSED + 2 GREEN controls, 0 misfire)**,
+  full suite **4801 passed / 8 skipped** with the arithmetic closing exactly
+  (4795 + 6). Second run: three arms, serialized, all **INSTRUMENT-SOUND**, wall
+  clock 53 min 19 s, rc=0. **Per-case latency is now measured** and the AC-6 table in
+  `RESULTS.md` carries it, so this box is ticked.
+  🔴 **The result the clause bought:** across **66 attempts on two model families and
+  three quantizations, all 45 empty bodies carry `done_reason="length"` with
+  `eval_count` exactly 1024, and all 21 non-empty carry `"stop"` — zero exceptions**.
+  The empty body is the `num_predict` cap, measured, not inferred; `thinking_chars`
+  3,295–4,513 on the silenced attempts shows the budget going to reasoning. And the
+  two Qwen arms are **worse** (74% / 75% empty vs 53%), so it is the **single-call
+  path sharing one budget with an unbudgeted reasoning pass**, not a `gpt-oss` habit.
+  Had (a) been chosen, the clause would have been deleted and this would still be a
+  guess.
 
 ## Out of Scope
 
@@ -400,6 +424,22 @@ ruling; the probe obligations below hold under every option.
 - ❌ **Multi-model comparison in the first live run** — the shipped
   `settings.recommender_model` only, unless Cray's SD-4 ruling says otherwise; live
   runs are minimized (F3).
+  ✅ **AMENDED for the SECOND run (Cray, typed, 2026-09-02, session 273).** The
+  first run happened and stayed inside this rule — 20 of 20 attempt tags were
+  `gpt-oss:20b`. It then produced a finding this rule prevents anyone from
+  explaining: **11 of 20 attempts returned an empty body**, and a single-model run
+  cannot separate *"this is `gpt-oss`'s habit"* from *"this is our single-call
+  path, where reasoning and JSON share one `num_predict=1024` budget"*. Those two
+  readings commission opposite next steps (change the model vs change the call
+  design), so Cray ruled the second run carries **three arms on the same rails**:
+  the shipped `gpt-oss:20b` (still the baseline of record) plus
+  `qwen3.8:27b-mtp-q4_K_M` and `qwen3.8:27b-mtp-q8_0`, serialized, each warmed and
+  verified present first. The rule above still governs any later run: this is a
+  one-time, reasoned amendment, not its repeal. ⚠️ Carried risk, recorded before
+  firing: Ollama #15260 drops the `format` constraint for the Qwen3.x family when
+  `think=false` is paired with a schema — intake **omits** `think`
+  (`intake.py:181-182`), so it may not fire, but if a qwen arm returns prose the
+  arm is reported as such rather than being repaired.
 
 ## Surfaced decisions — ALL RULED (Cray, typed, 2026-09-01, session 268)
 

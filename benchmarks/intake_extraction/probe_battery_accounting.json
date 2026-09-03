@@ -1,0 +1,100 @@
+{
+  "claim_sources": [
+    "tests/benchmark/test_intake_extraction_scenario.py"
+  ],
+  "probes": [
+    {
+      "name": "A0-comment-only-GREEN-control",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    index: int\n    content: str | None\n    model: str | None\n    error: str | None = None\n    done_reason: str | None = None",
+      "new": "    index: int  # negative control: a comment cannot change behaviour\n    content: str | None\n    model: str | None\n    error: str | None = None\n    done_reason: str | None = None",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_recorder_captures_the_generation_accounting",
+      "expect_claim": "test_the_recorder_captures_the_generation_accounting|attempt.done_reason == \"stop\"|#0",
+      "note": "negative control: a comment-only edit must change nothing. This green is what rules out 'the battery's own edit/restore broke something' for every probe below.",
+      "expect": "GREEN"
+    },
+    {
+      "name": "A1-done-reason-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                done_reason=metrics.done_reason,",
+      "new": "                done_reason=None,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_recorder_captures_the_generation_accounting",
+      "expect_claim": "test_the_recorder_captures_the_generation_accounting|attempt.done_reason == \"stop\"|#0",
+      "note": "the truncation oracle is the whole point; dropping it must redden at its own site"
+    },
+    {
+      "name": "A2-eval-count-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                eval_count=metrics.eval_count,",
+      "new": "                eval_count=None,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_recorder_captures_the_generation_accounting",
+      "expect_claim": "test_the_recorder_captures_the_generation_accounting|attempt.eval_count == 260|#0",
+      "note": "demand is the second half of the discriminator; done_reason stays captured so only this assert moves"
+    },
+    {
+      "name": "A3-latency-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                total_duration_ns=metrics.total_duration_ns,",
+      "new": "                total_duration_ns=None,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_recorder_captures_the_generation_accounting",
+      "expect_claim": "test_the_recorder_captures_the_generation_accounting|attempt.total_duration_ns == 8_200_000_000|#0",
+      "note": "this is the AC-6 latency clause; the earlier asserts on done_reason/eval_count stay green, isolating it"
+    },
+    {
+      "name": "A4-truncated-oracle-keyed-wrong",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        return self.done_reason == \"length\"",
+      "new": "        return self.done_reason == \"stop\"",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_an_empty_body_at_the_cap_is_distinguishable_from_a_deliberate_stop",
+      "expect_claim": "test_an_empty_body_at_the_cap_is_distinguishable_from_a_deliberate_stop|cut.truncated is True|#0",
+      "note": "inverting the oracle must redden the DISCRIMINATOR; the preceding equal-content assert stays green, so the probe proves the discrimination and not the fixture"
+    },
+    {
+      "name": "A5-thinking-chars-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                thinking_chars=metrics.thinking_chars,",
+      "new": "                thinking_chars=None,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_thinking_chars_records_how_much_of_the_generation_was_reasoning",
+      "expect_claim": "test_thinking_chars_records_how_much_of_the_generation_was_reasoning|client.attempts[0].thinking_chars == 3105|#0",
+      "note": "reasoning size is the quantity the cap hypothesis is about"
+    },
+    {
+      "name": "A5c-thinking-chars-SIBLING-GREEN",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                thinking_chars=metrics.thinking_chars,",
+      "new": "                thinking_chars=None,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_recorder_captures_the_generation_accounting",
+      "expect": "GREEN",
+      "expect_claim": "test_the_recorder_captures_the_generation_accounting|attempt.done_reason == \"stop\"|#0",
+      "note": "control: dropping thinking_chars must NOT disturb the done_reason capture. A green here is what rules out 'something unrelated broke' for A5."
+    },
+    {
+      "name": "A6-transport-failure-fabricates-accounting",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            self.attempts.append(AttemptRecord(index=index, content=None, model=None, error=detail))",
+      "new": "            self.attempts.append(AttemptRecord(index=index, content=None, model=None, error=detail, eval_count=0))",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_a_transport_failure_records_no_accounting",
+      "expect_claim": "test_a_transport_failure_records_no_accounting|attempt.eval_count is None|#0",
+      "note": "POSITIVE CONTROL for a negative assertion: a zero is a measurement that never happened wearing the shape of one that did, and the None-assert must catch exactly that"
+    },
+    {
+      "name": "A7-artifact-drops-the-accounting",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            \"done_reason\": self.done_reason,\n            \"truncated\": self.truncated,",
+      "new": "            \"done_reason\": None,\n            \"truncated\": self.truncated,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_artifact_carries_the_accounting_for_every_attempt",
+      "expect_claim": "test_the_artifact_carries_the_accounting_for_every_attempt|[a[\"done_reason\"] for a in record[\"attempts\"]] == [\"length\", \"stop\"]|#0",
+      "note": "in-memory capture is not the deliverable; re-adjudication needs it in the FILE"
+    },
+    {
+      "name": "A8-artifact-drops-truncated-flag",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            \"truncated\": self.truncated,",
+      "new": "            \"truncated\": False,",
+      "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_artifact_carries_the_accounting_for_every_attempt",
+      "expect_claim": "test_the_artifact_carries_the_accounting_for_every_attempt|[a[\"truncated\"] for a in record[\"attempts\"]] == [True, False]|#0",
+      "note": "one mutation per assertion: A7 pins done_reason, this pins the derived flag beside it"
+    }
+  ],
+  "exemptions": []
+}
