@@ -1,7 +1,7 @@
 # ADR-0018: Axis-B Verification Loop — `/goal` Stop-hook gate + `goal-evaluator` subagent
 
 **Status:** Accepted
-**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below); **Amendment** 2026-09-02 (factual correction, `was an error` — the SD-1 deny hook never ran in-harness until #1363; see §Amendment 2026-09-02 below); **Amendment** 2026-09-03 (direction ratified by Cray, typed, s275 — adds **D8** the resource-binding contract for `check` criteria; corrects D1's "un-arguable" as `was an error`; the deterministic layer fabricated nine test failures by binding the session's own test database at Stop — see §Amendment 2026-09-03 below)
+**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below); **Amendment** 2026-09-02 (factual correction, `was an error` — the SD-1 deny hook never ran in-harness until #1363; see §Amendment 2026-09-02 below); **Amendment** 2026-09-03 (direction ratified by Cray, typed, s275 — adds **D8** the resource-binding contract for `check` criteria; corrects D1's "un-arguable" as `was an error`; the deterministic layer fabricated nine test failures by binding the session's own test database at Stop — see §Amendment 2026-09-03 below; **SD-A / SD-B ruled (b)** later the same session, Cray typed — identity marker + Postgres session advisory lock, against the dispatch's specified mechanism (`was an error` on the dispatch's part); SD-C / SD-D remain open)
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-013 (autonomy-axis relocation — harness primitives are Code-built per D1; **this ADR applies that boundary**: the gate + evaluator are Code-authored), ADR-009 (D1 — this ADR is Cowork-drafted under the interim process; D2 — only Code commits; D3 — K-1/K-2 workflow used for the companion handoff), ADR-0017 (track-1 precedent off the same harness review; D7 harness-as-plugin forward link → OQ-8 here), ADR-0016 (D5 product-side `Procedure.goal` — a **distinct concept**; see D2 NB below), ADR-012 (D4.3 author≠reviewer disclosure), PLAN-0008 (in `done/` — the `Stop` continuation loop + Sonnet classifier this gate composes with), PLAN-0009 (subagent topology — the Step 5c dispatch-block spawn pattern + Step 1b subagent contract reused here), PLAN-0010 (scheduled-task autonomy loop — the unattended-run scope in D5), CLAUDE.md §6 (tier table), §7 (PR flow — explicitly NOT gated in v1, D5). Authoring dispatch: `.claude/handoffs/session-51/2026-06-10-0147-code-axisb-verification-loop-adr-dispatch.md`.
 
@@ -1109,6 +1109,27 @@ Cray's review.
 > specification gaps that let the defect through are marked at their line.
 > Status stays **Accepted**.
 
+> **Rulings on the surfaced decisions — Cray, typed, 2026-09-03 (s275),
+> verbatim: "SD-A เอา (b), SD-B เอา (b)".** Both surfaced decisions go to the
+> drafter's **recommended** option, **against the mechanism the authoring
+> dispatch specified** — a full `TEST_DATABASE_URL` for SD-A, a lease file
+> for SD-B. Classification, recorded plainly: **`was an error` on the
+> dispatch's part**, not `superseded by new info` — the constraints the
+> drafter raised (the gate is Windows-side, stdlib-only, reads no `.env` and
+> cannot reproduce the POSIX-path digest; `.claude/state/` is per-worktree)
+> were true when the dispatch was written and had not been checked. The
+> drafter's objections are the rulings' grounds and are restated where each
+> decision now lives (D8-VX-2, D8-VX-3); D8.2 and D8.4 carry the ruling on
+> top of the text they qualify. **The implementation PR is no longer blocked
+> on SD-A or SD-B.** It still follows this ADR's merge (CLAUDE.md §8).
+> **Not ruled, and still open — stated so a reader is not misled by the two
+> closings:** **SD-C** (the strength of the orphaned-pytest consequence in
+> defect (a), recorded there as `asserted-not-verified` and measured by
+> D8-VX-4) and **SD-D** (whether `CLAUDE.md` gets the A3-T7 one-line
+> pointer — optional, Cray's). Both were surfaced in the drafter's s275
+> return message and are carried in this file by substance; the labels are
+> introduced here only as pointers, and neither is closed.
+
 ### What happened (measured by Code, s275)
 
 The gate's deterministic `check` criteria run at **every Stop** (D5;
@@ -1238,6 +1259,23 @@ After D8.2, two `pytest`s in one checkout still collide **with each other**;
 they no longer collide **with the gate**, which is the one actor in all three
 occurrences that fires without a human choosing the moment.
 
+_[SD-A RULED (b) — Cray, typed, 2026-09-03, s275. The "mechanism of record"
+sentence above — *the gate injects its own `TEST_DATABASE_URL`* — was the
+dispatch's, and is `was an error` on the dispatch's part: the gate cannot
+assemble that URL (grounds at D8-VX-2). **Mechanism of record now:** the gate
+injects an **identity marker** (e.g. `VERO_TEST_DB_ROLE=gate`) into the check
+subprocess's environment, and `_isolate_test_database_per_worktree`
+(`tests/db_support.py:137-148`) honours it by **appending a suffix to
+whatever name it would otherwise resolve** — the per-checkout derivation
+(`:148`) *and* an explicit `TEST_DATABASE_URL` alike (`:146-147` returns
+early today; the marker branch applies in both arms). The invariant stays
+**primary** and is unchanged — *a database distinct from the checkout's
+interactive test database* is what a future reader must preserve; the marker
+is **secondary** — how s275 chose to achieve it. The verbatim-honour property
+this paragraph cites (`:143-144`) is what the marker composes with rather
+than overrides. `ensure_test_database()` and `_assert_not_dev_db` apply to
+the suffixed name exactly as written above.]_
+
 **D8.3 — Per-checkout DB scoping stays.** It is load-bearing and correct: it
 separates *checkouts* (Code, s275: 19 live entries under `.claude/worktrees/`
 — not re-read by the drafter, the listing timed out over UNC), and every
@@ -1260,6 +1298,19 @@ battery lock stands the gate down with zero residue in `goal.json`
 latent defect (a) below: the launcher's lifetime is not guaranteed to cover
 the child's.
 
+_[SD-B RULED (b) — Cray, typed, 2026-09-03, s275. The lease is a **Postgres
+session-level advisory lock** (`pg_try_advisory_lock` on a key derived from
+the database name), not a lease file — grounds and the build cost at
+D8-VX-3, controls at D8-VX-6. It meets this paragraph's contract by
+construction: process-owned (bound to the pytest process's own backend),
+database-keyed (the key *is* the resource), loud refusal (the second
+arriver's `pg_try_advisory_lock` returns false at acquisition). One
+consequence for defect (a) is worth naming: an orphaned WSL-side `pytest`
+whose backend is still alive **keeps** the lock — correctly, because the
+resource is still bound — so a later arriver is refused loudly instead of
+deadlocking under it; the lock releases the instant that backend dies, with
+no staleness bound to tune and no reaper.]_
+
 **D8.5 — Contention is self-identifying, on clean runs too.** A
 `DeadlockDetectedError` or an `UndefinedTableError` **at fixture setup** is
 classified as an **infrastructure verdict distinct from a test failure**.
@@ -1277,13 +1328,22 @@ case), and under V2-D3 an `enforce: true` goal would ride a fabricated
 `check` FAIL straight into the block ladder. The exact code and status name
 are the build PLAN's.
 
+_[Amended s275, post-ruling (SD-B (b)) — with an advisory lock the second
+arriver is refused **at acquisition**, so the contention question has a
+cheaper source than a `pg_stat_activity` scan: the lock attempt itself
+answers it. The token requirement is **unchanged** — a measured value prints
+on every run, clean or dirty — only its implementation follows from the
+lock (the refused attempt supplies *whether*; the printed `N`, or the
+holder's pid from `pg_locks`, is the build's to source; a bare boolean does
+not satisfy CLAUDE.md §8).]_
+
 **Where each half lives, by consumer — CLAUDE.md §4 applied explicitly; this
 table is the amendment's test of itself:**
 
 | consumer | home | state at s275 (drafter-read) |
 |---|---|---|
 | the gate (automated enforcer) | its own code — the isolation in `.claude/hooks/_goal_gate.py` (D8.2). **This is the binding artifact.** | absent — `:308-315` passes no `env=` |
-| pytest (the resource owner) | its own fixtures — second-arriver refusal + verdict token in `tests/db_support.py` (D8.4, D8.5) | absent — no lease, no `pg_stat_activity` read |
+| pytest (the resource owner) | its own fixtures — second-arriver refusal + verdict token in `tests/db_support.py` (D8.4, D8.5; the lease = a Postgres session advisory lock, SD-B ruled (b)) | absent — no lease, no `pg_stat_activity` read, no advisory lock (drafter grep, s275) |
 | the criterion author | `.claude/commands/goal.md` step 2 (`:31-40`) — today scopes `cmd` for **budget** only, says nothing about resource ownership | budget-only |
 | the schema / authoring surface | `.claude/hooks/_goal_state.py:23-24` — its canonical example is literally `{"id": "C1", "kind": "check", "cmd": "pytest -q", …, "timeout_s": 300}`. **The authoring surface currently models the hazard.** | models the hazard |
 | humans / the record | this ADR (D8) | this amendment |
@@ -1333,28 +1393,82 @@ table is the amendment's test of itself:**
   worst outcome — the PR must carry a **positive control** proving the
   injected value reached `settings.test_database_url` inside the check's own
   pytest (a probe must prove its mutation reached the code).
+  _[Amended s275, post-ruling (SD-A (b)) — the variable is now the identity
+  marker, not `TEST_DATABASE_URL`. **This item stands and becomes more
+  important, not less:** a marker is a shorter string than a URL, which
+  changes nothing about the hazard — the marker must be named in `WSLENV`
+  or the isolation silently never happens. A build that forgets it produces
+  a gate that **appears** isolated and is not: every check lands on the
+  session's database exactly as today, and the failure passes confidently.
+  The positive control is therefore fixed in direction: it asserts that the
+  **child pytest actually resolves a different database name** from the
+  session's (e.g. the check's own pytest reports a `settings.test_database_url`
+  carrying the gate suffix, compared against the session's un-suffixed
+  name) — **never** merely that the variable was set in the parent's env.]_
 - **D8-VX-2 — what the gate can compute.** The gate is stdlib-only and
   Windows-side; it does not read `.env`, and its `REPO_ROOT` is a UNC path,
   so it can neither reproduce the per-checkout digest (`db_support.py:120`,
   `:130` hash the POSIX path) nor assemble a full URL without reading
-  secrets into the hook. **SD-A (surfaced, not decided here):** whether the
-  gate injects a full `TEST_DATABASE_URL` (the dispatch's wording) or an
-  **identity marker** (e.g. `VERO_TEST_DB_ROLE=gate`) that
+  secrets into the hook. **SD-A — RULED (b), the identity marker.**
+  _[RULING (Cray, typed, 2026-09-03, s275): "SD-A เอา (b)".]_ The options as
+  surfaced, preserved for lineage: **(a)** the gate injects a full
+  `TEST_DATABASE_URL` — the dispatch's wording — **not taken**; **(b)** the
+  gate injects an **identity marker** (e.g. `VERO_TEST_DB_ROLE=gate`) that
   `_isolate_test_database_per_worktree` honours by appending `_gate` to
   whatever name it would otherwise use — **including** when
-  `TEST_DATABASE_URL` was explicit in `.env`, or an explicit local URL
-  silently re-merges gate and session. The invariant D8.2 fixes is the
-  *distinct database*; the variable is the build's.
+  `TEST_DATABASE_URL` was explicit in `.env` — **taken.** Grounds (the
+  drafter's objections, adopted as the ruling's reasons): **(1)** the gate is
+  Windows-side and stdlib-only, reads no `.env`, and so cannot assemble a URL
+  without secrets it has no access to; **(2)** it cannot reproduce the
+  POSIX-path sha256 digest (`tests/db_support.py:120` resolves the root on
+  the Linux side, `:130` hashes it) that names the per-checkout database, so
+  a URL it built would name the wrong database or none; **(3)** a marker
+  **composes** with an explicit local `TEST_DATABASE_URL` — the suffix is
+  applied to the explicit name — where a gate-built URL would either override
+  it or silently re-merge gate and session onto one database. The dispatch
+  specified (a): `was an error` on the dispatch's part — (1)–(3) were true
+  when it was written and had not been checked. The invariant D8.2 fixes is
+  the *distinct database*; the variable is now fixed too, and only the
+  marker's exact name is the build's.
 - **D8-VX-3 — lease mechanism.** A lease *file* keyed to the database needs
   a host-shared location (not `.claude/state/`, which is per-worktree —
-  defect (b) again). **SD-B (surfaced, not decided here):** a Postgres
-  **session-level advisory lock** (`pg_try_advisory_lock` on a key derived
-  from the database name) held for the pytest session's lifetime is a lease
-  that lives *in the resource*, is released by the server the instant the
-  holding backend dies (no stale-lease sweep, no orphan ambiguity), and is
-  cross-checked by the same `pg_stat_activity` query. D8.4's contract —
-  process-owned, database-keyed, loud refusal — is met by either; the
-  advisory lock meets "scoped exactly to the resource" by construction.
+  defect (b) again). **SD-B — RULED (b), a Postgres session advisory lock.**
+  _[RULING (Cray, typed, 2026-09-03, s275): "SD-B เอา (b)".]_ The options as
+  surfaced, preserved for lineage: **(a)** a lease file keyed to the database
+  in a host-shared location, with a staleness bound and a sweep — the
+  dispatch's shape — **not taken**; **(b)** a Postgres **session-level
+  advisory lock** (`pg_try_advisory_lock` on a key derived from the database
+  name) held for the pytest session's lifetime and cross-checked by the same
+  `pg_stat_activity` query — **taken.** Grounds (the drafter's objections,
+  adopted as the ruling's reasons): **(1)** the lock **lives in the resource
+  itself** and is released by Postgres the instant the holding backend dies
+  — no staleness bound to tune, no reaper, no orphan ambiguity; **(2)** it
+  works **across worktrees** on the same host, whereas a file under
+  `.claude/state/` is per-worktree — the exact defect shape (b) this
+  amendment exists to correct. The dispatch specified (a): `was an error` on
+  the dispatch's part, same classification and reason as SD-A. D8.4's
+  contract — process-owned, database-keyed, loud refusal — is met by
+  construction.
+
+  **The cost, recorded because whoever builds this will hit it and a silent
+  failure is the likely outcome.** `pyproject.toml:112` sets
+  `asyncio_mode = "auto"` with **no loop-scope override** (drafter grep, s275:
+  no `loop_scope` / `asyncio_default_fixture_loop_scope` key), so each test
+  runs on its own function-scoped event loop; and `create_test_engine`
+  returns a **fresh `NullPool` engine per test** (`tests/db_support.py:254-273`)
+  by deliberate design — its docstring (`:259-260`) cites PLAN-0005 R4
+  (`docs/plans/done/0005-oct-engine-runtime-layer.md:445-447`, which mandates
+  careful fixture scoping around pytest-asyncio's per-test loops; R4 names
+  the constraint, the fixture's `NullPool` is its implementation). Together:
+  **nothing holds a connection between tests.** A session advisory lock is
+  bound to a *connection*, so holding one across a pytest session needs a
+  **dedicated connection kept alive on its own thread and event loop** (or
+  an equivalent long-lived holder outside the per-test loop) — a new piece
+  of fixture machinery, not a one-line `SELECT`. And the failure mode runs in
+  the **dangerous direction**: if that holder thread dies — an exception, an
+  interpreter-teardown ordering, a loop closed under it — Postgres releases
+  the lock and the guard **silently fails OPEN**: a second `pytest` then
+  proceeds exactly as it does today, with no signal. Hence D8-VX-6.
 - **D8-VX-4 — hook-timeout kill semantics.** Whether the harness's 180 s
   hook timeout terminates the process tree or only the hook process
   (defect (a)). Measure once, before the timeout/budget fix is shaped.
@@ -1364,6 +1478,28 @@ table is the amendment's test of itself:**
   amendment's precedent. The session attribution of the
   `done/0117:856-863` VOID reading (dispatch: s275; PLAN-0117 already
   archived) is likewise Code's to confirm.
+- **D8-VX-6 — the advisory-lock holder must be witnessed, both ways** (added
+  post-ruling, SD-B (b)). Two controls, each a separate probe (one mutation
+  witnesses one assertion — CLAUDE.md §8): **(i) a positive control that the
+  lock is actually held** — while the holder is alive, a *second* connection
+  attempting the same key (`pg_try_advisory_lock`) is **refused** (returns
+  false), and a `pg_locks` read shows the holder's granted `advisory` lock;
+  **(ii) a control that the guard notices when the holder is gone** — close
+  or kill the holder, then assert the guard reports *holder lost* as an
+  infrastructure verdict (the D8.5 class: loud, non-`fail`), and **never**
+  reads "no lock" as "no contention" and carries on. Without (ii) the
+  D8-VX-3 fail-open path is invisible by construction: a dead holder and a
+  clean run look identical to a guard that only asks "is the lock free?".
+  The shape to clone already exists and is already reviewed:
+  `tests/services/db/test_teardown_bound_reddens.py:116-137`
+  (`test_the_lock_holder_really_holds_a_conflicting_lock` — proves the
+  fixture's session is genuinely visible to Postgres in `pg_locks` as
+  holding the lock, so the reds above it measure the lock and not something
+  else), together with its `_hold_conflicting_lock` holder (`:52-60`) and
+  the load-bearing positive control at `:105-113`. These are unit-shaped;
+  the A3-T2 scenario that drives **two real pytest processes** at one
+  database and witnesses the refusal RED-then-green is unchanged and still
+  required.
 
 ### What stands
 
@@ -1388,7 +1524,10 @@ idempotently, dropped with the rest of the `vero_lite_test_*` family); a
 second-arriver refusal is a new way for a legitimate second suite to stop —
 by design, loudly, with `foreign_backends=N` printed; the WSL env crossing
 (D8-VX-1) is a new silent-failure seam, bounded by the mandatory positive
-control. **Neutral:** goal-less sessions remain zero-delta; the evaluator,
+control. _[s275, post-ruling: the advisory-lock holder thread (D8-VX-3) is a
+**second** silent-failure seam, in the **fail-open** direction — a dead
+holder releases the lock — bounded by D8-VX-6's two controls.]_
+**Neutral:** goal-less sessions remain zero-delta; the evaluator,
 its prompt, and its Write-narrowing are untouched; the ADR-0016
 `Procedure.goal` disambiguation (D2 NB) carries over.
 
@@ -1398,10 +1537,14 @@ database is one `DROP DATABASE`.
 
 ### Required follow-on (the implementation PR — after this ADR merges, CLAUDE.md §8)
 
-- **A3-T1** gate isolation in `_goal_gate.py` (D8.2; D8-VX-1/-2 positive
-  control).
+- **A3-T1** gate isolation (D8.2 via the **SD-A identity marker**): the
+  gate injects the marker in `_goal_gate.py` *and*
+  `tests/db_support.py`'s `_isolate_test_database_per_worktree` honours it
+  — two files, one invariant; D8-VX-1's positive control (the child resolves
+  a different database name).
 - **A3-T2** second-arriver refusal + verdict token in `tests/db_support.py`
-  (D8.4, D8.5), shipped with a **scenario** that drives two real pytest
+  (D8.4 via the **SD-B session advisory lock**, D8.5; D8-VX-6's two holder
+  controls), shipped with a **scenario** that drives two real pytest
   processes at one database and witnesses the refusal RED-then-green
   (CLAUDE.md §8 — a mock-fed unit suite cannot see this seam).
 - **A3-T3** `.claude/commands/goal.md` step 2 gains the resource-ownership
@@ -1429,6 +1572,27 @@ Code is asked to re-verify every citation against the merged tree before
 commit. Separation: **partially intact** — drafting is separated from the
 measurement's author only at the tooling level, and the sole external check
 is Cray's review.
+
+_[Second pass, same session (s275), post-ruling.]_ The SD-A / SD-B rulings
+were applied to this text by the same in-harness `plan-drafter` from Code's
+follow-up dispatch, which relayed Cray's typed ruling verbatim. Two facts a
+reviewer should weigh: **(i)** the rulings adopt the drafter's own objections
+as their grounds, so the drafter is here recording the adoption of its own
+reasoning — Cray's typed ruling is the independent act, and the `was an
+error` classification of the dispatch is Code's own, stated in that
+dispatch; **(ii)** the labels `SD-C` / `SD-D` did not exist in this file
+before this pass — they were surfaced in the drafter's s275 return message
+and carried here by substance (defect (a); A3-T7) — and are introduced above
+only as open pointers, not closed. For this pass the drafter re-read on
+disk: `pyproject.toml:112` (and the absence of any loop-scope key),
+`tests/db_support.py:120-151` and `:254-273`,
+`tests/services/db/test_teardown_bound_reddens.py:52-137`,
+`docs/plans/done/0005-oct-engine-runtime-layer.md:445-447`,
+`.claude/hooks/_goal_gate.py:101`, `:177`, `:288`. Not re-read this pass:
+`.claude/hooks/_wsl_bridge.py:93-112` and the D8-VX-5 items (unchanged from
+the first pass). Separation: **partially intact**, as above; Cray at PR merge
+is the independent reviewer, and Code re-verifies every citation against the
+merged tree before commit.
 
 ## References
 
