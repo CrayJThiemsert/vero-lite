@@ -113,7 +113,7 @@ git hash-object --stdin-paths < paths.txt > disk.txt
 
 It found **more** than `git status` ever showed: 6 stale files (including two
 that had never appeared in any status output) and 1 tracked file missing from
-disk entirely — `docs/plans/0117-*.md`, the artifact the next phase of work was
+disk entirely — the PLAN-0117 plan file, the artifact the next phase of work was
 built on, which `git pull` had reported creating.
 
 ## What this does NOT say
