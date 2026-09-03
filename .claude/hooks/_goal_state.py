@@ -20,8 +20,16 @@ Schema (ADR-0018 §Minimal-prototype spec 1; §V2 Amendment)::
       "status": "active",          // active | passed | released-unevaluated | blocked-pending-human
       "enforce": false,            // V2: per-goal opt-in enforcement (default false = warn-only v1)
       "criteria": [
-        {"id": "C1", "kind": "check", "cmd": "pytest -q",
-         "desc": "test suite green", "timeout_s": 300},
+        {"id": "C1", "kind": "check", "cmd": "ruff check .",
+         "desc": "lint clean at CI scope", "timeout_s": 90},
+        // 🔴 s275: the example above used to be `pytest -q` at 300 s. Both
+        // halves were hazards. (a) A `check` runs at EVERY Stop, so a criterion
+        // that binds the per-checkout test database races any pytest the agent
+        // is already running -- DROP SCHEMA per test, measured deadlocking and
+        // reporting fabricated failures in s228, s253 and s275. (b) 300 s
+        // exceeds the Stop hook's own "timeout": 180 in settings.json, so it
+        // could never have completed. Scope check cmds off the DB layer unless
+        // the gate's own isolation covers you.
         {"id": "C3", "kind": "judge",
          "desc": "the drafted ADR resolves OQ-1..OQ-7 with decisions"}
       ],
