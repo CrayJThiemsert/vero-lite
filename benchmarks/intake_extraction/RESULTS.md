@@ -240,9 +240,110 @@ as the baseline. Artifacts: `.claude/benchmark-results/intake-s273b-{gptoss,qwen
 **Zero exceptions in 66 attempts across two model families and three quantizations.**
 `eval_count` on every single empty attempt is **exactly 1024** — the configured
 `settings.llm_max_output_tokens`, sent as `num_predict`. On the attempts that
-delivered content it is 135–381. `thinking_chars` on the empty ones is
-**3,295–4,513 characters**: the budget went to reasoning, and there was nothing left
-to emit the JSON with.
+delivered content it is 135–381 — **but see the correction below before reading that
+second figure as a demand.** `thinking_chars` on the empty ones is **3,295–4,513
+characters**, which at 1024 tokens is **3.22–4.41 characters per token** — ordinary
+tokenization. So on a truncated call the whole budget rendered as reasoning text and
+`content_chars` is 0: nothing was left to emit the JSON with.
+
+#### 🔴 Correction (same session, prompted by Cray asking how the three numbers relate)
+
+Doing that arithmetic on the **delivering** attempts shows it does not hold there,
+and two things written above and in this PR's first draft were wrong.
+
+- 🔴 **`eval_count` is fine. The arithmetic that indicted it was mine, and it was
+  wrong.** An earlier draft of this correction reported "8.6 to 25 characters per
+  token, which no tokenizer produces" and concluded the counter under-reports. That
+  figure divided **two channels' characters** (`thinking_chars` + `content_chars`) by
+  **one segment's tokens**. Divided correctly, `content_chars / eval_count` on the 21
+  delivering attempts is **2.71–3.47** — a textbook tokenizer ratio, per arm
+  3.03–3.47 / 2.71–2.97 / 2.75–2.89. `eval_count` counts the content segment and
+  counts it correctly. **The indictment is withdrawn; only the *interpretation* of
+  135–381 stands corrected — it is the JSON segment's token count, not the whole
+  call's demand.**
+
+  What the same artifacts do show is a **second, unaccounted generation segment**.
+  `total_duration_ns − eval_duration_ns` is **0.04–2.47 s** on truncated attempts but
+  **10.4–54.4 s** on delivering ones (per arm medians 18.2 / 47.2 / 50.8 s). That
+  residual is time spent generating something the reported counters do not cover —
+  the reasoning pass. Reconstructing it at each arm's measured decode rate puts a
+  delivering call's **total** at ~1,089 / 1,242 / 1,292 tokens (median), i.e. **above
+  the 1024 cap**, which a single shared budget could not produce.
+
+  🔴 **That reconstruction is contested and must not be built on.** Ollama's
+  `thinking/parser.go` is a **post-generation string splitter** (`AddContent` returns
+  the thinking and non-thinking halves of one stream), which implies a single stream
+  under a single `num_predict`; and Ollama issue **#17978** reports our exact
+  envelope — `eval_count == num_predict`, `done_reason "length"`, empty content —
+  which requires reasoning tokens to be inside `eval_count` when truncated. Both
+  readings cannot be right. The residual is real and large, but it also contains
+  prefill and grammar-compilation time, so "~1,100 tokens under a 1024 cap" may be an
+  artefact of attributing all of it to decoding. **Unresolved. A follow-on settles it
+  by capturing `load_duration` and `prompt_eval_duration` (already computed in
+  `CallMetrics` and dropped by this recorder) and the raw `thinking` string, which is
+  offline work on the existing seam.**
+- **"Reasoning ate the budget" over-claims the mechanism.** Thinking length overlaps
+  heavily between the two groups: truncated 3,295–4,513 (median 3,783), delivering
+  1,860–4,032 (median 3,133). **6 of 21** delivering attempts reasoned inside the
+  truncated range and **3** reasoned longer than the truncated median. So the failing
+  calls did not simply think more.
+
+**What survives unchanged:** that the empty bodies are truncations. `done_reason` is
+the server's own statement of why generation stopped, not a figure derived here, and
+it reads `"length"` on 45 of 45 empty attempts and `"stop"` on 21 of 21 delivering
+ones. The cross-arm result (Qwen worse than `gpt-oss` ⟹ path, not model) is likewise
+untouched — it rests on empty-body counts, not on token accounting.
+
+**What is now explicitly open:** *why* some calls finish inside the budget and others
+do not. This run cannot answer it, because the one counter that would — total tokens
+generated including reasoning — does not reconcile on exactly the calls that succeed,
+and the reason for that is itself unresolved. A follow-on needs a trustworthy total
+(or a per-channel split) **before** any "raise the cap by N" conclusion is drawn.
+
+**Findings from a five-specialist review of this file, recorded so they are not lost.**
+
+- `client.py`'s `CallMetrics` docstring reads *"`eval_count` is generated tokens — the
+  model's actual DEMAND, which is what a cap should be chosen from."* On this evidence
+  it is the **content segment's** tokens, so sizing a whole-call budget from it
+  under-counts by whatever the reasoning pass costs. Sharpen it at the source.
+- The `114–282 tokens` of JSON quoted around this work was a **derivation**
+  (`content_chars` ÷ 4). The measured figure is now available and is simply
+  `eval_count`: **135–381 tokens**, at 2.71–3.47 chars/token.
+- 🔴 **`services/engine/scaffold.py:676` is a likely second victim, silent.** It asks
+  for an entire synthetic dataset — the largest output in the system — under the same
+  global cap and falls back deterministically with no truncation disclosure.
+  Checkable offline on the next scaffold run by capturing `done_reason`.
+- 🔴 **Most call sites produce no generation accounting at all.** `call_metrics` is
+  invoked at two production lines only (`services/engine/llm/structured.py`), so the
+  audit surface needed to answer "what does this call site actually demand" does not
+  exist for the rest of the system.
+- 🔴 **A whole workload sits outside this client.** The PreToolUse classifier
+  (`.claude/hooks/_sonnet_classifier.py`) calls Ollama directly with **no
+  `num_predict` at all**, its own `keep_alive: "10m"` against the app's `"30m"`, and
+  its own 75 s timeout. Two `keep_alive` values that must agree but have no shared
+  source are a defect waiting to happen.
+- **Dead and unwired config:** `ollama_default_model` (`gemma4:26b`) is referenced by
+  nothing, and `reasoning_mode` in `structured.py` defaults to `"full"` with no caller
+  passing it — it sends `think` as a *boolean*, which `gpt-oss` ignores.
+- 🔴 **The CHECKPOINT-0 rationale cites a stale issue.** Ollama **#15260** is
+  **closed** and is about **gemma4**, not Qwen3.x; the Qwen sibling is **#14645**,
+  also closed. Both had the same root cause — schema masking deferred until the
+  end-of-thinking token — which is itself why a reasoning pass runs unconstrained. The
+  contract may still be right; its justification needs re-checking against the running
+  Ollama version before anything is built on it.
+- **`think: false` is not a lever.** Ollama **#18044** reports it disables the thinking
+  *parser*, not the thinking *generation*, with `eval_count` unchanged across settings.
+  A dedicated thinking budget exists in **llama.cpp** (`--reasoning-budget`) and
+  **vLLM** (`thinking_token_budget`, which forces the reasoning block closed rather
+  than truncating), but the Ollama PR that would expose one — **#17566**, *"there is
+  currently no way to say 'think, but not forever'"* — is **unmerged**. On this stack
+  today the levers are the cap, the effort level where a model honours it, and
+  splitting the call.
+- ✅ **This run closes an open caveat in Lesson #0049**, which recorded
+  `done_reason="length"` as *asserted, not yet measured on this server*. It is now
+  measured, 45/45. That lesson also already found the Judge-class workload needs 4096:
+  at 1024 a case scored UNSCORED, and at 4096 it produced a forbidden-handler proposal
+  the shipped default had hidden entirely.
 
 The hypothesis the baseline could only offer is now measured. The retry loop's
 message — *"output was not valid JSON"* — was describing an empty string the whole
