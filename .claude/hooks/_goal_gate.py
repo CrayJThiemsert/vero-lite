@@ -101,7 +101,21 @@ from _goal_state import (  # noqa: E402  — sys.path manipulation above
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
-DEFAULT_CHECK_BUDGET_S = 600
+DEFAULT_CHECK_BUDGET_S = 120
+
+# 🔴 s275: this MUST stay well under the Stop hook's own timeout in
+# .claude/settings.json ("timeout": 180). It was 600 — unreachable by 3.3x, and
+# actively harmful: stop_continuation runs this gate FIRST and the Sonnet
+# classifier + chain-cap fail-safe AFTER, so a gate that spent even half of 600 s
+# would starve them, and the harness kill leaves the WSL-side pytest child
+# ORPHANED — still holding the per-checkout test database with no owner to
+# release it. That leaves 60 s of headroom (180 - 120) for the classifier's API
+# call, Telegram and the auto-handoff; the pin requires at least 45 of it, so the
+# two numbers are a floor and the actual slack, not a disagreement. The two
+# constants live in different files and different languages and cannot import
+# each other, so
+# tests/handoffs/test_goal_gate_budget_fits_the_hook.py pins the relationship —
+# the same treatment BATTERY_LOCK_STALE_AFTER_S gets below.
 
 # PLAN-0115 Step 2. Generous on purpose: too strict wakes the gate mid-battery and
 # evaluates a deliberately-broken tree; too lax lets a crashed driver silence the gate.

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """PreToolUse hook — restrict ``goal-evaluator`` writes to ``.claude/state/goal.json``.
 
-Subagent-scoped hook wired in ``.claude/agents/goal-evaluator.md`` frontmatter
-under ``hooks.PreToolUse`` with matcher ``Write|Edit`` — frontmatter-only
-wiring per PLAN-0021 F-1 (``settings.json`` untouched; the exact
-``status-scribe`` exemplar). Implements **ADR-0018 SD-1 = narrowed Write**
+Subagent-scoped hook reached via ``pretooluse_subagent_write_dispatch.py``
+(registered in ``.claude/settings.json`` for ``Write|Edit``), which routes on
+the payload's ``agent_type``. PLAN-0021 F-1 originally specified frontmatter-only
+wiring with ``settings.json`` untouched; that route was measured **dead** in
+session 272 (Lesson #0057) and replaced by the dispatcher. Implements
+**ADR-0018 SD-1 = narrowed Write**
 (Cray-ratified): the critic's verdict reaches the record without passing
 through the creator's pen, at the cost of exactly this one deny hook.
 
@@ -22,10 +24,19 @@ construction.
 Bypass-immunity: the hook fires regardless of ``permissionMode`` (including
 ``bypassPermissions``).
 
-This hook intentionally does **not** inspect ``agent_id`` / ``agent_type``.
-Subagent scoping comes from the frontmatter wiring; if a future change moves
-the hook to project-level the test suite must fail loudly so the boundary
-inversion is caught at review time.
+This hook intentionally does **not** inspect ``agent_id`` / ``agent_type``
+itself. 🔴 **Corrected s275 (`was an error`):** scoping does *not* come from
+the frontmatter wiring. Measured session 272 (Lesson #0057): a subagent's
+frontmatter ``hooks:`` block never fires in this harness. The block in the
+agent file is well-formed — ``ad47f49`` rewrote all three to the documented
+nested shape, which is why the agents load at all — but it is inert. The live
+route is ``pretooluse_subagent_write_dispatch.py``, registered in
+``.claude/settings.json`` for ``Write|Edit``, which reads the payload's
+``agent_type`` and calls this module. The identity check therefore *does*
+happen, one level up; this hook is right to skip it only because the dispatcher
+already made it. Remove that registration and this allowlist stops being
+reached at all — a silent boundary inversion, which is why
+``tests/handoffs/test_settings_hook_wiring.py`` pins it.
 
 NOTE on the env override: the *gate* honors ``CLAUDE_GOAL_PATH`` for test
 isolation, but this hook deliberately allowlists only the canonical repo

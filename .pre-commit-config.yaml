@@ -64,7 +64,7 @@ repos:
     hooks:
       - id: handoff-frontmatter
         name: validate latest-session handoffs + refresh INDEX
-        entry: uv run python tools/handoffs/precommit_handoffs.py
+        entry: uv run --no-sync python tools/handoffs/precommit_handoffs.py
         language: system
         always_run: true
         pass_filenames: false
@@ -74,7 +74,7 @@ repos:
       # has no Bash and can only enforce structural counts (R2/R3).
       - id: status-size-guard
         name: STATUS.md size guard (R1 — 64 KB hard ceiling)
-        entry: uv run python tools/check_status_size.py
+        entry: uv run --no-sync python tools/check_status_size.py
         language: system
         files: ^docs/STATUS\.md$
         pass_filenames: false
@@ -87,7 +87,7 @@ repos:
       # R7 below, whose violation can be authored anywhere.
       - id: archive-size-guard
         name: status-archive size guard (R4 — 256 KB cap / 192 KB split)
-        entry: uv run python tools/check_archive_size.py
+        entry: uv run --no-sync python tools/check_archive_size.py
         language: system
         files: ^docs/status-archive/.*\.md$
         pass_filenames: false
@@ -99,7 +99,7 @@ repos:
       # ~0.1 s), not just the staged paths.
       - id: status-citation-guard
         name: STATUS.md citation guard (R7 — no line-number refs)
-        entry: uv run python tools/check_status_citations.py
+        entry: uv run --no-sync python tools/check_status_citations.py
         language: system
         always_run: true
         pass_filenames: false
@@ -116,7 +116,7 @@ repos:
       # the violation is authored by moving a DIFFERENT file than the citer.
       - id: plan-archive-ref-guard
         name: PLAN reference guard (R8 — no pre-archive docs/plans/ refs)
-        entry: uv run python tools/check_plan_archive_refs.py
+        entry: uv run --no-sync python tools/check_plan_archive_refs.py
         language: system
         always_run: true
         pass_filenames: false
@@ -133,7 +133,7 @@ repos:
       # authored by adding a model file while editing a DIFFERENT one — env.py.
       - id: alembic-model-registration
         name: ORM<->alembic registration guard (offline lockstep half)
-        entry: uv run python tools/check_alembic_model_registration.py
+        entry: uv run --no-sync python tools/check_alembic_model_registration.py
         language: system
         always_run: true
         pass_filenames: false
@@ -150,7 +150,7 @@ repos:
       # declared the claim dead — the cross-file half is the whole point.
       - id: retired-claim-guard
         name: retired-claim propagation guard (a corrected claim must stay dead)
-        entry: uv run python tools/check_retired_claims.py
+        entry: uv run --no-sync python tools/check_retired_claims.py
         language: system
         always_run: true
         pass_filenames: false
@@ -166,7 +166,7 @@ repos:
       # pair — a PLAN without STATUS, or STATUS without the PLAN.
       - id: ac-consistency-guard
         name: AC ledger guard (no duplicate labels; STATUS closures are ticked)
-        entry: uv run python tools/check_ac_consistency.py
+        entry: uv run --no-sync python tools/check_ac_consistency.py
         language: system
         always_run: true
         pass_filenames: false
