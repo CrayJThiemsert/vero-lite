@@ -455,6 +455,51 @@ def _inside_single_quotes_after_bash_c(command: str) -> str | None:
 _BASH_C_DOUBLE_QUOTED_RE = re.compile(r"\bbash\s+-[a-z]*c\s+\"")
 _ANY_DOLLAR_RE = re.compile(r"\$")
 
+#: A `uv run` whose next token is not `--no-sync`. Deliberately narrow: this repo
+#: measured its sibling advisory firing on 30.8% of all Bash commands and being
+#: learned-around, so the bar here is FEWER, truer firings. After PR #1376 the
+#: bare form appears ZERO times in `.pre-commit-config.yaml` and ZERO in
+#: `ci.yml` — the only tracked uses left are in `scripts/bootstrap.sh`, where a
+#: fresh clone has no venv to strip.
+_UV_RUN_RE = re.compile(r"\buv\s+run\s+(?P<next>\S+)")
+
+
+def _venv_strip_warning(command: str) -> str | None:
+    """Advisory for a bare ``uv run``, which silently empties the shared ``.venv``.
+
+    A ``uv run`` without ``--no-sync`` re-syncs the project environment WITHOUT
+    the dev extra, uninstalling pytest / ruff / mypy / pre-commit to match the
+    base dependency set. Measured session 276: a subagent did this mid-session and
+    left ``.venv/bin/`` holding a single ``python3`` symlink. The damage is silent
+    — the command that caused it succeeds — and surfaces later as an unrelated
+    "command not found" or a lazily-imported plugin's ``ImportError``.
+
+    Two other surfaces already defend against this BY NAME:
+    ``.github/workflows/ci.yml`` and ``.claude/skills/ms-s1-ollama/run_detached.sh``.
+    PR #1376 added the third, the pre-commit hooks. This is the fourth and last
+    door: an agent — including a subagent whose definition is not in this repo —
+    shelling out directly.
+
+    Advisory rather than a deny on purpose. ``scripts/bootstrap.sh`` uses the bare
+    form legitimately (a fresh clone has no venv to strip), so the deny rubric's
+    "no legitimate need once the alternative exists" conjunct fails, and this repo
+    has measured what a gate with a carve-out becomes.
+    """
+    bare = [m.group("next") for m in _UV_RUN_RE.finditer(command) if m.group("next") != "--no-sync"]
+    if not bare:
+        return None
+    return (
+        "Environment advisory — this command runs `uv run` WITHOUT `--no-sync` "
+        f"(next token: `{bare[0]}`). A bare `uv run` re-syncs the project "
+        "environment without the dev extra and UNINSTALLS pytest/ruff/mypy/"
+        "pre-commit from the shared `.venv`; the command itself still succeeds, so "
+        "the damage is silent until something later cannot find its tool. Measured "
+        "s276: a subagent left `.venv/bin/` holding only `python3`. Use "
+        "`uv run --no-sync …` to run a tool, or `uv sync --extra dev` to repair an "
+        "already-stripped venv. (Legitimate exception: `scripts/bootstrap.sh` on a "
+        "fresh clone, where there is no venv to strip.)"
+    )
+
 
 def _shell_hygiene_warning(command: str) -> str | None:
     """Advisory for Bash command shapes that make a FAILURE look like a SUCCESS.
@@ -564,9 +609,13 @@ def _handle_bash(payload: dict[str, Any]) -> None:
 
     # Emitted last, and independent of the counters: this is about whether the
     # evidence just produced can be trusted at all, not about loop state.
-    hygiene = _shell_hygiene_warning(command)
-    if hygiene is not None:
-        print(json.dumps({"decision": "block", "reason": hygiene}))
+    # Both advisories are joined rather than emitted separately: the hook may
+    # print only one JSON object, and a command can trip both at once.
+    advisories = [
+        a for a in (_shell_hygiene_warning(command), _venv_strip_warning(command)) if a is not None
+    ]
+    if advisories:
+        print(json.dumps({"decision": "block", "reason": "\n\n".join(advisories)}))
 
 
 def main() -> int:
