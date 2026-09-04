@@ -1,0 +1,87 @@
+{
+  "claim_sources": [
+    "tests/services/db/test_db_guard_holds.py",
+    "tests/services/db/test_db_guard_second_arriver.py"
+  ],
+  "probes": [
+    {
+      "name": "P1",
+      "subject": "tests/db_guard.py",
+      "old": "    return (unsigned >> 32) & 0xFFFFFFFF, unsigned & 0xFFFFFFFF",
+      "new": "    return (unsigned >> 31) & 0xFFFFFFFF, unsigned & 0xFFFFFFFF",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_the_guard_holder_really_holds_the_advisory_lock",
+      "expect_claim": "test_the_guard_holder_really_holds_the_advisory_lock|granted > 0|#0",
+      "note": "Shifts the classid/objid split by one bit, so the pg_locks lookup asks for the wrong address while the lock is still genuinely held. Isolates the address claim: the sibling `state == ACQUIRED` stays green because acquisition is untouched."
+    },
+    {
+      "name": "P2",
+      "subject": "tests/db_guard.py",
+      "old": "LIVENESS_SQL: Final = \"SELECT count(*) FROM pg_stat_activity WHERE pid = :holder_pid\"",
+      "new": "LIVENESS_SQL: Final = \"SELECT count(*) FROM pg_stat_activity WHERE pid <> :holder_pid\"",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|pytest.raises(Exit)|#0",
+      "note": "🔴 The fail-OPEN mutation. Inverting the comparison makes the chokepoint count every backend EXCEPT the holder — always non-zero — so a terminated holder reads as alive and produces no Exit at all: the session sails on reporting a clean run. alive_pre/alive_post stay green because the test measures those through its own connection. ✎ A first attempt used `SELECT 1 WHERE :holder_pid IS NOT NULL`, which Postgres rejects (it cannot infer the parameter's type); the error fell into the chokepoint's `except Exception` and the probe reported SKIPPED. The battery refused to credit it — correctly, and the mutation was the thing that was wrong, not the code. This form keeps the parameter comparable to `pid` so the type is still inferred."
+    },
+    {
+      "name": "P3",
+      "subject": "tests/db_guard.py",
+      "old": "            f\"outcome={self.state} holder_pid={self.holder_pid if self.holder_pid else '-'} \"",
+      "new": "            f\"outcome={self.state} holderpid={self.holder_pid if self.holder_pid else '-'} \"",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|f\"holder_pid={scratch.holder_pid}\" in reason|#0",
+      "note": "Drops the field name a human needs to reap the holder. The sibling `outcome=LOST` assert stays green, so this witnesses the naming half alone (ADR-0038 C6's legibility conjunct)."
+    },
+    {
+      "name": "P4",
+      "subject": "tests/db_support.py",
+      "old": "    if guard.state == db_guard.ACQUIRED and not holder_alive:\n        guard.state = db_guard.LOST",
+      "new": "    if guard.state == db_guard.ACQUIRED and not holder_alive:\n        guard.state = db_guard.ACQUIRED",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|f\"outcome={db_guard.LOST}\" in reason|#0",
+      "note": "The session still refuses, but calls the refusal ACQUIRED — so the raise (pytest.raises) and the holder_pid naming both stay green and only the outcome LABEL reddens. One mutation, one assertion."
+    },
+    {
+      "name": "P5",
+      "subject": "tests/db_support.py",
+      "old": "    if _ROLE:",
+      "new": "    if False:",
+      "node_id": "tests/services/db/test_db_guard_second_arriver.py::test_a_child_session_with_its_own_role_acquires_and_runs",
+      "expect_claim": "test_a_child_session_with_its_own_role_acquires_and_runs|proc.returncode == 0|#0",
+      "note": "The child stops applying its role, so it resolves the PARENT's database and contends instead of running. The parent is unaffected (its role is unset either way), so the parent_guard fixture still passes and the failure is the child's return code alone."
+    },
+    {
+      "name": "P6",
+      "subject": "tests/db_support.py",
+      "old": "    if _ROLE:",
+      "new": "    if False:",
+      "node_id": "tests/services/db/test_db_guard_second_arriver.py::test_the_childs_token_shows_it_acquired_its_own_database",
+      "expect_claim": "test_the_childs_token_shows_it_acquired_its_own_database|child_db != parent_db|#0",
+      "note": "Same mutation, different node and different claim: this is the one that proves the role marker CROSSED INTO the child process (D8-VX-1's hazard). The inequality is asserted against the parent's name — a value the mutation cannot follow — precisely so it can redden."
+    },
+    {
+      "name": "P7",
+      "subject": "tests/db_support.py",
+      "old": "    if guard.acquire() == db_guard.CONTENDED:\n        pytest.exit(guard.contention_reason(), returncode=db_guard.CONTENDED_EXIT)",
+      "new": "    if guard.acquire() == db_guard.CONTENDED:\n        pytest.skip(guard.contention_reason())",
+      "node_id": "tests/services/db/test_db_guard_second_arriver.py::test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code",
+      "expect_claim": "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|proc.returncode == db_guard.CONTENDED_EXIT|#0",
+      "note": "🔴 The exact regression PLAN-0120 §2 forbids: a contended session that SKIPS reads as a pass on the summary line. The child exits 0 instead of 75. Its token still prints outcome=CONTENDED and the holder pid, so those two siblings stay green and only the return code reddens."
+    }
+  ],
+  "exemptions": {
+    "test_the_guard_holder_really_holds_the_advisory_lock|live_guard.state == db_guard.ACQUIRED|#0": "Precondition, not a claim about the guard. It asserts the fixture got what it asked for before the real measurement runs; any mutation that falsifies it is already witnessed by P5/P7, where a failure to acquire is the reddening.",
+    "test_a_second_connection_is_refused_the_same_key|got is False|#0": "Co-falsified, no isolating mutation exists. Every mutation that removes the lock reddens this AND `granted > 0` together (they are two vantage points on one fact), and the only mutation that isolates the lookup address — P1 — leaves this green by construction. Its independent content, exclusivity, is witnessed by P7: a non-exclusive lock would let the second arriver run and `rc == 75` reddens.",
+    "test_an_unheld_key_is_available_to_that_same_connection|got is True|#0": "This assertion IS the positive control for the claim above. A control is falsified by breaking the test harness (wrong database, missing privileges), not by any mutation to tests/db_guard.py — probing it would assert that the test file can talk to Postgres.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|outcome == db_guard.ACQUIRED|#0": "Precondition — the scratch guard must be holding before the test can terminate it. Same ground as the first exemption.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|alive_pre == 1|#0": "A claim about POSTGRES, not about this repo: a live backend appears in pg_stat_activity. Measured through the test's own admin connection, so no mutation to tests/db_guard.py or tests/db_support.py can change it. Its purpose is to make alive_post==0 meaningful.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|alive_post == 0|#0": "A claim about pg_terminate_backend, same ground as alive_pre. It is the measurement the LOST detection is judged against, not a behaviour of ours.",
+    "test_a_live_holder_lets_the_chokepoint_through|outcome == db_guard.ACQUIRED|#0": "Precondition of the positive control. The control's own value is that it stays GREEN under P2 and P4 — which the battery records — so a probe targeting it would invert its purpose.",
+    "parent_guard|guard.state == db_guard.ACQUIRED|#0": "Fixture precondition: the parent must hold before a child is spawned, or the contention case would be a race rather than a test. Witnessed indirectly — under P5/P6/P7 it stays green, which is what proves those probes' reddening came from the child.",
+    "child_role|left == 0|#0": "A cleanup assertion (the child's database was dropped), not a claim about the guard. It exists so a leaked `…_t<pid>` database is loud rather than accumulating silently; no mutation to the guard changes DROP DATABASE.",
+    "test_the_childs_token_shows_it_acquired_its_own_database|len(reported) == 1|#0": "A parsing precondition — exactly one TEST-DB-GUARD line in the child's stdout — that exists so the assertions below read a token rather than a substring found anywhere. Under P6 it stays green (the child still prints one token), which is what makes P6's reddening attributable to the NAME rather than to missing output.",
+    "test_the_childs_token_shows_it_acquired_its_own_database|child_db.endswith(f\"_{child_role}\")|#0": "Co-falsified with `child_db != parent_db` by P6 and unreachable after it: pytest stops at the first failing assert, so this line's state under P6 is NOT-REACHED, never green. Recorded rather than claimed. Its independent content is the suffix SHAPE, which the unit module asserts directly (tests/tools/test_db_guard.py::test_a_role_suffixes_the_database_name_and_nothing_else).",
+    "test_the_childs_token_shows_it_acquired_its_own_database|f\"outcome={db_guard.ACQUIRED}\" in reported[0]|#0": "Same not-reached position as the line above under P6. Its content — that a child with its own database ACQUIRES rather than contends — is witnessed by P5, where exactly that failure turns the child's return code non-zero.",
+    "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|f\"outcome={db_guard.CONTENDED}\" in proc.stdout|#0": "Stays GREEN under P7 by design — that is what makes P7 credit the return code alone. It is the sibling whose green rules out 'something unrelated broke', so probing it would remove the evidence that P7 is specific.",
+    "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|f\"holder_pid={parent_guard.holder_pid}\" in proc.stdout|#0": "Same sibling-green role as the line above under P7. The naming half of the contention report is witnessed on the other side by P3, which drops the same field from the token."
+  }
+}

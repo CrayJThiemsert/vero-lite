@@ -1,0 +1,85 @@
+{
+  "claim_sources": ["tests/handoffs/test_goal_gate_db_role.py"],
+  "probes": [
+    {
+      "name": "G1",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "DB_ROLE_VALUE = \"gate\"",
+      "new": "DB_ROLE_VALUE = \"notgate\"",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_the_check_child_receives_the_gate_role",
+      "expect_claim": "test_the_check_child_receives_the_gate_role|state == CHECK_PASS|#0",
+      "note": "🔴 AC-1. The child reports what IT sees and exits 0 only on the expected value, so this reddens through the child's exit code — not through anything the parent believes about its own environment. That is the D8-VX-1 hazard made testable offline."
+    },
+    {
+      "name": "G2",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    tail = (proc.stdout or \"\")[-STDOUT_TAIL_BYTES:]",
+      "new": "    tail = \"\"",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_the_check_child_receives_the_gate_role",
+      "expect_claim": "test_the_check_child_receives_the_gate_role|f\"child_role={DB_ROLE_VALUE}\" in tail|#0",
+      "note": "Drops the carried stdout while leaving the state alone, so `state == CHECK_PASS` stays green and only the tail claim reddens. Witnesses that widening the return type actually carries something — a tuple whose second element were always empty would satisfy every other test in this file."
+    },
+    {
+      "name": "G3",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    if proc.returncode == CONTENDED_EXIT:",
+      "new": "    if False:",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_a_contended_exit_code_is_classified_contended_not_fail",
+      "expect_claim": "test_a_contended_exit_code_is_classified_contended_not_fail|state == CHECK_CONTENDED|#0",
+      "note": "🔴 AC-8. Without the mapping the reserved code falls through to CHECK_FAIL — a contention recorded as an ordinary defect in an append-only trail, which is the s275 failure exactly."
+    },
+    {
+      "name": "G4",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "CONTENDED_EXIT = 75",
+      "new": "CONTENDED_EXIT = 1",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_an_ordinary_nonzero_exit_is_still_a_failure",
+      "expect_claim": "test_an_ordinary_nonzero_exit_is_still_a_failure|state == CHECK_FAIL|#0",
+      "note": "🟢 The other direction, and the one that keeps G3 honest: a gate that called EVERY non-zero exit 'contended' would satisfy G3 perfectly and stop reporting real failures at all. Colliding the reserved code with 1 is the cheapest way to produce exactly that."
+    },
+    {
+      "name": "G5",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    if not contended:\n        return False",
+      "new": "    if not contended:\n        return True",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_an_ordinary_failing_check_still_records_and_consequences",
+      "expect_claim": "test_an_ordinary_failing_check_still_records_and_consequences|post > pre|#0",
+      "note": "🟢 The stand-down must be CONDITIONAL. A gate that stood down on every run would write nothing ever, satisfy the zero-residue claim perfectly, and silently stop verifying — the failure mode a 'safe' fix reaches for first."
+    },
+    {
+      "name": "G6",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    _ping_telegram(\"db_contended\", goal.goal, _contention_detail(contended, tails))\n    return True",
+      "new": "    _ping_telegram(\"db_contended\", goal.goal, _contention_detail(contended, tails))\n    return False",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_a_contended_check_stands_the_gate_down_with_zero_residue",
+      "expect_claim": "test_a_contended_check_stands_the_gate_down_with_zero_residue|post == pre|#0",
+      "note": "🔴 AC-8's load-bearing claim. The ping still fires — so `db_contended in events` stays green — but the gate no longer stands down, falls through to the consequence path, and writes a FABRICATED failure into the append-only trail. The assertions are ordered zero-residue-first precisely so this reddens the residue claim rather than leaving it NOT-REACHED behind `result is None`."
+    },
+    {
+      "name": "G7",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    _ping_telegram(\"db_contended\", goal.goal, _contention_detail(contended, tails))",
+      "new": "    _ping_telegram(\"db_contended_x\", goal.goal, _contention_detail(contended, tails))",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_a_contended_check_stands_the_gate_down_with_zero_residue",
+      "expect_claim": "test_a_contended_check_stands_the_gate_down_with_zero_residue|\"db_contended\" in events|#0",
+      "note": "Telegram is the CHANNEL OF RECORD for a stand-down (zero residue means the trail says nothing), so an unnamed or misnamed event makes the contention invisible to the only reader who could act on it. Three sibling claims stay green, so this credits the event name alone."
+    },
+    {
+      "name": "G8",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "            (ln for ln in tails.get(cid, \"\").splitlines() if \"TEST-DB-GUARD\" in ln),",
+      "new": "            (ln for ln in tails.get(cid, \"\").splitlines() if False),",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_the_contention_ping_names_the_holder_pid",
+      "expect_claim": "test_the_contention_ping_names_the_holder_pid|\"424242\" in details[0]|#0",
+      "note": "ADR-0038 C6's legibility conjunct. The ping still arrives — `details` stays truthy — but names no pid, so a human woken by it has nothing to reap. A report that says 'something is contended' and cannot say what is a report nobody can act on."
+    }
+  ],
+  "exemptions": {
+    "test_without_the_injection_the_child_sees_nothing|state == CHECK_FAIL|#0": "🟢 This IS the positive control for G1 — it proves the marker is INJECTED rather than inherited from the ambient environment. Falsifying it needs the ambient env to carry the marker, not a mutation to the gate: with `_check_env` patched away the child sees nothing however the gate is written. Its green under G1 is what makes G1's reddening attributable to the injection.",
+    "test_without_the_injection_the_child_sees_nothing|\"child_role=None\" in tail|#0": "Co-falsified with the claim above and NOT-REACHED after it. Its independent content — that the tail is carried at all — is witnessed by G2 on the sibling node.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|result is None|#0": "NOT-REACHED under G6: the zero-residue assert above it fails first, so this line's state is unknown, never green. Ordering it second is deliberate (see the comment in the test) — the trail claim is the one AC-8 is about, and a claim that can only ever be NOT-REACHED has no witness at all.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|post_goal.status == \"active\"|#0": "Same NOT-REACHED position under G6. Its content — the goal is neither passed nor parked by a host event — follows from zero residue; a status change is a trail write.",
+    "test_the_contention_ping_names_the_holder_pid|details|#0": "🟢 The precondition that makes the pid claim readable: it must stay GREEN under G8, which is what says the ping still arrived and only its CONTENT lost the pid. Probing it would remove the evidence that G8 is specific rather than 'the ping vanished'.",
+    "_reloaded|loaded is not None|#0": "A test-helper precondition (the goal file round-tripped), not a claim about the gate. It is falsified by breaking the fixture's isolation, which no mutation to `_goal_gate.py` can do."
+  }
+}
