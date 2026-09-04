@@ -203,7 +203,17 @@ def db_floor_verdict(executed: int, ci: str | None, args: list[str]) -> str | No
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
-    """Fail a CI full-suite run whose DB layer silently vanished (AC-12)."""
+    """Release the DB guard, print its token, then apply the AC-12 floor.
+
+    The token prints on **every** run, clean or dirty, carrying the values it measured
+    rather than a verdict (CLAUDE.md §8) — a guard that only speaks up when something
+    is wrong is indistinguishable from a guard that is not running. It is printed
+    BEFORE the floor verdict so a contended or lost session says so first.
+    """
+    guard = db_support.session_guard()
+    guard.release()
+    print(f"\n{guard.token(len(db_support.EXECUTED_DB_TESTS))}")
+
     message = db_floor_verdict(
         len(db_support.EXECUTED_DB_TESTS),
         os.environ.get("CI"),
