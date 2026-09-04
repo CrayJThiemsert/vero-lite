@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-09-04T16:58:00+07:00
+last_updated: 2026-09-04T21:22:31+07:00
 session: 278
-current_batch: "s276–s278 — FIFTEEN PRs (#1380–#1394): PLAN-0120 Steps 0–4 shipped; the '9 of 11 closed' claim did NOT survive audit; route (ก) ruled, probe 1b finally run, ledger 0 → 8 of 11."
+current_batch: "s276–s278 — NINETEEN PRs (#1380–#1398): the '9 of 11 closed' claim did not survive audit (7 earned); battery definitions committed, which then exposed a gap in s278's OWN ticks; Check 3 now joins the two."
 current_actor: code
-blocked_on: "NOTHING. #1393 and #1394 are merged; only this reconcile is open. AC-1 needs Step 7's live run, not more coverage."
-next_action: "PLAN-0121 Step 0 → 1, or PLAN-0120 Step 5 (AC-9, pass read coupled to PLAN-0121 SD-2). Step 7 closes AC-1's live half + AC-10 in one pass."
-head_commit: 9b91693
-recent_commits: [9b91693, aaa5cca, 89a74f1, f4b6b0d, 8859c27, 7b18667, 5eccf60, f3a3de5, 5d525e0, c9fea83]
+blocked_on: "NOTHING. #1393–#1398 all merged; only this reconcile is open. AC-1 needs Step 7's live run, not more coverage."
+next_action: "PLAN-0121 Step 0 → 1 (its ACs need a committed battery under the new Check 3), or PLAN-0120 Step 5 (AC-9, coupled to PLAN-0121 SD-2). Step 7 closes AC-1's live half + AC-10 together."
+head_commit: 095c419
+recent_commits: [095c419, 76873ad, 21af928, c834f84, 9b91693, 89a74f1, 8859c27, 7b18667, 5eccf60, f3a3de5]
 ---
 
 # vero-lite — Project Status
@@ -18,49 +18,52 @@ recent_commits: [9b91693, aaa5cca, 89a74f1, f4b6b0d, 8859c27, 7b18667, 5eccf60, 
 
 ## Current Focus
 
-> **Session 278, 2026-09-04 (`8859c27` → `9b91693`) — THREE PRs
-> ([#1392](https://github.com/CrayJThiemsert/vero-lite/pull/1392)–[#1394](https://github.com/CrayJThiemsert/vero-lite/pull/1394)),
-> two merged. What it established: a closure claim repeated by two artifacts is
-> still a claim — and this one did not survive its own audit.**
+> **Session 278, 2026-09-04 (`8859c27` → `095c419`) — SEVEN PRs
+> ([#1392](https://github.com/CrayJThiemsert/vero-lite/pull/1392)–[#1398](https://github.com/CrayJThiemsert/vero-lite/pull/1398)),
+> six merged. What it established: a closure claim repeated by two artifacts is still
+> one claim — and the evidence for every AC tick in this repo was untracked by
+> default, which is why nobody could check it.**
 >
-> 🔴 **"9 of 11 closed" was wrong; SEVEN were earned.** Both the s277 handoff and
-> this file asserted nine. Measured against the PLAN's own bar — *no AC box is
-> ticked before its probe(s) report WITNESSED* — **AC-1** fails it: the node its
-> text names does not exist, and the shipped
-> `::test_the_check_child_receives_the_gate_role` reads the env var directly, so
-> it witnesses the marker **arriving**, never its second conjunct that the marker
-> **changes the database**. 🔴 **Probe 1b — declared in the PLAN — had never
-> run:** both probes on that node mutate `_goal_gate.py`, so the shipped test
-> stays green under the one mutation that mattered. **AC-2** fails differently:
-> battery 4 records its claim as *"the positive control for G1"* — an
-> **exemption**, not a witness.
+> 🔴 **"9 of 11 closed" was wrong; SEVEN were earned.** The s277 handoff and this file
+> both asserted nine. Measured against PLAN-0120's own bar — *no AC box is ticked
+> before its probe(s) report WITNESSED* — **AC-1**'s shipped test read the env var
+> directly, witnessing the marker **arriving**, never its second conjunct that it
+> **changes the database**; its declared **probe 1b had never run**. **AC-2**'s claim
+> was an **exemption**, not a witness. ✅ **Cray ruled route (ก), typed:** write the
+> tests the ACs specify rather than relax the ACs. #1394 did — probes 1b/1c/2 all
+> WITNESSED. 🔴 **Probe 2 refuted the PLAN's own prediction** (it reddens the
+> inequality, not the equality); that equality is a **co-moving agreement claim** and
+> is exempted with that reason.
 >
-> **The evidence that refuted the claim was s277's own:** all four battery
-> definitions survived in `/tmp`, so the probe→AC mapping was derived from each
-> probe's **`node_id`**. ⚠️ A first mapping keyed on the probes' **note text**
-> under-reported coverage and was discarded — battery 1's notes name no ACs at
-> all.
+> 🔴 **The battery definitions were in `/tmp`, tracked nowhere.** PLAN-0120 Step 5
+> demanded they travel with the report *citing PLAN-0117 for skipping it* — then it
+> was skipped again. The s278 audit worked only because four `/tmp` files survived.
+> **Four independent specialist reviews of an unrelated question each escalated this
+> unprompted, ahead of what they were asked.** #1395 commits seven definitions to
+> `tests/batteries/` with the convention, and PLAN-0120 gains a machine-addressable
+> `**Batteries:**` line.
 >
-> ✅ **Cray ruled route (ก), typed:** write the tests the ACs specify rather than
-> relax the ACs to fit what shipped. #1394 adds both — measured
-> `child_db=…_bb36873b_gate`, and `with=…_gate without=…bb36873b
-> parent=…bb36873b` — and runs **probes 1b / 1c / 2, all WITNESSED**
-> (`COVERAGE: COMPLETE`, 19 claims, 0 gaps). **Ledger 0 → 8.** AC-2 closes;
-> **AC-1 is now a step-ordering item, not a coverage gap** — only its live
-> WSLENV half remains, which the PLAN assigns to Step 7.
+> 🔴 **Committing them exposed a gap in THIS session's own ticks.** #1396: AC-7's
+> artifact (a) and AC-8's cross-file pin sat in **no** battery's `claim_sources`, and
+> declared **probe 8c had never run** — so `PROBE-COVERAGE: COMPLETE` was computed over
+> a denominator excluding them, and both were ticked on that reading hours earlier.
+> Closed by two new batteries rather than by unticking, route (ก) again. **Ledger 0 → 8
+> of 11**, now evidenced.
 >
-> 🔴 **Probe 2 refuted the PLAN's own prediction.** Drafted as reddening
-> `name_without == parent` with the inequality staying green; measured, the
-> **reverse** — an unconditional suffix resolves parent and both children to
-> `…_gate`, so the names coincide. That equality is a **co-moving agreement
-> claim** (both sides run identical resolution code) and is exempted with that
-> reason. ⚠️ The battery refused probe 1c's first run — `MUTATION-ERROR: old
-> text occurs 0 times`, a 12-space anchor against a 4-space line. The refusal was
-> correct, and is why probes run through the shipped driver.
+> ✅ **The join is mechanised (#1397).** `check_ac_consistency` **Check 3** fails a
+> ticked AC whose artifact module is in no battery, fails a PLAN that binds ticks to
+> probes and names none, and treats an empty `**Batteries:**` glob as an **error, never
+> a skip**. Module-level by measurement: a probe-id join recovers **37%** and would
+> raise 12 false alarms of 19. Two of its own false positives were measured and fixed
+> before shipping, and are now regression tests. Witnessed by six probes on its own
+> tests — including the **over-fire** direction, since a guard that accuses correct
+> work gets silenced too.
 >
-> **Evidence.** Suite `4868 passed, 8 skipped`, reconciled against s277's
-> `4866, 8` as exactly **+2**. Both merges verified **by content** with a
-> control: ticked AC boxes `pre=0 post=7`, then `pre=7 post=8`.
+> ✅ **#1398 homed what had no home:** R6 gains where a rotation payload comes from
+> (`git show HEAD:`, not a subagent's paste) and a pre-append present-once check with a
+> positive control — the second a **precedence correction**, since the derived skill
+> already carried it and its canonical did not. Lesson **#0047** gains the addendum
+> with its ADR-0038 tally. A proposed third finding was **dropped on the evidence**.
 
 > **Session 276–277, 2026-09-04 (`dfe7fca` → `8859c27`) — TWELVE PRs merged
 > ([#1380](https://github.com/CrayJThiemsert/vero-lite/pull/1380)–[#1391](https://github.com/CrayJThiemsert/vero-lite/pull/1391)),
@@ -190,7 +193,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-09-04 | **s278 — THREE PRs (#1392–#1394): the "9 of 11 closed" claim did NOT survive audit; SEVEN were earned, and route (ก) took the ledger to 8 of 11.** 🔴 **AC-1**'s shipped test witnessed the marker *arriving*, not its second conjunct that it *changes the database*, and its declared **probe 1b had never run** — both probes on that node mutate `_goal_gate.py`. **AC-2**'s claim was an **exemption** (the positive control for G1), not a witness. ✅ **Cray ruled route (ก), typed:** write the tests the ACs specify rather than relax the ACs — probes 1b/1c/2 now WITNESSED, `COVERAGE: COMPLETE`. 🔴 **Probe 2 refuted the PLAN's own prediction** — `name_without == parent` is a co-moving agreement claim, exempted with that reason. | `9b91693` / [#1393](https://github.com/CrayJThiemsert/vero-lite/pull/1393) / [#1394](https://github.com/CrayJThiemsert/vero-lite/pull/1394) / `docs/plans/0120-*.md` |
+| 2026-09-04 | **s278 — SEVEN PRs (#1392–#1398): the "9 of 11 closed" claim did NOT survive audit (seven earned), and committing the battery definitions then exposed a gap in s278's own ticks.** 🔴 **AC-1**'s test witnessed the marker *arriving*, not that it *changes the database*; its **probe 1b had never run**. **AC-2**'s claim was an **exemption**. ✅ Cray ruled **route (ก)** — write the tests the ACs specify; probes 1b/1c/2 WITNESSED, **ledger 0 → 8 of 11**. 🔴 The definitions lived only in `/tmp` though Step 5 demanded otherwise **citing the previous skip**; committed to `tests/batteries/`, which immediately showed AC-7/AC-8 sitting outside every denominator. ✅ **Check 3** now joins PLAN to battery mechanically; R6 + #0047 amended. | `095c419` / [#1395](https://github.com/CrayJThiemsert/vero-lite/pull/1395) / [#1397](https://github.com/CrayJThiemsert/vero-lite/pull/1397) / `tests/batteries/README.md` |
 | 2026-09-04 | **s276–s277 — TWELVE PRs (#1380–#1391): PLAN-0120 Steps 0–4 shipped, and Step 0 overturned two of the PLAN's own drafted premises** (F10 wrong in both directions; AC-9's pass read named an outcome the classifier never produces). One pytest per checkout is now **ENFORCED** — a second arriver exits **75** naming the holder. 🔴 **The AC ledger is still 0/11 ticked while nine ACs' work is on `main`** — the same shape as the s274 PLAN-0117 row, so a repeat, not a one-off. ✅ **PLAN-0121** drafted, four SDs RULED (a). Three real bugs fixed, two in same-session code. Batteries: 74 claims, **32 RED**, 0 gaps; CI green on all 9 heads. | `8859c27` / [#1383](https://github.com/CrayJThiemsert/vero-lite/pull/1383) / [#1389](https://github.com/CrayJThiemsert/vero-lite/pull/1389) / `docs/plans/0120-*.md` |
 | 2026-09-03 | **s275 — FIVE PRs (#1375–#1379): PLAN-0117 CLOSED, but only after eight AC definitions (C1–C8) were repaired — several could not fail by construction. 16 of 16 WITNESSED** (`claims: 86 · RED: 15 · exempted: 71 · GAPS: 0`, + AC-1(a) by hand). 🔴 **The goal gate fabricated nine test failures — the THIRD time (s228/s253/s275):** a `check` `pytest` criterion bound the same per-checkout test DB as a running suite; the serialized re-run of the byte-identical command gave **4801 passed, 0 failed**. ✅ **ADR-0018 D8** (resource-binding contract) + four latent harness defects fixed (#1376). ✅ **PLAN-0120** drafted, six SDs RULED (a). | `dfe7fca` / [#1375](https://github.com/CrayJThiemsert/vero-lite/pull/1375) / [#1377](https://github.com/CrayJThiemsert/vero-lite/pull/1377) / `docs/plans/done/0117-*.md` · `docs/adr/0018-*.md` §D8 |
 | 2026-09-03 | **s274 — FOUR PRs (#1371–#1374): PLAN-0119 drafted and all NINE SDs RULED (Cray, typed), with three factual defects corrected.** 🔴 **The *proposed* PLAN-0117 closeout was audited by four specialists and its premise found WRONG** — the work had shipped at s265-266 and only the checkboxes were unticked, while several ACs were structurally incapable of failing. Cray ruled a **full re-witness** rather than a tick. ✅ STATUS hygiene (#1374) homed the `Counterparty` deferral and corrected two Active-TODO rows that were measurably false. | `51591d2` / [#1373](https://github.com/CrayJThiemsert/vero-lite/pull/1373) / [#1374](https://github.com/CrayJThiemsert/vero-lite/pull/1374) / `docs/plans/0119-*.md` |
@@ -214,7 +217,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 ## Active TODOs
 
 - [ ] **🆕 PLAN-0121 (a DB-contended probe child must not report `GREEN`) — `Draft`, all four SDs RULED (a) (Cray, typed, s277), 8 ACs, 0 ticked, nothing blocking; next is Step 0 → 1.** 🔴 **Read §2 first — the recursion hazard: this PLAN changes the instrument that witnesses its own probes.** The drafter worked out which direction of defect the battery cannot see (under-fire) versus which is loud (over-fire). SD-4 pins against the s277 artifacts at `~/work/s277_evidence/` — outside the repo, but deterministic and DB-free, so reproducible if lost. **Read:** `docs/plans/0121-*.md`.
-- [ ] **🆕 PLAN-0120 (goal-gate test-database isolation) — `Draft`; Steps 0–4 MERGED, AC ledger **8 of 11** ticked (s278).** 🔴 The s277 claim of nine did not survive audit: **AC-1**'s shipped test witnessed the marker *arriving*, not that it *changes the database*, and its declared **probe 1b had never run** — s278 wrote the specified test and ran it (route (ก), Cray typed). **Remaining: AC-1's live WSLENV half + AC-10 (Step 7, one pass), and AC-9 (Step 5).** ⚠️ AC-9's pass read is coupled to PLAN-0121 SD-2's `ABORTED` — neither PLAN closes it alone. **Read:** `docs/plans/0120-*.md`.
+- [ ] **🆕 PLAN-0120 (goal-gate test-database isolation) — `Draft`; Steps 0–4 MERGED, AC ledger **8 of 11** and now evidenced (s278).** 🔴 The s277 claim of nine did not survive audit, and **AC-7/AC-8's first s278 tick was itself premature** — their artifacts sat in no battery's `claim_sources` until #1396. Both closed by new batteries, not by unticking. **Remaining: AC-1's live WSLENV half + AC-10 (Step 7, one pass), and AC-9 (Step 5).** ⚠️ AC-9's pass read is coupled to PLAN-0121 SD-2's `ABORTED`. **Read:** `docs/plans/0120-*.md` and `tests/batteries/README.md`.
 - [ ] **🆕 PLAN-0119 (five-class local-model serving policy: Gate / Structure / Judge / Narrate / Author) — `Draft`, all NINE SDs RULED (Cray, typed, s274) + three factual defects corrected; nothing scheduled.** Its FIRST work is the **offline instrument repair**, before any further live run: the benchmark recorder drops `load_duration` and `prompt_eval_duration` that `CallMetrics` already computes, and there is no flag to set a cap at all. ⚠️ Ruled-but-unscheduled is exactly the drift the PLAN-0116 row below exists to stop. **Read:** `docs/plans/0119-*.md`.
 - [ ] **🆕 CRAY'S CALL — core `Counterparty` promotion: DEFERRED by the SD-2 SPLIT (s265); needs its own ADR (formally reopening ADR-0033 D6) + PLAN.** Not rejected — split off PLAN-0117 so a generator-mechanism change never rides a 5-property YAML edit. 🔴 Structural blocker: `_ORM_COMMITTED_DEST` routes namespace→ONE file and `emit_orm` takes one output path (`code_generator.py:900-914,936-938`) — a second core object type needs per-object-type routing first. Bill: 2 committed files + an alembic migration (CI `alembic check` reddens without it) + 3 tooling gaps (pre-commit glob skips `ontology/`; no `vero-lite generate core`; stale runbook `ontology-migration-autogenerate.md:11-13`). ⚠️ The future work must NOT delete fleet's `Vendor` (`test_golden_e2e.py:344`). Shape lean: `core.Counterparty` = `counterparty_id`+`name` only, HAS-A via `ref` — the DSL has NO inheritance. **Read:** PLAN-0117 § Out of Scope (deferred-core record).
 - [ ] **PLAN-0118 is COMPLETE 6/6 and ARCHIVED (s273) — this row survives ONLY for the human half.** ⚠️ `was an error` (s274): it previously read *"Only AC-6 remains … needs a NEW typed §8 go"* — AC-6 closed s273 and the PLAN is in `docs/plans/done/`; the s273 reconcile updated the frontmatter and Current Focus but missed this row. 🔴 **Still open:** the human-half 20-pair re-run needs a typed §8 go **and** a timeout fix (qwen p95 sits on the 120 s client timeout); the Thai corpus is an ACCEPTED gap. **Read:** `benchmarks/model_compare/DECISION.md` **§5-RULED** / **§5a-RESULT**.
@@ -250,6 +253,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 - [ ] **Bounded/incremental chain verification (PLAN-0063 SD-4 follow-up, s118).** `GET /audit/verify` walks the WHOLE chain O(n) on demand — accepted at pilot scale. Future work = a checkpointed head / verify-since-anchor design; anchor storage ≈ external anchoring — **do not build without re-reading the tripwire** in `docs/plans/done/0063-audit-chain-verification-surface.md` + the `services/api/routers/audit.py` module docstring (SD-4). *(#688/#690)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten. **Full table (all six rows + their triggers + where each lands): `docs/plans/done/0005-oct-engine-runtime-layer.md` §8.1** — which itself instructs this STATUS entry to be a pointer. *(per Cray note 2026-05-21)*
 - [ ] **Custom Postgres image with extensions (pgvector / AGE / pg_trgm) — MEASURED DORMANT s226. Recommendation: NO ACTION.** Grepping `services/` returns **one hit, a false positive** — the word "embedding" in a comment. **Nothing needs these extensions**, and the documented trigger points **opposite** to where the work went: NL query took the **relational-aggregation** route. ⚠️ **The price has RISEN:** ADR-0037 grants fleet its **own** Postgres, so swapping the base image now touches **three published profiles and their 68-test guard suite**. Needs a fresh ADR + PLAN, neither drafted.
+- [ ] **🆕 23 of the 31 claims in `tests/tools/test_check_ac_consistency.py` are NOT WITNESSED — exempted honestly, but the report still reads `COMPLETE`.** They are Check 1 / Check 2 claims shipped at s241, when no battery was committed for that module; s278's Check 3 work did not close them and said so in `tests/batteries/check-ac-consistency-check3.json`. This is the junk-exemption hazard lesson **#0047** warns about, left visible on purpose rather than papered over. Probing them is real follow-on work.
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] **CLAUDE.md follow-up extraction pass (s181 option b): Cowork dispatch, target < 20 KB. PARKED s183 by Cray — the dispatch stays UNSENT until two things settle.** (1) **The unit of `< 20 KB` is load-bearing and unpinned** (KiB vs decimal); Cray declined to rule. (2) **The named candidates cannot reach either target** — the cut needed was ~1,944–2,424 B where the five candidates measure ~930–1,000 B combined, and the large blocks are **not on the list**. 🔴 **The real parked decision: target and constitution pull opposite ways** — the growth is ratified binding-rule substance, not padding.
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
