@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-09-04T00:05:00+07:00
-session: 275
-current_batch: "s274–s275 — NINE PRs (#1371–#1379): PLAN-0117 CLOSED 16/16 after eight AC repairs; the goal gate fabricated nine failures a THIRD time; ADR-0018 D8 + four harness defects fixed; PLAN-0119/0120 drafted."
+last_updated: 2026-09-04T14:37:11+07:00
+session: 277
+current_batch: "s276–s277 — TWELVE PRs (#1380–#1391): PLAN-0120 Steps 0–4 shipped (Step 0 overturned two of the PLAN's own premises); PLAN-0121 drafted + 4 SDs ruled; three real bugs fixed; AC ledger left at 0/11."
 current_actor: code
-blocked_on: "NOTHING. PLAN-0120's six SDs are all RULED (a) and ADR-0018 D8 is merged, so the §8 ADR-before-implementation gate is clear."
-next_action: "PLAN-0120 Step 0 — the MEASUREMENT pass (junit shape of a fixture-level pytest.exit; does wsl.exe propagate exit 75; +3 unknowns). Several AC pass reads depend on it — do NOT start Step 1 first."
-head_commit: dfe7fca
-recent_commits: [dfe7fca, 0e58be9, 3ce2006, 20024d6, 15d3a34, c373227, 549b363, 7d308ef, 4446e4b, a674f95]
+blocked_on: "NOTHING. Everything is on `main`, zero open PRs, and both next options — the PLAN-0120 AC ledger and PLAN-0121 Step 0 — are unblocked."
+next_action: "Tick PLAN-0120's AC ledger against the merged evidence — 0 of 11 ticked while nine ACs' work is on `main`. Then: Step 5 (AC-9), pass read coupled to PLAN-0121 SD-2; and PLAN-0121 Step 0 → 1."
+head_commit: 8859c27
+recent_commits: [8859c27, 7b18667, 5eccf60, f3a3de5, 5d525e0, c9fea83, dab58fb, e5a0f2e, 9f28b42, 74a1620]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,58 @@ recent_commits: [dfe7fca, 0e58be9, 3ce2006, 20024d6, 15d3a34, c373227, 549b363, 
 ---
 
 ## Current Focus
+
+> **Session 276–277, 2026-09-04 (`dfe7fca` → `8859c27`) — TWELVE PRs merged
+> ([#1380](https://github.com/CrayJThiemsert/vero-lite/pull/1380)–[#1391](https://github.com/CrayJThiemsert/vero-lite/pull/1391)),
+> 0 open, tree clean, MS-S1 never contacted. What it established: work shipping
+> is not the ledger closing — PLAN-0120 has Steps 0–4 on `main` and `- [x]` on
+> ZERO of its 11 ACs.**
+>
+> ✅ **PLAN-0120 Steps 0–4 merged.** **Step 0 (#1383) overturned two of the
+> PLAN's own drafted premises** — F10 wrong in both directions, AC-9's pass read
+> naming an outcome the classifier never produces; six controlled measurements,
+> 17 inline corrections, second commit self-correcting the first — 🔴 **never
+> squash #1383.** Then `tests/db_guard.py` + role marker + lazy acquisition
+> (#1386), `pytest_sessionstart` + a named xdist refusal at exit 4 (#1387), the
+> creation race counted and a real error raised (#1388), the goal gate injecting
+> the marker, mapping the reserved exit code, standing down with zero residue
+> (#1389). **One pytest per checkout is ENFORCED, not advisory:** a second
+> arriver exits **75** naming the holder's pid, `application_name` and
+> `backend_start`; a no-DB-test session is unaffected (SD-4).
+>
+> 🔴 **The AC ledger is the open half — and it is a REPEAT.** Nine ACs' work
+> (AC-3/4/5/6/7/8/11 + the offline halves of AC-1/AC-2) is merged, the body
+> stamps only `Step 0 COMPLETE`, and **0 of 11 are ticked**. The s274 row below
+> records the same shape for PLAN-0117, so this is a pattern, not an accident;
+> `tools/check_ac_consistency.py` did not catch it (blind spot has its own TODO).
+> **Ticking that ledger against the merged evidence is the next action.**
+>
+> 🔴 **Three real bugs, two in code written the same session — tests found them,
+> review did not.** `ensure_test_database` crashed on a real race **10/10**: the
+> malformed-statement shape was *swallowed*, so the caller connected to a
+> database never created; fixed by asking Postgres *"is it there now?"*, not by
+> discriminating on exception class or SQLSTATE. `TestDbGuard.release()` raised
+> unlocking a terminated backend — never executed until AC-5 killed a holder.
+> The third became **PLAN-0121** (#1384 drafted; #1385 four SDs **RULED (a)**):
+> a DB-contended child reports `GREEN`, byte-identical to a real green's reason.
+>
+> **Evidence.** Four probe batteries, all `PROBE-COVERAGE: COMPLETE`, zero gaps
+> — **74 claims, 32 WITNESSED RED**, 42 exempted; definitions were `/tmp`-only,
+> **not committed**, reproducible from each PR body's probe notes. CI **PASS on
+> all 9 heads**. Suite reconciled **by collection**: Step 1 `4846 passed, 8
+> skipped` → Step 4 `4866 passed, 8 skipped` (4,874 collected) — ⚠️ **the s275
+> baseline of `4801` is stale by exactly 12**, counted not estimated. 🔴 **Branch
+> protection: `strict: true` + `enforce_admins: true`** — every merge puts each
+> other open PR `BEHIND` (merge + push + fresh CI, no admin bypass), so n open
+> PRs cost n + (n−1) runs: **open one at a time unless truly independent**. 🔴
+> `pgrep -af "[p]ytest"` matched **its own command line** as a live pytest.
+>
+> **s276 (#1380–#1382)** cleared the s274–275 reconcile and put **two Cray
+> directions** on a tracked surface before a gitignored handoff lost them — both
+> are live Active-TODO rows (the Active-TODO file split; the **Stop-hook
+> classifier, not CI,** warming `gpt-oss:20b` on MS-S1 every turn end). #1382
+> named a bare `uv run` as it empties the shared venv; #1390 rehomed **Lessons
+> #0058 + #0059**; #1391 stopped two tools advising that same venv strip.
 
 > **Session 274–275, 2026-09-03 (`8ac17f5` → `dfe7fca`) — NINE PRs merged
 > ([#1371](https://github.com/CrayJThiemsert/vero-lite/pull/1371)–[#1379](https://github.com/CrayJThiemsert/vero-lite/pull/1379)),
@@ -120,102 +172,7 @@ recent_commits: [dfe7fca, 0e58be9, 3ce2006, 20024d6, 15d3a34, c373227, 549b363, 
 > #1358 widened CLAUDE.md §8's suspect-the-instrument clause past batteries —
 > it fired **seven times** in s269 and the artifact was right every time.
 
-> **Session 267 tail + 268, 2026-09-01/02 (`8843000` → `a0b743b`) — EIGHT PRs
-> merged ([#1348](https://github.com/CrayJThiemsert/vero-lite/pull/1348)–[#1355](https://github.com/CrayJThiemsert/vero-lite/pull/1355)),
-> 0 open. Wider than one session: #1348–#1350 landed AFTER the s267 reconcile
-> was written and were recorded nowhere. What it established: a claim is only
-> as good as the surface its consumer actually reads.**
->
-> 🔴 **#1349 ruled a rubric in the morning; #1352 cut the position that rubric
-> scored, that same night.** Both read `gate_advisory.py`. #1349 narrowed the
-> question honestly — brevity is already specified in code and restating
-> figures already forbidden, so neither was ever open: score the **causal
-> link** (amount → band → authority), not completeness. #1352 read one step
-> further and asked what dissolves it — **does this output have a consumer?**
-> The model's entire user input is `" ".join(reasons)` (`:171`), the same
-> sentences already on the approver's screen (`:150`); the UI renders
-> `reasons` and **never reads** `narrative` (`view-monitor.js:342`).
-> `detail.narrative` has **one writer, zero readers**. Verdict
-> **DO-NOT-WIRE** — the rubric was never wrong, it had no subject. Offline:
-> **MS-S1 never contacted, the §8 go UNUSED**; questions SHA-256-**sealed
-> before** the payload was read, against 17 real rendered sidecars.
->
-> 🔴 **Two more claims sat beside their own refutations.** `grader.py`'s
-> docstring claimed the headline scores fields the model "genuinely OWNS" —
-> refuted **two paragraphs below itself** (#1350): the product overrides
-> `affected_primary_key` (procedure path) and anchor-replaces it (reactive);
-> `forbidden_primary_keys` is the *one* entity check that does measure product
-> behaviour. Cray's typed s267 ledger ruling lived only in a commit message
-> and a PR body — **surfaces no enforcer reads** — so it would have survived
-> one reconcile (#1348); now in the runbook AND `status-scribe.md` with the
-> **~900 B per-entry cap** and 🔴 **measure a block as its own contiguous `>`
-> run, never header-to-header** (#1263 read 2,567 B as 4,936; s267 repeated
-> it, 3,414 as 7,950).
->
-> **PLAN-0118 drafted, ruled, started.** #1353 the Draft (466 lines,
-> `plan-drafter`), #1354 all five SDs **RULED** by Cray (each took the drafted
-> recommendation), #1355 Steps 1–2 — `gold.yaml`, **11 cases (8 scored + a
-> 3-case injection band)**, three domains, the 2x2 enforced. #1351 gave the
-> orphaned s267 findings tracked homes and **surfaced a fourth doing it**:
-> §5.1's do-not-act instruction pointed at a test with **zero tracked hits**.
->
-> **Evidence.** Every merge verified **by CONTENT, not ancestry** — 15 tokens,
-> 0 hits pre-merge, ≥1 at merged `main`. Suite **4718 passed, 8 skipped, ×4**,
-> matching s267; `ruff` clean (705 → 706 files); `mypy --strict
-> benchmarks/intake_extraction/` **hand-run** — CI type-checks neither
-> `benchmarks/` nor `tools/`. 🔴 **The Step-2 authoring check found a defect in
-> ITSELF:** AC-1(d) read **8 of 8** by counting `recovery_value` — an expected
-> answer — as a distractor, **vacuous by construction**; the tell was the
-> number being too good. Fixed, criterion NOT relaxed; honest **4 of 8**.
-
-> **Session 267, 2026-09-01 (`d420217` → `8843000`) — FOUR PRs merged
-> ([#1343](https://github.com/CrayJThiemsert/vero-lite/pull/1343)–[#1346](https://github.com/CrayJThiemsert/vero-lite/pull/1346)),
-> 0 open. What the session established: a comparison number measures the
-> apparatus before it measures the thing — and two of this repo's own published
-> numbers were the apparatus talking.**
->
-> 🔴 **A p95 below 20 samples IS the sample maximum (#1344).** Nearest-rank
-> picks `ceil(0.95n)`, which equals `n` for every `n < 20` — so the **n=14**
-> procedure bar and the **10–13-case** NL lane published a **maximum** under a
-> percentile's name in **every run ever made**. Fixed at the reporting layer,
-> **four call sites**: the verdict survives in `tail_s`/`tail_label`, judged on
-> the maximum and **labelled as one**. The NL half had **no test at all**
-> before this. Battery **6/6 WITNESSED**.
->
-> 🔴 **Turning the reasoning pass off costs rationale quality (#1346).** qwen q4
-> on `fleet`, offline, no MS-S1: `full` **7/14** · `think_off` **4/14 (−3,
-> material)** · `skip` **5/14 (−2, not established)**. The control gated it —
-> the repeat reproduces the first run on **every** signal. 🔴 **The load-bearing
-> negative recurs:** `names_amount` gives `skip` a perfect **14/14** while the
-> ratified bar puts it **below** `full`, and `think_off` writes the **longest**
-> rationales with the **fewest** roles. §13 saw that inversion **between two
-> models**; this is the same one **inside a single model**.
->
-> **#1345 — the server's own clock now reaches the dump.** Ollama's timings land
-> in `CallMetrics` as raw nanoseconds plus derived **decode** and **prefill**
-> rates, which extrapolate across prompt length where a wall-clock second
-> cannot. `load_duration` separates a **cold load** from a slow model, and
-> compounds with #1344: on a 14-item run a cold load into item 1 can be the
-> whole reported "tail". Absent → `None` not `0`; zero → no rate, no crash;
-> boolean → `None` not 1 ns. Battery **5/5 WITNESSED**.
->
-> **#1343 — Lesson #0055**, six measured instances that had no home; the
-> earliest survived **only in the archive**. A **LOW** score reads budget →
-> flag → build → input *before* the model; a **HIGH** one suspects
-> **non-engagement** (the invariant-score test needs a **mechanism count** to
-> conclude); a **TIE or identical failure** proves the defect **shared**. Also
-> recorded: every qwen figure on the NL benchmark is the **q4_K_M** build —
-> **q8_0 has never run there**.
->
-> **Evidence.** Probe batteries **11/11 WITNESSED**; the offline gate green at
-> CI scope at **every** shipped sha, plus `mypy --strict benchmarks` by hand
-> each time. Counts were measured by **stashing**, not carried: `a0a6559`
-> **collects 4718** → **4722** (#1344) → **4726** (#1345); the final run
-> **passes 4718 with 8 skipped**, which *is* that same 4726 collected — the two
-> `4718`s are not a contradiction. Four Fable-5 specialists reviewed the
-> measurement programme and **refuted the caller's central recommendation**.
-
-_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **267, 268, 269-273, 274-275**. **THIS (s267) reconcile rotates the session-261 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: the caller re-measured each block as its own contiguous `>` run (2,992 / 3,384 / **3,414** / 3,669 B), **all under** the 4,096 B cap; the earlier *7,950 B / 94% over* figure was a measuring bug that ran to the end of the SECTION and swallowed this ledger. 🔴 **The growth was the LEDGERS, not Active TODOs** (caller-measured: CF 6,793 + RD 8,143 B, ~22% of the file; the RD one **never pruned until now**). Per Cray's typed s267 ruling both ledgers now carry the **current window only** at **~900 B per entry**; out-of-window entries were returned **verbatim** for archiving (R4). ⚠️ **No byte delta measured here — no shell; the caller owes `wc -c` + append + verify-by-DELTA.** **THIS (s268) reconcile rotates the session-263 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, s267 **3,103** · s265-266 **3,385** · s264 **3,670** · s263 **2,993 B**, all under the 4,096 B cap. 🔴 **Its s263 entry here is NOT re-archived — the pre-write assertion caught it:** both ledgers were archived **whole and PRE-PRUNE** at s267 (R2 permits it), so R4's move duty is discharged; a second copy would duplicate a move-only archive. ⚠️ **STATUS was PARTIALLY updated during s268** (`377b3c0`/`fd0cb42` touched Active TODOs / Next Steps), so this completes the **frontmatter + CF + RD** half. ✅ **Caller-measured:** from **61,774 B**, still under R1; CF archive **+3,586 B**, byte-identical to `git show HEAD:`, present-once and absent-from-STATUS verified separately. **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **THIS (s274-275) reconcile rotates the session-265-266 block** on **BOTH** rules — a first: a fifth block entered a four-wide window **and** that block measured **7,775 B, 90% over** the 4,096 B per-block cap (caller-measured; survivors 3,293 · 3,275 · 3,102 B, all under). 🔴 **Its LEDGER entry is NOT re-archived** — both ledgers were archived whole and PRE-PRUNE at s267, so R4's move duty for it is discharged; only the **block** travels, to `2026-h1d-current-focus.md`. ✅ **Second net-shrink reconcile ever:** STATUS opened at **63,480 B** with just **2,056 B** of R1 headroom, so the new block was written to a **≤ 4,096 B** budget against **7,775 B** recovered. ⚠️ **No byte delta measured — the caller owes `wc -c` + append + verify-by-DELTA.**]_
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **269-273, 274-275, 276-277** — THREE, by the deep rotate below; R2's maximum is four. **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **THIS (s274-275) reconcile rotates the session-265-266 block** on **BOTH** rules — a first: a fifth block entered a four-wide window **and** that block measured **7,775 B, 90% over** the 4,096 B per-block cap (caller-measured; survivors 3,293 · 3,275 · 3,102 B, all under). 🔴 **Its LEDGER entry is NOT re-archived** — both ledgers were archived whole and PRE-PRUNE at s267, so R4's move duty for it is discharged; only the **block** travels, to `2026-h1d-current-focus.md`. ✅ **Second net-shrink reconcile ever:** STATUS opened at **63,480 B** with just **2,056 B** of R1 headroom, so the new block was written to a **≤ 4,096 B** budget against **7,775 B** recovered. ⚠️ **No byte delta measured — the caller owes `wc -c` + append + verify-by-DELTA.** 🔴 **THIS (s276-277) reconcile is a DEEP rotate — TWO blocks left, not one** (**s267**, and **s267 tail + 268**), on the **headroom rule**, not a cap overage: the file opened with only **3,952 B** under R1 while this reconcile had to carry **two sessions and twelve PRs**. The window therefore lands at **THREE blocks** (269-273, 274-275, 276-277), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **a short window here is deliberate; no block was lost**. Both travel VERBATIM to `2026-h1d-current-focus.md`. 🔴 **Their s267 + s268 LEDGER entries are NOT re-appended — and the reason is a corrected claim, not the usual one.** This ledger first recorded them as written *after* the whole-and-PRE-PRUNE archive of s267 and therefore unarchived; the caller measured that and it is **false** — both are present in `2026-h1d-current-focus.md` (count 1 each, against a positive control), so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **61,584 → 58,971 B** (headroom 3,952 → 6,565) — the **third net-shrink reconcile ever**; CF archive **166,234 → 173,571 B (+7,337)** for the two blocks at 3,276 + 3,103 B, carved from `git show HEAD:` rather than the subagent's paste — which mattered: a pre-write assertion caught the paste differing from the original (`central recommendation.**` vs `central recommendation**.`). Present-once in the archive and absent-from-STATUS verified separately, in both directions.]_
 
 
 ## Prior focus (archived)
@@ -235,6 +192,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-09-04 | **s276–s277 — TWELVE PRs (#1380–#1391): PLAN-0120 Steps 0–4 shipped, and Step 0 overturned two of the PLAN's own drafted premises** (F10 wrong in both directions; AC-9's pass read named an outcome the classifier never produces). One pytest per checkout is now **ENFORCED** — a second arriver exits **75** naming the holder. 🔴 **The AC ledger is still 0/11 ticked while nine ACs' work is on `main`** — the same shape as the s274 PLAN-0117 row, so a repeat, not a one-off. ✅ **PLAN-0121** drafted, four SDs RULED (a). Three real bugs fixed, two in same-session code. Batteries: 74 claims, **32 RED**, 0 gaps; CI green on all 9 heads. | `8859c27` / [#1383](https://github.com/CrayJThiemsert/vero-lite/pull/1383) / [#1389](https://github.com/CrayJThiemsert/vero-lite/pull/1389) / `docs/plans/0120-*.md` |
 | 2026-09-03 | **s275 — FIVE PRs (#1375–#1379): PLAN-0117 CLOSED, but only after eight AC definitions (C1–C8) were repaired — several could not fail by construction. 16 of 16 WITNESSED** (`claims: 86 · RED: 15 · exempted: 71 · GAPS: 0`, + AC-1(a) by hand). 🔴 **The goal gate fabricated nine test failures — the THIRD time (s228/s253/s275):** a `check` `pytest` criterion bound the same per-checkout test DB as a running suite; the serialized re-run of the byte-identical command gave **4801 passed, 0 failed**. ✅ **ADR-0018 D8** (resource-binding contract) + four latent harness defects fixed (#1376). ✅ **PLAN-0120** drafted, six SDs RULED (a). | `dfe7fca` / [#1375](https://github.com/CrayJThiemsert/vero-lite/pull/1375) / [#1377](https://github.com/CrayJThiemsert/vero-lite/pull/1377) / `docs/plans/done/0117-*.md` · `docs/adr/0018-*.md` §D8 |
 | 2026-09-03 | **s274 — FOUR PRs (#1371–#1374): PLAN-0119 drafted and all NINE SDs RULED (Cray, typed), with three factual defects corrected.** 🔴 **The *proposed* PLAN-0117 closeout was audited by four specialists and its premise found WRONG** — the work had shipped at s265-266 and only the checkboxes were unticked, while several ACs were structurally incapable of failing. Cray ruled a **full re-witness** rather than a tick. ✅ STATUS hygiene (#1374) homed the `Counterparty` deferral and corrected two Active-TODO rows that were measurably false. | `51591d2` / [#1373](https://github.com/CrayJThiemsert/vero-lite/pull/1373) / [#1374](https://github.com/CrayJThiemsert/vero-lite/pull/1374) / `docs/plans/0119-*.md` |
 | 2026-09-03 | **s269–273 — TWELVE PRs (#1357–#1370): PLAN-0118 COMPLETE 6/6 and archived; the empty-body failure is MEASURED as the `num_predict` cap, and it is the CALL PATH, not the model.** 45 of 45 empty attempts carry `done_reason=length` with `eval_count` 1024 across three arms, and both Qwen arms are **worse** than `gpt-oss` (74% / 75% vs 53%). 🔴 **Three of Code's own claims were withdrawn on re-measurement** (#1370) — `eval_count` was never broken, the arithmetic was Code's; the reasoning-ate-the-budget mechanism is unsupported; a second-segment budget is CONTESTED and open. ✅ The three subagent write guards are live and witnessed (#1362/#1363), marked `was an error` (#1366). | `8ac17f5` / [#1369](https://github.com/CrayJThiemsert/vero-lite/pull/1369) / `docs/plans/done/0118-intake-extraction-benchmark.md` · `benchmarks/intake_extraction/RESULTS.md` · Lesson #0057 · ADR-0018 §Amendment |
@@ -244,9 +202,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-31 | **s264 — THREE more PRs (#1325, #1326, #1327): the axis becomes a shipped lane, and STATUS gets its headroom back.** ✅ **B2** puts the rationale check in `grader.py` as a **fourth lane with a consumer at every step**, `goal` keyword-only + `None`-default so **no goal ⇒ no check ⇒ β/α byte-identical** — the pre-existing 268-test suite passing untouched is that evidence; lane isolation probed in **both** directions. ✅ **STATUS 65,452 → 63,203 B** (headroom 84 → 2,333) via one asserted transaction, archives verified by byte **DELTA**. ✅ Lessons **#0051** (a saturated benchmark may be missing an AXIS, not needing harder data) + **#0052** (a criterion may only demand what the run supplies) authored. | `3cd1609` / [#1326](https://github.com/CrayJThiemsert/vero-lite/pull/1326) / [#1327](https://github.com/CrayJThiemsert/vero-lite/pull/1327) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-08-31 | **s264 — TWO PRs (#1323, #1324): the `fleet` ceiling is broken on a FOURTH axis, offline, with zero MS-S1 runs.** Scoring the `rationale` from the six dumps already on disk separates the tied models in **every cell, no overlap** — qwen **4–8/14**, gpt-oss **0–1/14**. 🔴 **The load-bearing result is NEGATIVE:** `names_amount` does not separate them and gpt-oss scores *higher*, so the intuitive "state the amount" rule would rank them backwards. ✅ **Bar RULED (Cray, typed): role-naming alone** — the richer criteria rest on facts the ontology lacks, making a higher bar an **ontology move before a grader move**. ✅ §12's *blocking-prerequisite* claim **RETIRED** (superseded, not an error). | `9cf5549` / [#1323](https://github.com/CrayJThiemsert/vero-lite/pull/1323) / [#1324](https://github.com/CrayJThiemsert/vero-lite/pull/1324) / `benchmarks/model_compare/RESULTS-1.6.md` §13 |
 | 2026-08-30 | **s263 — ONE PR (#1321, five commits): stage 2c completed the five-cell matrix, and the matrix then found a defect in OUR OWN procedure.** 🔴 **The `fleet` procedure GOAL told the LLM to check a gate that is evaluated deterministically downstream with no LLM**, withholding its threshold — live on **11 of 14** items, the rule fires on **one**. Rewritten (`0a1061f`, runtime spine), verified on two models: qwen q8 β/α **85.7 → 100%**, consistency **12/14 → 14/14**; gpt-oss identical, its 100% being **compliance-by-omission** (gate named in **1 of 17** items vs **17 of 17**). 🔴 **~60% of the q4 handler gap was COMPRESSION.** 🔴 `fleet` is at **ceiling for both models**. | `43f707a` / [#1321](https://github.com/CrayJThiemsert/vero-lite/pull/1321) / `benchmarks/model_compare/RESULTS-1.6.md` |
-| 2026-08-29 | **s261 — FOUR PRs (#1310–#1313): two of three phase-1.6 audit findings CLOSED; the third's model is on the box, unrun.** 🔴 **`think=False` does NOT turn gpt-oss thinking off — MEASURED** (a **3,105-char** trace on a live 1-item run), so 1.6's `gptoss/full` and `gptoss/think_off` were **one request**: the §4 *"p95 anomaly"* is two runs of one config, and the next matrix has **FIVE cells, not six**. 🔴 `num_predict` was unset, so a deadline **discarded every token produced** — bounded now. 🔴 The shell-hygiene advisory fired on **the idiom it prescribes** (30.8% of 950 commands); FP 3→0. | `41c0d4c` / [#1313](https://github.com/CrayJThiemsert/vero-lite/pull/1313) / `benchmarks/model_compare/RESULTS-1.6.md` |
 
-_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's own window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **267, 268, 269-273, 274-275**. The oldest row (**s254**) rotated to the same file at THIS (s267) reconcile — one s267 row entered, so one left to hold the table at ten, on the **count rule alone**. Its substance keeps the homes the row itself names — `docs/plans/done/0115-*.md` for PLAN-0115's four SDs, ADR-0018 VX-1 for the struck clause — **read off the row, not re-grepped here**, so `asserted-not-verified`. 🔴 **This is the FIRST reconcile ever to prune THIS ledger:** under Cray's typed s267 ruling it now holds the current window only at ~900 B per entry, and every out-of-window entry — back to the s243 cont. one — was returned **verbatim** for archiving (R4, move-never-drop), never deleted. ⚠️ No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA. The oldest row (**s255**) rotated to the same file at THIS (s268) reconcile — one s268 row entered, so one left to hold the table at ten, on the **count rule alone**; caller-measured **651 B**. Its substance keeps the homes the row itself names — `docs/plans/done/0115-*.md` for PLAN-0115, ADR-0018 VX-1 for the Stop-hook `systemMessage` — **read off the row, not re-grepped here**, so `asserted-not-verified`. Also rotated: the **one completed `[x]` TODO row** (the s268 gate-existence verdict, **949 B**), substance homed at `DECISION.md` §5a-RESULT. 🔴 This ledger's **s263 entry is NOT re-archived** — archived whole and PRE-PRUNE at s267, so re-appending would duplicate. ✅ **Caller-measured:** archive **+2,195 B**, both rows byte-identical to `git show HEAD:`, present-once and absent-from-STATUS verified separately. The oldest row (**s257**) rotated to the same file at THIS (s269-273) reconcile — one row entered, so one left to hold the table at ten, on the **count rule alone**; caller-measured **767 B**. Its substance keeps the home the row itself names — `docs/plans/done/0107-*.md` — **read off the row, not re-grepped here**, so `asserted-not-verified`. Also rotated under the R2 completed-row carve-out: **two `[x]` TODO rows** — the three s268 findings (all closed; homed at PLAN-0118 AC-1(d)/SD-6 and `DECISION.md` §5a) and the s270 Thai-prose ruling (homed at `DECISION.md` §5-RULED). ✅ **Caller-measured:** archive **+3,671 B** (767 + 1,190 + 990 B + header), all three byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **Follow-up (#1366):** the completed guards TODO row rotated to the base under the carve-out — **637 B**, archive **+1,172 B**, byte-identical, present-once / absent-from-STATUS. **TWO rows rotated to the same file at THIS (s274-275) reconcile** — **s258** and **s259–260** — because **two** entered (one per session) and the table holds ten, on the **count rule alone**; neither is a cap overage. Their substance keeps the homes the rows themselves name — `docs/plans/done/0107-*.md` for PLAN-0107 and `benchmarks/model_compare/RESULTS-1.6.md` for the phase-1.5/1.6 verdicts — **read off the rows, not re-grepped here**, so `asserted-not-verified`. **No `[x]` TODO row rotated: the section holds ZERO completed rows**, so the R2 carve-out had nothing to take. ⚠️ No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.]_
+_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's own window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **269-273, 274-275, 276-277** — three, matching the Current-Focus window after that ledger's deep rotate. The oldest row (**s257**) rotated to the same file at THIS (s269-273) reconcile — one row entered, so one left to hold the table at ten, on the **count rule alone**; caller-measured **767 B**. Its substance keeps the home the row itself names — `docs/plans/done/0107-*.md` — **read off the row, not re-grepped here**, so `asserted-not-verified`. Also rotated under the R2 completed-row carve-out: **two `[x]` TODO rows** — the three s268 findings (all closed; homed at PLAN-0118 AC-1(d)/SD-6 and `DECISION.md` §5a) and the s270 Thai-prose ruling (homed at `DECISION.md` §5-RULED). ✅ **Caller-measured:** archive **+3,671 B** (767 + 1,190 + 990 B + header), all three byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **Follow-up (#1366):** the completed guards TODO row rotated to the base under the carve-out — **637 B**, archive **+1,172 B**, byte-identical, present-once / absent-from-STATUS. **TWO rows rotated to the same file at THIS (s274-275) reconcile** — **s258** and **s259–260** — because **two** entered (one per session) and the table holds ten, on the **count rule alone**; neither is a cap overage. Their substance keeps the homes the rows themselves name — `docs/plans/done/0107-*.md` for PLAN-0107 and `benchmarks/model_compare/RESULTS-1.6.md` for the phase-1.5/1.6 verdicts — **read off the rows, not re-grepped here**, so `asserted-not-verified`. **No `[x]` TODO row rotated: the section holds ZERO completed rows**, so the R2 carve-out had nothing to take. ⚠️ No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA. The oldest row (**s261**) rotated to the same file at THIS (s276-277) reconcile — one row entered, so one left to hold the table at ten, on the **count rule alone**; caller-measured **748 B**. Its substance keeps the home the row itself names — `benchmarks/model_compare/RESULTS-1.6.md` — **read off the row, not re-grepped here**, so `asserted-not-verified`. **No `[x]` TODO row rotated: the section still holds ZERO completed rows.** 🔴 **This ledger's OWN s267 + s268 entries are NOT re-appended — a claim corrected on measurement.** It first recorded them as written *after* s267's whole-and-PRE-PRUNE archive and therefore unarchived. Measured false: the s254 note sits in `2026-h1-status.md` under its own `###` header and the s255 row under the s268 one. ⚠️ **A narrow substring probe read 0 on both and was a FALSE NEGATIVE** — the archive rewrites a rotation note into its own header format, so only a widened probe carrying a positive control found them. ✅ **Caller-measured:** base archive **147,703 → 149,281 B (+1,578)**, the row byte-identical to `git show HEAD:`, present-once and absent-from-STATUS verified separately.]_
 
 ## In-Flight Discussions
 
@@ -258,7 +215,8 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Active TODOs
 
-- [ ] **🆕 PLAN-0120 (goal-gate test-database isolation) — `Draft`, all six SDs RULED (a) (Cray, typed, s275), 11 ACs, 0 ticked. The next action is Step 0, the MEASUREMENT pass — NOT Step 1.** Several ACs' pass reads are pre-committed only *after* Step 0 measures five unknowns: the junit shape of a fixture-level `pytest.exit`, whether `wsl.exe` propagates exit code 75, and three others. 🔴 **Its acceptance bar is the OPPOSITE of PLAN-0117's** — an advisory lock is released the instant its holder dies, so a **lost guard reports exactly what a working guard reports** on a clean run; the fail-OPEN direction is what must be witnessed. **Read:** `docs/plans/0120-*.md`.
+- [ ] **🆕 PLAN-0121 (a DB-contended probe child must not report `GREEN`) — `Draft`, all four SDs RULED (a) (Cray, typed, s277), 8 ACs, 0 ticked, nothing blocking; next is Step 0 → 1.** 🔴 **Read §2 first — the recursion hazard: this PLAN changes the instrument that witnesses its own probes.** The drafter worked out which direction of defect the battery cannot see (under-fire) versus which is loud (over-fire). SD-4 pins against the s277 artifacts at `~/work/s277_evidence/` — outside the repo, but deterministic and DB-free, so reproducible if lost. **Read:** `docs/plans/0121-*.md`.
+- [ ] **🆕 PLAN-0120 (goal-gate test-database isolation) — `Draft`; Steps 0–4 MERGED on `main` (#1383, #1386–#1389), but the acceptance ledger is 0 of 11 ticked and the body stamps only `Step 0 COMPLETE`.** 🔴 **First action is ticking that ledger against the merged evidence** — nine ACs are closed by shipped work (AC-3/4/5/6/7/8/11 + the offline halves of AC-1/AC-2). Remaining: **Step 5 (AC-9)** and **Step 7 (AC-10 + the live halves of AC-1/AC-2)**. ⚠️ **AC-9's pass read is coupled to PLAN-0121 SD-2's `ABORTED`** — neither PLAN closes AC-9's legibility half alone; it is ticked in 0120 against a real DB-contended child once both have landed. **Read:** `docs/plans/0120-*.md`.
 - [ ] **🆕 PLAN-0119 (five-class local-model serving policy: Gate / Structure / Judge / Narrate / Author) — `Draft`, all NINE SDs RULED (Cray, typed, s274) + three factual defects corrected; nothing scheduled.** Its FIRST work is the **offline instrument repair**, before any further live run: the benchmark recorder drops `load_duration` and `prompt_eval_duration` that `CallMetrics` already computes, and there is no flag to set a cap at all. ⚠️ Ruled-but-unscheduled is exactly the drift the PLAN-0116 row below exists to stop. **Read:** `docs/plans/0119-*.md`.
 - [ ] **🆕 CRAY'S CALL — core `Counterparty` promotion: DEFERRED by the SD-2 SPLIT (s265); needs its own ADR (formally reopening ADR-0033 D6) + PLAN.** Not rejected — split off PLAN-0117 so a generator-mechanism change never rides a 5-property YAML edit. 🔴 Structural blocker: `_ORM_COMMITTED_DEST` routes namespace→ONE file and `emit_orm` takes one output path (`code_generator.py:900-914,936-938`) — a second core object type needs per-object-type routing first. Bill: 2 committed files + an alembic migration (CI `alembic check` reddens without it) + 3 tooling gaps (pre-commit glob skips `ontology/`; no `vero-lite generate core`; stale runbook `ontology-migration-autogenerate.md:11-13`). ⚠️ The future work must NOT delete fleet's `Vendor` (`test_golden_e2e.py:344`). Shape lean: `core.Counterparty` = `counterparty_id`+`name` only, HAS-A via `ref` — the DSL has NO inheritance. **Read:** PLAN-0117 § Out of Scope (deferred-core record).
 - [ ] **PLAN-0118 is COMPLETE 6/6 and ARCHIVED (s273) — this row survives ONLY for the human half.** ⚠️ `was an error` (s274): it previously read *"Only AC-6 remains … needs a NEW typed §8 go"* — AC-6 closed s273 and the PLAN is in `docs/plans/done/`; the s273 reconcile updated the frontmatter and Current Focus but missed this row. 🔴 **Still open:** the human-half 20-pair re-run needs a typed §8 go **and** a timeout fix (qwen p95 sits on the 120 s client timeout); the Thai corpus is an ACCEPTED gap. **Read:** `benchmarks/model_compare/DECISION.md` **§5-RULED** / **§5a-RESULT**.
@@ -302,7 +260,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Next Steps
 
-> **Immediate next action is PLAN-0120 Step 0** — the measurement pass for goal-gate test-database isolation, and **not** Step 1: several of its 11 ACs' pass reads are pre-committed only after Step 0 measures the junit shape of a fixture-level `pytest.exit`, whether `wsl.exe` propagates exit code 75, and three other unknowns. All six SDs are RULED (a) and ADR-0018 D8 is merged, so §8's ADR-before-implementation gate is clear and **nothing blocks it**. PLAN-0119's offline instrument repair is the queued follow-on. Nothing else from s274–s275 is owed. The items below are the long-horizon register and none of them gates it.
+> **Immediate next action is ticking PLAN-0120's AC ledger** — Steps 0–4 are merged on `main` and **0 of 11 ACs are ticked**, while nine of them are closed by shipped work. Then two independent follow-ons: **Step 5 (AC-9)**, whose pass read is coupled to PLAN-0121 SD-2's `ABORTED` so neither PLAN closes it alone, and **PLAN-0121 Step 0 → 1**. Nothing blocks either — zero open PRs, tree clean, everything on `main`. PLAN-0119's offline instrument repair stays the queued follow-on. Nothing else from s276–s277 is owed; the items below are the long-horizon register and none of them gates it.
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework, mapping layer, ORM emitter, base-Postgres → the custom-Postgres image, registry discovery). _[Corrected s153: dropped the stale "→ ADR-011+" and "→ PLAN-002 (≥ADR-014)" pointers — **ADR-011 does not exist** (earmark only, per the Active TODO above) and **PLAN-002 was never drafted** with its ADR floor moot; each item's corrected status lives in Active TODOs.]_
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
