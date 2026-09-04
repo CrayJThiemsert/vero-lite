@@ -2367,3 +2367,51 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the 
 > **passes 4718 with 8 skipped**, which *is* that same 4726 collected — the two
 > `4718`s are not a contradiction. Four Fable-5 specialists reviewed the
 > measurement programme and **refuted the caller's central recommendation**.
+
+### Rotated at the s278 reconcile — the session-269-273 Current-Focus block [a THIRD block rotated in the same PR as the s276-277 deep rotate, and on the same headroom rule rather than a cap overage: the s278 block entering took the file back to 4,041 B of headroom, and holding the window at R2's maximum of four would have left under 3.6 KB. The caller measured all four as their own contiguous `>` runs at 2,819 / 3,660 / 3,785 / 3,294 B, every one under the 4,096 B cap, and this slice at 3,294 B. Window lands at three (274-275, 276-277, 278). The block was verified byte-identical to `git show HEAD:` before being carved.]
+
+> **Session 269–273, 2026-09-02/03 (`a0b743b` → `8ac17f5`) — TWELVE PRs merged
+> ([#1357](https://github.com/CrayJThiemsert/vero-lite/pull/1357)–[#1370](https://github.com/CrayJThiemsert/vero-lite/pull/1370)),
+> 0 open, MS-S1 never contacted. What it established: a guard that is never
+> invoked reports nothing, and a benchmark's own criterion can be the false
+> negative.**
+>
+> 🔴 **The three subagent write guards had been inert since birth.** #1362:
+> their frontmatter `hooks:` had been FLAT since s269 — 2.1.247 discarded the
+> block at DEBUG and loaded the agents **UNGUARDED**, 2.1.255 refuses them
+> fail-closed. The nested rewrite restored **registration** (3/3 spawn, offline
+> oracle on the real binary with a flat control refused in the same run) but
+> **not the guard** — the §8 scenario went RED. #1363 found why: frontmatter
+> hooks **never run in this harness** (instrumented guard, **0 invocations**,
+> while `goal-evaluator`'s legitimate `goal.json` write succeeded), so they
+> moved to `settings.json` behind `pretooluse_subagent_write_dispatch.py`,
+> routing by `agent_type` to the three **unchanged** scripts, fail-closed where
+> identity is known. ✅ **s273 witnessed it LIVE:** a fresh `/goal` write passed
+> un-denied; a Fable `goal-evaluator` asked for a forbidden Write got ONE call,
+> denied with the guard's own `SD-1 narrowed Write` reason verbatim, the file
+> absent after. **Live from #1363**; `agent_type` is the frontmatter `name`.
+> Lesson **#0057** carries the arc; #1366 marks it `was an error` on ADR-0018
+> SD-1 / PLAN-0009 H2 / PLAN-0034 prong 2 (plan-drafter drafted = the third
+> routed agent witnessed; Cray ruled SD-1 covered by the s249 `done/` form,
+> SD-2 no marker on ADR-013 D2 — G5 is settings-level and always held).
+>
+> ✅ **PLAN-0118 Steps 1–6 done, AC-1–AC-5 CLOSED; only AC-6 is open**, and it
+> needs a NEW typed §8 go. #1357 shipped the scorer + gold controls (37 tests)
+> with 🔴 **AC-1(d) CORRECTED** from same-*magnitude* (`thr/3..thr*3`, a measured
+> FALSE NEGATIVE excluding `rm-02`'s 0.6 kPa reading) to **same-unit**, each case
+> declaring `same_unit_distractors` checked against its description. #1360
+> shipped the runner (recording pass-through over the real `OllamaClient`,
+> transport error distinct from validation exhaustion, SD-5) plus the binding §8
+> scenario driving the SHIPPED `extract_package` through its designed seam into
+> the real scorer. #1359 settled the four s269 items — fl-21/fl-22 from the
+> standing principle, Thai corpus = gap ACCEPTED, `biomass_boiler` RATIFIED as
+> **SD-6** with per-domain PROVENANCE, §5a's call-site count corrected in place
+> (`was an error`). ⚠️ #1364 ticked AC-1/2/5 only after re-verifying on `main` —
+> they shipped in #1357 and sat unticked through **three** handoffs.
+>
+> **Evidence.** Suite **4761 → 4795 passed**, 8 skipped; `mypy services/
+> verticals/` clean (201) and `--strict benchmarks/intake_extraction/` by hand;
+> bare `ruff check .` clean. Batteries **23 → 31** (22 WITNESSED + 9 GREEN;
+> denominator widened 81 → 121, **reported, not gamed**) + s272's **13/13**.
+> #1358 widened CLAUDE.md §8's suspect-the-instrument clause past batteries —
+> it fired **seven times** in s269 and the artifact was right every time.
