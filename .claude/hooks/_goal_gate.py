@@ -22,7 +22,19 @@ dispatch fires only when every check passes and judge residue remains):
    ``blocked-pending-human`` is not ``active``, so it self-quiesces here.
 2. Run ``check`` criteria — argv (never shell), per-criterion ``timeout_s``
    (missing -> ``invalid``), total budget ``$CLAUDE_GOAL_CHECK_BUDGET_S``
-   (default 600 s; exhausted -> ``skipped``). Unresolved states never pass.
+   (default ``DEFAULT_CHECK_BUDGET_S``; exhausted -> ``skipped``). Unresolved
+   states never pass. Each subprocess is given the **test-database identity
+   marker** (``VERO_TEST_DB_ROLE=gate``, ADR-0018 D8.2 / SD-A) so its pytest
+   resolves a database of its own instead of the one the interrupted session
+   is using.
+2b. **The seventh check state** — any criterion returned ``contended``
+   (the reserved exit code ``CONTENDED_EXIT``: another pytest already holds the
+   test database it was about to drop schemas in, PLAN-0120 / D8.4) -> Telegram
+   naming the holder's pid, and ``None``, with **ZERO residue** in ``goal.json``.
+   A contention is an event about the HOST, not about the goal: recording it
+   would put a defect nobody can remove into an append-only trail, which is the
+   s275 failure itself (nine fabricated test failures). Re-arms at the next Stop.
+   Precedent: the probe-battery stand-down at step 1's sibling (PLAN-0115 SD-2).
 3. All checks pass + all ``judge`` criteria carry a PASS verdict (or none
    exist) -> ``status: "passed"`` + trail entry + Telegram info -> ``None``.
 4. Judge residue unresolved + **work since the last trail entry**
@@ -152,6 +164,27 @@ CHECK_TIMEOUT = "timeout"
 CHECK_SKIPPED = "skipped"
 CHECK_INVALID = "invalid"
 CHECK_ERROR = "error"
+#: 🔴 The SEVENTH state (PLAN-0120 / ADR-0018 D8.4). Deliberately NOT a failure: a
+#: contended check says something about the host, not about the work, and the six states
+#: above all route into the trail. Kept distinct so the stand-down has something to test.
+CHECK_CONTENDED = "contended"
+
+#: The exit code a pytest session uses to say "another process holds the test database I
+#: was about to drop schemas in". ``EX_TEMPFAIL`` from ``sysexits.h``; pytest reserves
+#: 0-5 and 128+ is signal death, so it can be mistaken for neither. A **literal**, not an
+#: import: this module runs Windows-side and cannot import ``tests/``. The two sides are
+#: pinned equal by ``tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py`` —
+#: the same cross-file shape as ``DEFAULT_CHECK_BUDGET_S`` and the Stop hook's timeout.
+CONTENDED_EXIT = 75
+
+#: The identity marker injected into every check subprocess (SD-A, ruled). D8.2: a check
+#: MAY bind the test database, but only because the gate is made resource-isolated first.
+DB_ROLE_ENV = "VERO_TEST_DB_ROLE"
+DB_ROLE_VALUE = "gate"
+
+#: How much of a check child's stdout is carried back for reporting. Enough for the
+#: guard's one-line token; never used to decide an outcome.
+STDOUT_TAIL_BYTES = 4096
 
 
 def _check_budget_s() -> int:
@@ -299,22 +332,44 @@ def work_fingerprint() -> str:
     return digest.hexdigest()[:16]
 
 
-def _run_one_check(criterion: Criterion, remaining_budget_s: float) -> str:
+def _check_env() -> dict[str, str]:
+    """The environment every ``check`` subprocess gets — carrying the isolation marker.
+
+    🔴 **D8-VX-1, and it is a silent-failure seam.** Check commands route through
+    ``wsl bash -lc``, and a variable set only in the Windows-side subprocess env
+    **never reaches the WSL-side pytest** unless it is also named in ``WSLENV``. An
+    isolation that quietly does not happen is the worst of the three outcomes: the gate
+    would go on sharing the session's database while reporting success, which is exactly
+    the s275 defect wearing a fix's clothes. So the marker goes through the same
+    passthrough the Telegram ping already uses, and AC-1's assertion reads the value the
+    CHILD resolved rather than the one the parent set.
+    """
+    return env_with_wslenv_passthrough((DB_ROLE_ENV,), {**os.environ, DB_ROLE_ENV: DB_ROLE_VALUE})
+
+
+def _run_one_check(criterion: Criterion, remaining_budget_s: float) -> tuple[str, str]:
     """Run one ``check`` criterion. Exit code is the only truth
     (adversarial-2: argv-not-shell; stdout claiming PASS is ignored).
+
+    Returns ``(state, stdout_tail)``. The tail is carried out because a CONTENDED child
+    names the holder's pid in its own stdout token and **nowhere else** — the value dies
+    at this boundary otherwise, and the stand-down would report a contention it could
+    not attribute to a process anyone can reap (ADR-0038 C6's legibility conjunct). It
+    is used for **reporting only**; the state stays the exit code's decision, which is
+    the adversarial-2 refusal this docstring already carried.
     """
     if not criterion.cmd.strip():
-        return CHECK_INVALID
+        return CHECK_INVALID, ""
     if criterion.timeout_s is None:
-        return CHECK_INVALID  # VX-2: timeout_s is required for check criteria
+        return CHECK_INVALID, ""  # VX-2: timeout_s is required for check criteria
     if remaining_budget_s <= 0:
-        return CHECK_SKIPPED
+        return CHECK_SKIPPED, ""
     try:
         argv = shlex.split(criterion.cmd)
     except ValueError:
-        return CHECK_INVALID
+        return CHECK_INVALID, ""
     if not argv:
-        return CHECK_INVALID
+        return CHECK_INVALID, ""
     timeout = min(float(criterion.timeout_s), remaining_budget_s)
     try:
         # S603: argv from the goal author's declared cmd, intentionally
@@ -322,27 +377,75 @@ def _run_one_check(criterion: Criterion, remaining_budget_s: float) -> str:
         proc = subprocess.run(  # noqa: S603
             argv,
             cwd=str(REPO_ROOT),
+            env=_check_env(),
             text=True,
             capture_output=True,
             check=False,
             timeout=timeout,
         )
     except subprocess.TimeoutExpired:
-        return CHECK_TIMEOUT
+        return CHECK_TIMEOUT, ""
     except (OSError, ValueError):
-        return CHECK_ERROR
-    return CHECK_PASS if proc.returncode == 0 else CHECK_FAIL
+        return CHECK_ERROR, ""
+    tail = (proc.stdout or "")[-STDOUT_TAIL_BYTES:]
+    if proc.returncode == CONTENDED_EXIT:
+        return CHECK_CONTENDED, tail
+    return (CHECK_PASS if proc.returncode == 0 else CHECK_FAIL), tail
 
 
-def _run_checks(goal: Goal) -> dict[str, str]:
-    """Run all ``check`` criteria under the total budget (VX-2)."""
+def _run_checks(goal: Goal) -> tuple[dict[str, str], dict[str, str]]:
+    """Run all ``check`` criteria under the total budget (VX-2).
+
+    Returns ``(states, stdout_tails)``, both keyed by criterion id. Only the states
+    reach the trail; the tails exist so a contention can name the process holding the
+    database.
+    """
     results: dict[str, str] = {}
+    tails: dict[str, str] = {}
     budget = float(_check_budget_s())
     started = time.monotonic()
     for criterion in goal.check_criteria():
         remaining = budget - (time.monotonic() - started)
-        results[criterion.id] = _run_one_check(criterion, remaining)
-    return results
+        results[criterion.id], tails[criterion.id] = _run_one_check(criterion, remaining)
+    return results, tails
+
+
+def _stood_down_on_contention(
+    goal: Goal, deterministic: dict[str, str], tails: dict[str, str]
+) -> bool:
+    """Ping and report whether a check found the database held by another pytest.
+
+    Extracted rather than inlined so :func:`run_goal_gate` stays a readable list of
+    outcomes — the same shape ``_record_battery_defer`` and ``_failing_consequence``
+    already have. Returns ``True`` when the caller must stand down.
+    """
+    contended = [cid for cid, state in deterministic.items() if state == CHECK_CONTENDED]
+    if not contended:
+        return False
+    _ping_telegram("db_contended", goal.goal, _contention_detail(contended, tails))
+    return True
+
+
+def _contention_detail(contended: list[str], tails: dict[str, str]) -> str:
+    """The Telegram body for a stand-down — values, and a pid to act on.
+
+    The guard's token is echoed verbatim rather than summarised: it already carries the
+    database, the holder pid, the holder's ``application_name`` and how long it has been
+    running, and a reader meeting this at 3am needs all four.
+    """
+    lines = [f"criteria: {', '.join(contended)}"]
+    for cid in contended:
+        token = next(
+            (ln for ln in tails.get(cid, "").splitlines() if "TEST-DB-GUARD" in ln),
+            "(the child printed no guard token)",
+        )
+        lines.append(f"{cid}: {token.strip()}")
+    lines.append(
+        "The gate stood down and wrote NOTHING to the trail; it re-arms at the next "
+        "Stop. If this repeats, an orphaned pytest is holding the database — reap the "
+        "pid above."
+    )
+    return "\n".join(lines)
 
 
 def _latest_verdicts(goal: Goal) -> dict[str, str]:
@@ -617,7 +720,14 @@ def _summarize(results: dict[str, str]) -> str:
     return ", ".join(f"{k}={v}" for k, v in sorted(results.items())) or "(no check criteria)"
 
 
-def run_goal_gate(payload: dict[str, Any]) -> dict[str, Any] | None:
+def run_goal_gate(  # noqa: C901 — the D4 dispatcher is a FLAT sequence of named
+    # ADR-0018 outcomes (goal-less / battery stand-down / db-contention stand-down /
+    # passed / dispatch / warn-or-ladder / released-unevaluated), each exactly one
+    # branch and each documented in the module docstring's control-flow list.
+    # PLAN-0120 added the seventh, which is what crossed the bound. Splitting the
+    # sequence would remove the one place a reader can see every outcome at once.
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
     """The D4 gate. ``None`` = fall through to the classifier unchanged.
 
     ``payload`` is accepted for signature parity with ``_classify`` and
@@ -651,7 +761,19 @@ def run_goal_gate(payload: dict[str, Any]) -> dict[str, Any] | None:
             f"then `restore`. run_id={lock.get('run_id', '?')} pid={lock.get('pid', '?')}",
         )
 
-    deterministic = _run_checks(goal)
+    deterministic, check_tails = _run_checks(goal)
+
+    # PLAN-0120 / ADR-0018 D8.4 — a check found the test database held by ANOTHER
+    # pytest. Stand down here, before `checks_all_pass` and before any consequence:
+    # a contention is an event about the host, not about the work, and recording it
+    # would write a defect nobody can remove into an append-only trail — under
+    # `enforce: true` it would then ride the V2-D3 ladder. That is the s275 failure
+    # exactly, and it happened three times before anyone named it. Zero residue is the
+    # ruling (PLAN-0115 SD-2, applied to the same trail); Telegram is the channel of
+    # record, and the re-arm is simply the next Stop.
+    if _stood_down_on_contention(goal, deterministic, check_tails):
+        return None
+
     checks_all_pass = all(v == CHECK_PASS for v in deterministic.values())
     judges_all_pass = _judges_all_pass(goal)
     fingerprint = work_fingerprint()
