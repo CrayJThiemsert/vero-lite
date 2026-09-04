@@ -144,3 +144,72 @@ a module whose whole job is to be evidence. It would not be worth paying everywh
 The battery also still runs most probes against one target module, so its
 no-extra-red guarantee covers a narrower surface than its baseline count suggests.
 That is recorded rather than fixed — latent, not an active false green.
+
+---
+
+## Addendum (session 278, 2026-09-04) — a correctly-narrowed denominator is still not the AC's obligation set
+
+§3 of this lesson ratified that *"a coverage denominator must be the surface the
+instrument can actually reach."* That is right, and s278 measured its other half:
+**the surface the instrument reaches is not the surface the acceptance criterion rests
+on, and the report is silent about the difference.**
+
+PLAN-0120 declared probes per AC and bound its ticks in writing — *"no AC box is ticked
+before its probe(s) report WITNESSED under the pre-declared claim."* Four batteries ran.
+Every one reported `PROBE-COVERAGE: COMPLETE`: 32 probes, 32 witnessed, 42 exemptions,
+zero gaps. All of that was true.
+
+And yet:
+
+- **AC-7's artifact (a)** — `tests/tools/test_db_guard.py` — appeared in **no** battery's
+  `claim_sources` and was named by **no** probe's `node_id`.
+- **AC-8's cross-file pin** — likewise, and its **declared probe 8c had never run**.
+- **AC-1's declared probe 1b had never run** either: both probes on that node mutated the
+  same file, so the shipped test stayed green under the one mutation that mattered.
+
+Both ACs were ticked on that reading, and two artifacts — the handoff and `STATUS.md` —
+repeated the resulting claim, "9 of 11 closed". The audit found **7**.
+
+**Why the existing coverage report could not see it.** Its denominator is the claims in
+its own `claim_sources` modules. The PLAN's declared probe roster is a different set,
+written in a different file, and nothing joined them. A module simply absent from
+`claim_sources` contributes no claims, so it cannot appear as a gap — the report is
+exactly as silent about an unlisted module as this lesson's original finding said it is
+about an unprobed assertion, one level up.
+
+**The join key is each probe's `node_id`.** Joining on the probe *id* was measured at
+**37%** against the real batteries (probe names drift from the PLAN's ids) and would have
+raised 12 false alarms out of 19; joining on the declared *subject* fires on a mutation
+that was deliberately improved during implementation. The **artifact module** join
+measured **0 false positives** across eleven ACs.
+
+**Mechanised, per this lesson's own precedent.** #0047's remedy was never prose — it was
+*"make the battery compute its own coverage"*. The same answer applies here:
+`tools/check_ac_consistency.py` **Check 3** now fails a ticked AC whose artifact module is
+in no battery's `claim_sources`, fails a PLAN that binds its ticks to probe evidence and
+names no batteries, and treats a `**Batteries:**` glob matching zero files as an **error,
+never a skip**. It could only be built because the definitions were committed
+(`tests/batteries/`, s278) — the s278 audit itself was possible only because four `/tmp`
+files happened to survive.
+
+**A second reading, worth stating separately:** a PLAN's *prediction* of which assertion
+a probe will redden is itself a claim to be measured. PLAN-0120 predicted its probe 2
+would redden one conjunct and leave the other green; run, it did the **reverse**.
+
+### Running tally (ADR-0038 D1.5)
+
+**Class: "a probe battery's green is scoped to a denominator its author chose, and is
+silent outside it." 2 firings — not yet promotable (3 required).**
+
+1. **s251** (this lesson) — 12 of 33 test items never red under any probe, two of them
+   load-bearing; the battery answered the wrong question.
+2. **s278** (this addendum) — four batteries `COMPLETE` while two ACs' artifacts sat
+   outside every denominator and two declared probes had never run.
+
+⚠️ These are firings of the **broad** predicate. The narrower one this addendum
+names — *the coverage denominator versus the AC's obligation set* — has fired **once**.
+Counted separately on purpose: ADR-0038 D1.2 requires distinct incidents against a
+**written** predicate, and merging the two would manufacture a promotion out of one
+event. ⚠️ Note also that `docs/STATUS.md` records the three-strike counter as having no
+owner and having drifted, so this tally is stated here rather than assumed to be tracked
+elsewhere.

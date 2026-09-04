@@ -1,0 +1,52 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_gate_db_role.py"
+  ],
+  "probes": [
+    {
+      "name": "P1b",
+      "subject": "tests/db_support.py",
+      "old": "_ROLE: str | None = db_guard.role_from_env()",
+      "new": "_ROLE: str | None = None",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_the_check_child_resolves_a_gate_scoped_database",
+      "expect_claim": "test_the_check_child_resolves_a_gate_scoped_database|state == CHECK_PASS|#0",
+      "note": "🔴 AC-1 probe 1b, the one PLAN-0120 declared and s277 never ran. Stops db_support reading the role, so the CHILD resolves an unsuffixed name and exits 3. This is the mutation the shipped test_the_check_child_receives_the_gate_role stays GREEN under — which is exactly why that test could not close AC-1's second conjunct."
+    },
+    {
+      "name": "P1c",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    tail = (proc.stdout or \"\")[-STDOUT_TAIL_BYTES:]",
+      "new": "    tail = \"\"",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_the_check_child_resolves_a_gate_scoped_database",
+      "expect_claim": "_child_db_name|len(found) == 1|#0",
+      "note": "🔴 The tail is carried at all. Same shape as s277's G2 on the sibling test. state == CHECK_PASS stays GREEN here — that green is what rules out 'something unrelated broke'."
+    },
+    {
+      "name": "P2",
+      "subject": "tests/db_support.py",
+      "old": "_ROLE: str | None = db_guard.role_from_env()",
+      "new": "_ROLE: str | None = db_guard.role_from_env() or \"gate\"",
+      "node_id": "tests/handoffs/test_goal_gate_db_role.py::test_without_injection_the_child_name_equals_the_parent_name",
+      "expect_claim": "test_without_injection_the_child_name_equals_the_parent_name|name_with != name_without|#0",
+      "note": "🔴 AC-2's declared probe: the suffix becomes unconditional. PLAN-0120 predicted this reddens the `name_without == parent` equality and leaves the inequality green. Code's s278 analysis says the REVERSE — parent, injected child and un-injected child all resolve `..._gate`, so the two names coincide (inequality reddens) while both still equal the parent (equality stays green). This probe measures which is true."
+    }
+  ],
+  "exemptions": {
+    "test_the_check_child_resolves_a_gate_scoped_database|_child_db_name(tail).endswith(f\"_{DB_ROLE_VALUE}\")|#0": "🟢 Co-falsified with `state == CHECK_PASS` under P1b and NOT-REACHED after it: the child's exit code IS derived from the suffix check, so the two assertions read one fact two ways and no mutation separates them. Its independent content — that the tail carries a readable name at all — is witnessed by P1c on the helper's count assert.",
+    "test_without_injection_the_child_name_equals_the_parent_name|name_without == parent|#0": "🟢 A co-moving AGREEMENT claim: parent and un-injected child run the identical resolution code (tests/db_support.py at import), so any single source mutation moves BOTH sides and the equality survives it. That is the handoff's 'an assertion compared against a value that moves with the mutation has no witness' shape, recorded rather than papered over. Its hazard content — that an un-injected child is NOT isolated from this session — is what `name_with != name_without` asserts, and P2 reddens that.",
+    "test_the_check_child_receives_the_gate_role|state == CHECK_PASS|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_the_check_child_receives_the_gate_role|f\"child_role={DB_ROLE_VALUE}\" in tail|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_without_the_injection_the_child_sees_nothing|state == CHECK_FAIL|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_without_the_injection_the_child_sees_nothing|\"child_role=None\" in tail|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_a_contended_exit_code_is_classified_contended_not_fail|state == CHECK_CONTENDED|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_an_ordinary_nonzero_exit_is_still_a_failure|state == CHECK_FAIL|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|post == pre|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|result is None|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|post_goal.status == \"active\"|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_a_contended_check_stands_the_gate_down_with_zero_residue|\"db_contended\" in events|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_an_ordinary_failing_check_still_records_and_consequences|post > pre|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_the_contention_ping_names_the_holder_pid|details|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "test_the_contention_ping_names_the_holder_pid|\"424242\" in details[0]|#0": "Witnessed in the s277 Step-4 battery (PR #1389, /tmp/s277_battery4.json) — this run adds claims to a module whose pre-existing claims were covered there, and re-probing them would re-witness settled work rather than the new code.",
+    "_reloaded|loaded is not None|#0": "A test-helper precondition (the goal file round-tripped), not a claim about the gate — falsified only by breaking the fixture's isolation, which no source mutation reaches."
+  }
+}

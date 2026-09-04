@@ -1,0 +1,39 @@
+{
+  "claim_sources": ["tests/services/db/test_ensure_database_race_is_reported.py"],
+  "probes": [
+    {
+      "name": "11a",
+      "subject": "tests/db_support.py",
+      "old": "                session_guard().create_race += 1",
+      "new": "                pass",
+      "node_id": "tests/services/db/test_ensure_database_race_is_reported.py::test_two_concurrent_creators_of_a_fresh_name_report_one_race",
+      "expect_claim": "test_two_concurrent_creators_of_a_fresh_name_report_one_race|post - pre >= 1|#0",
+      "note": "🔴 Restores the SILENCE. The race is still handled correctly — one database, no crash — but nothing is counted and nothing is printed, so a contention becomes invisible again. ✎ Re-derived at s277: PLAN-0120's original wording for this probe was 'silence restored', which assumed the pre-fix baseline was silence; the measured baseline was a CRASH, so what this mutation actually restores is a state that never existed. The mutation stands, its description did not. `rows == 1` stays green: the race still resolves correctly."
+    },
+    {
+      "name": "11b",
+      "subject": "tests/db_support.py",
+      "old": "                    raise\n",
+      "new": "                    pass\n",
+      "node_id": "tests/services/db/test_ensure_database_race_is_reported.py::test_a_create_failure_that_is_not_a_race_is_raised_not_swallowed",
+      "expect_claim": "test_a_create_failure_that_is_not_a_race_is_raised_not_swallowed|pytest.raises(DatabaseError)|#0",
+      "note": "🔴 The half a class-swap fix would miss, and the defect the OLD code actually shipped: a genuinely failed CREATE DATABASE swallowed, after which the caller connects to a database that was never created. Measured shape C — `ProgrammingError` / SQLSTATE 42704 for a malformed statement, indistinguishable by class from the harmless 42P04 duplicate. ✎ PLAN-0120 proposed widening the caught class to `Exception` as well; on disk the re-raise alone is the conjunct under test, and mutating one thing keeps the reddening attributable."
+    },
+    {
+      "name": "11c",
+      "subject": "tests/db_support.py",
+      "old": "            exists = await conn.scalar(sa.text(_DB_EXISTS_SQL), {\"name\": db_name})\n            if exists:\n                return",
+      "new": "            exists = await conn.scalar(sa.text(_DB_EXISTS_SQL), {\"name\": db_name})\n            if not exists:\n                return",
+      "node_id": "tests/services/db/test_ensure_database_race_is_reported.py::test_a_single_creator_of_a_fresh_name_reports_no_race",
+      "expect_claim": "test_a_single_creator_of_a_fresh_name_reports_no_race|rows == 1|#0",
+      "note": "Inverting the existence short-circuit makes a lone creator return WITHOUT creating anything, so the database is absent afterwards. Witnesses that the happy path actually creates — without it, `post - pre == 0` would be satisfied perfectly by a function that does nothing at all."
+    }
+  ],
+  "exemptions": {
+    "fresh_name|left == 0|#0": "A cleanup assertion (the scratch database was dropped), not a claim about the race report. It exists so a leaked `…_r<pid>` database is loud rather than accumulating on the dev cluster; no mutation to ensure_test_database changes DROP DATABASE.",
+    "test_two_concurrent_creators_of_a_fresh_name_report_one_race|rows == 1|#0": "The control for the race claim, and it must stay GREEN under 11a — that green is what says the counter stopped counting rather than the race stopping resolving. Its own content, that a lone creator really creates, is witnessed by 11c on the sibling node.",
+    "test_a_single_creator_of_a_fresh_name_reports_no_race|post - pre == 0|#0": "🟢 The positive control for the counter: a counter incremented unconditionally would satisfy the race claim perfectly and report a contention on every clean run. It stays green under 11a (which removes the increment) — probing it would require a mutation that increments MORE, which is the defect no reviewer has ever shipped here and which 11a's inverse would not distinguish.",
+    "test_a_create_failure_that_is_not_a_race_is_raised_not_swallowed|sqlstate == \"42P04\"|#0": "NOT-REACHED under 11b — pytest.raises fails first, so this line's state is unknown, never green. Recorded rather than claimed. Its content, that the error carried through is the real Postgres one rather than a wrapper of our own, is visible in the printed value on every passing run.",
+    "test_the_same_failure_with_the_database_present_is_counted_not_raised|post - pre == 1|#0": "🟢 The positive control for 11b, and the load-bearing one: an ensure_test_database that re-raised EVERYTHING would satisfy 11b's claim perfectly and break every first run in the repo. It must stay green under 11b; probing it would destroy the only evidence that the re-raise is conditional on the re-check's answer rather than unconditional."
+  }
+}

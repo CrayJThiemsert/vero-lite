@@ -219,3 +219,134 @@ def test_the_live_repo_ledger_agrees(guard: ModuleType) -> None:
         mismatches == []
     ), f"ledger disagreements: {[(m.plan, m.ac, m.status_line) for m in mismatches]}"
     assert guard.active_plans(REPO_ROOT), "no active PLANs — this would pass vacuously"
+
+
+# --------------------------------------------------------------------------
+# Check 3 — a ticked AC's artifact must be inside some battery's denominator
+#
+# The failure this closes, measured s278: four batteries each reported
+# ``PROBE-COVERAGE: COMPLETE`` while two ACs' artifacts appeared in no battery's
+# ``claim_sources`` at all, and one AC's declared probe had never run. Both ACs
+# were ticked on that reading. A coverage report is scoped to its own denominator,
+# which is not the obligation set the ledger rests on.
+# --------------------------------------------------------------------------
+
+_BINDS = "A green is not evidence: no AC box is ticked before its probe reports WITNESSED."
+
+
+def _plan_with_batteries(pattern: str, *acs: tuple[int, str, str]) -> str:
+    """``(number, flag, artifact-token)`` per criterion; artifact ``""`` writes none."""
+    body = "**Status:** Draft\n" + f"**Batteries:** `{pattern}`\n\n" + _BINDS + "\n\n"
+    for n, flag, art in acs:
+        art_clause = f" *Artifact:* `{art}`." if art else ""
+        body += f"- [{flag}] **AC-{n} [check] — a criterion.**{art_clause} Body.\n"
+    return body
+
+
+def _battery(root: Path, name: str, *sources: str) -> None:
+    _write(
+        root,
+        f"tests/batteries/{name}",
+        '{"claim_sources": '
+        + str(list(sources)).replace("'", '"')
+        + ', "probes": [], "exemptions": {}}',
+    )
+
+
+def test_a_ticked_ac_whose_artifact_is_in_no_battery_is_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The s278 shape: AC-7 and AC-8 ticked while their modules were in no denominator."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_batteries(
+            "tests/batteries/*.json", (1, "x", "tests/a/test_uncovered.py::test_it")
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something_else.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "test_uncovered.py" in g.reason) for g in gaps] == [(1, True)]
+
+
+def test_a_ticked_ac_whose_artifact_is_covered_is_clean(guard: ModuleType, tmp_path: Path) -> None:
+    """🟢 The positive control. Without it, a checker that always fired would pass above."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_batteries(
+            "tests/batteries/*.json", (1, "x", "tests/a/test_covered.py::test_it")
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_covered.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_a_bare_filename_artifact_matches_a_full_path_claim_source(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🟢 Measured false positive, s278. PLANs write some artifacts as bare filenames and
+    some as full paths; a raw string comparison accused four correct ACs on PLAN-0120."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_batteries("tests/batteries/*.json", (1, "x", "test_covered.py::test_it")),
+    )
+    _battery(tmp_path, "b.json", "tests/deep/nested/test_covered.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The silent-exemption door: omit the header line and every tick goes unchecked."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        "**Status:** Draft\n\n" + _BINDS + "\n\n- [x] **AC-1 [check] — a criterion.** Body.\n",
+    )
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert len(gaps) == 1 and gaps[0].ac is None and "names no batteries" in gaps[0].reason
+
+
+def test_an_unstarted_plan_with_no_ticks_is_not_accused(guard: ModuleType, tmp_path: Path) -> None:
+    """🟢 Measured false positive, s278: unscoped, this fired on PLAN-0121 at 0 of 8 ticked.
+    The check exists to catch an unjustified tick, not a plan nobody has started."""
+    _write(
+        tmp_path,
+        "docs/plans/0121-x.md",
+        "**Status:** Draft\n\n" + _BINDS + "\n\n- [ ] **AC-1 [check] — a criterion.** Body.\n",
+    )
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_a_batteries_glob_matching_nothing_is_an_error_not_a_skip(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The vacuity door. A check that quietly passes when its evidence is absent is
+    precisely the failure it exists to prevent, so an empty match must FAIL."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_batteries(
+            "tests/batteries/nope-*.json", (1, "x", "tests/a/test_it.py::test_it")
+        ),
+    )
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert len(gaps) == 1 and gaps[0].ac is None and "matches no files" in gaps[0].reason
+
+
+def test_an_ac_with_no_test_artifact_is_not_a_gap(guard: ModuleType, tmp_path: Path) -> None:
+    """🟢 PLAN-0120's AC-10 runs commands and names no test module. Not every AC has one."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_batteries("tests/batteries/*.json", (1, "x", "")),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_the_live_repo_has_no_battery_gaps(guard: ModuleType) -> None:
+    """The guard must agree with the tree it ships in."""
+    assert guard.find_battery_gaps(REPO_ROOT) == []

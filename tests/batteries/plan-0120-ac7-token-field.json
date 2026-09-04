@@ -1,0 +1,129 @@
+{
+  "claim_sources": [
+    "tests/tools/test_db_guard.py"
+  ],
+  "probes": [
+    {
+      "name": "T-range",
+      "subject": "tests/db_guard.py",
+      "old": "CONTENDED_EXIT: Final = 75",
+      "new": "CONTENDED_EXIT: Final = 3",
+      "node_id": "tests/tools/test_db_guard.py::test_the_contended_exit_code_cannot_be_mistaken_for_a_pytest_verdict",
+      "expect_claim": "test_the_contended_exit_code_cannot_be_mistaken_for_a_pytest_verdict|5 < db_guard.CONTENDED_EXIT < 128|#0",
+      "note": "🔴 A code inside pytest's own 0-5 range makes a contended session indistinguishable from an ordinary verdict."
+    },
+    {
+      "name": "T-uniq",
+      "subject": "tests/db_guard.py",
+      "old": "hashlib.sha256(db_name.encode())",
+      "new": "hashlib.sha256(b\"constant\")",
+      "node_id": "tests/tools/test_db_guard.py::test_two_database_names_do_not_share_a_key",
+      "expect_claim": "test_two_database_names_do_not_share_a_key|db_guard.advisory_key(SAMPLE_DB) != db_guard.advisory_key(SAMPLE_DB + \"_gate\")|#0",
+      "note": "🔴 A key ignoring its input makes two databases share one lock — the session and the gate would contend forever. Determinism stays GREEN under this (a constant IS deterministic), so the two claims are separately witnessed."
+    },
+    {
+      "name": "T-signed",
+      "subject": "tests/db_guard.py",
+      "old": "\"big\", signed=True)",
+      "new": "\"big\", signed=False)",
+      "node_id": "tests/tools/test_db_guard.py::test_the_key_fits_a_signed_bigint",
+      "expect_claim": "test_the_key_fits_a_signed_bigint|-(2**63) <= key < 2**63|#0",
+      "note": "🔴 pg_try_advisory_lock takes a SIGNED bigint; an unsigned key overflows the column. Determinism and uniqueness both stay green."
+    },
+    {
+      "name": "T-halves",
+      "subject": "tests/db_guard.py",
+      "old": "return (unsigned >> 32) & 0xFFFFFFFF, unsigned & 0xFFFFFFFF",
+      "new": "return (unsigned >> 31) & 0xFFFFFFFF, unsigned & 0xFFFFFFFF",
+      "node_id": "tests/tools/test_db_guard.py::test_the_lock_halves_reconstruct_the_key",
+      "expect_claim": "test_the_lock_halves_reconstruct_the_key|rebuilt == (key & 0xFFFFFFFFFFFFFFFF)|#0",
+      "note": "🔴 Getting the split wrong makes the CONTENDED path find no holder and report holder_pid=- forever — which reads exactly like a clean run."
+    },
+    {
+      "name": "T-oid",
+      "subject": "tests/db_guard.py",
+      "old": "return (unsigned >> 32) & 0xFFFFFFFF, unsigned & 0xFFFFFFFF",
+      "new": "return (unsigned >> 32) & 0xFFFFFFFF, unsigned",
+      "node_id": "tests/tools/test_db_guard.py::test_the_lock_halves_are_each_inside_the_oid_range",
+      "expect_claim": "test_the_lock_halves_are_each_inside_the_oid_range|0 <= classid <= 0xFFFFFFFF and 0 <= objid <= 0xFFFFFFFF|#0",
+      "note": "🔴 An unmasked objid exceeds the oid column."
+    },
+    {
+      "name": "T-suffix",
+      "subject": "tests/db_guard.py",
+      "old": "f\"{parsed.database}_{role}\"",
+      "new": "f\"{parsed.database}-{role}\"",
+      "node_id": "tests/tools/test_db_guard.py::test_a_role_suffixes_the_database_name_and_nothing_else",
+      "expect_claim": "test_a_role_suffixes_the_database_name_and_nothing_else|out == SAMPLE_URL + \"_gate\"|#0",
+      "note": "🔴 The separator is load-bearing: db_support asserts the resolved name ENDS WITH _<role>. Password rendering is untouched here, so that claim stays green."
+    },
+    {
+      "name": "T-password",
+      "subject": "tests/db_guard.py",
+      "old": "return parsed.set(database=f\"{parsed.database}_{role}\").render_as_string(hide_password=False)",
+      "new": "return parsed.set(database=f\"{parsed.database}_{role}\").render_as_string(hide_password=True)",
+      "node_id": "tests/tools/test_db_guard.py::test_the_suffixed_url_keeps_the_password_readable",
+      "expect_claim": "test_the_suffixed_url_keeps_the_password_readable|\"***\" not in db_guard.role_suffixed(SAMPLE_URL, \"gate\")|#0",
+      "note": "🔴 str(URL) masks the password as ***, which would corrupt the connection string at the moment the guard tries to connect."
+    },
+    {
+      "name": "T-len63",
+      "subject": "tests/db_guard.py",
+      "old": "f\"{parsed.database}_{role}\"",
+      "new": "f\"{parsed.database}_{role * 5}\"",
+      "node_id": "tests/tools/test_db_guard.py::test_the_suffixed_name_stays_inside_postgres_identifier_limit",
+      "expect_claim": "test_the_suffixed_name_stays_inside_postgres_identifier_limit|len(name) <= 63|#0",
+      "note": "🔴 63 chars is Postgres' hard identifier limit; a name past it is silently truncated and two roles collide."
+    },
+    {
+      "name": "T-ok",
+      "subject": "tests/db_guard.py",
+      "old": "        )\n    return raw",
+      "new": "        )\n    return raw + (\"x\" if raw == \"role_2\" else \"\")",
+      "node_id": "tests/tools/test_db_guard.py::test_a_well_formed_role_is_accepted",
+      "expect_claim": "test_a_well_formed_role_is_accepted|db_guard.validated_role(ok) == ok|#0",
+      "note": "🟢 A validator that mangles a good role would suffix every database wrongly. The mutation is TARGETED at `role_2` — a value this parametrized test is the only user of, verified by git grep — because the first attempt mutated `return raw` outright and reddened all five parameter cases, which the driver correctly refused to credit under one-mutation-one-assertion."
+    },
+    {
+      "name": "T-none",
+      "subject": "tests/db_guard.py",
+      "old": "    if raw is None or raw == \"\":\n        return None",
+      "new": "    if raw is None or raw == \"\":\n        return \"\"",
+      "node_id": "tests/tools/test_db_guard.py::test_an_unset_role_is_none_not_an_error",
+      "expect_claim": "test_an_unset_role_is_none_not_an_error|db_guard.validated_role(None) is None|#0",
+      "note": "🔴 An unset role must mean 'no isolation wanted', not empty-string isolation."
+    },
+    {
+      "name": "T-token",
+      "subject": "tests/db_guard.py",
+      "old": "f\"foreign_backends={self.foreign_backends} create_race={self.create_race} \"",
+      "new": "f\"foreign_backends={self.foreign_backends} \"",
+      "node_id": "tests/tools/test_db_guard.py::test_the_token_carries_every_measured_field",
+      "expect_claim": "test_the_token_carries_every_measured_field|field in token|#0",
+      "note": "🔴 AC-7's artifact (a) — THE claim no s277 battery reached, because this module was in no battery's claim_sources. Drops create_race from the token so the field loop reddens."
+    },
+    {
+      "name": "T-admin",
+      "subject": "tests/db_guard.py",
+      "old": "drivername=\"postgresql\", database=\"postgres\"",
+      "new": "drivername=\"postgresql\", database=\"notpostgres\"",
+      "node_id": "tests/tools/test_db_guard.py::test_the_guard_names_the_maintenance_database_not_the_target",
+      "expect_claim": "test_the_guard_names_the_maintenance_database_not_the_target|guard._admin_dsn.endswith(\"/postgres\")|#0",
+      "note": "🔴 SD-2: a guard that locked the TARGET would still pass every other test in this file."
+    },
+    {
+      "name": "T-app",
+      "subject": "tests/db_guard.py",
+      "old": "return f\"vero-pytest-guard pid={os.getpid()} role={self.role or '-'}\"",
+      "new": "return f\"guard pid={os.getpid()} role={self.role or '-'}\"",
+      "node_id": "tests/tools/test_db_guard.py::test_the_holder_application_name_identifies_the_process",
+      "expect_claim": "test_the_holder_application_name_identifies_the_process|app.startswith(\"vero-pytest-guard pid=\") and \"role=gate\" in app|#0",
+      "note": "🔴 A generic application_name makes a contention report name a pid without saying what it belongs to."
+    }
+  ],
+  "exemptions": {
+    "test_the_advisory_key_is_deterministic_for_one_database_name|db_guard.advisory_key(SAMPLE_DB) == db_guard.advisory_key(SAMPLE_DB)|#0": "🟢 The positive control for T-uniq, and co-falsified with it in the only direction a single-site mutation reaches. Reddening determinism ALONE needs the key to vary between two calls with the same input — a source of per-call entropy that no substitution of the existing expression provides while leaving uniqueness green. Recorded as inexpressible rather than faked (CLAUDE.md §8). Its content is what makes T-uniq's green meaningful: T-uniq replaces the input with a constant and determinism stays green, which is the only thing ruling out 'the key function broke generally'.",
+    "test_an_empty_role_is_treated_as_unset|db_guard.validated_role(\"\") is None|#0": "🟢 Co-falsified with T-none: both the None branch and the empty-string branch return from the same `return None`, so any mutation of it moves both. Splitting them needs two separate early returns in the source — a refactor of the subject to suit the instrument, which is the wrong direction. T-none witnesses the shared branch.",
+    "test_a_malformed_role_raises_instead_of_meaning_no_isolation|pytest.raises(RuntimeError, match=\"not a valid role\")|#0": "⚠️ INEXPRESSIBLE under one-mutation-one-assertion, measured not assumed. The test is parametrized over SIX malformed roles and the message is a single f-string, so any mutation of it reddens all six cases at once — the driver refused to credit it, correctly (run-e4… MISFIRE, blast radius 6). Narrowing it would need a conditional in the raise whose only purpose is to satisfy the instrument, which is a change to the subject to suit the measurement. Recorded rather than faked (CLAUDE.md §8). Its content is not unguarded in effect: T-ok witnesses that the validator's return path is live, and the raise itself is exercised by all six parameter cases on every ordinary suite run."
+  }
+}
