@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         print(
             f"\n{error_count} handoff schema error(s) in {session_dir.name} "
             "— refusing commit; fix the frontmatter "
-            "(run: uv run python tools/handoffs/validate_handoff.py <file>)",
+            "(run: uv run --no-sync python tools/handoffs/validate_handoff.py <file>)",
             file=sys.stderr,
         )
         return 1
