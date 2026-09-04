@@ -81,6 +81,7 @@ from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (r
 from services.engine.procedures import (  # noqa: F401  (registers schedule_states)
     schedules as _procedure_schedules,
 )
+from tests import db_guard
 
 _UNREACHABLE = "Postgres not reachable — start docker compose / set DATABASE_URL"
 
@@ -134,18 +135,34 @@ def worktree_scoped_test_url(test_database_url: str, repo_root: Path) -> str:
     return url.set(database=f"{url.database}_{digest}").render_as_string(hide_password=False)
 
 
+#: This process's role, validated at import. A malformed value raises here rather than
+#: resolving to the unsuffixed name — a typo must never silently mean "no isolation".
+_ROLE: str | None = db_guard.role_from_env()
+
+
 def _isolate_test_database_per_worktree() -> None:
-    """Scope the test DB to this checkout — unless it was set explicitly.
+    """Scope the test DB to this checkout, then to this process's ROLE.
 
     ``Settings._fill_test_database_url`` leaves ``test_database_url`` at the
     derived ``<db>_test`` when nothing supplied one. Comparing against that
     derivation is how we tell "nobody chose a test DB" from "someone did":
     an explicit ``TEST_DATABASE_URL`` (env var or ``.env``) is honoured verbatim,
     which is what keeps CI — where it is set — on the plain ``vero_lite_test``.
+
+    **The role suffix applies to whichever name resolved** — derived or explicit
+    (PLAN-0120 SD-1, ruled). A dev box whose ``.env`` pins ``TEST_DATABASE_URL``
+    would otherwise leave the goal gate sharing this session's database with no
+    signal at all, which is the defect ADR-0018 D8 exists to close. CI pins the URL
+    but never runs the Stop hook, so its plain ``vero_lite_test`` is untouched either
+    way. With ``VERO_TEST_DB_ROLE`` unset — the default everywhere — this function
+    behaves exactly as it did before.
     """
-    if settings.test_database_url != _derive_test_database_url(settings.database_url):
-        return
-    settings.test_database_url = worktree_scoped_test_url(settings.test_database_url, _REPO_ROOT)
+    if settings.test_database_url == _derive_test_database_url(settings.database_url):
+        settings.test_database_url = worktree_scoped_test_url(
+            settings.test_database_url, _REPO_ROOT
+        )
+    if _ROLE:
+        settings.test_database_url = db_guard.role_suffixed(settings.test_database_url, _ROLE)
 
 
 _isolate_test_database_per_worktree()
@@ -155,6 +172,19 @@ _isolate_test_database_per_worktree()
 # that build a *second* engine mid-test (to read back rows the fixture engine
 # wrote) must not have the schema pulled out from under them.
 _schema_reset_armed = True
+
+#: The one guard for this pytest process. Constructed on first use and acquired lazily
+#: at the chokepoint (SD-4), so a session that runs no DB test never opens a Postgres
+#: connection and the battery's own pytest children never become false second arrivers.
+_SESSION_GUARD: db_guard.TestDbGuard | None = None
+
+
+def session_guard() -> db_guard.TestDbGuard:
+    """This process's guard, created on first ask. Not yet acquired."""
+    global _SESSION_GUARD
+    if _SESSION_GUARD is None:
+        _SESSION_GUARD = db_guard.TestDbGuard(settings.test_database_url, _ROLE)
+    return _SESSION_GUARD
 
 
 def _assert_not_dev_db() -> None:
@@ -270,13 +300,63 @@ async def create_test_engine() -> AsyncEngine:
         await ensure_test_database()
     except Exception:
         pytest.skip(_UNREACHABLE)
+
+    # SD-4: acquisition is LAZY and lives HERE, so an engine without a held guard is
+    # impossible by construction.
+    #
+    # 🔴 Every ``pytest.exit`` below sits OUTSIDE the ``except Exception`` blocks, and
+    # that placement is load-bearing rather than stylistic: ``_pytest.outcomes.Exit``
+    # is a subclass of ``Exception`` and a bare ``except Exception`` swallows it
+    # (measured, s277). One inside would turn every guard refusal into a skip — a mass
+    # skip that reads as a pass on the summary line, which is precisely the fail-open
+    # this guard exists to prevent.
+    guard = session_guard()
+    if guard.acquire() == db_guard.CONTENDED:
+        pytest.exit(guard.contention_reason(), returncode=db_guard.CONTENDED_EXIT)
+
     eng = create_async_engine(settings.test_database_url, poolclass=NullPool)
+    holder_alive: int | None = None
     try:
         async with eng.connect() as conn:
-            await conn.execute(sa.text("SELECT 1"))
+            if guard.state == db_guard.ACQUIRED:
+                # One query, two facts: Postgres answers AND the holder backend is
+                # still there. Replaces the old ``SELECT 1`` at zero extra cost.
+                holder_alive = await conn.scalar(
+                    sa.text(db_guard.LIVENESS_SQL), {"holder_pid": guard.holder_pid}
+                )
+            else:
+                await conn.execute(sa.text("SELECT 1"))
     except Exception:
         await eng.dispose()
         pytest.skip(_UNREACHABLE)
+
+    # Reached only when the database ANSWERS. So a guard that could not be established
+    # is not "Postgres is down" — it is the LOST family, the one combination that must
+    # never pass quietly (§4.3).
+    if guard.state == db_guard.ABSENT:
+        # Same LOST family (§4.3): the guard could not be established but the database
+        # can be reached — the one combination that must never pass quietly. Restated as
+        # LOST so the printed token names the family rather than the symptom; the reason
+        # below keeps the ABSENT cause verbatim.
+        absent_error = guard.error
+        guard.state = db_guard.LOST
+        await eng.dispose()
+        pytest.exit(
+            guard.lost_reason(
+                f"the guard could not be established ({absent_error}) yet the database answers"
+            ),
+            returncode=db_guard.CONTENDED_EXIT,
+        )
+    if guard.state == db_guard.ACQUIRED and not holder_alive:
+        guard.state = db_guard.LOST
+        await eng.dispose()
+        pytest.exit(
+            guard.lost_reason(
+                f"holder backend pid={guard.holder_pid} is gone from pg_stat_activity"
+            ),
+            returncode=db_guard.CONTENDED_EXIT,
+        )
+
     await _reset_public_schema_once(eng)
     # AC-12: recorded AFTER both skip paths above, so the count is of tests that
     # actually reached a live database — never of tests that merely wanted one.
