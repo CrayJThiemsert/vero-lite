@@ -527,6 +527,41 @@ directions — the rotated text present in the archive **and** absent from STATU
 rather than inferring one from the other. Eyeballing a 100-line slice boundary in
 a 57 KB file is not a check.
 
+**Two clauses added s278, both measured.** R6 above says how a slice is *identified*;
+these say where its bytes come from and what must be true of the target before the
+append.
+
+1. **The payload is carved from `git show HEAD:docs/STATUS.md`, never from the
+   subagent's returned block.** The `status-scribe` emits the rotated text "verbatim"
+   and does so in good faith, but a transcription rule cannot bind an LLM's
+   transcription: measured s278, its block read ``central recommendation.**`` where the
+   file reads ``central recommendation**.``. R6's first/last assertion caught it and
+   aborted the append with both files untouched — which is the rule working, not an
+   argument that this clause is unnecessary. The reason to add it is different and
+   sharper: **that assertion is positional**, two lines out of a ~60-line, 3.2 KB block.
+   A *mid-block* drift passes it silently, and R4 makes archives move-only and never
+   rewritten, so mid-block corruption is frozen permanently with both files individually
+   well-formed. Prevention dominates detection when the detector covers 3% of the
+   payload. Treat the returned block as what **identifies** the slice; take the bytes
+   from `HEAD`.
+
+2. **Assert the slice is not already present in the target, before appending** — and
+   give that check a positive control, because it is a negative measurement
+   (`CLAUDE.md` §8). Measured s278: a narrow substring probe for two rotation-ledger
+   entries read **0** on entries that *were* archived, because the archive rewrites a
+   rotation note into its own `### Rotated at the sNNN reconcile — …` header format
+   rather than storing the STATUS wording. Acting on that zero would have duplicated
+   content into a move-only archive. Only a widened probe carrying a positive control —
+   the same matcher shape finding entries known to be present — surfaced them.
+
+⚠️ **Clause 2 is a precedence correction, not new knowledge.** It was already written in
+`.claude/skills/code-operational-policy/SKILL.md` ("assert it is not already in the
+target"), a **Tier 2.6 derived** artifact, while this canonical lacked it. Under
+ADR-0017 D3/D6 the canonical wins any conflict, so a binding clause living only in the
+derived copy is an inversion: an agent that reads the runbook and not the skill would
+have followed an incomplete rule. The skill keeps the two mechanics this canonical now
+owns and cites R6 for the rule itself.
+
 **Effort note (binding on estimates, not on method).** Writing a new
 Current-Focus block **forces** a rotation, because the R2 window is already full
 at 4 sessions. A STATUS reconcile is therefore **never an XS task**, however
