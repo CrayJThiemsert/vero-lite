@@ -11,7 +11,7 @@ from services.api.config import settings
 from services.engine import demo_events
 from services.engine.economic_impact import clear_economic_producers
 from services.engine.registry import registry
-from tests import db_support
+from tests import db_guard, db_support
 
 # PLAN-0047 Step 1: the legacy suites exercise business logic with authn OFF;
 # auth behavior is covered explicitly in tests/api/test_api_auth.py (which
@@ -200,6 +200,34 @@ def db_floor_verdict(executed: int, ci: str | None, args: list[str]) -> str | No
         "instead — check that the postgres service is reachable and TEST_DATABASE_URL "
         "points at it."
     )
+
+
+def pytest_sessionstart(session: pytest.Session) -> None:
+    """Initialise the DB-guard record, and refuse outright under pytest-xdist.
+
+    Under SD-4 acquisition is **lazy**, so this opens no connection — it only ensures a
+    guard object exists, which is what lets :func:`pytest_sessionfinish` print a token
+    even for a session that never touches the database (``outcome=NOT-NEEDED``). A
+    guard that is silent on the runs where nothing happened is indistinguishable from a
+    guard that is not running at all.
+
+    🔴 **xdist is refused, not accommodated.** Workers are separate processes: each
+    would need its own database role, and without one they would all contend on a
+    single name — or, worse, a guard that quietly let them share would be more
+    dangerous than no guard, because the token would report ``ACQUIRED`` while three
+    other workers dropped the schema. PLAN-0120 puts xdist out of scope with exactly
+    this instruction — make the future failure loud rather than guess at a design.
+    """
+    worker = os.environ.get("PYTEST_XDIST_WORKER")
+    if worker:
+        raise pytest.UsageError(
+            f"pytest-xdist worker {worker!r} detected. The test-database guard "
+            "(tests/db_guard.py) binds ONE process to the database it drops schemas in; "
+            "xdist workers are separate processes and would contend on one name. Give "
+            f"each worker its own database via {db_guard.ROLE_ENV}, or run without -n. "
+            "Refusing rather than guessing — PLAN-0120 lists xdist as out of scope."
+        )
+    db_support.session_guard()
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:

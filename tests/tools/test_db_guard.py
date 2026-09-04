@@ -117,7 +117,7 @@ def test_an_empty_role_is_treated_as_unset() -> None:
     assert db_guard.validated_role("") is None
 
 
-def test_the_token_carries_every_measured_field_with_a_value() -> None:
+def test_the_token_carries_every_measured_field() -> None:
     """🔴 CLAUDE.md §8 at the instrument's own output: the line reports what it measured,
     never a bare PASS/FAIL. A reader who cannot see the values cannot tell a working
     guard from one that only prints reassuring words."""
