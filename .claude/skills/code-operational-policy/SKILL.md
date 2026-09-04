@@ -99,6 +99,15 @@ the AC claims to protect — comments, formatting, and dead code do not. If such
 a test is constructible, the AC's oracle is vacuous: fix the test before
 closing. Same family as the non-vacuity probe — you must SEE the RED.
 
+🔴 **Then join the evidence to the AC, by `node_id`.** A battery's
+`PROBE-COVERAGE: COMPLETE` is scoped to its own `claim_sources`; that set is **not**
+the obligation set the tick rests on. Measured s278: four batteries all `COMPLETE`
+while two ACs' artifacts sat in no denominator at all and two *declared* probes had
+never run — both ACs were ticked on that reading. **An exemption is not a witness.**
+`tools/check_ac_consistency.py` Check 3 now fails this mechanically, so the manual
+form is a pre-check, not the guard: confirm each ticked AC's artifact module appears
+in some committed battery under `tests/batteries/`.
+
 ⚠️ **And then READ it.** Seeing the RED proves the guard is live; it does not
 prove the failure names what broke. Two guards in consecutive PRs reddened
 correctly and illegibly — one crashed on `RuntimeError: no running event loop`
@@ -173,6 +182,21 @@ file. For any two-file move (a rotation, an archive append, a rehome):
 > from the other.
 
 That battery aborted a rotation this session with **both files untouched**.
+Canonical: runbook **R6** (`docs/runbooks/memory-architecture.md`) — it owns the
+rule; what follows are the two mechanics that make it work.
+
+- **Carve the payload from `git show HEAD:<file>`, never from a subagent's returned
+  block.** Measured s278: the `status-scribe`'s "verbatim" text differed from the
+  original by a moved `**`. The first/last assertion caught it — but that assertion
+  is *positional*, two lines out of ~60, so a mid-block drift passes it silently and
+  an archive is never rewritten. The returned block **identifies** the slice; `HEAD`
+  supplies the bytes.
+- **The not-already-in-target check is a NEGATIVE measurement, so give it a positive
+  control.** Measured s278: a narrow substring probe read **0** for ledger entries
+  that *were* archived, because the archive rewrites a rotation note into its own
+  `### Rotated at the sNNN reconcile — …` header. Acting on that zero duplicates
+  content into a move-only archive. Widen the probe and prove it finds something you
+  know is there before you trust a zero.
 
 ⚠️ **A subagent's report is a claim about the tree, not the tree.** One reported
 removing two notes that were still there; an archive note written from that
