@@ -62,6 +62,7 @@ Exit codes: 0 = clean; 1 = at least one inconsistency.
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import sys
@@ -93,6 +94,123 @@ class Mismatch:
     ac: int
     status_line: int
     reason: str
+
+
+@dataclass(frozen=True)
+class BatteryGap:
+    plan: str
+    ac: int | None
+    reason: str
+
+
+#: A PLAN's machine-addressable pointer at its committed battery definitions.
+_BATTERIES = re.compile(r"^\*\*Batteries:\*\*\s+`([^`]+)`", re.M)
+
+#: The sentence that makes probe evidence binding for a PLAN's ticks. A PLAN that
+#: writes it and then names no batteries is the case Check 3 must not sleep through.
+_BINDING_SENTENCE = "no AC box is ticked before its probe"
+
+#: The artifact clause of one AC line, up to whatever follows it.
+_ARTIFACT_SEG = re.compile(r"\*Artifacts?:\*(.*?)(?:\*Pass read:\*|\*Probe|$)", re.S)
+
+#: A ``path.py`` or ``path.py::test_name`` token inside backticks.
+_ARTIFACT_NODE = re.compile(r"`([A-Za-z0-9_./-]+\.py(?:::\w+)?)`")
+
+
+def _battery_sources(root: Path, pattern: str) -> tuple[set[str], int]:
+    """Basenames of every ``claim_sources`` module across the matched batteries.
+
+    Basenames, not paths: PLANs write some artifacts as full paths and some as bare
+    filenames, and a raw string comparison reports four false positives on a correct
+    tree (measured s278 against PLAN-0120).
+    """
+    files = sorted((root).glob(pattern))
+    sources: set[str] = set()
+    for f in files:
+        data = json.loads(f.read_text(encoding="utf-8"))
+        sources.update(s.split("/")[-1] for s in data.get("claim_sources", []))
+    return sources, len(files)
+
+
+def find_battery_gaps(root: Path) -> list[BatteryGap]:
+    """Check 3 — a ticked AC's named artifact must be inside some battery's denominator.
+
+    A coverage report is scoped to its own ``claim_sources``; that set is **not** the
+    obligation set the AC ledger rests on, and nothing joined them until this check.
+    Measured s278: four batteries reported ``PROBE-COVERAGE: COMPLETE`` while AC-7's and
+    AC-8's artifacts appeared in no denominator at all, and one AC's declared probe had
+    never run. Both were ticked on that reading.
+
+    Module-level, deliberately. Joining on the probe's ``node_id`` was measured at 37%
+    against real batteries — probe names drift from the PLAN's ids — and a subject-level
+    join fires on a legitimately revised mutation. The module join measured 0 false
+    positives across PLAN-0120's eleven ACs.
+    """
+    out: list[BatteryGap] = []
+    for plan in active_plans(root):
+        text = plan.read_text(encoding="utf-8")
+        ticked = [n for flag, n in _AC_BOX.findall(text) if flag == "x"]
+        match = _BATTERIES.search(text)
+        if match is None:
+            # Scoped to PLANs that have actually TICKED something. A Draft with the
+            # binding sentence and nothing ticked yet has no claim resting on absent
+            # evidence, and failing it would block work before there is anything to
+            # cover — the check exists to catch an unjustified tick, not an unstarted
+            # plan. Measured s278: unscoped, this fired on PLAN-0121 at 0 of 8 ticked.
+            if _BINDING_SENTENCE in text and ticked:
+                out.append(
+                    BatteryGap(
+                        plan=plan.name,
+                        ac=None,
+                        reason=(
+                            f"{len(ticked)} AC(s) ticked and this PLAN binds its ticks to "
+                            "probe evidence, but it names no batteries. fix: commit the "
+                            "definitions under tests/batteries/ and add a `**Batteries:**` "
+                            "header line pointing at them."
+                        ),
+                    )
+                )
+            continue
+
+        sources, n_files = _battery_sources(root, match.group(1))
+        if n_files == 0:
+            # A glob matching nothing must ERROR, never skip: a check that quietly
+            # passes when its evidence is absent is the thing it exists to prevent.
+            out.append(
+                BatteryGap(
+                    plan=plan.name,
+                    ac=None,
+                    reason=(
+                        f"`**Batteries:**` matches no files ({match.group(1)}). "
+                        "fix: commit the battery definitions, or correct the pattern."
+                    ),
+                )
+            )
+            continue
+
+        for flag, num in _AC_BOX.findall(text):
+            if flag != "x":
+                continue
+            line = next((ln for ln in text.splitlines() if ln.startswith(f"- [x] **AC-{num} ")), "")
+            seg = _ARTIFACT_SEG.search(line)
+            if seg is None:
+                continue  # an AC with no test artifact (a command-run AC) is not a gap
+            for token in _ARTIFACT_NODE.findall(seg.group(1)):
+                module = token.split("/")[-1].split("::")[0]
+                if module not in sources:
+                    out.append(
+                        BatteryGap(
+                            plan=plan.name,
+                            ac=int(num),
+                            reason=(
+                                f"ticked, but its artifact `{module}` is in no battery's "
+                                f"claim_sources — so PROBE-COVERAGE was computed over a "
+                                f"denominator that excluded it. fix: add a battery covering "
+                                f"that module, or untick until one exists."
+                            ),
+                        )
+                    )
+    return out
 
 
 def _ac_labels(text: str) -> list[int]:
@@ -200,6 +318,7 @@ def main() -> int:
     root = Path(os.environ.get("AC_CONSISTENCY_ROOT") or ".").resolve()
     dupes = find_duplicate_labels(root)
     mismatches = find_status_mismatches(root)
+    gaps = find_battery_gaps(root)
 
     for d in dupes:
         print(
@@ -217,10 +336,17 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    if dupes or mismatches:
+    for g in gaps:
+        where = f"AC-{g.ac}" if g.ac is not None else "PLAN"
+        print(
+            f"BATTERY GAP: docs/plans/{g.plan} {where}\n    {g.reason}",
+            file=sys.stderr,
+        )
+
+    if dupes or mismatches or gaps:
         print(
             f"\ncheck_ac_consistency: {len(dupes)} duplicate label(s), "
-            f"{len(mismatches)} ledger disagreement(s).",
+            f"{len(mismatches)} ledger disagreement(s), {len(gaps)} battery gap(s).",
             file=sys.stderr,
         )
         return 1

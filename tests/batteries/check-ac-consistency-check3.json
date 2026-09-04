@@ -1,0 +1,88 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_ac_consistency.py"
+  ],
+  "probes": [
+    {
+      "name": "C3-blind",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "if module not in sources:",
+      "new": "if False:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_ticked_ac_whose_artifact_is_in_no_battery_is_found",
+      "expect_claim": "test_a_ticked_ac_whose_artifact_is_in_no_battery_is_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(1, True)]|#0",
+      "note": "🔴 The check stops seeing the gap at all — the s278 defect, reintroduced."
+    },
+    {
+      "name": "C3-overfire",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "module = token.split(\"/\")[-1].split(\"::\")[0]",
+      "new": "module = token.split(\"::\")[0]",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_ticked_ac_whose_artifact_is_covered_is_clean",
+      "expect_claim": "test_a_ticked_ac_whose_artifact_is_covered_is_clean|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 Drops the artifact-side basename normalisation, so a full-path artifact stops matching a basename source and a CORRECT tree is accused. This is the false positive measured on PLAN-0120 before the fix."
+    },
+    {
+      "name": "C3-bindblind",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "if _BINDING_SENTENCE in text and ticked:",
+      "new": "if False:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found",
+      "expect_claim": "test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found|len(gaps) == 1 and gaps[0].ac is None and \"names no batteries\" in gaps[0].reason|#0",
+      "note": "🔴 Reopens the silent-exemption door: omit the header line and every tick goes unchecked."
+    },
+    {
+      "name": "C3-unscoped",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "if _BINDING_SENTENCE in text and ticked:",
+      "new": "if _BINDING_SENTENCE in text:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_unstarted_plan_with_no_ticks_is_not_accused",
+      "expect_claim": "test_an_unstarted_plan_with_no_ticks_is_not_accused|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 The measured false positive: unscoped, this fired on PLAN-0121 at 0 of 8 ticked. C3-bindblind stays green under it, so the two claims are separately witnessed."
+    },
+    {
+      "name": "C3-vacuous",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "if n_files == 0:",
+      "new": "if False:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_batteries_glob_matching_nothing_is_an_error_not_a_skip",
+      "expect_claim": "test_a_batteries_glob_matching_nothing_is_an_error_not_a_skip|len(gaps) == 1 and gaps[0].ac is None and \"matches no files\" in gaps[0].reason|#0",
+      "note": "🔴 THE vacuity door: a glob matching nothing would pass silently, and the guard becomes the thing it exists to prevent."
+    },
+    {
+      "name": "C3-noart",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if seg is None:\n                continue  # an AC with no test artifact (a command-run AC) is not a gap",
+      "new": "            if seg is None:\n                out.append(BatteryGap(plan=plan.name, ac=int(num), reason=\"no artifact\"))\n                continue",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_ac_with_no_test_artifact_is_not_a_gap",
+      "expect_claim": "test_an_ac_with_no_test_artifact_is_not_a_gap|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 Accuses an AC that legitimately names no test module — PLAN-0120's AC-10 runs commands."
+    }
+  ],
+  "exemptions": {
+    "_load_module|spec and spec.loader|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_duplicate_label_in_an_active_plan_is_found|[(d.plan, d.label, d.count) for d in dupes] == [(\"0108-x.md\", 5, 2)]|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_distinct_labels_are_clean|guard.find_duplicate_labels(tmp_path) == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_an_archived_plans_duplicate_is_out_of_scope|guard.find_duplicate_labels(tmp_path) == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_an_archived_plans_duplicate_is_out_of_scope|[p.name for p in guard.active_plans(tmp_path)] == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_closure_claimed_in_status_but_unticked_is_found|len(found) == 1|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_closure_claimed_in_status_but_unticked_is_found|(found[0].plan, found[0].ac, found[0].status_line) == (\"0107\", 11, 1)|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_closure_claimed_in_status_but_unticked_is_found|\"still has it as\" in found[0].reason|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_ticked_checkbox_agrees|guard.find_status_mismatches(tmp_path) == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_two_acs_closed_by_one_claim_are_both_checked|[f.ac for f in found] == [8]|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_the_nearest_preceding_plan_governs|[f.plan for f in found] == [\"0107\"]|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_two_claims_on_one_line_do_not_bleed|[f.ac for f in found] == [11]|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_an_unattributable_claim_is_reported_not_skipped|len(found) == 1|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_an_unattributable_claim_is_reported_not_skipped|found[0].plan == \"?\"|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_an_unattributable_claim_is_reported_not_skipped|\"names no PLAN\" in found[0].reason|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_claim_naming_a_missing_plan_is_reported|len(found) == 1 and \"no file in docs/plans/\" in found[0].reason|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_claim_naming_an_ac_the_plan_lacks_is_reported|len(found) == 1 and \"declares no AC-99\" in found[0].reason|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_phase_level_claim_names_no_ac_and_is_invisible|guard.find_status_mismatches(tmp_path) == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_claim_against_an_archived_plan_is_still_checked|[(f.plan, f.ac) for f in found] == [(\"0100\", 4)]|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_missing_status_file_is_not_fatal|guard.find_status_mismatches(tmp_path) == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_the_live_repo_ledger_agrees|dupes == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_the_live_repo_ledger_agrees|mismatches == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_the_live_repo_ledger_agrees|guard.active_plans(REPO_ROOT)|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
+    "test_a_bare_filename_artifact_matches_a_full_path_claim_source|guard.find_battery_gaps(tmp_path) == []|#0": "🟢 Co-falsified with C3-overfire in the only expressible direction. Bare-filename and full-path artifacts are normalised by the SAME basename split; mutating the source side reddens this and the covered-is-clean claim together, and mutating the artifact side reddens only the latter. Recorded rather than faked (CLAUDE.md §8). C3-overfire witnesses the shared normalisation.",
+    "test_the_live_repo_has_no_battery_gaps|guard.find_battery_gaps(REPO_ROOT) == []|#0": "🟢 The live-tree instance of the covered-is-clean claim: any mutation that manufactures a false gap on the real repo also manufactures one on the tmp tree, so C3-overfire reddens both and no mutation separates them. Its value is as a standing assertion that the guard agrees with the tree it ships in."
+  }
+}
