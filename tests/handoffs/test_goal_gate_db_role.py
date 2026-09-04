@@ -18,11 +18,15 @@ the parent, is the thing being measured.
 
 from __future__ import annotations
 
+import re
 import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
+from sqlalchemy.engine import make_url
+
+from services.api.config import settings
 
 HOOKS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
@@ -109,6 +113,77 @@ def test_without_the_injection_the_child_sees_nothing(
     print(f"state={state} child_tail={tail.strip()!r}")
     assert state == CHECK_FAIL
     assert "child_role=None" in tail
+
+
+#: Reports the database the CHILD actually resolved, then exits on whether it carries
+#: the role suffix. The resolution happens inside the child at import time
+#: (``tests/db_support.py`` — ``_isolate_test_database_per_worktree``), so this cannot
+#: pass on a marker the parent merely set, and cannot pass on the marker ARRIVING
+#: either: the value asserted is the resolved name, not the env var.
+_RESOLVE_DB = (
+    "import sys; "
+    "from sqlalchemy.engine import make_url; "
+    "from services.api.config import settings; "
+    "import tests.db_support; "
+    "n = make_url(settings.test_database_url).database; "
+    "print(f'child_db={n}'); "
+    "sys.exit(0 if n.endswith('_gate') else 3)"
+)
+
+
+def _child_db_name(tail: str) -> str:
+    """The one ``child_db=`` value in a check tail, or a loud failure.
+
+    Asserting the count is what makes a swallowed tail redden here rather than
+    silently yielding an empty name that some later comparison then "passes" on.
+    """
+    found = re.findall(r"child_db=(\S+)", tail)
+    assert len(found) == 1, f"expected exactly one child_db= line, got {found!r}"
+    return found[0]
+
+
+def test_the_check_child_resolves_a_gate_scoped_database(gate_env: dict[str, Any]) -> None:
+    """🔴 AC-1, second conjunct. The marker does not merely ARRIVE — it CHANGES THE DB.
+
+    ``test_the_check_child_receives_the_gate_role`` above witnesses the marker crossing
+    the process boundary. This witnesses what the marker is *for*: the child's own
+    import-time resolution turns it into a ``_gate``-suffixed database name. Probe 1b —
+    stopping ``db_support`` reading the role — reddens the first assert below while
+    leaving that sibling test green.
+
+    Assert order is deliberate (same reason as AC-6's): ``CHECK_PASS`` first, so probe
+    1b has a claim to redden; the printed name second, so a tail-capture mutation
+    reddens THAT one with the state still passing. Reordering these for readability
+    would silently delete a witness.
+    """
+    state, tail = _run_one_check(_criterion(f'"{PY}" -c "{_RESOLVE_DB}"', timeout_s=60), 60.0)
+    print(f"state={state} child_tail={tail.strip()!r}")
+    assert state == CHECK_PASS
+    assert _child_db_name(tail).endswith(f"_{DB_ROLE_VALUE}")
+
+
+def test_without_injection_the_child_name_equals_the_parent_name(
+    gate_env: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """🔴 AC-2. The two names differ under injection, and coincide without it.
+
+    ``with`` and ``without`` are the SAME command run twice; only the gate's env
+    builder changes between them. The second claim uses the parent's own resolved name
+    as the anchor — deliberately NOT recomputed with ``role_suffixed``, which is the
+    function under test and would move together with any mutation of it, leaving an
+    assertion that can never redden.
+    """
+    _, tail_with = _run_one_check(_criterion(f'"{PY}" -c "{_RESOLVE_DB}"', timeout_s=60), 60.0)
+    name_with = _child_db_name(tail_with)
+
+    monkeypatch.setattr(_goal_gate, "_check_env", lambda: None)
+    _, tail_without = _run_one_check(_criterion(f'"{PY}" -c "{_RESOLVE_DB}"', timeout_s=60), 60.0)
+    name_without = _child_db_name(tail_without)
+
+    parent = make_url(settings.test_database_url).database
+    print(f"with={name_with} without={name_without} parent={parent}")
+    assert name_with != name_without
+    assert name_without == parent
 
 
 # --------------------------------------------------------------------- AC-8
