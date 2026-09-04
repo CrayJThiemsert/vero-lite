@@ -2270,3 +2270,148 @@ Window rule: a fifth block entered (s274-275), the window is four.
 > module already had the rule right, so it now has one home (#1340).
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **265-266, 267, 268, 269-273**. ⚠️ **STATUS skipped s262** — the window is **259–260, 261, 263, 264** and no s262 block is backfilled. **THIS (s265-266) reconcile rotates the session-259-260 block** on the **window rule alone** — a fifth block entered and the window is four — **not a cap overage**: measured **3,038 B** against the 4,096 B cap. Pinned, asserted, then measured by DELTA: a 13-assertion battery fixed BEFORE any write pinned the slice by its first AND last line, checked neighbour-bleed in both directions, checked this ledger OUT of the slice, and checked the slice ABSENT from the target before the append; sed then extracted the slice and independently reproduced the same 3,038 B. Archive **+3,438 B** (slice plus its rotation header) and the s254 ADR-0038 RD row **+852 B**, both verified present-in-archive and absent-from-STATUS separately. Headroom is the real finding here: with zero completed `[x]` rows left to rotate (s264 took the last seven), the only lever was writing this block **under** the 4,096 cap. **Active TODOs is 27,062 B, 43% of STATUS across 45 open rows** — and it, not the Current-Focus window, is why R1 headroom keeps vanishing. The s264 next_action already named the rehome; it is still unaddressed and is now the binding constraint on the next reconcile. **THIS (s267) reconcile rotates the session-261 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: the caller re-measured each block as its own contiguous `>` run (2,992 / 3,384 / **3,414** / 3,669 B), **all under** the 4,096 B cap; the earlier *7,950 B / 94% over* figure was a measuring bug that ran to the end of the SECTION and swallowed this ledger. 🔴 **The growth was the LEDGERS, not Active TODOs** (caller-measured: CF 6,793 + RD 8,143 B, ~22% of the file; the RD one **never pruned until now**). Per Cray's typed s267 ruling both ledgers now carry the **current window only** at **~900 B per entry**; out-of-window entries were returned **verbatim** for archiving (R4). ⚠️ **No byte delta measured here — no shell; the caller owes `wc -c` + append + verify-by-DELTA.** **THIS (s268) reconcile rotates the session-263 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, s267 **3,103** · s265-266 **3,385** · s264 **3,670** · s263 **2,993 B**, all under the 4,096 B cap. 🔴 **Its s263 entry here is NOT re-archived — the pre-write assertion caught it:** both ledgers were archived **whole and PRE-PRUNE** at s267 (R2 permits it), so R4's move duty is discharged; a second copy would duplicate a move-only archive. ⚠️ **STATUS was PARTIALLY updated during s268** (`377b3c0`/`fd0cb42` touched Active TODOs / Next Steps), so this completes the **frontmatter + CF + RD** half. ✅ **Caller-measured:** from **61,774 B**, still under R1; CF archive **+3,586 B**, byte-identical to `git show HEAD:`, present-once and absent-from-STATUS verified separately. **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately.]_
+
+### Rotated at the s276-277 reconcile — the session-267 and session-267-tail+268 Current-Focus blocks [a deliberate DEEP rotate of TWO blocks, not the ordinary one-block R2 rotation: STATUS stood at 61,584 B with only 3,952 B of headroom against the 64 KB ceiling while this reconcile had two sessions and twelve PRs to record, so the window lands at three blocks (269-273, 274-275, 276-277), inside R2's <= 4 sessions / <= 8 blocks maximum. The caller measured both retained blocks and the new one as their own contiguous `>` runs at 3,294 / 3,785 / 3,648 B, every one under the 4,096 B per-block cap, and these two slices at 3,276 and 3,103 B. The s267 and s268 rotation-ledger entries that describe them are deliberately NOT re-appended here: both were measured present in this file before writing (count 1 each, with a positive control), so R4's move obligation is already discharged and a second copy would duplicate content in a move-only archive.]
+
+> **Session 267 tail + 268, 2026-09-01/02 (`8843000` → `a0b743b`) — EIGHT PRs
+> merged ([#1348](https://github.com/CrayJThiemsert/vero-lite/pull/1348)–[#1355](https://github.com/CrayJThiemsert/vero-lite/pull/1355)),
+> 0 open. Wider than one session: #1348–#1350 landed AFTER the s267 reconcile
+> was written and were recorded nowhere. What it established: a claim is only
+> as good as the surface its consumer actually reads.**
+>
+> 🔴 **#1349 ruled a rubric in the morning; #1352 cut the position that rubric
+> scored, that same night.** Both read `gate_advisory.py`. #1349 narrowed the
+> question honestly — brevity is already specified in code and restating
+> figures already forbidden, so neither was ever open: score the **causal
+> link** (amount → band → authority), not completeness. #1352 read one step
+> further and asked what dissolves it — **does this output have a consumer?**
+> The model's entire user input is `" ".join(reasons)` (`:171`), the same
+> sentences already on the approver's screen (`:150`); the UI renders
+> `reasons` and **never reads** `narrative` (`view-monitor.js:342`).
+> `detail.narrative` has **one writer, zero readers**. Verdict
+> **DO-NOT-WIRE** — the rubric was never wrong, it had no subject. Offline:
+> **MS-S1 never contacted, the §8 go UNUSED**; questions SHA-256-**sealed
+> before** the payload was read, against 17 real rendered sidecars.
+>
+> 🔴 **Two more claims sat beside their own refutations.** `grader.py`'s
+> docstring claimed the headline scores fields the model "genuinely OWNS" —
+> refuted **two paragraphs below itself** (#1350): the product overrides
+> `affected_primary_key` (procedure path) and anchor-replaces it (reactive);
+> `forbidden_primary_keys` is the *one* entity check that does measure product
+> behaviour. Cray's typed s267 ledger ruling lived only in a commit message
+> and a PR body — **surfaces no enforcer reads** — so it would have survived
+> one reconcile (#1348); now in the runbook AND `status-scribe.md` with the
+> **~900 B per-entry cap** and 🔴 **measure a block as its own contiguous `>`
+> run, never header-to-header** (#1263 read 2,567 B as 4,936; s267 repeated
+> it, 3,414 as 7,950).
+>
+> **PLAN-0118 drafted, ruled, started.** #1353 the Draft (466 lines,
+> `plan-drafter`), #1354 all five SDs **RULED** by Cray (each took the drafted
+> recommendation), #1355 Steps 1–2 — `gold.yaml`, **11 cases (8 scored + a
+> 3-case injection band)**, three domains, the 2x2 enforced. #1351 gave the
+> orphaned s267 findings tracked homes and **surfaced a fourth doing it**:
+> §5.1's do-not-act instruction pointed at a test with **zero tracked hits**.
+>
+> **Evidence.** Every merge verified **by CONTENT, not ancestry** — 15 tokens,
+> 0 hits pre-merge, ≥1 at merged `main`. Suite **4718 passed, 8 skipped, ×4**,
+> matching s267; `ruff` clean (705 → 706 files); `mypy --strict
+> benchmarks/intake_extraction/` **hand-run** — CI type-checks neither
+> `benchmarks/` nor `tools/`. 🔴 **The Step-2 authoring check found a defect in
+> ITSELF:** AC-1(d) read **8 of 8** by counting `recovery_value` — an expected
+> answer — as a distractor, **vacuous by construction**; the tell was the
+> number being too good. Fixed, criterion NOT relaxed; honest **4 of 8**.
+
+> **Session 267, 2026-09-01 (`d420217` → `8843000`) — FOUR PRs merged
+> ([#1343](https://github.com/CrayJThiemsert/vero-lite/pull/1343)–[#1346](https://github.com/CrayJThiemsert/vero-lite/pull/1346)),
+> 0 open. What the session established: a comparison number measures the
+> apparatus before it measures the thing — and two of this repo's own published
+> numbers were the apparatus talking.**
+>
+> 🔴 **A p95 below 20 samples IS the sample maximum (#1344).** Nearest-rank
+> picks `ceil(0.95n)`, which equals `n` for every `n < 20` — so the **n=14**
+> procedure bar and the **10–13-case** NL lane published a **maximum** under a
+> percentile's name in **every run ever made**. Fixed at the reporting layer,
+> **four call sites**: the verdict survives in `tail_s`/`tail_label`, judged on
+> the maximum and **labelled as one**. The NL half had **no test at all**
+> before this. Battery **6/6 WITNESSED**.
+>
+> 🔴 **Turning the reasoning pass off costs rationale quality (#1346).** qwen q4
+> on `fleet`, offline, no MS-S1: `full` **7/14** · `think_off` **4/14 (−3,
+> material)** · `skip` **5/14 (−2, not established)**. The control gated it —
+> the repeat reproduces the first run on **every** signal. 🔴 **The load-bearing
+> negative recurs:** `names_amount` gives `skip` a perfect **14/14** while the
+> ratified bar puts it **below** `full`, and `think_off` writes the **longest**
+> rationales with the **fewest** roles. §13 saw that inversion **between two
+> models**; this is the same one **inside a single model**.
+>
+> **#1345 — the server's own clock now reaches the dump.** Ollama's timings land
+> in `CallMetrics` as raw nanoseconds plus derived **decode** and **prefill**
+> rates, which extrapolate across prompt length where a wall-clock second
+> cannot. `load_duration` separates a **cold load** from a slow model, and
+> compounds with #1344: on a 14-item run a cold load into item 1 can be the
+> whole reported "tail". Absent → `None` not `0`; zero → no rate, no crash;
+> boolean → `None` not 1 ns. Battery **5/5 WITNESSED**.
+>
+> **#1343 — Lesson #0055**, six measured instances that had no home; the
+> earliest survived **only in the archive**. A **LOW** score reads budget →
+> flag → build → input *before* the model; a **HIGH** one suspects
+> **non-engagement** (the invariant-score test needs a **mechanism count** to
+> conclude); a **TIE or identical failure** proves the defect **shared**. Also
+> recorded: every qwen figure on the NL benchmark is the **q4_K_M** build —
+> **q8_0 has never run there**.
+>
+> **Evidence.** Probe batteries **11/11 WITNESSED**; the offline gate green at
+> CI scope at **every** shipped sha, plus `mypy --strict benchmarks` by hand
+> each time. Counts were measured by **stashing**, not carried: `a0a6559`
+> **collects 4718** → **4722** (#1344) → **4726** (#1345); the final run
+> **passes 4718 with 8 skipped**, which *is* that same 4726 collected — the two
+> `4718`s are not a contradiction. Four Fable-5 specialists reviewed the
+> measurement programme and **refuted the caller's central recommendation**.
+
+### Rotated at the s278 reconcile — the session-269-273 Current-Focus block [a THIRD block rotated in the same PR as the s276-277 deep rotate, and on the same headroom rule rather than a cap overage: the s278 block entering took the file back to 4,041 B of headroom, and holding the window at R2's maximum of four would have left under 3.6 KB. The caller measured all four as their own contiguous `>` runs at 2,819 / 3,660 / 3,785 / 3,294 B, every one under the 4,096 B cap, and this slice at 3,294 B. Window lands at three (274-275, 276-277, 278). The block was verified byte-identical to `git show HEAD:` before being carved.]
+
+> **Session 269–273, 2026-09-02/03 (`a0b743b` → `8ac17f5`) — TWELVE PRs merged
+> ([#1357](https://github.com/CrayJThiemsert/vero-lite/pull/1357)–[#1370](https://github.com/CrayJThiemsert/vero-lite/pull/1370)),
+> 0 open, MS-S1 never contacted. What it established: a guard that is never
+> invoked reports nothing, and a benchmark's own criterion can be the false
+> negative.**
+>
+> 🔴 **The three subagent write guards had been inert since birth.** #1362:
+> their frontmatter `hooks:` had been FLAT since s269 — 2.1.247 discarded the
+> block at DEBUG and loaded the agents **UNGUARDED**, 2.1.255 refuses them
+> fail-closed. The nested rewrite restored **registration** (3/3 spawn, offline
+> oracle on the real binary with a flat control refused in the same run) but
+> **not the guard** — the §8 scenario went RED. #1363 found why: frontmatter
+> hooks **never run in this harness** (instrumented guard, **0 invocations**,
+> while `goal-evaluator`'s legitimate `goal.json` write succeeded), so they
+> moved to `settings.json` behind `pretooluse_subagent_write_dispatch.py`,
+> routing by `agent_type` to the three **unchanged** scripts, fail-closed where
+> identity is known. ✅ **s273 witnessed it LIVE:** a fresh `/goal` write passed
+> un-denied; a Fable `goal-evaluator` asked for a forbidden Write got ONE call,
+> denied with the guard's own `SD-1 narrowed Write` reason verbatim, the file
+> absent after. **Live from #1363**; `agent_type` is the frontmatter `name`.
+> Lesson **#0057** carries the arc; #1366 marks it `was an error` on ADR-0018
+> SD-1 / PLAN-0009 H2 / PLAN-0034 prong 2 (plan-drafter drafted = the third
+> routed agent witnessed; Cray ruled SD-1 covered by the s249 `done/` form,
+> SD-2 no marker on ADR-013 D2 — G5 is settings-level and always held).
+>
+> ✅ **PLAN-0118 Steps 1–6 done, AC-1–AC-5 CLOSED; only AC-6 is open**, and it
+> needs a NEW typed §8 go. #1357 shipped the scorer + gold controls (37 tests)
+> with 🔴 **AC-1(d) CORRECTED** from same-*magnitude* (`thr/3..thr*3`, a measured
+> FALSE NEGATIVE excluding `rm-02`'s 0.6 kPa reading) to **same-unit**, each case
+> declaring `same_unit_distractors` checked against its description. #1360
+> shipped the runner (recording pass-through over the real `OllamaClient`,
+> transport error distinct from validation exhaustion, SD-5) plus the binding §8
+> scenario driving the SHIPPED `extract_package` through its designed seam into
+> the real scorer. #1359 settled the four s269 items — fl-21/fl-22 from the
+> standing principle, Thai corpus = gap ACCEPTED, `biomass_boiler` RATIFIED as
+> **SD-6** with per-domain PROVENANCE, §5a's call-site count corrected in place
+> (`was an error`). ⚠️ #1364 ticked AC-1/2/5 only after re-verifying on `main` —
+> they shipped in #1357 and sat unticked through **three** handoffs.
+>
+> **Evidence.** Suite **4761 → 4795 passed**, 8 skipped; `mypy services/
+> verticals/` clean (201) and `--strict benchmarks/intake_extraction/` by hand;
+> bare `ruff check .` clean. Batteries **23 → 31** (22 WITNESSED + 9 GREEN;
+> denominator widened 81 → 121, **reported, not gamed**) + s272's **13/13**.
+> #1358 widened CLAUDE.md §8's suspect-the-instrument clause past batteries —
+> it fired **seven times** in s269 and the artifact was right every time.
