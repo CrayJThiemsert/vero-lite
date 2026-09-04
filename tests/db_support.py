@@ -44,7 +44,7 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy import NullPool
 from sqlalchemy.engine import make_url
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import DatabaseError
 from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine, create_async_engine
 
 from services.api.config import _derive_test_database_url, settings
@@ -205,6 +205,20 @@ def _assert_not_dev_db() -> None:
         )
 
 
+_DB_EXISTS_SQL = "SELECT 1 FROM pg_database WHERE datname = :name"
+
+
+async def _database_exists(admin: AsyncEngine, db_name: str) -> bool:
+    """Ask Postgres whether the database is there, on a connection of its own.
+
+    A fresh connection rather than the caller's, because the caller asks this *after*
+    a failed ``CREATE DATABASE`` and a connection that has just errored is not
+    something to rely on.
+    """
+    async with admin.connect() as conn:
+        return bool(await conn.scalar(sa.text(_DB_EXISTS_SQL), {"name": db_name}))
+
+
 async def ensure_test_database() -> None:
     """Create the disposable test database if it does not exist (idempotent).
 
@@ -212,6 +226,34 @@ async def ensure_test_database() -> None:
     ``postgres`` maintenance DB in AUTOCOMMIT and guard on ``pg_database``.
     Raises if the Postgres server is unreachable (callers translate that into
     a skip).
+
+    🔴 **A losing ``CREATE DATABASE`` has THREE shapes, and the previous
+    ``except ProgrammingError: pass`` got two of them wrong** (measured, Code s277,
+    PLAN-0120 Step 3 pre-flight; the correction is recorded at F10 in the PLAN):
+
+    ===========================  ======================  =========  ==============================
+    shape                        exception               SQLSTATE   old behaviour
+    ===========================  ======================  =========  ==============================
+    plain duplicate              ``ProgrammingError``    ``42P04``  swallowed — correct
+    **concurrent race**          ``IntegrityError``      ``23505``  **escaped — crashed the caller**
+    **malformed statement**      ``ProgrammingError``    ``42704``  **swallowed — silently wrong**
+    ===========================  ======================  =========  ==============================
+
+    So the old clause was wrong in *both* directions: it missed the one error it was
+    written for, and it hid one it should never have touched — a caller then went on to
+    connect to a database that was never created.
+
+    **The fix does not discriminate on the exception class or the SQLSTATE.** It asks
+    Postgres the only question that matters — *is the database there now?* — because
+    that answer is true for every shape of race and false for every genuine error, and
+    it cannot drift when a driver renames a class or a Postgres release adds a code.
+    A race is **counted** into the guard's ``create_race`` and printed in the token;
+    anything else is **re-raised** untouched.
+
+    ⚠️ This is not a rare path. Under SD-A the goal gate and any test that asks for its
+    own role resolve a **brand-new** database name, so the window between the existence
+    check and the ``CREATE`` is opened deliberately and often — the marker made the race
+    *more* reachable, not less.
     """
     _assert_not_dev_db()
     test_url = make_url(settings.test_database_url)
@@ -220,16 +262,20 @@ async def ensure_test_database() -> None:
     admin = create_async_engine(admin_url, isolation_level="AUTOCOMMIT", poolclass=NullPool)
     try:
         async with admin.connect() as conn:
-            exists = await conn.scalar(
-                sa.text("SELECT 1 FROM pg_database WHERE datname = :name"),
-                {"name": db_name},
-            )
-            if not exists:
-                try:
-                    await conn.execute(sa.text(f'CREATE DATABASE "{db_name}"'))
-                except ProgrammingError:
-                    # Raced with a concurrent creator — the DB now exists.
-                    pass
+            exists = await conn.scalar(sa.text(_DB_EXISTS_SQL), {"name": db_name})
+            if exists:
+                return
+            try:
+                await conn.execute(sa.text(f'CREATE DATABASE "{db_name}"'))
+            except DatabaseError:
+                if not await _database_exists(admin, db_name):
+                    # Not a race — a real error. Never absorb it into a skip: the
+                    # caller would connect to a database that does not exist.
+                    raise
+                # Someone created it between our check and our CREATE. Counted and
+                # printed, never silent — an observed contention that says nothing is
+                # the class of defect ADR-0018 D8.5 exists to close.
+                session_guard().create_race += 1
     finally:
         await admin.dispose()
 
