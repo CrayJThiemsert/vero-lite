@@ -1,7 +1,7 @@
 # PLAN-0121: Probe-battery contention legibility — an aborted pytest child is reported as an infrastructure event naming its cause, never as `GREEN` or `NO-TESTS`
 
 **Status:** Draft
-**Owner:** Claude Code (executes; commits via PR per ADR-009 D2). Surfaced Decisions SD-1..SD-4 are **open** — Cray rules before Step 1.
+**Owner:** Claude Code (executes; commits via PR per ADR-009 D2). ✅ **All four Surfaced Decisions RULED (a) — Cray, typed, 2026-09-04, s277. Step 1 is unblocked.** SD-1 = `RunRecord`; SD-2 = a new `ABORTED` member; SD-3 = exit code ∉ `VERDICT_EXIT_CODES` as the verdict source **plus** the XML-shape second layer, with **(d) refused** — no reserved code is named; SD-4 = live shapes primary + the committed s277 artifacts as the closed-incident pin + a drift detector.
 **Created:** 2026-09-04 (session 277)
 **Related ADRs:** ADR-0018 **D8.5** (`:1314-1329` — contention is an *infrastructure verdict distinct from a test failure*; this PLAN applies that class to the verification instrument itself); ADR-0038 **C6** (`:358-364`, `:374-380`, `:420-423` — a RED must name what broke, and the legibility conjunct is part of the class, not a garnish); ADR-009 D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure).
 **Related PLANs / lessons:** PLAN-0115 (`done/0115-…` — owns the driver's `Runner` contract and the outcome set this PLAN widens); PLAN-0120 (the Draft this PLAN was **split out of** — Cray, typed, 2026-09-04, s277: *Step 6 splits out*; everything else stays in 0120); Lesson #0043 (a probe's RED must name what broke); Lesson #0056 (suspect the instrument before the artifact — this PLAN is that lesson applied to the instrument's own output).
@@ -99,9 +99,9 @@ This PLAN changes `tools/probe_battery/_outcome.py` and `_battery.py`: **the ins
 
 The junit failure record stays the **only** source of credit. The child's exit code is consulted in exactly one situation — **when the record would otherwise read clean** (`GREEN`, `NO-TESTS`, `SKIPPED`) — and its only power is to **downgrade** that reading to an infrastructure outcome. A `<failure>`/`<error>` record is never overridden by an exit code (a legible RED stays a RED; a collection error stays `SETUP/COLLECT-ERROR` because its `<error>` record is already legible). Stated in the driver docstring's refusal list (Step 4): *"It reads the exit code for one purpose: to refuse a clean-looking report from a session that did not run to a verdict. An exit code can withhold evidence; it can never supply it."*
 
-`VERDICT_EXIT_CODES = frozenset({0, 1, 5})` — the codes under which pytest's report is a complete account of what ran (all passed / some failed / nothing collected). Everything else — `2` interrupted, `3` internal error, `4` usage error, any user-supplied `pytest.exit(returncode=N)`, a negative code from a signal — means the session ended **before the report can be trusted**. Literals in `tools/` (whether `tools/` may import `pytest` is unverified — §Residual), pinned to `pytest.ExitCode` by a test (AC-2b). **No reserved code is needed and none is imported** — `75` is recognised as "not a verdict code", and the *name* of the cause comes from the child's own last line (which carries PLAN-0120's `TEST-DB-GUARD … outcome=CONTENDED holder_pid=…` token once 0120 lands, and this PLAN's scratch reason until then). The coupling question is SD-3(d).
+`VERDICT_EXIT_CODES = frozenset({0, 1, 5})` — the codes under which pytest's report is a complete account of what ran (all passed / some failed / nothing collected). Everything else — `2` interrupted, `3` internal error, `4` usage error, any user-supplied `pytest.exit(returncode=N)`, a negative code from a signal — means the session ended **before the report can be trusted**. Literals in `tools/` (whether `tools/` may import `pytest` is unverified — §Residual), pinned to `pytest.ExitCode` by a test (AC-2b). **No reserved code is needed and none is imported** — `75` is recognised as "not a verdict code", and the *name* of the cause comes from the child's own last line (which carries PLAN-0120's `TEST-DB-GUARD … outcome=CONTENDED holder_pid=…` token once 0120 lands, and this PLAN's scratch reason until then). The coupling question was SD-3(d) and is **✅ RULED: refused** (Cray, typed, 2026-09-04, s277) — no reserved code is imported or named here.
 
-### 4.2 The runner returns a record, not a string (SD-1 — recommended shape)
+### 4.2 The runner returns a record, not a string (SD-1 — ✅ RULED (a))
 
 ```python
 @dataclass(frozen=True)
@@ -115,7 +115,7 @@ Runner = Callable[[Probe, Path, int], RunRecord | None]   # None stays legal (B1
 
 `_run` (`_battery.py:360-412`): `stderr=subprocess.STDOUT` (CLAUDE.md §8's merge rule applied to the child — a usage error's traceback lives on stderr, B30), `out, _ = proc.communicate(...)`, return `RunRecord(xml_text, proc.returncode, tail)`. The timeout path keeps returning `None` (unchanged; its split is Out of Scope). `_classify_probe` passes `returncode`/`stdout_tail` through to `classify` as **keyword-only optional** arguments so every existing caller (`test_probe_battery.py:147-150`) stays valid; when `xml_text is None` but a record exists, the `SETUP/COLLECT-ERROR` reason now names `rc=` and the child's last non-empty line (AC-3b).
 
-### 4.3 The classifier's new arm (SD-2 — recommended member `ABORTED`)
+### 4.3 The classifier's new arm (SD-2 — ✅ RULED (a), the `ABORTED` member)
 
 On the would-be-clean path, in this order:
 
@@ -125,7 +125,7 @@ On the would-be-clean path, in this order:
 
 `ABORTED` is **non-crediting** (not in `CREDITING_OUTCOMES`), declarable as `expect: "ABORTED"` for a negative-control probe (B10), and rendered like every other outcome (B11). `_render` needs no change.
 
-### 4.4 The oracle set (SD-4 — recommended: live shapes primary, s277 fixtures as the pin)
+### 4.4 The oracle set (SD-4 — ✅ RULED (a): live shapes primary, s277 fixtures as the pin)
 
 `tests/tools/test_probe_battery_contention.py` — one claim per test (B13):
 
@@ -213,22 +213,36 @@ A green here is not evidence until its RED was seen: no AC box is ticked before 
 
 Each carries options, a recommendation with its reason, and why it is Cray's call. The recommendations are load-bearing in §4 and the ACs; if Cray rules otherwise, §4 and the affected ACs are rewritten **before** Step 1, not patched after.
 
-### SD-1 — How the runner's result reaches the classifier
+> ✅ **ALL FOUR RULED (a) — Cray, typed, 2026-09-04, session 277.** Every ruling went to the drafter's recommended option, so **§4 and the ACs stand as written and need no rewrite**. The rulings are recorded here at the moment they were given rather than reconstructed later. Each decision's accepted cost is stated beside it below — those are its reopening conditions, not footnotes.
+
+### SD-1 — How the runner's result reaches the classifier — ✅ RULED (a)
+
+_[RULING (Cray, typed, 2026-09-04, s277): **(a)** — widen the return to a frozen `RunRecord`.]_ **Accepted cost, stated so it is the reopening condition:** this amends a public type alias (`Runner`, `_battery.py:270`) that PLAN-0115 ratified. It is accepted because the alternative costs more — (b) folds the judge into the spawner and destroys the property that makes `_outcome.py` unit-testable in isolation, which is exactly what §2.3's out-of-band oracle depends on. Reopen if `RunRecord` turns out not to keep `None` legal for the five injected runners (B14) — that, not the type change itself, is the failure that would matter.
+
 **Options.** (a) **Widen the return** to a frozen `RunRecord(xml_text, returncode, stdout_tail)`; `Runner = Callable[..., RunRecord | None]`; `classify` grows keyword-only optional args (§4.2). (b) **Move classification inside `_run`** — the runner returns a `Classification`. (c) **Exception-carried** — `_run` raises `ProbeAborted(rc, tail)` on a non-verdict code and `_run_one` catches it; `Runner`'s type is untouched.
 **Recommendation: (a).** It keeps `None` legal so the five injected runners (B14) and the "orchestration without spawning pytest" seam PLAN-0115 built survive unchanged; the classifier stays a pure function over a record, which is what makes the out-of-band oracle (§2.3) a plain unit test. (b) folds the judge into the spawner and would force every orchestration test to construct `Classification`s; (c) turns a reading into control flow and cannot carry the tail for the `GREEN`-with-values case. Cost of (a): a public type on a seam PLAN-0115 ratified — hence Cray's.
 **Why Cray's:** it amends the `Runner` contract of a Complete, Cray-ratified PLAN (0115 Step 1 item 4) and adds stderr-merging to the child spawn — a change to what every future battery's child is.
 
-### SD-2 — The outcome a cut-off child gets
+### SD-2 — The outcome a cut-off child gets — ✅ RULED (a)
+
+_[RULING (Cray, typed, 2026-09-04, s277): **(a)** — a new `Outcome.ABORTED` member.]_ 🔴 **This ruling fixes the name PLAN-0120's AC-9 must cite** once both PLANs land; until then AC-9's read stays `outcome in {NO-TESTS, GREEN}` + `not in CREDITING_OUTCOMES`, which is correct for the pre-0121 world and is already on `main`. **The load-bearing reason (b) was refused:** the instrument cannot see *why* the child stopped — it observes only "ended before a verdict". Naming the outcome `CONTENDED` would have the instrument assert a cause it never measured, which is the same defect class this whole PLAN exists to remove. **Accepted cost:** one new word in the outcome vocabulary PLAN-0115 ratified — mitigated by the precedent already in `_outcome.py`'s own `Outcome` docstring (`:47-59`), which added `MUTATION_ERROR` and `UNREADABLE` rather than folding them into neighbours, each with its reason written down.
+
 **Options.** (a) **New member `ABORTED`** ("the session ended without a verdict for the selected node; an infrastructure event"). (b) New member **`CONTENDED`** — names the DB case specifically. (c) **Reuse `SETUP/COLLECT-ERROR`** with the cause in the reason — PLAN-0120 Step 6's original intent and the README's existing "no usable report" bucket (B12).
 **Recommendation: (a).** The outcome must be true for *every* non-verdict exit (interrupt, internal error, usage error, any `pytest.exit` code) — (b) would name a cause the instrument cannot see; the cause text belongs in the reason, where PLAN-0120's token will land. (c) reads as "collection or fixture error", which a reader will chase in the test module, and it conflates a legible `<error>` record with the *absence* of one; B7's precedent is explicit that a needed outcome is added, not folded. (a) is also declarable as a negative control (B10). Honest counter for (c): zero new vocabulary, and PLAN-0120 AC-9 was written against it.
 **Why Cray's:** it widens the outcome set PLAN-0115 ratified, and **it fixes the name PLAN-0120 AC-9's corrected read must cite** — Code is correcting 0120 inline this session, so this ruling sequences that edit.
 
-### SD-3 — How a cut-off child is recognised (and whether `75` is named)
+### SD-3 — How a cut-off child is recognised (and whether `75` is named) — ✅ RULED (a)+(c), **(d) REFUSED**
+
+_[RULING (Cray, typed, 2026-09-04, s277): **(a) as the verdict source, (c) as the second rc-independent layer that never outranks it, (b) carried only as text inside the reason, and (d) refused.**]_ 🔴 **What this ruling actually amends:** PLAN-0115's founding refusal #1 is *"outcome comes from pytest's junit failure record, never an exit code"* — the rule that exists because s253 keyed on `returncode` and counted a crash as a witnessed RED. Admitting an exit code at all is a real amendment to a Cray-ratified refusal, and it is safe **only** under §4.1's asymmetry: the code is consulted solely where the record would otherwise read clean, and can only **downgrade**. It can withhold evidence; it can never supply it. The s253 channel — an exit code creating credit — stays closed, and Step 4 writes that sentence into the driver's own refusal list so a future reader meets the amendment where the refusal lives. **(d) refused** for two reasons, both load-bearing: naming `75` would couple this PLAN to PLAN-0120's reserved code (making it unexecutable on its own), and it would put the instrument back in the business of asserting a cause it cannot see — the same ground as SD-2(b). **Accepted cost / reopening condition:** if a pytest release starts naming aborted testcases, layer (c) goes dead silently while (a) still holds; the drift detector (§4.4) is what makes that loud, so a drift-detector removal is the thing to refuse, not the layer.
+
 **Options.** (a) **Exit code not in `VERDICT_EXIT_CODES`**, consulted only on the would-be-clean path (§4.1). (b) **A stdout token** (`TEST-DB-GUARD`) — couples this PLAN to PLAN-0120's format and makes it unexecutable before 0120 lands. (c) **The XML shape** — a nameless childless `<testcase>`, and/or `testsuite@tests` disagreeing with the element count (B27) — a pytest implementation detail; the weakest of the three. (d) **Additionally name `75` as "contended"** in the battery (a reserved-code coupling to 0120).
 **Recommendation: (a) as the verdict source, (c) as a second, rc-independent layer that never outranks (a), (b) carried only as text inside the reason, and (d) refused** — no reserved code is imported or named (B20); when 0120 lands, its token is in the child's last line and therefore in the `why :` line without this PLAN knowing 0120 exists. (a) is general (catches interrupts and internal errors too) and stays inside PLAN-0115's refusal by the asymmetry rule. Layer (c) exists for the two cases (a) cannot see — a `pytest.exit(returncode=0)` and an injected runner with no rc — and the drift detector tells us when pytest changes the shape.
 **Why Cray's:** (a) admits an exit code into an instrument whose founding refusal is "never from an exit code" — the asymmetry argument (§4.1) is the drafter's, and Cray ratified the refusal; (d) is the coupling question the dispatch asked to have surfaced rather than assumed.
 
-### SD-4 — The oracle of record for the aborted shapes
+### SD-4 — The oracle of record for the aborted shapes — ✅ RULED (a)
+
+_[RULING (Cray, typed, 2026-09-04, s277): **(a)** — live shapes primary, the committed s277 artifacts as the closed-incident pin, plus the drift detector. Cray ruled it directly rather than delegating.]_ **Accepted cost:** three scratch pytest spawns per session (~1 s) and six small fixture files entering the repo. ✅ **The s277 artifacts were preserved out of `/tmp` by Code at the moment of the measurement** (`~/work/s277_evidence/`), so Step 0 does not depend on `/tmp` surviving; the recipe is deterministic and DB-free, so they are reproducible even if both copies are lost.
+
 **Options.** (a) **Live-generated shapes primary** (the test runs the scratch modules through the real argv, B13's doctrine) **plus the committed s277 artifacts** as the closed-incident pin and a drift detector. (b) **Committed fixtures only** (the dispatch's wording). (c) Live only.
 **Recommendation: (a).** A frozen fixture cannot see a pytest-version change; a live shape cannot prove it is the *same* shape s277 saw. Together: the fixture pins the incident, the live run pins the present, the drift detector says when they part. Cost: three scratch pytest spawns per test session (~1 s).
 **Why Cray's (minor — Code may rule if Cray delegates):** the dispatch asked for committed fixtures; (a) adds to that ask rather than replacing it, and the test-module doctrine (B13) is the constraint both must satisfy.
