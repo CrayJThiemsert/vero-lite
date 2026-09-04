@@ -1,0 +1,46 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py"
+  ],
+  "probes": [
+    {
+      "name": "8c",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "CONTENDED_EXIT = 75",
+      "new": "CONTENDED_EXIT = 74",
+      "node_id": "tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py::test_the_two_sides_agree_on_the_reserved_exit_code",
+      "expect_claim": "test_the_two_sides_agree_on_the_reserved_exit_code|_goal_gate.CONTENDED_EXIT == db_guard.CONTENDED_EXIT|#0",
+      "note": "🔴 PLAN-0120's DECLARED probe 8c, which s277 never ran — this module was in no battery's claim_sources at all. 74 is deliberately still inside the legal range, so the range claim below stays GREEN and this reddens the pin alone."
+    },
+    {
+      "name": "PIN-name",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "DB_ROLE_ENV = \"VERO_TEST_DB_ROLE\"",
+      "new": "DB_ROLE_ENV = \"VERO_TEST_DB_ROLE_X\"",
+      "node_id": "tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py::test_the_two_sides_agree_on_the_marker_variable_name",
+      "expect_claim": "test_the_two_sides_agree_on_the_marker_variable_name|_goal_gate.DB_ROLE_ENV == db_guard.ROLE_ENV|#0",
+      "note": "🔴 A drifted NAME fails more quietly than a drifted code: every check would resolve the session's own database while the token still reported ACQUIRED. This is the edit-time catch for that."
+    },
+    {
+      "name": "PIN-role",
+      "subject": "tests/db_guard.py",
+      "old": "        )\n    return raw",
+      "new": "        )\n    return raw + \"x\"",
+      "node_id": "tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py::test_the_gate_role_is_one_the_guard_would_accept",
+      "expect_claim": "test_the_gate_role_is_one_the_guard_would_accept|db_guard.validated_role(_goal_gate.DB_ROLE_VALUE) == _goal_gate.DB_ROLE_VALUE|#0",
+      "note": "🟢 The value the gate injects must survive the guard's own validation. Chosen so the validator still RAISES on malformed input, leaving the positive control below green."
+    },
+    {
+      "name": "PIN-control",
+      "subject": "tests/db_guard.py",
+      "old": "    if not _ROLE_RE.match(raw):",
+      "new": "    if False:",
+      "node_id": "tests/handoffs/test_goal_gate_contended_exit_pins_the_guard.py::test_the_validator_the_test_above_relies_on_actually_rejects_things",
+      "expect_claim": "test_the_validator_the_test_above_relies_on_actually_rejects_things|pytest.raises(RuntimeError)|#0",
+      "note": "🟢 Reddens the POSITIVE CONTROL itself — a validator that accepted everything would make the claim above vacuous. PIN-role stays green under this, so the two are separately witnessed."
+    }
+  ],
+  "exemptions": {
+    "test_the_reserved_code_cannot_be_confused_with_a_pytest_verdict|5 < code < 128|#0": "⚠️ INEXPRESSIBLE as a single-site mutation, recorded rather than faked (CLAUDE.md §8). The test reads only the GATE literal, while the pin test compares gate against guard. Moving one literal out of the legal range reddens the PIN claim first; reddening this claim alone needs BOTH literals moved together, which a probe's single old/new pair cannot express. Its content is not unwitnessed in effect: probe 8c proves the two literals are compared at all, and the range is a constant-time read a human can verify by inspection."
+  }
+}
