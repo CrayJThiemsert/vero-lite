@@ -172,15 +172,21 @@ where to rehome them if they earn a durable home.
 
 ## Step 5 — Dog-food the validator (MANDATORY — Lesson #8 anti-pattern: never skip)
 
+🔴 **`--no-sync` is not optional.** A bare `uv run` re-syncs the project environment
+**without the dev extra** and uninstalls pytest / ruff / mypy / pre-commit from the
+shared `.venv` — silently, because the command itself still succeeds. This skill runs at
+every session close, so the bare form would strip the toolchain on the way out the door.
+Same reason as `.claude/skills/ms-s1-ollama/_run_detached_body.sh`.
+
 ```bash
 wsl bash -lc "cd /home/crayj/work/vero-lite && source .venv/bin/activate && \
-  uv run python tools/handoffs/validate_handoff.py .claude/handoffs/session-NN/<file>.md"
+  uv run --no-sync python tools/handoffs/validate_handoff.py .claude/handoffs/session-NN/<file>.md"
 ```
 
 Exit 0 = valid. On error (missing/empty required field, bad enum, naive `created`,
 filename↔`actor:` mismatch) fix and re-run until clean. Warnings (unknown field,
 suffix-not-in-filename) don't block. Optionally refresh the dashboard:
-`uv run python tools/handoffs/handoff_status.py NN --index`.
+`uv run --no-sync python tools/handoffs/handoff_status.py NN --index`.
 
 ⚠️ **The validator checks SHAPE, not sufficiency.** It passes on a handoff that has
 all nine sections and has lost the session's findings — that is exactly what
