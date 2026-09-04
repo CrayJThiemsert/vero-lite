@@ -1,0 +1,248 @@
+# PLAN-0121: Probe-battery contention legibility — an aborted pytest child is reported as an infrastructure event naming its cause, never as `GREEN` or `NO-TESTS`
+
+**Status:** Draft
+**Owner:** Claude Code (executes; commits via PR per ADR-009 D2). Surfaced Decisions SD-1..SD-4 are **open** — Cray rules before Step 1.
+**Created:** 2026-09-04 (session 277)
+**Related ADRs:** ADR-0018 **D8.5** (`:1314-1329` — contention is an *infrastructure verdict distinct from a test failure*; this PLAN applies that class to the verification instrument itself); ADR-0038 **C6** (`:358-364`, `:374-380`, `:420-423` — a RED must name what broke, and the legibility conjunct is part of the class, not a garnish); ADR-009 D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure).
+**Related PLANs / lessons:** PLAN-0115 (`done/0115-…` — owns the driver's `Runner` contract and the outcome set this PLAN widens); PLAN-0120 (the Draft this PLAN was **split out of** — Cray, typed, 2026-09-04, s277: *Step 6 splits out*; everything else stays in 0120); Lesson #0043 (a probe's RED must name what broke); Lesson #0056 (suspect the instrument before the artifact — this PLAN is that lesson applied to the instrument's own output).
+**Branch (suggested):** `docs/s277-plan0121-battery-contention-legibility` (this draft); implementation per Step.
+
+> **Drafting provenance + author≠reviewer disclosure (ADR-012 D4.3 / ADR-013 D1).** Drafted by the in-harness `plan-drafter` subagent from a Code-authored dispatch carrying Code's s277 measurement (PLAN-0120 Step 0, P-VX-2) and Cray's typed split ruling. The drafter has **no shell** and did not re-run the recipe; instead it **opened Code's s277 artifacts directly** on the WSL side (`/tmp/s277_p2body/`, `/tmp/s277_p2/`, `/tmp/s277_p2green/`, `/tmp/s277_p4/`) and re-read every `file:line` cited below (✔ in §3). Independent reviewer: **Code** re-verifies citations and runs Step 0 before commit; **Cray** at PR merge. Separation: **INTACT** — outline originator (Code), drafter (plan-drafter), ratifier (Cray) are three actors. Nothing below is decided that the dispatch did not lock; the four open questions are Surfaced Decisions.
+
+---
+
+## Goal
+
+Make the probe battery **legible about its own infrastructure failures**: when a pytest child the battery spawned is cut off before reaching a verdict — measured shape: a DB-contended session calling `pytest.exit(reason, returncode=75)` — the battery reports **an infrastructure event that names its cause** (the child's exit code and the child's own last line), distinguishable from a real `GREEN` and from a real `NO-TESTS`. Today the same event is reported as *"the guard may be vacuous"* — the one reading that sends a reader to fix a guard that is fine. The *safety* half is already true and is not touched: only `WITNESSED` credits (`_outcome.py:76`), so a contended child cannot manufacture a credit today or after this PLAN. What changes is the *reading*. The exit code is admitted into the instrument under one asymmetric rule: **it may withhold evidence, never supply it** — PLAN-0115's founding refusal ("never credits from an exit code") is preserved verbatim and restated in the driver's docstring.
+
+---
+
+## 1. The failure this prevents, stated once (the oracle every AC is judged against)
+
+1.1 **What the battery does today.** The runner spawns `[python, -m, pytest, <node_id>, --junitxml=<x>, -p, no:cacheprovider, -q]` (`_battery.py:363-372`), calls `proc.communicate(timeout=timeout_s)` and **discards both the return value and `proc.returncode`** (`:391`), then returns the junit text if the file exists (`:410-412`). `Runner` is typed `Callable[[Probe, Path, int], str | None]` (`:270`). The word `returncode` does not occur in `_battery.py` (grep, s277 — the only hits in the package are `_snapshot.py:88` for a `git` call, and two docstrings *about* the s253 defect).
+
+1.2 **What a cut-off child produces — measured (Code, s277; artifacts re-read by the drafter).** Same argv, a scratch module outside the tree, `pytest.exit("TEST-DB-GUARD outcome=CONTENDED holder_pid=424242 db=vero_lite_test_s277", returncode=75)`:
+
+| exit fires from | child rc | junit file | shape (verbatim) | `classify` today |
+|---|---|---|---|---|
+| an autouse fixture (`/tmp/s277_p2/conftest.py:16-18`) | **75** | exists | `<testsuite … tests="0" … />` — no `<testcase>` | **`NO-TESTS`** — *"the node id selected no tests — nothing ran"* |
+| the test body (`/tmp/s277_p2body/test_trivial.py:6-11`) | **75** | exists | `<testsuite … tests="0" …><testcase time="0.000" /></testsuite>` — one `<testcase>`, **no `name`**, no children, while pytest's own `tests=` count says **0** | **`GREEN`** — *"the mutation reached disk and nothing reddened — the claim is NOT witnessed, and the guard may be vacuous"* |
+| control: `assert 1 == 2`, same argv (`/tmp/s277_p2/OUT.txt:5-6`) | 1 | exists | one `<testcase>` with a `<failure>` | `WITNESSED` at `test_trivial.py:2` |
+| control: a real green (`/tmp/s277_p2green/junit.xml`) | 0 | exists | `<testsuite … tests="1"><testcase classname="test_trivial" name="test_a_db_backed_case" time="0.000" />` | `GREEN` — **the identical reason string** (`/tmp/s277_p2body/CLS.txt:1-4`) |
+
+The cause line exists in exactly one place — the child's **stdout**, which the runner captures and drops: `! _pytest.outcomes.Exit: TEST-DB-GUARD outcome=CONTENDED holder_pid=424242 db=vero_lite_test_s277 !` (`/tmp/s277_p2body/run.txt:3`). It is nowhere in the XML.
+
+1.3 **Why the body-phase row is the harmful one.** `parse_junit` labels any childless `<testcase>` as `tag="passed"` regardless of whether it has a name (`_outcome.py:139-153`; `:144` substitutes `"<unnamed>"`, `:145` sets `"passed"`). `classify` then finds no problems and returns `GREEN` (`:226-239`). The parsed record differs from a real green **only** in `name='<unnamed>'` (`CLS.txt:1` vs `:3`). So a DB contention during a probe run is published as *the guard under test being vacuous* — a reader acting on it goes to strengthen a guard that is fine, while the real event (two pytest processes on one database) is invisible. This is ADR-0018 D8.5's misdiagnosis class — "a contention reading recorded as a fabricated defect" — reproduced **inside the verification instrument**, and PLAN-0115's own closeout already records one false-`GREEN` incident against the same reason string (stale bytecode, `done/0115:719-727`). A `GREEN` that can mean two things is not a reading.
+
+1.4 **Why PLAN-0120 cannot simply absorb it.** PLAN-0120 §4.5 and Step 6 (`0120:107`, `:181`) say the runner "holds `proc.returncode`" at `_battery.py:379-386` and can report the cause from there. **Refuted on disk** (1.1): the variable is in scope and never read, and `Runner`'s return type cannot carry it. Any fix must widen what the runner returns or move classification into the runner — a change to the driver contract PLAN-0115 ratified, which is why it is its own PLAN.
+
+---
+
+## 2. The recursion hazard — the central risk of THIS build
+
+This PLAN changes `tools/probe_battery/_outcome.py` and `_battery.py`: **the instrument that witnesses this PLAN's own probes.** A defect in the change can make the battery report the change as working. The design below is organised around that, not around the diff.
+
+2.1 **Where the recursion actually is.** The battery driver runs in a parent process that imports `_outcome` and `_battery` **once**, before the first mutation; every probe's child pytest is a fresh process that imports from **disk**. So a probe that mutates `_outcome.py` reddens the unit test running *in the child* — the child sees the mutation — while the **parent's judge is always the new, unmutated code under test.** The judge is never probed by its own battery. (Standard `sys.modules` semantics; ⚠️ not separately measured, and the design does not depend on it — see 2.4.)
+
+2.2 **The asymmetry that keeps the hazard one-sided.** The change adds branches on the **would-be-clean path only** (`classify`'s `not cases` and `not problems` arms, `_outcome.py:210-214`, `:226-239`) and never touches the `WITNESSED` conjunction (`:251-291`) or `CREDITING_OUTCOMES` (`:76`). Therefore a defect in the new judge can do exactly two things: **(i) over-fire** — downgrade a real `WITNESSED`/`GREEN` to the new outcome, which turns every probe 🔴 and prints `PROBE-BATTERY: FAIL` (loud, safe); or **(ii) under-fire** — fail to downgrade an aborted child, which is *this PLAN's defect re-made* and is **invisible to the battery**, because the battery's own children over this PLAN's tests exit `0`/`1`, never `75`. It cannot manufacture a credit. The existing Part-1 classifier tests (`tests/tools/test_probe_battery.py:166-258`) and the CLI PASS scenario (`test_probe_battery_scenario.py:353-378`) are kept byte-for-byte as the positive control that the judge still credits a genuine RED (AC-7 runs them).
+
+2.3 **Consequently, the oracle for (ii) is out-of-band, and the battery's job over it is narrower than usual.** The oracle is a set of **direct unit tests** over `classify` / `parse_junit` / `_make_pytest_runner` fed with the aborted shapes — (a) **live-generated** by the test itself from a DB-free scratch module calling `pytest.exit(…, returncode=75)` from the body and from an autouse fixture (the `_SHAPES` precedent, `test_probe_battery.py:58-124`, whose module docstring `:1-15` forbids hand-written XML), and (b) the **committed s277 artifacts** as the closed-incident pin (§3 B24-B27; a closed incident is an un-fakeable oracle). Over those tests the battery does one thing: **it witnesses that the oracle is live** — a mutation removing the new branch must redden the oracle's assertion. The oracle judges the instrument; the battery judges the oracle. Neither judges itself.
+
+2.4 **The one place the parent's cache would blind a probe, and how it is routed around.** A mutation to `_battery.py` (the runner) cannot be seen by the parent driver's cached copy. Two shapes still witness it: a unit test in the child that calls `_make_pytest_runner` directly (the child imports the mutated module — P4a, P5); and the **scenario** test that spawns a **fresh driver process** via `python -m tools.probe_battery` with `cwd=REPO_ROOT` (`test_probe_battery_scenario.py:92-115`), so the grand-child driver loads the mutated `_battery.py` from disk and misreports, and the scenario assertion in the child reddens (P4b, P7). Every `_battery.py` probe below is bound to one of those two shapes; none relies on the parent seeing its own mutation.
+
+2.5 **Pre-committed reads, fixed before Step 1 (the s277 artifacts are the `pre`).** `pre: body→GREEN, fixture→NO-TESTS, control→GREEN` (measured, §1.2). `post: body→<new outcome>, fixture→<new outcome>, control→GREEN`, each with the reason carrying `rc=75` and the child's last line. Step 0 re-prints the `pre` values from the committed fixtures **under the unmodified classifier** so the RED is seen on this checkout before the fix lands — never from memory.
+
+2.6 **What the battery is NOT used for here.** No probe induces contention on a real database — that needs PLAN-0120's guard, which is unbuilt (§3 B21). The DB-free `pytest.exit(returncode=75)` reproduction is the whole shape the classifier ever sees, so it is sufficient and keeps this PLAN executable before, after, or without PLAN-0120.
+
+---
+
+## 3. Measured base — ✔ re-read on disk by the drafter (s277), ⚠️ asserted-not-verified
+
+| # | Fact | Anchor | Status |
+|---|---|---|---|
+| B1 | The battery's child argv, verbatim | `tools/probe_battery/_battery.py:363-372` | ✔ |
+| B2 | `Popen(... stdout=PIPE, stderr=PIPE)`; `proc.communicate(timeout=timeout_s)` — return value **dropped**; `proc.returncode` **never read**; the runner returns `xml.read_text()` or `None` | `:379-385`, `:391`, `:410-412`; grep `returncode` over `tools/probe_battery/` → no hit in `_battery.py` | ✔ — **refutes** PLAN-0120 `:107`/`:181` ("holds `proc.returncode`") |
+| B3 | `Runner = Callable[[Probe, Path, int], str \| None]` | `:269-270` | ✔ |
+| B4 | Timeout → `proc.kill()` → `return None`; `_classify_probe` maps `None` → `SETUP/COLLECT-ERROR` "failed to start, or killed at the timeout" | `:392-396`; `:424-430` | ✔ |
+| B5 | Crediting: `credited = probe.expect_claim if classification.outcome in CREDITING_OUTCOMES else None`; `CREDITING_OUTCOMES = frozenset({Outcome.WITNESSED})` | `_battery.py:491`; `_outcome.py:76` | ✔ — the *safety* half of PLAN-0120 AC-9 is already true |
+| B6 | The driver's founding refusal #1: "never credits from an exit code … so a crash cannot masquerade as a RED" | `_battery.py:13-16`; README `:28`; PLAN-0115 contract item 4 `done/0115:315-322` | ✔ — this PLAN must stay inside it (§4.1) |
+| B7 | `Outcome` members (9); docstring precedent that a needed outcome is **added and recorded, never folded into a neighbour** (`MUTATION_ERROR`, `UNREADABLE`) | `_outcome.py:44-70`, `:47-59` | ✔ |
+| B8 | `parse_junit`: a childless `<testcase>` → `name=… or "<unnamed>"`, `tag="passed"` | `:139-153` (`:144`, `:145`) | ✔ |
+| B9 | `classify` order: `not cases`→`NO-TESTS` (`:210-214`); `error` tags→`SETUP/COLLECT-ERROR` (`:216-224`); no problems→`SKIPPED`/`GREEN` (`:226-239`); GREEN reason verbatim (`:235-239`); the `WITNESSED` conjunction (`:251-291`) | `_outcome.py` | ✔ |
+| B10 | `Probe.from_json` accepts any `Outcome` value as `expect` → a new member is declarable as a negative control with no parser change | `_battery.py:210`, `:193` | ✔ |
+| B11 | `_render` prints `outcome` and `reason` per probe (`why :` line) — a new member and its reason flow into the report unchanged | `:601-613` | ✔ |
+| B12 | README outcome table; the `SETUP/COLLECT-ERROR` row already folds "no usable report (failed to start, or timed out)" into itself | `tools/probe_battery/README.md:92-106` (`:103`) | ✔ |
+| B13 | Test-module doctrine: **nothing simulated** — junit XML must come from a real pytest run; one claim per test | `tests/tools/test_probe_battery.py:1-15`; `_SHAPES`/`shapes_junit` `:58-124`; `_subset` `:127-137`; `_classify` `:147-150` | ✔ |
+| B14 | Injected runners in the orchestration tests return `None` and are annotated `-> str \| None` | `:524-533`, `:808-810`, `:832-834`, `:851-853`, `:872-874` | ✔ — a widened `Runner` must keep `None` legal |
+| B15 | The scenario harness spawns a **fresh driver process** (`python -m tools.probe_battery … run`, `cwd=REPO_ROOT`) over a tmp project | `tests/tools/test_probe_battery_scenario.py:69-89`, `:92-115`, `:353-378` | ✔ — the vehicle for §2.4 |
+| B16 | PLAN-0115 SD-1 (helper+guard not severable) and SD-2 (zero-residue stand-down) — **neither bears on this PLAN**: both are about the DB teardown bound and the goal-gate lock, not the runner/classifier seam | `done/0115:553-617` | ✔ (read; recorded so nobody re-derives the check) |
+| B17 | PLAN-0115 ships **no** mechanism for this: no abort outcome, no exit-code read, no stdout carry — its closeout even lists a false-`GREEN` incident of the same reason string (stale bytecode) fixed by a different mechanism | `done/0115:315-322`, `:711-727`; B2, B7, B12 | ✔ — REJECT-if #2 does not fire |
+| B18 | PLAN-0120 §4.5 + Step 6 assert the runner "holds `proc.returncode`, `_battery.py:379-386`"; AC-9's read is `outcome == SETUP/COLLECT-ERROR` and *cause line contains `TEST-DB-GUARD`* | `docs/plans/0120-…:107`, `:181`, `:127` | ✔ — claim refuted by B2; AC-9 stays in 0120 with a read that must cite **SD-2's outcome name** |
+| B19 | PLAN-0120's reserved code `CONTENDED_EXIT = 75` and its token format are **design text only** | `0120:92`, `:161` | ✔ |
+| B20 | `tests/db_guard.py` **does not exist** — PLAN-0120 Step 1 is unbuilt; nothing in this PLAN may import `CONTENDED_EXIT` | Read → "File does not exist" | ✔ (grounded negative) |
+| B21 | P-VX-4 (sessionfinish `print` visible under the battery's argv) — measured `visible_battery=1` | `/tmp/s277_p4/OUT.txt:3` | ✔ — a `pytest_sessionfinish` token **will** be in the captured stdout |
+| B22 | ADR-0018 D8.5: contention = infrastructure verdict; the token prints measured values on clean runs too | `docs/adr/0018-…:1314-1329` | ✔ |
+| B23 | ADR-0038 C6: identity by site, never exception type; legibility conjunct is load-bearing; binding rule | `docs/adr/0038-…:358-364`, `:374-380`, `:420-423` | ✔ |
+| B24 | **Body-phase** artifact: `rc=75`; junit `<testsuite … tests="0" …><testcase time="0.000" /></testsuite>`; stdout `no tests ran in 0.18s` + the `! _pytest.outcomes.Exit: … !` line; classifier `GREEN`, record `'<unnamed>'/passed` | `/tmp/s277_p2body/{OUT.txt:1-7, junit.xml, run.txt:2-3, CLS.txt:1-2, test_trivial.py:10, run.sh:6-7}` | ✔ (artifact read, not re-run) |
+| B25 | **Fixture-phase** artifact: `rc=75`; junit `<testsuite … tests="0" … />` with no `<testcase>`; classifier `NO-TESTS`; same stdout shape | `/tmp/s277_p2/{OUT.txt:1-3, junit.xml, conftest.py:16-18}` | ✔ |
+| B26 | **Controls**: `assert 1 == 2` → `rc=1`, `WITNESSED` at `test_trivial.py:2`; a real green → `rc=0`, `tests="1"`, named `<testcase>`, `GREEN` with the identical reason | `/tmp/s277_p2/OUT.txt:5-7`; `/tmp/s277_p2green/junit.xml`; `CLS.txt:3-4` | ✔ |
+| B27 | An extra structural signal the dispatch did not name: on the body-phase XML pytest's own `testsuite@tests` is **`"0"`** while one `<testcase>` element exists — the suite's declared count disagrees with the element count | `/tmp/s277_p2body/junit.xml` vs `/tmp/s277_p2green/junit.xml` (`tests="1"`) | ✔ — feeds SD-3 option (c) |
+| B28 | Fixture-directory convention: `Path(__file__).parent / "fixtures"` | `tests/verticals/test_governance_config_hash_stability.py:41`; `tests/services/engine/scaffolder/test_golden_e2e.py:78` | ✔ — none under `tests/tools/` yet |
+| B29 | pytest pin `>=8.3.0` | `pyproject.toml:40` | ✔ |
+| B30 | pytest maps `Exit.returncode` → `session.exitstatus`; `ExitCode` 0 OK / 1 TESTS_FAILED / 2 INTERRUPTED / 3 INTERNAL_ERROR / 4 USAGE_ERROR / 5 NO_TESTS_COLLECTED; a conftest `ImportError` prints to **stderr** and exits 4 | pytest source (`main.py::wrap_session`, `config/__init__.py`), drafter knowledge | ⚠️ **asserted-not-verified against the pinned source**; the rc values 75/1/0 are measured (B24-B26); AC-2b pins the set against `pytest.ExitCode`, AC-3b prints the measured rc for the conftest case |
+
+---
+
+## 4. Design
+
+### 4.1 The rule that keeps the exit code on the right side of PLAN-0115's refusal
+
+The junit failure record stays the **only** source of credit. The child's exit code is consulted in exactly one situation — **when the record would otherwise read clean** (`GREEN`, `NO-TESTS`, `SKIPPED`) — and its only power is to **downgrade** that reading to an infrastructure outcome. A `<failure>`/`<error>` record is never overridden by an exit code (a legible RED stays a RED; a collection error stays `SETUP/COLLECT-ERROR` because its `<error>` record is already legible). Stated in the driver docstring's refusal list (Step 4): *"It reads the exit code for one purpose: to refuse a clean-looking report from a session that did not run to a verdict. An exit code can withhold evidence; it can never supply it."*
+
+`VERDICT_EXIT_CODES = frozenset({0, 1, 5})` — the codes under which pytest's report is a complete account of what ran (all passed / some failed / nothing collected). Everything else — `2` interrupted, `3` internal error, `4` usage error, any user-supplied `pytest.exit(returncode=N)`, a negative code from a signal — means the session ended **before the report can be trusted**. Literals in `tools/` (whether `tools/` may import `pytest` is unverified — §Residual), pinned to `pytest.ExitCode` by a test (AC-2b). **No reserved code is needed and none is imported** — `75` is recognised as "not a verdict code", and the *name* of the cause comes from the child's own last line (which carries PLAN-0120's `TEST-DB-GUARD … outcome=CONTENDED holder_pid=…` token once 0120 lands, and this PLAN's scratch reason until then). The coupling question is SD-3(d).
+
+### 4.2 The runner returns a record, not a string (SD-1 — recommended shape)
+
+```python
+@dataclass(frozen=True)
+class RunRecord:                      # home: _outcome.py (the classifier's input); re-exported
+    xml_text: str | None              # None = pytest produced no report
+    returncode: int | None            # None = killed at the timeout (no code to read)
+    stdout_tail: str                  # last STDOUT_TAIL_BYTES (4096) of the child's MERGED output, errors="replace"
+
+Runner = Callable[[Probe, Path, int], RunRecord | None]   # None stays legal (B14)
+```
+
+`_run` (`_battery.py:360-412`): `stderr=subprocess.STDOUT` (CLAUDE.md §8's merge rule applied to the child — a usage error's traceback lives on stderr, B30), `out, _ = proc.communicate(...)`, return `RunRecord(xml_text, proc.returncode, tail)`. The timeout path keeps returning `None` (unchanged; its split is Out of Scope). `_classify_probe` passes `returncode`/`stdout_tail` through to `classify` as **keyword-only optional** arguments so every existing caller (`test_probe_battery.py:147-150`) stays valid; when `xml_text is None` but a record exists, the `SETUP/COLLECT-ERROR` reason now names `rc=` and the child's last non-empty line (AC-3b).
+
+### 4.3 The classifier's new arm (SD-2 — recommended member `ABORTED`)
+
+On the would-be-clean path, in this order:
+
+1. `returncode is not None and returncode not in VERDICT_EXIT_CODES` → **`ABORTED`**, reason: `pytest exited rc=75 before reaching a verdict for '<node_id>' — <n> testcase(s) in the report, <u> without a name; the run was cut off, so nothing here is evidence about the guard. Child said: '! _pytest.outcomes.Exit: TEST-DB-GUARD outcome=CONTENDED holder_pid=424242 db=vero_lite_test_s277 !'` — values, then the cause, greppable (`TEST-DB-GUARD` lands in the report's `why :` line, which is what PLAN-0120 AC-9's corrected read greps).
+2. Otherwise, **the rc-independent defence** (SD-3(c), second layer): `parse_junit` labels a childless `<testcase>` **without a `name`** as `tag="unreported"` (never `"passed"`); `classify` maps any `unreported` case to **`ABORTED`** with the same reason shape and `rc=<rc or '-'>`. This is what catches a `pytest.exit(returncode=0)` or an injected runner that carries no exit code; it is the weakest signal (a pytest implementation detail, B27) and is therefore never the *verdict source* when an exit code exists.
+3. Otherwise `NO-TESTS` / `SKIPPED` / `GREEN` as today — with `GREEN`'s reason now **carrying the values it measured**: `… (rc=0; 1 testcase, all named)`. Two readings that print different values can no longer be confused by a reader, which is the §8 rule at the instrument's own output.
+
+`ABORTED` is **non-crediting** (not in `CREDITING_OUTCOMES`), declarable as `expect: "ABORTED"` for a negative-control probe (B10), and rendered like every other outcome (B11). `_render` needs no change.
+
+### 4.4 The oracle set (SD-4 — recommended: live shapes primary, s277 fixtures as the pin)
+
+`tests/tools/test_probe_battery_contention.py` — one claim per test (B13):
+
+- **Live shapes**, generated by the test from three DB-free scratch projects run through the real argv (the `shapes_junit` pattern, B13): (i) `test_exit_from_the_body` calling `pytest.exit(REASON, returncode=75)` then an assert, plus `test_green`; (ii) a project whose `conftest.py` autouse fixture exits `75`; (iii) a project whose `conftest.py` raises `ImportError` at import (no junit, stderr-only cause). `REASON` mimics PLAN-0120's token *shape* (`… outcome=CONTENDED holder_pid=424242 …`) without importing anything from it (B20).
+- **Committed s277 artifacts** under `tests/tools/fixtures/probe_battery/` (B28): `s277_exit75_body.junit.xml`, `s277_exit75_body.stdout.txt`, `s277_exit75_fixture.junit.xml`, `s277_exit75_fixture.stdout.txt`, `s277_green_control.junit.xml`, and `MEASURED.json` (`{"s277_exit75_body": {"returncode": 75}, "s277_exit75_fixture": {"returncode": 75}, "s277_green_control": {"returncode": 0}}`) with a `README.md` stating the recipe (`/tmp/s277_p2body/run.sh:6-7`) and the pre-fix readings. Captured from a real run — the module doctrine (B13) permits it; hand-written XML stays forbidden.
+- **A drift detector**: the live body shape's structural signature (`testsuite@tests == "0"`, exactly one childless `<testcase>` with no `name`) equals the committed fixture's. If a future pytest starts naming aborted testcases, this reddens and tells us layer 4.3(2) has gone dead while layer 4.3(1) still holds. It is a claim about pytest, not about `tools/` — **exempted** from the battery with that written reason.
+- **Scenario additions** (`test_probe_battery_scenario.py`): a tmp project whose test exits `75`; the fresh-driver CLI run prints `ABORTED` in the report and `PROBE-BATTERY: FAIL` (declared `WITNESSED` unmet, credits nothing); a second battery declaring `"expect": "ABORTED"` prints `PROBE-BATTERY: PASS` — the negative control that the member is reachable through the data path, not only in-process.
+
+---
+
+## Acceptance Criteria
+
+Evidence discipline is CLAUDE.md §8 throughout: every load-bearing green is **witnessed RED** through `tools/probe_battery/` (never a from-scratch `/tmp` script), **one mutation per assertion** with the sibling assertion staying green, every report **prints the values it measured**, and the coverage report + battery JSON travel in the PR body. Each AC names its artifact, its **pre-committed pass read**, its **positive control**, and its **probe** (subject / mutation / `node_id` / the one claim expected to redden). Node ids and `old` bytes are the drafter's proposal; Code pins them with `python -m tools.probe_battery keys <module>` **after the final `ruff format` pass** (README §"Write the battery AFTER the final format pass"). Every test that spawns pytest carries the existing `timeout_s`/`--timeout` bound so a regression reddens rather than hangs.
+
+- [ ] **AC-1 — A body-phase abort is `ABORTED`, not `GREEN`.** *Artifact:* `test_probe_battery_contention.py::test_an_exit_from_the_test_body_is_aborted_not_green` — live shape (i), fed through `classify(..., returncode=rc, stdout_tail=out)`. *Pass read:* `outcome is Outcome.ABORTED`; prints `rc=<n> cases=<k> unnamed=<u> outcome=<o>`. *Positive control:* `::test_a_real_green_is_still_green` — the same run's `test_green` subset → `GREEN`, printed `rc=0 cases=1 unnamed=0`. *Probe P1:* subject `_outcome.py`, mutation: the 4.3(1) predicate → `if False` (never downgrade); reddening claim: the `is ABORTED` assert. The control stays green under P1 (it never entered the branch).
+- [ ] **AC-2 — A fixture-phase abort is `ABORTED`, not `NO-TESTS`, and the verdict-code set is pytest's own.** *Artifacts:* (a) `::test_an_exit_from_a_fixture_is_aborted_not_no_tests` — live shape (ii) (`cases=0`, `rc=75`); *pass read:* `is ABORTED`, printed. *Positive control:* `::test_a_node_selecting_nothing_is_still_no_tests` — a nonexistent node id on shape (i)'s module → `rc=5`, `NO-TESTS`, printed `rc=5`. (b) `::test_the_verdict_exit_codes_are_pytests_own` — `VERDICT_EXIT_CODES == {ExitCode.OK, ExitCode.TESTS_FAILED, ExitCode.NO_TESTS_COLLECTED}` (the cross-file pin; the test imports `pytest.ExitCode`, `tools/` does not). *Probe P2a:* subject `_outcome.py`, mutation: hoist the `not cases → NO_TESTS` return above the abort check; reddening claim: (a)'s `is ABORTED`; AC-1's assert stays green (its report has one case). *Probe P2b:* mutation `5` → `6` in `VERDICT_EXIT_CODES`; reddening claim: (b)'s equality. Note: P2b also reddens the `rc=5` control (rc=5 becomes "not a verdict") — Code may add **P2c** on that node to witness it explicitly; each probe still names one claim.
+- [ ] **AC-3 — The reason names the cause, in both no-verdict shapes.** *Artifacts:* (a) `::test_the_aborted_reason_carries_the_childs_last_line` — shape (i); *pass read:* `"outcome=CONTENDED holder_pid=424242" in result.reason` **and** `"rc=75" in result.reason`; prints the reason. (b) `::test_a_child_that_produces_no_report_names_its_cause` — shape (iii) through the **real runner** (`_make_pytest_runner`): `record.xml_text is None`, and `_classify_probe`'s `SETUP/COLLECT-ERROR` reason contains `rc=<measured>` and the conftest `ImportError` text; prints `rc=<n> reason=<…>` (B30's `4` is asserted-not-verified — the read is "the printed rc is non-verdict and the text is present", not "rc == 4"). *Positive control:* the existing `test_probe_battery.py::test_the_failure_message_is_carried_into_the_reason` (`:253-258`) — an ordinary RED's message is still carried. *Probe P3:* subject `_outcome.py`, mutation: drop the `Child said: …` segment from the `ABORTED` reason; reddening claim: (a)'s substring assert; AC-1's `is ABORTED` stays green. *Probe P5:* subject `_battery.py`, mutation `stderr=subprocess.STDOUT` → `stderr=subprocess.PIPE`; reddening claim: (b)'s `ImportError`-text assert (the cause was on stderr and is no longer in the tail); (b)'s `xml_text is None` sibling stays green.
+- [ ] **AC-4 — The real driver, end to end, reports `ABORTED`, credits nothing, and the member is declarable.** *Artifacts:* (a) `::test_the_runner_returns_the_childs_exit_code` — `_make_pytest_runner` over shape (i); *pass read:* `record.returncode == 75`, printed. (b) `::test_an_aborted_probe_credits_nothing` — in-process `run_battery` over a tmp project whose test exits `75`; *pass read:* `result.credited == {}` **and** `results[0].classification.outcome is ABORTED` (two tests, one claim each); prints `credited=<n> outcome=<o>`. (c) `test_probe_battery_scenario.py::test_an_aborting_child_is_reported_aborted_through_the_cli` — fresh driver via the CLI (B15); *pass read:* `"ABORTED" in proc.stdout` and `proc.returncode == 1` (`FAIL`: declared `WITNESSED` unmet); (d) `::test_a_battery_declaring_expect_aborted_passes` — same project, battery JSON with `"expect": "ABORTED"`; *pass read:* `VERDICT_PASS in proc.stdout`, `rc=0`. *Positive control:* the existing `test_a_clean_battery_run_through_the_cli_reports_pass` (`:353-378`) stays green — the driver still reaches PASS on a real green. *Probe P4a:* subject `_battery.py`, mutation `returncode=proc.returncode` → `returncode=0`; node (a); reddening claim: `== 75`. *Probe P4b:* same mutation; node (c); reddening claim: `"ABORTED" in stdout` — witnessed through the grand-child driver (§2.4). *Probe P7:* subject `_battery.py:491`, mutation `in CREDITING_OUTCOMES` → `in CREDITING_OUTCOMES | {Outcome.ABORTED}`; node (b)'s credit test; reddening claim: `credited == {}`; (b)'s outcome sibling stays green.
+- [ ] **AC-5 — The rc-independent defence: a childless `<testcase>` without a `name` is never "passed".** *Artifacts:* `::test_a_childless_testcase_without_a_name_is_not_a_pass` — `parse_junit` over live shape (i)'s XML; *pass read:* `records[0].tag == "unreported"`, printed. `::test_an_unreported_case_classifies_aborted_without_an_exit_code` — `classify(...)` with **no** `returncode` argument → `ABORTED` (the injected-runner path, B14). *Positive control:* `::test_a_childless_named_testcase_is_still_a_pass` — the `test_green` subset → `tag == "passed"`. *Probe P6:* subject `_outcome.py:139-153`, mutation: label the nameless childless case `"passed"` as before; reddening claim: the `== "unreported"` assert; the named control stays green.
+- [ ] **AC-6 — The closed incident replays: the committed s277 artifacts classify `ABORTED` under the new code, and the live shape still matches them.** *Artifacts:* `::test_the_s277_body_fixture_classifies_aborted` and `::test_the_s277_fixture_phase_fixture_classifies_aborted` — read the XML + `MEASURED.json` rc; *pass read:* `is ABORTED` each, printed with `rc=`. `::test_the_s277_green_control_fixture_is_green` — `GREEN`. `::test_the_live_body_shape_matches_the_s277_signature` — the drift detector (§4.4), **exempted** from probing with the written reason "a claim about the pinned pytest's output, unreachable by any `tools/` mutation". *Step 0 evidence (the RED before the fix):* the same three fixture tests run against the **unmodified** classifier print `pre: body=GREEN fixture=NO-TESTS control=GREEN` — captured to the PR body. *Probe P8:* subject `_outcome.py`, P1's mutation; node: the body-fixture test; reddening claim: its `is ABORTED`.
+- [ ] **AC-7 — Regression + the offline gate at true CI scope.** All pre-existing `tests/tools/test_probe_battery*.py` tests pass **unchanged in substance** (B14's annotations may change type only); then the CI command list as PLAN-0120 AC-10 states it (`ruff check .`, `ruff format --check .`, `node --check` over the static assets, `cache_bust_diff_check.py`, `mypy --strict services/ verticals/`, `detect-secrets`, **`CI=1 uv run --no-sync pytest -q`** bare), each `2>&1` to a file with the exit code echoed. *Pass read:* seven zeros; the full-suite line printed and reconciled against the s275 baseline (`4801 passed, 8 skipped`, PLAN-0117 `:847`) plus this PLAN's added tests — a new skip is named, not absorbed. (A docs/regression AC: its witness is the run, not a probe.)
+- [ ] **AC-8 — The docs say what the instrument now does.** README outcome table gains the `ABORTED` row ("the child exited without a verdict — an infrastructure event; the reason names rc and the child's last line — **never** evidence about the guard"); the `SETUP/COLLECT-ERROR` row loses the "timed out" overlap only if SD-2 rules (c); `_battery.py:13-16`'s refusal #1 gains the asymmetry sentence (§4.1); `Outcome`'s docstring records the new member with its measured cause (B7's precedent); `_battery.py:347-358`'s runner docstring states the record it returns. *Pass read:* PR review against §4.1's sentence verbatim; a grep for `ABORTED` in README is non-empty. (Docs AC.)
+
+---
+
+## Out of Scope
+
+- ❌ **Everything PLAN-0120 owns**: `tests/db_guard.py`, the advisory lock, `VERO_TEST_DB_ROLE`, `CONTENDED_EXIT`, `CHECK_CONTENDED`, the goal gate's stand-down branch, the sessionfinish token. This PLAN recognises "not a verdict code", never "75 means contention".
+- ❌ **Closing PLAN-0120 AC-9.** AC-9 stays in PLAN-0120 with a corrected pass read. Its *safety* half is already true (B5) and untouched here; its *legibility* half becomes satisfiable by this PLAN but is **ticked in 0120**, against a real DB-contended child, once both have landed. Its read must cite SD-2's outcome name, not `SETUP/COLLECT-ERROR` (B18).
+- ❌ **Inducing real DB contention in any test here** (§2.6) — the DB-free `pytest.exit(returncode=75)` shape is the whole input the classifier sees.
+- ❌ **Splitting the timeout case out of `SETUP/COLLECT-ERROR`** ("killed at the timeout" vs "failed to start"). The `RunRecord` makes it a one-field follow-up; it is not this defect.
+- ❌ **Any change to the `WITNESSED` conjunction, `CREDITING_OUTCOMES`, `MISFIRE`/`CRASHED`/`UNREADABLE`** — §2.2's asymmetry depends on not touching them.
+- ❌ **Overriding a legible `<failure>`/`<error>` record with an exit code** (§4.1) — a RED that failed at its own site stays a witness even if the session then exited oddly; at most the reason may note the rc (Code's call, not an AC).
+- ❌ **Wiring the battery into CI or pre-commit** — PLAN-0115's R-B line stands (ADR-0038 D2-C1).
+- ❌ **Reading the goal gate's own child exit codes** — different instrument, PLAN-0120 Step 4.
+
+---
+
+## Steps
+
+### Step 0 — Fixtures + the RED before the fix (Code; no source change; prints values)
+
+Copy the s277 artifacts into `tests/tools/fixtures/probe_battery/` (§4.4 names + `MEASURED.json` + `README.md` with the recipe from `/tmp/s277_p2body/run.sh:6-7` and `/tmp/s277_p2/conftest.py:16-18`). Run the three AC-6 fixture tests **against the unmodified classifier** and capture `pre: body=GREEN fixture=NO-TESTS control=GREEN` (`2>&1` to a file, exit code echoed) — the pre-committed `pre` of §2.5, seen on this checkout. Also print the pinned pytest version (`python -m pytest --version`) into the fixtures README. *If `pre` does not read `GREEN`/`NO-TESTS`, stop: the premise of this PLAN has moved — suspect the instrument (the recipe) first, then report.*
+
+### Step 1 — `_outcome.py` (SD-1, SD-2, SD-3 as ruled)
+
+`RunRecord`; `VERDICT_EXIT_CODES`; `Outcome.ABORTED` (name per SD-2) with its docstring entry; `parse_junit`'s `"unreported"` tag for a nameless childless `<testcase>`; `classify(..., *, returncode: int | None = None, stdout_tail: str = "")` with the §4.3 arm on the would-be-clean path only; `GREEN`'s reason carries `(rc=…; n testcase(s), all named)`. The helper that extracts "the child's last non-empty line" is one function, used by both the `ABORTED` and the no-report `SETUP/COLLECT-ERROR` reasons.
+
+### Step 2 — `_battery.py`
+
+`Runner` widened to `RunRecord | None`; `_run` merges stderr into stdout, keeps the tail (4096 bytes, `errors="replace"`), returns the record; timeout path unchanged (`None`); `_classify_probe` passes rc/tail through and names them on the no-report path. Docstrings: refusal #1's asymmetry sentence; the runner's "what it returns". Re-export `RunRecord` from `__init__.py`. Update the five injected-runner annotations (B14) — type only.
+
+### Step 3 — Tests (the oracle, §4.4)
+
+`tests/tools/test_probe_battery_contention.py` (unit: live shapes i-iii, the s277 fixtures, the drift detector, the runner-level and in-process-driver claims) and the two scenario additions in `test_probe_battery_scenario.py`. One claim per test. Every spawned pytest bounded by timeout.
+
+### Step 4 — Docs
+
+README outcome row + the refusal-table note; module docstrings per AC-8.
+
+### Step 5 — Battery, gate, PR body
+
+Write the battery JSON **after the final `ruff format` pass**: P1, P2a, P2b (+P2c if added), P3, P4a, P4b, P5, P6, P7, P8 — **10 probes**, `claim_sources` = the contention module + the scenario module, exemptions for the drift detector and any claim no mutation can reach, each with its written reason. Run through `tools/probe_battery/` with a generous `--timeout` (three process levels: driver → child pytest → grand-child driver → great-grand-child pytest). Then AC-7's command list. PR body carries: Step 0's `pre` line, the coverage report + battery JSON, the seven exit codes and the suite line, and the printed values from every AC.
+
+---
+
+## Verification
+
+How we know it worked — pre-committed reads, each printing the value it measured:
+
+1. **The two measured shapes flip, the control does not** (AC-1, AC-2, AC-6): `pre: body=GREEN fixture=NO-TESTS control=GREEN` → `post: body=ABORTED fixture=ABORTED control=GREEN`, with `rc=75 / 75 / 0` printed beside each.
+2. **The verdict-code set is pytest's** (AC-2b): the equality against `pytest.ExitCode` holds; `rc=5` still reads `NO-TESTS`.
+3. **The cause is in the report** (AC-3): the `why :` line of an aborted probe contains `rc=75` and the child's `! _pytest.outcomes.Exit: … !` text; a no-report child's line contains its rc and the conftest error text.
+4. **The driver end to end** (AC-4): `runner rc=75`; in-process `credited=0 outcome=ABORTED`; CLI `FAIL` with `ABORTED` in the report; `expect: ABORTED` battery → `PASS`.
+5. **The rc-independent layer** (AC-5): nameless childless → `unreported` → `ABORTED` with no rc; named childless → `passed`.
+6. **Nothing credits that did not before** (§2.2): `CREDITING_OUTCOMES` unchanged; every pre-existing battery test green; the CLI PASS scenario green.
+7. **Coverage report**: `PROBE-BATTERY: PASS`, 10 probes `WITNESSED`, `GAPS: 0`, exemptions listed with reasons — in the PR body with the battery JSON.
+8. **Gate at CI scope** (AC-7): seven zeros; the suite line reconciled.
+
+A green here is not evidence until its RED was seen: no AC box is ticked before its probe(s) report `WITNESSED` under the pre-declared claim, and AC-6's `pre` line is in the PR body before its `post`.
+
+---
+
+## Surfaced Decisions
+
+Each carries options, a recommendation with its reason, and why it is Cray's call. The recommendations are load-bearing in §4 and the ACs; if Cray rules otherwise, §4 and the affected ACs are rewritten **before** Step 1, not patched after.
+
+### SD-1 — How the runner's result reaches the classifier
+**Options.** (a) **Widen the return** to a frozen `RunRecord(xml_text, returncode, stdout_tail)`; `Runner = Callable[..., RunRecord | None]`; `classify` grows keyword-only optional args (§4.2). (b) **Move classification inside `_run`** — the runner returns a `Classification`. (c) **Exception-carried** — `_run` raises `ProbeAborted(rc, tail)` on a non-verdict code and `_run_one` catches it; `Runner`'s type is untouched.
+**Recommendation: (a).** It keeps `None` legal so the five injected runners (B14) and the "orchestration without spawning pytest" seam PLAN-0115 built survive unchanged; the classifier stays a pure function over a record, which is what makes the out-of-band oracle (§2.3) a plain unit test. (b) folds the judge into the spawner and would force every orchestration test to construct `Classification`s; (c) turns a reading into control flow and cannot carry the tail for the `GREEN`-with-values case. Cost of (a): a public type on a seam PLAN-0115 ratified — hence Cray's.
+**Why Cray's:** it amends the `Runner` contract of a Complete, Cray-ratified PLAN (0115 Step 1 item 4) and adds stderr-merging to the child spawn — a change to what every future battery's child is.
+
+### SD-2 — The outcome a cut-off child gets
+**Options.** (a) **New member `ABORTED`** ("the session ended without a verdict for the selected node; an infrastructure event"). (b) New member **`CONTENDED`** — names the DB case specifically. (c) **Reuse `SETUP/COLLECT-ERROR`** with the cause in the reason — PLAN-0120 Step 6's original intent and the README's existing "no usable report" bucket (B12).
+**Recommendation: (a).** The outcome must be true for *every* non-verdict exit (interrupt, internal error, usage error, any `pytest.exit` code) — (b) would name a cause the instrument cannot see; the cause text belongs in the reason, where PLAN-0120's token will land. (c) reads as "collection or fixture error", which a reader will chase in the test module, and it conflates a legible `<error>` record with the *absence* of one; B7's precedent is explicit that a needed outcome is added, not folded. (a) is also declarable as a negative control (B10). Honest counter for (c): zero new vocabulary, and PLAN-0120 AC-9 was written against it.
+**Why Cray's:** it widens the outcome set PLAN-0115 ratified, and **it fixes the name PLAN-0120 AC-9's corrected read must cite** — Code is correcting 0120 inline this session, so this ruling sequences that edit.
+
+### SD-3 — How a cut-off child is recognised (and whether `75` is named)
+**Options.** (a) **Exit code not in `VERDICT_EXIT_CODES`**, consulted only on the would-be-clean path (§4.1). (b) **A stdout token** (`TEST-DB-GUARD`) — couples this PLAN to PLAN-0120's format and makes it unexecutable before 0120 lands. (c) **The XML shape** — a nameless childless `<testcase>`, and/or `testsuite@tests` disagreeing with the element count (B27) — a pytest implementation detail; the weakest of the three. (d) **Additionally name `75` as "contended"** in the battery (a reserved-code coupling to 0120).
+**Recommendation: (a) as the verdict source, (c) as a second, rc-independent layer that never outranks (a), (b) carried only as text inside the reason, and (d) refused** — no reserved code is imported or named (B20); when 0120 lands, its token is in the child's last line and therefore in the `why :` line without this PLAN knowing 0120 exists. (a) is general (catches interrupts and internal errors too) and stays inside PLAN-0115's refusal by the asymmetry rule. Layer (c) exists for the two cases (a) cannot see — a `pytest.exit(returncode=0)` and an injected runner with no rc — and the drift detector tells us when pytest changes the shape.
+**Why Cray's:** (a) admits an exit code into an instrument whose founding refusal is "never from an exit code" — the asymmetry argument (§4.1) is the drafter's, and Cray ratified the refusal; (d) is the coupling question the dispatch asked to have surfaced rather than assumed.
+
+### SD-4 — The oracle of record for the aborted shapes
+**Options.** (a) **Live-generated shapes primary** (the test runs the scratch modules through the real argv, B13's doctrine) **plus the committed s277 artifacts** as the closed-incident pin and a drift detector. (b) **Committed fixtures only** (the dispatch's wording). (c) Live only.
+**Recommendation: (a).** A frozen fixture cannot see a pytest-version change; a live shape cannot prove it is the *same* shape s277 saw. Together: the fixture pins the incident, the live run pins the present, the drift detector says when they part. Cost: three scratch pytest spawns per test session (~1 s).
+**Why Cray's (minor — Code may rule if Cray delegates):** the dispatch asked for committed fixtures; (a) adds to that ask rather than replacing it, and the test-module doctrine (B13) is the constraint both must satisfy.
+
+---
+
+## Residual gaps / asserted-not-verified register
+
+- **Not re-run by the drafter.** The recipe was not executed in this drafting session (no shell). Every row of the dispatch's table was instead checked against Code's s277 artifacts on the WSL side (B24-B27) and agrees; the code-path derivation (B8 → B9) agrees. Step 0 re-prints the `pre` readings on the executing checkout before anything changes.
+- **B30 — pytest internals** (`Exit.returncode → exitstatus`; the `ExitCode` meanings; conftest `ImportError` → stderr + `4`): drafter knowledge. The measured `75/1/0` values are on disk; AC-2b pins the set to `pytest.ExitCode`; AC-3b **prints** the conftest rc rather than asserting `4`.
+- **§2.1's `sys.modules` argument** (the parent judge never sees its own mutation): standard Python, not measured here; every `_battery.py` probe is bound to a shape that does not depend on it (§2.4).
+- **Whether `tools/` may import `pytest`** (for `ExitCode` literals) and **whether `tools/` is under `mypy --strict` in CI** (`ci.yml:100` names `services/ verticals/`, PLAN-0120 F20): unverified; the design uses literals + a test-side pin, and AC-7 runs the CI list regardless.
+- **Dispatch line anchors vs disk:** `_battery.py:347-412` for `_run` — on disk `_make_pytest_runner` is `:347-414` and `_run` is `:360-412` (substance identical); `_outcome.py:139-153` — `:139` is the loop head, the childless branch is `:140-153` (used the dispatch's range). No discrepancy of substance; the one substantive disagreement in the fact-pack lineage is PLAN-0120's "holds `proc.returncode`" (B2, refuted).
+- **A detail the dispatch did not carry:** the body-phase XML's `testsuite@tests="0"` while a `<testcase>` exists (B27) — recorded as a second structural signal for SD-3(c), not used as the verdict source.
+- **PLAN-0120's AC-9 node `tests/tools/test_probe_battery_guard.py`** does not collide with this PLAN's `test_probe_battery_contention.py`; 0120's read must cite SD-2's outcome name (B18).
+- **No `tests/tools/fixtures/` exists yet** (B28) — convention borrowed from two other test packages; a first use, not a departure.
+- **Process depth in Step 5:** the battery over the scenario probes runs four process levels; the default per-probe timeout (600 s) is ample but the PR body should print the battery's wall time so a future timeout tune has a number.
