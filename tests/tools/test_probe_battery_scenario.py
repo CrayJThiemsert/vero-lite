@@ -452,3 +452,107 @@ def test_the_keys_subcommand_prints_the_address_a_probe_must_declare(tmp_path: P
         check=False,
     )
     assert 'test_fast_claim|classify(20) == "high"|#0' in proc.stdout
+
+
+# ======================================================================================
+# PLAN-0121 — a cut-off child, through the CLI
+# ======================================================================================
+
+#: The token PLAN-0120's DB guard will print. Mimicked in SHAPE only: `tests/db_guard.py`
+#: does not exist, and PLAN-0121 must stay executable without it.
+_CONTENTION_REASON = "TEST-DB-GUARD outcome=CONTENDED holder_pid=424242 db=vero_lite_test_s279"
+
+_ABORTING_TEST = f"""import pytest
+
+from subject import classify
+
+
+def test_fast_claim():
+    pytest.exit({_CONTENTION_REASON!r}, returncode=75)
+    assert classify(20) == "high"
+"""
+
+
+def _run_cli(project: Path) -> subprocess.CompletedProcess[str]:
+    env = dict(os.environ)
+    env[STATE_ENV] = str(project / "state")
+    env[LOCK_ENV] = str(project / "probe_battery.lock")
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "tools.probe_battery",
+            "--project-root",
+            str(project),
+            "run",
+            "--battery",
+            str(project / "battery.json"),
+            "--timeout",
+            "120",
+        ],
+        cwd=str(REPO_ROOT),
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def _expect_aborted(project: Path) -> None:
+    """Rewrite the generated battery so its probe declares `expect: ABORTED`."""
+    path = project / "battery.json"
+    battery = json.loads(path.read_text(encoding="utf-8"))
+    battery["probes"][0]["expect"] = "ABORTED"
+    path.write_text(json.dumps(battery, indent=2), encoding="utf-8")
+
+
+def test_an_aborting_child_is_reported_aborted_through_the_cli(tmp_path: Path) -> None:
+    """🔴 The ONLY shape that witnesses a `_battery.py` mutation (PLAN-0121 §2.4).
+
+    The driver's parent process imports `_battery` once, before the first mutation, so a
+    probe that mutates the runner is invisible to the judge running in that parent. Here a
+    **fresh driver process** is spawned, loads the mutated module from disk, and misreports
+    — which this assertion, running in the child, can see.
+
+    Before PLAN-0121 this run printed GREEN: the same reading a real green produces.
+    """
+    project = _make_project(tmp_path, _ABORTING_TEST, "test_fast.py", "test_fast_claim")
+    proc = _run_cli(project)
+    print(proc.stdout)
+    assert "ABORTED" in proc.stdout
+
+
+def test_an_aborting_child_fails_a_battery_that_declared_witnessed(tmp_path: Path) -> None:
+    """Sibling claim: the declared `WITNESSED` is unmet, so the run FAILS and credits none.
+
+    A cut-off child must not be able to satisfy a probe that predicted a reddened
+    assertion — that is the whole crediting rule, seen from the outside.
+    """
+    project = _make_project(tmp_path, _ABORTING_TEST, "test_fast.py", "test_fast_claim")
+    proc = _run_cli(project)
+    print(proc.stdout)
+    assert proc.returncode == 1
+
+
+def test_a_battery_declaring_expect_aborted_satisfies_its_probe(tmp_path: Path) -> None:
+    """🟢 POSITIVE CONTROL: `ABORTED` is reachable through the DATA path, not just in-process.
+
+    Without this, the two assertions above would be satisfied by a driver that had simply
+    become unable to pass anything. It also pins that the new member is declarable in a
+    battery file — `Probe.from_json` accepts any `Outcome` value, so no parser change was
+    needed, and this is what would notice if that stopped being true.
+
+    🔴 **The read is the PROBE's verdict, not the battery's** — measured, s279. PLAN-0121
+    AC-4(d) predicted `PROBE-BATTERY: PASS` here; the battery still reports FAIL, and
+    rightly so: its verdict also carries the coverage report, and a claim that was never
+    witnessed RED is a `GAPS: 1` whatever the probe declared. Making the whole battery green
+    would mean adding an exemption for that claim purely to satisfy this assertion — bending
+    the subject to fit the instrument, and inflating the coverage denominator on the way.
+    The claim under test is "the data path honours `expect: ABORTED`", and the probe line
+    states exactly that.
+    """
+    project = _make_project(tmp_path, _ABORTING_TEST, "test_fast.py", "test_fast_claim")
+    _expect_aborted(project)
+    proc = _run_cli(project)
+    print(proc.stdout)
+    assert "ABORTED  (declared ABORTED)" in proc.stdout
