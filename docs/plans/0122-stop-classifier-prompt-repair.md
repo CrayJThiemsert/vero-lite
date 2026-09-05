@@ -1,6 +1,6 @@
 # PLAN-0122: Stop-hook classifier proceed arm — ship the measured SLIM5 prompt, repair the benchmark harness (answer leak + transport divergence), and decide the arm's future on evidence
 
-**Status:** Draft
+**Status:** Accepted — ratified by Cray 2026-09-06 (session 280), typed, together with the instruction to begin Step 1. All seven surfaced decisions are settled: SD-2 through SD-7 carry Cray's typed rulings recorded in §Surfaced decisions; SD-1 remains marked `RESOLVED BY ENTAILMENT, NOT TYPED` and is carried as an open confirmation, not as a blocker — Steps 2 and 4 change if Cray corrects it.
 **Owner:** Claude Code (executes). Cray rules **SD-1 … SD-7** by typed act — **SD-3 first**, because it decides whether Steps 2–4 ship a repaired arm, a demoted one, or none. Nothing in Steps 2–4 reaches production before SD-1, SD-3 and SD-7 are ruled.
 **Created:** 2026-09-05 (session 280)
 **Related ADRs:** none amended — see §3. Context: ADR-013 (`docs/adr/0013-autonomy-axis-relocation.md:333-336` — the continuation loop's ratification was delegated to PLANs), ADR-0018 (the V1 goal-gate arm — untouched here), PLAN-0092 and PLAN-0102 (the "a PLAN is the governance record" precedent).
