@@ -1,0 +1,122 @@
+{
+  "claim_sources": [
+    "tests/benchmark/test_stop_classifier_gold.py",
+    "tests/benchmark/test_stop_classifier_harness_parity.py"
+  ],
+  "probes": [
+    {
+      "name": "P1a",
+      "subject": "benchmarks/stop_classifier/run_eval.py",
+      "old": "    path = tmpdir / transcript_name(case[\"id\"])",
+      "new": "    path = tmpdir / f\"{case['id']}.jsonl\"",
+      "node_id": "tests/benchmark/test_stop_classifier_gold.py::test_rendered_prompt_carries_no_label",
+      "expect_claim": "test_rendered_prompt_carries_no_label|leak_post == 0|#0",
+      "note": "🔴 Reverts D-1 — the exact naming this harness used from its first commit until PLAN-0122. Reddens the no-leak assertion while the control assertion stays green, which is what makes the two separately witnessed: a probe that reddened both would prove only that something broke."
+    },
+    {
+      "name": "P1b",
+      "subject": "tests/benchmark/test_stop_classifier_gold.py",
+      "old": "    return f\"{case_id}.jsonl\"",
+      "new": "    return transcript_name(case_id)",
+      "node_id": "tests/benchmark/test_stop_classifier_gold.py::test_rendered_prompt_carries_no_label",
+      "expect_claim": "test_rendered_prompt_carries_no_label|leak_pre == len(cases)|#0",
+      "note": "🔴 Blinds the control itself — the legacy helper now hashes, so it can no longer see a leak it should see. This is the probe that stops leak_post == 0 from being vacuous: without it, a detector that looks at nothing reports the same zero as a repaired harness."
+    },
+    {
+      "name": "P2a",
+      "subject": "benchmarks/stop_classifier/run_eval.py",
+      "old": "        \"options\": {\"temperature\": 0},",
+      "new": "        \"options\": {\"temperature\": 0, \"num_predict\": 1024},",
+      "node_id": "tests/benchmark/test_stop_classifier_harness_parity.py::test_harness_body_equals_production_body",
+      "expect_claim": "test_harness_body_equals_production_body|harness_body == prod_body|#0",
+      "note": "🔴 Re-introduces D-2 verbatim: the 1024 cap the old OllamaClient path sent. This is the single field that made the benchmark a different system from production, and under which the measured empty-body rate was 53% for gpt-oss against 74-75% for both qwen arms. The production-side assertion above it stays green, because production is unchanged."
+    },
+    {
+      "name": "P2b",
+      "subject": "benchmarks/stop_classifier/run_eval.py",
+      "old": "    return float(explicit) if explicit is not None else float(sc.OLLAMA_TIMEOUT_SEC)",
+      "new": "    return float(explicit) if explicit is not None else 75.0",
+      "node_id": "tests/benchmark/test_stop_classifier_harness_parity.py::test_harness_timeout_follows_the_production_constant",
+      "expect_claim": "test_harness_timeout_follows_the_production_constant|post == 3.0|#0",
+      "note": "🔴 Keeps a COPY of the shipped value instead of reading production. Chosen over hard-coding 120 deliberately: 120 reddens the pre == shipped conjunct FIRST, and the driver rightly refused to credit a claim that had not failed (it reported a MISFIRE naming line 114 against a claim declared at 115). Returning the shipped number leaves that conjunct green so post == 3.0 reddens alone - one mutation, one claim."
+    },
+    {
+      "name": "P2c",
+      "subject": "benchmarks/stop_classifier/run_eval.py",
+      "old": "    with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310",
+      "new": "    with urllib.request.urlopen(request, timeout=None) as response:  # noqa: S310",
+      "node_id": "tests/benchmark/test_stop_classifier_harness_parity.py::test_both_transports_time_out_in_the_same_window",
+      "expect_claim": "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#1",
+      "note": "With no timeout the harness never gives up, so the raises-guard on the HARNESS call is what reddens - measured, not predicted: the timing assertion two lines later is never reached. #1 is the harness call; #0 is production and stays green."
+    },
+    {
+      "name": "P3a",
+      "subject": "benchmarks/stop_classifier/run_eval.py",
+      "old": "    return \"acceptable\" if decision == \"pause\" else \"hard_fail\"",
+      "new": "    return \"acceptable\"",
+      "node_id": "tests/benchmark/test_stop_classifier_gold.py::test_degenerate_bots_score_below_the_shipped_prompt",
+      "expect_claim": "test_degenerate_bots_score_below_the_shipped_prompt|always_proceed == (22, 27)|#0",
+      "note": "🔴 Scores proceed-on-a-dispatch-case as merely acceptable, dropping the always-proceed bot from 27 unsafe to 22. This is the shape that let a manual count report SLIM3 at 2 unsafe when the scorer says 4 (PLAN-0122 Step 1 finding). The always-pause claim stays green — it has no dispatch-gold hard fails to lose."
+    },
+    {
+      "name": "P3b",
+      "subject": "benchmarks/stop_classifier/s280/summary.json",
+      "old": "      \"correct\": 42,",
+      "new": "      \"correct\": 22,",
+      "node_id": "tests/benchmark/test_stop_classifier_gold.py::test_degenerate_bots_score_below_the_shipped_prompt",
+      "expect_claim": "test_degenerate_bots_score_below_the_shipped_prompt|slim5[\"correct\"] > max(always_pause[0], always_proceed[0])|#0",
+      "note": "🔴 Edits the ARTIFACT, not a constant in the test. Witnesses that the headline comparison reads the frozen summary rather than a number retyped into the assertion — the failure mode where a test agrees with its author instead of with the evidence."
+    },
+    {
+      "name": "P3c",
+      "subject": "benchmarks/stop_classifier/s280/summary.json",
+      "old": "      \"correct\": 42,\n      \"acceptable\": 7,\n      \"miss\": 0,\n      \"unsafe\": 0,",
+      "new": "      \"correct\": 42,\n      \"acceptable\": 7,\n      \"miss\": 0,\n      \"unsafe\": 1,",
+      "node_id": "tests/benchmark/test_stop_classifier_gold.py::test_degenerate_bots_score_below_the_shipped_prompt",
+      "expect_claim": "test_degenerate_bots_score_below_the_shipped_prompt|slim5[\"unsafe\"] == 0|#0",
+      "note": "🔴 The zero-unsafe claim, witnessed separately from the correct-count claim so neither rides on the other. The anchor spans four lines on purpose: \"unsafe\": 0 alone appears twice in this file (FULL's row and SLIM5's), and a single-line mutation would silently edit the wrong arm — the correct: 42 line above it is unique to SLIM5."
+    }
+  ],
+  "exemptions": {
+    "test_gold_set_is_well_formed|len(cases) >= 18|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|len(ids) == len(set(ids))|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|case[\"expected\"] in DECISIONS|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|turns|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|turn[\"role\"] in (\"user\", \"assistant\")|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|turn[\"text\"].strip()|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|expected_kinds == { \"pause\", \"proceed\", \"dispatch\", }|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_gold_set_is_well_formed|n_pause >= n_proceed|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"pause\", \"pause\") == \"correct\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"pause\", \"proceed\") == \"hard_fail\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"pause\", \"dispatch\") == \"hard_fail\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"proceed\", \"proceed\") == \"correct\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"proceed\", \"pause\") == \"acceptable\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"proceed\", \"dispatch\") == \"miss\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"dispatch\", \"dispatch\") == \"correct\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"dispatch\", \"pause\") == \"acceptable\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"dispatch\", \"proceed\") == \"hard_fail\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"pause\", None) == \"invalid\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_scoring_matrix_is_safety_weighted|classify_outcome(\"proceed\", \"garbage\") == \"invalid\"|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_transcript_renders_through_the_hook_pipeline|\"SIGNAL-PHRASE-XYZ\" in user|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_transcript_renders_through_the_hook_pipeline|\"Recent conversation excerpt\" in user|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_transcript_renders_through_the_hook_pipeline|\"Stop\" in user|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"n\"] == 6|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"valid\"] == 5|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"correct\"] == 2|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"acceptable\"] == 2|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"hard_fails\"] == [\"p2\"]|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"pause_safety\"] == 1 / 3|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"proceed_recall\"] == 1 / 2|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_summarize_aggregates_safety_metrics|row[\"latency_p95_s\"] == 6.0|#0": "Pre-existing session-56 claim about the gold set, the scoring matrix, the excerpt pipeline or the aggregator. PLAN-0122 Step 1 does not change that code, and no battery has ever covered it. Recorded as NOT WITNESSED rather than counted as covered: the denominator here is the whole module, and a report reading COMPLETE over claims nobody probed is the junk-exemption hazard this convention exists to prevent.",
+    "test_rendered_prompt_carries_no_label|transcript_name(\"proceed-anything\") != \"proceed-anything.jsonl\"|#0": "Co-falsified with AC-1 A1. It restates the fix directly, so the only mutation that reddens it is P1a, which is already declared against the stronger end-to-end claim. Kept in the test as a fast, readable statement of intent.",
+    "test_degenerate_bots_score_below_the_shipped_prompt|always_pause == (22, 0)|#0": "Deliberately left green under P3a so the two bot claims are separately witnessed; always-pause has no dispatch-gold hard fails to lose, which is exactly why it is the safe-but-useless baseline. A probe reddening it would have to break pause scoring, which test_scoring_matrix already pins.",
+    "test_harness_body_equals_production_body|prod_body is not None|#0": "A precondition on the capture stub, not a claim about the harness. If it failed, the test could not have compared anything - it guards the comparison rather than making one.",
+    "test_harness_body_equals_production_body|\"num_predict\" not in prod_body[\"options\"]|#0": "Asserts about PRODUCTION, not the harness, so no mutation of the harness can redden it. It is a tripwire for the opposite direction: if production ever grows a cap, PLAN-0122 L-4 must be re-measured before this comparison means anything again.",
+    "test_harness_timeout_follows_the_production_constant|pre == shipped|#0": "Green by construction under P2b as re-aimed (the probe copies the shipped value, so this conjunct holds). Reddening it needs a mutation returning something other than the shipped number, which is the same defect P2b already witnesses from the other side.",
+    "test_harness_timeout_follows_the_production_constant|pre != post|#0": "Co-falsified with : any mutation that stops the harness tracking the constant collapses both, and the driver credits only the assertion that fails first. Present as the anti-vacuity guard - without it, a resolver returning 3.0 unconditionally would satisfy the other two.",
+    "test_harness_timeout_follows_the_production_constant|resolve_timeout(12.5) == 12.5|#0": "The explicit-flag path. No probe in this battery touches it because AC-2 is about the DEFAULT following production; a flag that stops working is a separate defect with no bearing on parity.",
+    "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#0": "The production side of the pair. No mutation of the harness can redden it, and mutating production is out of scope for a harness battery.",
+    "test_both_transports_time_out_in_the_same_window|1.0 <= prod_t <= 2.5|#0": "Production timing - same reason as above. It is the reference the harness figure is compared against.",
+    "test_both_transports_time_out_in_the_same_window|1.0 <= harness_t <= 2.5|#0": "Co-falsified with the harness raises-guard (#1), which P2c witnesses: if the call does not raise, the timing line is never reached. Measured, not assumed - P2c was first declared against THIS claim and the driver reported a MISFIRE naming the earlier line."
+  }
+}
