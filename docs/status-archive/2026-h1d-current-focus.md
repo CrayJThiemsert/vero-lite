@@ -2415,3 +2415,61 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the 
 > denominator widened 81 → 121, **reported, not gamed**) + s272's **13/13**.
 > #1358 widened CLAUDE.md §8's suspect-the-instrument clause past batteries —
 > it fired **seven times** in s269 and the artifact was right every time.
+
+> **Session 274–275, 2026-09-03 (`8ac17f5` → `dfe7fca`) — NINE PRs merged
+> ([#1371](https://github.com/CrayJThiemsert/vero-lite/pull/1371)–[#1379](https://github.com/CrayJThiemsert/vero-lite/pull/1379)),
+> 0 open, tree clean, MS-S1 never contacted. What it established: every rule
+> that would have prevented Code's five errors already existed — so the fix is
+> not more prose, it is a separate reader.**
+>
+> ✅ **PLAN-0117 is CLOSED — but eight AC definitions (C1–C8) had to be
+> repaired FIRST.** s274 audited the *proposed* closeout with four specialists
+> and found its premise wrong: the work shipped at s265-266 and only the
+> checkboxes were unticked, while several ACs were **structurally incapable of
+> failing**. Cray ruled a full re-witness; s275 then **observed** all three
+> predictions — AC-3(a) read `GREEN` *because* no synonym-carrying property has
+> a sole carrier, AC-4's dormant probe `MISFIRE`d (pytest stops at the first
+> failed assert), AC-7's positive control was itself vacuous. Final
+> `PROBE-BATTERY: PASS` — `claims: 86 · witnessed RED: 15 · exempted: 71 ·
+> GAPS: 0`, plus AC-1(a) by hand (a pre-commit hook, so no `Claim` in the 86) =
+> **16 of 16**, Cray having widened his own typed count 15→16 via SD-8.
+>
+> 🔴 **The goal gate fabricated nine test failures — for the THIRD time (s228,
+> s253, s275).** Its `check` criteria run at every Stop; a `pytest` criterion
+> bound the same per-checkout test DB as a running suite, `DROP SCHEMA public
+> CASCADE` deadlocked, and the run reported **4 failed / 5 errors**
+> indistinguishable from real defects. A serialized re-run of the
+> byte-identical command: **4801 passed, 0 failed**.
+>
+> 🔴 **Four latent defects fell out of that analysis, none of them what it was
+> sent to find** (#1376): `DEFAULT_CHECK_BUDGET_S` was **600 s inside a 180 s
+> Stop hook**, unreachable for months and starving the classifier if ever
+> spent; **8 of 8** pre-commit hooks used a bare `uv run`, which uninstalls
+> pytest/ruff/mypy from the shared `.venv` mid-commit (CI and one skill defend
+> against this **by name**; pre-commit, which fires most often, did not); three
+> write guards documented a route measured dead at s272; and the goal schema's
+> own canonical example was `{"cmd": "pytest -q", "timeout_s": 300}` — the
+> authoring surface modelling the exact hazard. Two new guard tests, both
+> witnessed RED (`claims: 7 · witnessed RED: 5 · exempted: 2 · GAPS: 0`).
+>
+> ✅ **ADR-0018 gains D8, the resource-binding contract** (#1377). D1's
+> *"Cheap, fast, **un-arguable**"* is corrected `was an error`: an exit code is
+> un-arguable only about the process that returned it, **not** about whether
+> that process held the resource alone. D8 explicitly **rejects** *"a check
+> must be side-effect-free"* as self-banning. Root cause: a **CLAUDE.md §4
+> violation** — Cray ruled this constraint, typed, 2026-07-29, homed in a
+> **test docstring** (`test_migration_orm_lockstep.py:17-23`), binding nobody.
+>
+> ✅ **PLAN-0119** (five-class local-model serving policy) drafted, all nine
+> SDs RULED + three factual defects corrected; **PLAN-0120** (goal-gate test-DB
+> isolation, 11 ACs) drafted, all six SDs RULED **(a)**. Its bar is the
+> **opposite** of PLAN-0117's: an advisory lock dies with its holder, so a lost
+> guard reports exactly what a working guard reports on a clean run.
+>
+> **The finding that produced the rest:** *why did Code self-catch none of its
+> five errors?* **Every preventing rule already existed** — #3 and #4 violated
+> `CLAUDE.md:189` **in the same sentence**, #2 recurred PLAN-0117's own C5, the
+> DB hazard sat in a Tier-0 memory the gate cannot read. Review layer caught
+> Code **9× (6 `plan-drafter`, 2 `goal-evaluator`, 1 specialist); Code 0.**
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **274-275, 276-277, 278** — THREE. 🔴 **This reconcile rotated a THIRD block** (**s269-273**, 3,294 B) when the s278 block entered: the file had drifted back to 4,041 B of headroom, and holding the window at four would have left under 3.6 KB. Rotated on the **headroom rule**, not a cap overage — all four blocks measured under 4,096 B (2,819 / 3,660 / 3,785 / 3,294). **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **THIS (s274-275) reconcile rotates the session-265-266 block** on **BOTH** rules — a first: a fifth block entered a four-wide window **and** that block measured **7,775 B, 90% over** the 4,096 B per-block cap (caller-measured; survivors 3,293 · 3,275 · 3,102 B, all under). 🔴 **Its LEDGER entry is NOT re-archived** — both ledgers were archived whole and PRE-PRUNE at s267, so R4's move duty for it is discharged; only the **block** travels, to `2026-h1d-current-focus.md`. ✅ **Second net-shrink reconcile ever:** STATUS opened at **63,480 B** with just **2,056 B** of R1 headroom, so the new block was written to a **≤ 4,096 B** budget against **7,775 B** recovered. ⚠️ **No byte delta measured — the caller owes `wc -c` + append + verify-by-DELTA.** 🔴 **THIS (s276-277) reconcile is a DEEP rotate — TWO blocks left, not one** (**s267**, and **s267 tail + 268**), on the **headroom rule**, not a cap overage: the file opened with only **3,952 B** under R1 while this reconcile had to carry **two sessions and twelve PRs**. The window therefore lands at **THREE blocks** (269-273, 274-275, 276-277), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **a short window here is deliberate; no block was lost**. Both travel VERBATIM to `2026-h1d-current-focus.md`. 🔴 **Their s267 + s268 LEDGER entries are NOT re-appended — and the reason is a corrected claim, not the usual one.** This ledger first recorded them as written *after* the whole-and-PRE-PRUNE archive of s267 and therefore unarchived; the caller measured that and it is **false** — both are present in `2026-h1d-current-focus.md` (count 1 each, against a positive control), so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **61,584 → 58,971 B** (headroom 3,952 → 6,565) — the **third net-shrink reconcile ever**; CF archive **166,234 → 173,571 B (+7,337)** for the two blocks at 3,276 + 3,103 B, carved from `git show HEAD:` rather than the subagent's paste — which mattered: a pre-write assertion caught the paste differing from the original (`central recommendation.**` vs `central recommendation**.`). Present-once in the archive and absent-from-STATUS verified separately, in both directions.]_
