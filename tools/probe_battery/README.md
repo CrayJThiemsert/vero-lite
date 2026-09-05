@@ -99,11 +99,41 @@ Only `WITNESSED` credits a claim.
 | `MISFIRE` | an assertion failed, but not the declared one (or more than one test failed) |
 | `CRASHED` | a non-assertion exception — the mutation broke something else |
 | `UNREADABLE` | the failure record names no site, so it cannot show *what* broke (C6's legibility conjunct) |
-| `GREEN` | the mutation reached disk and nothing reddened — **the guard may be vacuous** |
-| `SETUP/COLLECT-ERROR` | collection/fixture/teardown error, or no usable report (pytest failed to start, or timed out) |
+| `GREEN` | the mutation reached disk and nothing reddened — **the guard may be vacuous**. Prints the values it measured (`rc`, testcase count, unnamed count) |
+| `ABORTED` | the child exited **without reaching a verdict** — an infrastructure event, not a reading about the guard. The reason names the exit code and the child's own last line, and says which of the two layers decided. **Never** evidence about the guard, and never credits |
+| `SETUP/COLLECT-ERROR` | collection/fixture/teardown error, or no usable report (pytest failed to start, or was killed at the timeout) |
 | `SKIPPED` | every selected test was skipped |
-| `NO-TESTS` | the node id selected nothing |
+| `NO-TESTS` | the run collected nothing, and pytest said so with a verdict code (`rc=5`) |
 | `MUTATION-ERROR` | `old` was absent, matched more than once, or the write changed no bytes |
+
+### `ABORTED`, and the one place an exit code is read (PLAN-0121)
+
+The driver's founding refusal is *"never credits from an exit code"* — s253 keyed on
+`returncode` and counted a crash as a witnessed RED. That refusal stands, under one
+asymmetry: **an exit code can withhold evidence; it can never supply it.**
+
+The code is consulted **only** where the junit report would otherwise read clean
+(`GREEN` / `NO-TESTS` / `SKIPPED`), and its only power is to downgrade that reading to
+`ABORTED`. A legible `<failure>` or `<error>` is never overridden — a RED that failed at
+its own site stays a witness even if the session then exited oddly. Structurally
+enforced: `_classify_clean` is the only caller of `_classify_abort`.
+
+Two layers decide, and the reason says which:
+
+| layer | signal | when it fires |
+|---|---|---|
+| 1 (verdict source) | exit code ∉ `VERDICT_EXIT_CODES` = `{0, 1, 5}` | any interrupt, internal error, usage error, or `pytest.exit(returncode=N)` |
+| 2 (rc-independent) | a childless `<testcase>` with **no `name`** | a `pytest.exit(returncode=0)`, or an injected runner carrying no code at all |
+
+Layer 2 is a pytest implementation detail and therefore the weaker signal, so it never
+outranks layer 1. `tests/tools/test_probe_battery_contention.py`'s drift detector is what
+makes it loud if a future pytest starts naming those cases.
+
+Measured (session 277) — the defect this replaced: a DB-contended session calling
+`pytest.exit(reason, returncode=75)` from a test **body** emitted one childless, unnamed
+`<testcase>` and read as `GREEN` **with the same reason string as a real green**; from an
+autouse **fixture** the same call emitted no `<testcase>` at all and read as `NO-TESTS`.
+The captures are pinned in `tests/tools/fixtures/probe_battery/`.
 
 ### Write the battery AFTER the final format pass
 
