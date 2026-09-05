@@ -14,6 +14,17 @@ per-session *data* fed to it.
 
 1. It never credits from an exit code. Outcome comes from the junit failure record
    (:mod:`tools.probe_battery._outcome`), so a crash cannot masquerade as a RED.
+
+   *Amended by PLAN-0121, and the amendment is stated here so a future reader meets it
+   where the refusal lives.* The driver now reads the exit code for one purpose: to refuse
+   a clean-looking report from a session that did not run to a verdict. **An exit code can
+   withhold evidence; it can never supply it.** It is consulted only where the record would
+   otherwise read clean, its only power is to downgrade that reading to
+   :attr:`~tools.probe_battery._outcome.Outcome.ABORTED`, and that outcome is not in
+   ``CREDITING_OUTCOMES``. A legible ``<failure>``/``<error>`` record is never overridden —
+   a RED that failed at its own site stays a witness even if the session then exited oddly.
+   The s253 channel this refusal was written against, an exit code *creating* credit,
+   stays closed.
 2. A witnessed probe credits **exactly one** claim — the one it pre-declared. A run stops
    at the first failing assertion, so one mutation can only ever witness one claim.
 3. Claims are addressed **only** by :attr:`~tools.probe_coverage.Claim.stable_key`. There
@@ -45,9 +56,12 @@ from xml.etree.ElementTree import ParseError
 from tools.probe_battery._lock import LockHandle, ping_telegram
 from tools.probe_battery._outcome import (
     CREDITING_OUTCOMES,
+    STDOUT_TAIL_BYTES,
     Classification,
     Outcome,
+    RunRecord,
     classify,
+    last_nonempty_line,
     parse_junit,
 )
 from tools.probe_battery._snapshot import (
@@ -266,8 +280,17 @@ class BatteryResult:
     credited: Mapping[str, str]
 
 
-#: A runner turns a probe into junit XML text (``None`` = pytest produced no report).
-Runner = Callable[[Probe, Path, int], str | None]
+#: A runner turns a probe into a :class:`~tools.probe_battery._outcome.RunRecord` — the
+#: junit XML text plus the two things the pre-PLAN-0121 runner discarded, the child's exit
+#: code and the tail of its merged output.
+#:
+#: ``None`` stays legal and means "no record at all", which the driver reserves for the
+#: timeout path: the child was killed, so there is no exit code to read. That distinction
+#: matters to the five injected runners the orchestration tests use (PLAN-0115's
+#: "orchestration without spawning pytest" seam) — they keep returning ``None`` unchanged.
+#: A child that ran but produced no report returns ``RunRecord(None, rc, tail)``, so the
+#: reason can still name why.
+Runner = Callable[[Probe, Path, int], RunRecord | None]
 
 
 def _index_claims(battery: Battery) -> dict[str, tuple[Claim, Path]]:
@@ -347,9 +370,18 @@ def _child_env() -> dict[str, str]:
 def _make_pytest_runner(store: RunStore, interrupts: _DeferredInterrupts) -> Runner:
     """The real runner, bound to the run's manifest so the child pid is recorded.
 
-    Returns ``None`` when pytest produced no report at all — it failed to start, or it was
-    killed at the timeout. Both mean "there is no failure record to read", which the
-    classifier reports as ``SETUP/COLLECT-ERROR`` with the cause named.
+    Returns a :class:`~tools.probe_battery._outcome.RunRecord` carrying the junit text
+    (``None`` inside the record when pytest produced no report), the child's exit code, and
+    the last :data:`~tools.probe_battery._outcome.STDOUT_TAIL_BYTES` of its **merged**
+    stdout+stderr. Returns a bare ``None`` only on the timeout path, where the child was
+    killed and there is no exit code that means anything.
+
+    ``stderr`` is merged into ``stdout`` (CLAUDE.md §8's merge rule applied to the child):
+    a usage error's traceback and a conftest ``ImportError`` are written to stderr, and
+    keeping the streams apart is how a cause line gets separated from the output it
+    explains. Measured (s277): the cause of a cut-off run — ``! _pytest.outcomes.Exit:
+    <reason> !`` — exists in the captured output and **nowhere** in the XML, and this
+    runner used to discard it along with ``proc.returncode``.
 
     ``Popen`` rather than :func:`subprocess.run` for two reasons: the pid must be published
     to the manifest **while the child runs** (so a SIGKILLed driver leaves a reapable
@@ -357,7 +389,7 @@ def _make_pytest_runner(store: RunStore, interrupts: _DeferredInterrupts) -> Run
     what stops a SIGTERM to the driver from orphaning a running pytest.
     """
 
-    def _run(probe: Probe, project_root: Path, timeout_s: int) -> str | None:
+    def _run(probe: Probe, project_root: Path, timeout_s: int) -> RunRecord | None:
         with tempfile.TemporaryDirectory() as td:
             xml = Path(td) / "junit.xml"
             argv = [
@@ -381,14 +413,16 @@ def _make_pytest_runner(store: RunStore, interrupts: _DeferredInterrupts) -> Run
                     cwd=str(project_root),
                     env=_child_env(),
                     stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    # Merged, not a second pipe: the cause of an abort can land on either
+                    # stream, and reading only one of them is how it goes missing.
+                    stderr=subprocess.STDOUT,
                 )
                 store.set_child(proc.pid, " ".join(argv))
                 # Deferral ends HERE, inside the try — the first point at which the
                 # handlers below can kill what was just spawned. Ending it any earlier
                 # reopens the window by exactly the distance to the `try`.
                 interrupts.resume()
-                proc.communicate(timeout=timeout_s)
+                out, _ = proc.communicate(timeout=timeout_s)
             except subprocess.TimeoutExpired:
                 if proc is not None:
                     proc.kill()
@@ -407,9 +441,16 @@ def _make_pytest_runner(store: RunStore, interrupts: _DeferredInterrupts) -> Run
                 # cannot displace an exception already in flight.
                 interrupts.stand_down()
                 store.clear_child()
+            # Truncate as BYTES then decode: slicing a str would already have paid for
+            # decoding the whole capture, and cutting mid-codepoint is what errors=replace
+            # is for.
+            tail = (out or b"")[-STDOUT_TAIL_BYTES:].decode("utf-8", errors="replace")
             if not xml.exists():
-                return None
-            return xml.read_text(encoding="utf-8")
+                # A child that RAN but produced no report — distinct from the timeout's
+                # bare None. The exit code and the cause line survive, so the reason can
+                # name them instead of guessing between "failed to start" and "timed out".
+                return RunRecord(None, proc.returncode, tail)
+            return RunRecord(xml.read_text(encoding="utf-8"), proc.returncode, tail)
 
     return _run
 
@@ -418,24 +459,45 @@ def _classify_probe(
     probe: Probe,
     index: Mapping[str, tuple[Claim, Path]],
     project_root: Path,
-    xml_text: str | None,
+    record: RunRecord | None,
     timeout_s: int,
 ) -> Classification:
-    if xml_text is None:
+    """Turn one runner result into a reading, naming the cause wherever one survives."""
+    if record is None:
+        # No record at all — the timeout path, or an injected runner that never spawned.
         return Classification(
             Outcome.SETUP_ERROR,
             f"pytest produced no junit report for {probe.node_id!r} — it failed to start, "
             f"or it was killed at the {timeout_s}s timeout. There is no failure record to "
             f"read, so nothing is witnessed.",
         )
+    if record.xml_text is None:
+        # The child ran and left no report. Before PLAN-0121 this collapsed into the
+        # message above and a reader had to guess between "failed to start" and "timed
+        # out"; the exit code and the child's own last line say which.
+        said = last_nonempty_line(record.stdout_tail)
+        cause = f" Child said: {said!r}" if said else " The child left nothing on stdout."
+        return Classification(
+            Outcome.SETUP_ERROR,
+            f"pytest produced no junit report for {probe.node_id!r} — it ran and exited "
+            f"rc={record.returncode}, so it did not time out. There is no failure record "
+            f"to read, so nothing is witnessed.{cause}",
+        )
     try:
-        cases = parse_junit(xml_text)
+        cases = parse_junit(record.xml_text)
     except ParseError as exc:
         return Classification(
             Outcome.SETUP_ERROR, f"the junit report for {probe.node_id!r} is unparsable: {exc}"
         )
     claim, claim_path = _resolve_declared(probe, index)
-    return classify(cases, claim, claim_path, project_root)
+    return classify(
+        cases,
+        claim,
+        claim_path,
+        project_root,
+        returncode=record.returncode,
+        stdout_tail=record.stdout_tail,
+    )
 
 
 def _resolve_declared(probe: Probe, index: Mapping[str, tuple[Claim, Path]]) -> tuple[Claim, Path]:

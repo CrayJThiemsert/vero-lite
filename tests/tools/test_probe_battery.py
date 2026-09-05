@@ -38,6 +38,7 @@ from tools.probe_battery import (
     MutationError,
     Outcome,
     Probe,
+    RunRecord,
     RunStore,
     UnrestoredSnapshotError,
     classify,
@@ -521,7 +522,7 @@ def test_the_verdict_token_is_printed_even_when_the_battery_dies(
     """🔴 A battery that ends by exception is exactly the one whose partial results matter.
     The report must survive the way out."""
 
-    def _explode(_probe: Probe, _root: Path, _timeout: int) -> str | None:
+    def _explode(_probe: Probe, _root: Path, _timeout: int) -> RunRecord | None:
         raise RuntimeError("the runner blew up")
 
     battery = Battery(
@@ -805,7 +806,7 @@ def test_the_lock_is_held_while_the_battery_runs(project: Path) -> None:
     event, so a lock that appears only after the last probe protects nothing."""
     seen: dict[str, bool] = {}
 
-    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> RunRecord | None:
         seen["locked"] = lock_path(root).exists()
         return None
 
@@ -829,7 +830,7 @@ def test_the_lock_is_released_even_when_the_battery_dies(project: Path) -> None:
     """🔴 A lock left behind by a crashed battery silences the goal gate for its whole
     staleness window. Release belongs in the same `finally` as the restore."""
 
-    def _explode(_probe: Probe, _root: Path, _timeout: int) -> str | None:
+    def _explode(_probe: Probe, _root: Path, _timeout: int) -> RunRecord | None:
         raise RuntimeError("the runner blew up")
 
     battery = Battery(
@@ -848,7 +849,7 @@ def test_the_lock_carries_the_run_id_the_manifest_records(project: Path) -> None
     run directory that does not exist."""
     seen: dict[str, str] = {}
 
-    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> RunRecord | None:
         seen["lock_run"] = json.loads(lock_path(root).read_text(encoding="utf-8"))["run_id"]
         return None
 
@@ -869,7 +870,7 @@ def test_the_lock_heartbeat_advances_per_probe(project: Path) -> None:
     in this protocol may order runs by time."""
     beats: list[int] = []
 
-    def _observe(_probe: Probe, root: Path, _timeout: int) -> str | None:
+    def _observe(_probe: Probe, root: Path, _timeout: int) -> RunRecord | None:
         beats.append(json.loads(lock_path(root).read_text(encoding="utf-8"))["heartbeat"])
         return None
 
