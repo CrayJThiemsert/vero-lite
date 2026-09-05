@@ -1,0 +1,3 @@
+
+no tests ran in 0.18s
+! _pytest.outcomes.Exit: TEST-DB-GUARD outcome=CONTENDED holder_pid=424242 db=vero_lite_test_s277 !

@@ -2,8 +2,16 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
+      # `tests/**/fixtures/` holds CAPTURED artifacts — real pytest/tool output committed
+      # as a closed-incident pin. A whitespace hook that rewrites them is editing the
+      # evidence: `end-of-file-fixer` silently appended a newline to three s277 junit
+      # captures on their first commit (PLAN-0121 Step 0), which would have falsified the
+      # byte-verbatim provenance those fixtures are FOR. Excluded so the bytes on disk stay
+      # the bytes that were measured.
       - id: trailing-whitespace
+        exclude: ^tests/.*/fixtures/
       - id: end-of-file-fixer
+        exclude: ^tests/.*/fixtures/
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=1000']

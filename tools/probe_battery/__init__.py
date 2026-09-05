@@ -53,9 +53,11 @@ from tools.probe_battery._lock import (
 from tools.probe_battery._outcome import (
     ASSERTION_FAMILY,
     CREDITING_OUTCOMES,
+    VERDICT_EXIT_CODES,
     CaseRecord,
     Classification,
     Outcome,
+    RunRecord,
     classify,
     parse_junit,
 )
@@ -77,6 +79,7 @@ __all__ = [
     "LOCK_ENV",
     "STALE_AFTER_S",
     "STATE_ENV",
+    "VERDICT_EXIT_CODES",
     "VERDICT_FAIL",
     "VERDICT_PASS",
     "Battery",
@@ -91,6 +94,7 @@ __all__ = [
     "Outcome",
     "Probe",
     "ProbeResult",
+    "RunRecord",
     "RunStore",
     "UnrestoredSnapshotError",
     "classify",
