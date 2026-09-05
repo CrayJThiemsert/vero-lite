@@ -1,0 +1,24 @@
+{
+  "_schema": "PLAN-0121 §4.4 closed-incident pin. Keys are fixture stems. `returncode` is the child pytest's measured exit code (session 277, 2026-09-04). `stdout_provenance` is load-bearing: `verbatim` = byte-identical to the s277 capture (md5-checked at copy time); `reconstructed` = recovered from the measurement script's rendering, NOT a raw capture. `pre_fix_outcome` is the HISTORICAL pre-PLAN-0121 classification — a record of the incident, never a test's expectation.",
+  "s277_exit75_body": {
+    "returncode": 75,
+    "junit": "s277_exit75_body.junit.xml",
+    "stdout": "s277_exit75_body.stdout.txt",
+    "stdout_provenance": "verbatim",
+    "pre_fix_outcome": "GREEN"
+  },
+  "s277_exit75_fixture": {
+    "returncode": 75,
+    "junit": "s277_exit75_fixture.junit.xml",
+    "stdout": "s277_exit75_fixture.stdout.txt",
+    "stdout_provenance": "reconstructed",
+    "pre_fix_outcome": "NO-TESTS"
+  },
+  "s277_green_control": {
+    "returncode": 0,
+    "junit": "s277_green_control.junit.xml",
+    "stdout": null,
+    "stdout_provenance": "absent",
+    "pre_fix_outcome": "GREEN"
+  }
+}
