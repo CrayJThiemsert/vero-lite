@@ -1,0 +1,45 @@
+{
+  "claim_sources": [
+    "tests/tools/test_probe_battery_scenario.py"
+  ],
+  "probes": [
+    {
+      "name": "P4b",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    aborted = _classify_abort(cases, declared, returncode, stdout_tail)",
+      "new": "    aborted = None",
+      "node_id": "tests/tools/test_probe_battery_scenario.py::test_an_aborting_child_is_reported_aborted_through_the_cli",
+      "expect_claim": "test_an_aborting_child_is_reported_aborted_through_the_cli|\"ABORTED\" in proc.stdout|#0",
+      "note": "🔴 §2.4's second shape: the assertion runs in a child pytest that spawns a FRESH driver process, and THAT grand-child loads the mutated module from disk. A single edit disabling both arms is used deliberately here — this probe's claim is that the seam reports ABORTED through the CLI at all, not which arm decided it (P1/P9 own that)."
+    },
+    {
+      "name": "P4c",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    aborted = _classify_abort(cases, declared, returncode, stdout_tail)",
+      "new": "    aborted = None",
+      "node_id": "tests/tools/test_probe_battery_scenario.py::test_a_battery_declaring_expect_aborted_satisfies_its_probe",
+      "expect_claim": "test_a_battery_declaring_expect_aborted_satisfies_its_probe|\"ABORTED (declared ABORTED)\" in proc.stdout|#0",
+      "note": "🔴 The DATA path: `expect: ABORTED` read from a battery file and honoured by the driver. Shares P4b's mutation on a different node and a different claim — without the outcome, the declared/actual line cannot match."
+    }
+  ],
+  "exemptions": {
+    "test_an_aborting_child_fails_a_battery_that_declared_witnessed|proc.returncode == 1|#0": "⚠️ INEXPRESSIBLE by a single mutation. The run exits 1 because the declared WITNESSED is unmet AND the coverage report has a gap; a mutation reaching exit 0 must fix both independently. Under P4b's mutation the probe reads GREEN instead of ABORTED and the run still fails, so the claim is stable in the wrong direction rather than unwitnessed by accident. Its content is not unheld: P4b witnesses that the outcome is ABORTED at all, and the in-process battery's `credited == {}` claim is witnessed by P7 in the sibling battery.",
+    "_armed|_wait_for_mutation(subject, pristine) is True|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "_armed|_wait_for_pytest_child() is True|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_a_battery_may_start_again_once_the_run_is_restored|find_unrestored(slow_project / \"state\") == []|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_a_clean_battery_run_through_the_cli_reports_pass|proc.returncode == 0|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_a_killed_driver_leaves_the_mutation_on_disk|_sha(subject) != pristine|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_a_killed_driver_orphans_its_pytest_child|_pytest_children() != []|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_a_new_battery_refuses_to_start_while_a_manifest_is_unrestored|second.wait(timeout=60) == 3|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_restore_reaps_the_orphaned_pytest_child|_pytest_children() != []|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_restore_reaps_the_orphaned_pytest_child|_pytest_children() == []|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_clean_run_leaves_the_tree_untouched|_sha(subject) == pristine|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_clean_run_prints_the_pass_verdict_token|VERDICT_PASS in proc.stdout|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_keys_subcommand_prints_the_address_a_probe_must_declare|'test_fast_claim|classify(20) == \"high\"|#0' in proc.stdout|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_mutation_reaches_disk_before_the_signal|_wait_for_mutation(subject, pristine) is True|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_pytest_child_does_not_outlive_the_sigtermed_driver|_pytest_children() == []|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_pytest_child_is_running_when_the_signal_lands|_wait_for_pytest_child() is True|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_restore_subcommand_recovers_byte_identically_after_a_kill|restore.returncode == 0 and _sha(subject) == pristine|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it.",
+    "test_the_subject_is_restored_byte_identically_after_sigterm|_sha(subject) == pristine|#0": "A PLAN-0115 scenario claim — SIGTERM survival, locking, restore, or the CLI's pre-existing behaviour. Outside PLAN-0121's change surface: no mutation in this PLAN's diff can reach it, and it is covered by the batteries that shipped with the work that introduced it."
+  }
+}

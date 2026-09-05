@@ -1,0 +1,149 @@
+{
+  "claim_sources": [
+    "tests/tools/test_probe_battery_contention.py"
+  ],
+  "probes": [
+    {
+      "name": "P1",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    if returncode is not None and returncode not in VERDICT_EXIT_CODES:",
+      "new": "    if False and returncode not in VERDICT_EXIT_CODES:",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_an_exit_from_the_test_body_is_aborted_not_green",
+      "expect_claim": "test_an_exit_from_the_test_body_is_aborted_not_green|result.outcome is Outcome.ABORTED and result.reason.startswith(ABORT_LEAD_EXIT_CODE)|#0",
+      "note": "🔴 Disables layer 1 (the verdict source). On the BODY shape layer 2 still fires and still returns ABORTED, so the `is ABORTED` conjunct alone cannot see this — the lead marker is the only observable that separates the arms. That is why AC-1's read is a conjunction and why this probe names the `startswith` conjunct (PLAN-0121 AC-1 as amended, s279)."
+    },
+    {
+      "name": "P2a",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    aborted = _classify_abort(cases, declared, returncode, stdout_tail)",
+      "new": "    aborted = _classify_abort(cases, declared, returncode, stdout_tail) if cases else None",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_an_exit_from_a_fixture_is_aborted_not_no_tests",
+      "expect_claim": "test_an_exit_from_a_fixture_is_aborted_not_no_tests|result.outcome is Outcome.ABORTED|#0",
+      "note": "🔴 The 'hoist NO-TESTS above the abort check' mutation, expressed as one edit: skipping the abort check when the report is empty is exactly what the old ordering did. Reddens the fixture-phase shape only; AC-1's body shape has cases and is untouched."
+    },
+    {
+      "name": "P2b",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "VERDICT_EXIT_CODES = frozenset({0, 1, 5})",
+      "new": "VERDICT_EXIT_CODES = frozenset({0, 1, 6})",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_verdict_exit_codes_are_pytests_own",
+      "expect_claim": "test_the_verdict_exit_codes_are_pytests_own|set(VERDICT_EXIT_CODES) == expected|#0",
+      "note": "🔴 The cross-file pin against pytest.ExitCode. 6 is chosen because it is not a pytest exit code at all, so the set is wrong in a way no other claim depends on."
+    },
+    {
+      "name": "P2c",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    if returncode is not None and returncode not in VERDICT_EXIT_CODES:",
+      "new": "    if False and returncode not in VERDICT_EXIT_CODES:",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_a_nonexistent_node_id_is_aborted_not_no_tests",
+      "expect_claim": "test_a_nonexistent_node_id_is_aborted_not_no_tests|result.outcome is Outcome.ABORTED and \"no match in any of\" in result.reason|#0",
+      "note": "🔴 The rc=4 usage-error reading, witnessed on its own node. Shares P1's mutation but a different claim: with 0 cases and no exit code consulted, this falls to NO-TESTS. PLAN-0121 AC-2 anticipated a P2c; this is it, re-pointed at the case that displaced AC-2's original control (a nonexistent node id is rc=4, not rc=5 — measured s279)."
+    },
+    {
+      "name": "P3",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    said = f\" Child said: {tail!r}\" if tail else \" The child left nothing on stdout.\"",
+      "new": "    said = \"\"",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_aborted_reason_carries_the_childs_last_line",
+      "expect_claim": "test_the_aborted_reason_carries_the_childs_last_line|\"outcome=CONTENDED holder_pid=424242\" in result.reason|#0",
+      "note": "🔴 Drops the cause segment. The cause exists in exactly one place — the child's stdout — so a reason that loses it names an infrastructure event without naming the event. P3b's rc claim stays green under this, which is what makes the two separately witnessed."
+    },
+    {
+      "name": "P3b",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "        f\"rc={rc}, {len(cases)} testcase(s) in the report, {unnamed} without a name; the \"",
+      "new": "        f\"rc=?, {len(cases)} testcase(s) in the report, {unnamed} without a name; the \"",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_aborted_reason_carries_the_exit_code",
+      "expect_claim": "test_the_aborted_reason_carries_the_exit_code|\"rc=75\" in result.reason|#0",
+      "note": "🔴 Drops the measured exit code from the reason while leaving the cause line intact — the sibling half of P3. A report that prints `rc=?` is the bare PASS/FAIL CLAUDE.md §8 forbids."
+    },
+    {
+      "name": "P4a",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "            return RunRecord(xml.read_text(encoding=\"utf-8\"), proc.returncode, tail)",
+      "new": "            return RunRecord(xml.read_text(encoding=\"utf-8\"), 0, tail)",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_runner_returns_the_childs_exit_code",
+      "expect_claim": "test_the_runner_returns_the_childs_exit_code|record.returncode == 75|#0",
+      "note": "🔴 The value `_run` used to discard, put back to a lie. Witnessed through §2.4 shape (a): the child pytest imports the mutated `_battery.py` from disk, so the parent driver's cached copy never matters. Its `record is not None` sibling stays green."
+    },
+    {
+      "name": "P5",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "                    stderr=subprocess.STDOUT,",
+      "new": "                    stderr=subprocess.PIPE,",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_a_child_that_produces_no_report_names_its_cause",
+      "expect_claim": "test_a_child_that_produces_no_report_names_its_cause|\"definitely_not_a_real_module_s279\" in classification.reason|#0",
+      "note": "🔴 Un-merges stderr. A conftest ImportError writes ONLY to stderr, so the cause vanishes from the tail entirely and the reason falls back to the guess PLAN-0121 removes. This is the probe that makes the merge load-bearing rather than tidy."
+    },
+    {
+      "name": "P6",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "                    tag=\"passed\" if name else \"unreported\",",
+      "new": "                    tag=\"passed\",",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_a_childless_testcase_without_a_name_is_not_a_pass",
+      "expect_claim": "test_a_childless_testcase_without_a_name_is_not_a_pass|[r.tag for r in nameless] == [\"unreported\"]|#0",
+      "note": "🔴 Restores the pre-PLAN-0121 labelling — the single line that let a contended run publish as GREEN. The named-case positive control stays green under it."
+    },
+    {
+      "name": "P7",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    credited = probe.expect_claim if classification.outcome in CREDITING_OUTCOMES else None",
+      "new": "    credited = probe.expect_claim if classification.outcome in CREDITING_OUTCOMES | {Outcome.ABORTED} else None",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_an_aborted_probe_credits_nothing",
+      "expect_claim": "test_an_aborted_probe_credits_nothing|result.credited == {}|#0",
+      "note": "🔴 Makes a cut-off child credit. This is the s253 channel re-opened deliberately, and it must be loud: §2.2's whole asymmetry argument rests on ABORTED staying out of CREDITING_OUTCOMES."
+    },
+    {
+      "name": "P8",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    if returncode is not None and returncode not in VERDICT_EXIT_CODES:",
+      "new": "    if False and returncode not in VERDICT_EXIT_CODES:",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_s277_fixture_phase_fixture_classifies_aborted",
+      "expect_claim": "test_the_s277_fixture_phase_fixture_classifies_aborted|result.outcome is Outcome.ABORTED|#0",
+      "note": "🔴 The closed incident, replayed against a disabled layer 1. The FIXTURE-phase pin is the one that can see this: its report is empty, so layer 2 has no <testcase> to fall back on. (The body-phase pin is caught by both layers and is exempted below with that reason.)"
+    },
+    {
+      "name": "P9",
+      "subject": "tools/probe_battery/_outcome.py",
+      "old": "    if any(case.tag == \"unreported\" for case in cases):",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_an_unreported_case_classifies_aborted_without_an_exit_code",
+      "expect_claim": "test_an_unreported_case_classifies_aborted_without_an_exit_code|result.outcome is Outcome.ABORTED and result.reason.startswith(ABORT_LEAD_SHAPE)|#0",
+      "note": "🔴 Disables layer 2 on the one node where layer 1 cannot cover for it — no returncode is supplied, so the shape check is the only thing holding the outcome and the reading drops to GREEN. P1's node stays green under this: the pair is what makes each layer separately witnessed (PLAN-0121 AC-5, probe P9 added s279)."
+    },
+    {
+      "name": "P10",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "                return RunRecord(None, proc.returncode, tail)",
+      "new": "                return None",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_a_child_that_produces_no_report_returns_a_record_not_none",
+      "expect_claim": "test_a_child_that_produces_no_report_returns_a_record_not_none|record is not None and record.xml_text is None|#0",
+      "note": "🔴 Collapses 'ran but produced no report' back into the timeout path's bare None. That collapse is what made the old message have to guess between 'failed to start' and 'killed at the timeout'."
+    },
+    {
+      "name": "P11",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "            tail = (out or b\"\")[-STDOUT_TAIL_BYTES:].decode(\"utf-8\", errors=\"replace\")",
+      "new": "            tail = \"\"",
+      "node_id": "tests/tools/test_probe_battery_contention.py::test_the_runner_keeps_the_childs_last_line",
+      "expect_claim": "test_the_runner_keeps_the_childs_last_line|\"outcome=CONTENDED holder_pid=424242\" in record.stdout_tail|#0",
+      "note": "🔴 Discards the captured output, which is precisely what `_run` did before PLAN-0121. Its `record is not None` sibling stays green, so the probe names the tail claim alone."
+    }
+  ],
+  "exemptions": {
+    "declared|len(matches) == 1|#0": "A module fixture's guard on its OWN setup — that the real enumerator found exactly one claim in the scratch module. It says nothing about the instrument under test, and a mutation of tools/ cannot reach it.",
+    "_classify|record.xml_text is not None|#0": "A test helper's precondition on its own argument, not a claim about the driver.",
+    "test_a_real_green_is_still_green|result.outcome is Outcome.GREEN|#0": "🟢 POSITIVE CONTROL. It must stay GREEN under every probe above — a mutation that reddens it has a blast radius wider than one assertion, which the driver reports as MISFIRE. Probing it would invert the job it is here to do.",
+    "test_a_run_that_collected_nothing_is_still_no_tests|result.outcome is Outcome.NO_TESTS|#0": "🟢 POSITIVE CONTROL for the abort arm: rc=5 is a verdict code and must NOT downgrade. Without it, AC-2's subject would be satisfied by a classifier answering ABORTED to every empty report. Same reason as above — it is the thing that must not move.",
+    "test_a_childless_named_testcase_is_still_a_pass|[r.tag for r in records] == [\"passed\"]|#0": "🟢 POSITIVE CONTROL for P6: a childless case WITH a name is still a pass. P6 is chosen so this stays green, which is what rules out 'something unrelated broke'.",
+    "test_the_s277_green_control_fixture_is_green|result.outcome is Outcome.GREEN|#0": "🟢 POSITIVE CONTROL for AC-6: the green captured alongside the two aborts must still read GREEN, so the fixture pins discriminate rather than all reading ABORTED.",
+    "test_the_live_body_shape_matches_the_s277_signature|live_sig[1] == pinned_sig[1] == 1|#0": "⚠️ INEXPRESSIBLE, recorded rather than faked (CLAUDE.md §8). This is a claim about PYTEST's output shape, not about tools/ — it compares a live pytest report to a captured one. No mutation of the subject can reach it, which is exactly why it is the drift detector: it reddens when pytest changes, not when this package does. PLAN-0121 §4.4 names this exemption explicitly.",
+    "test_an_ordinary_reds_message_is_still_carried|result.outcome is Outcome.WITNESSED and \"red-MARKER\" in result.reason|#0": "🟢 POSITIVE CONTROL for AC-3 and for §2.2's asymmetry as a whole: the ordinary legible-RED path still WITNESSES and still carries the failure message. It must stay green under every probe above — that is what rules out 'the abort arm works because nothing works any more'. Probing it would invert its purpose. It lives in this module rather than being cited from test_probe_battery.py because check_ac_consistency Check 3 correctly refuses a ticked AC whose evidence sits in a module no battery's claim_sources covers (found s279, by the guard).",
+    "test_an_ordinary_reds_message_is_still_carried|record.xml_text is not None|#0": "A precondition sibling of the control above — that the scratch run produced a report at all.",
+    "test_a_child_that_produces_no_report_names_its_cause|record is not None|#0": "A precondition sibling: the assert that guards P5's real claim two lines below it. P5's mutation leaves it green by construction, and a probe that reddened it would be probing the runner's existence rather than its stderr merge.",
+    "test_the_runner_returns_the_childs_exit_code|record is not None|#0": "Precondition sibling of P4a's claim, same reason.",
+    "test_the_runner_keeps_the_childs_last_line|record is not None|#0": "Precondition sibling of P11's claim, same reason.",
+    "test_an_aborted_probe_is_reported_aborted|classification.outcome is Outcome.ABORTED|#0": "⚠️ INEXPRESSIBLE as a SINGLE-layer mutation. The in-process driver runs the body-phase shape, which BOTH arms catch by design — disabling either one leaves the other returning ABORTED. Reddening it needs both arms off, which is two independent edits and would redden several claims at once (a MISFIRE, correctly refused). The redundancy is the feature, and each arm IS separately witnessed: layer 1 by P1/P2c/P8, layer 2 by P9. Its sibling claim in the same test file, `result.credited == {}`, is witnessed by P7.",
+    "test_the_s277_body_fixture_classifies_aborted|result.outcome is Outcome.ABORTED|#0": "⚠️ INEXPRESSIBLE as a single-layer mutation, for the same reason as the entry above: the s277 BODY capture carries an unnamed childless <testcase> AND rc=75, so both arms fire. The fixture-phase pin (P8) is the half of the closed incident a single-layer mutation can reach, and it is probed."
+  }
+}
