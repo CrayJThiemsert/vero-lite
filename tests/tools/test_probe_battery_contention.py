@@ -342,6 +342,42 @@ def test_the_aborted_reason_carries_the_exit_code(
     assert "rc=75" in result.reason
 
 
+_RED_MODULE = """def test_ordinary_red():
+    assert "red-marker" == "red-MARKER"
+"""
+
+
+def test_an_ordinary_reds_message_is_still_carried(tmp_path: Path) -> None:
+    """🟢 POSITIVE CONTROL for AC-3, and for §2.2's asymmetry as a whole.
+
+    Everything else in this module is about the abort path. This one says the ordinary
+    path still works: a real assertion failing at its own site is still WITNESSED, and its
+    message still reaches the reason. If PLAN-0121 had broken the legible-RED reading, no
+    other test here would say so.
+
+    🔴 It lives in THIS module rather than being cited from `test_probe_battery.py`,
+    because `check_ac_consistency` Check 3 is right to refuse a ticked AC whose evidence
+    sits in a module no battery's `claim_sources` covers — the coverage report would have
+    been computed over a denominator that excluded it (found s279, by the guard).
+    """
+    project = _project(tmp_path, "proj", {"test_shapes.py": _RED_MODULE})
+    record = _spawn(project)
+    claim = next(
+        c for c in enumerate_claims(project / "test_shapes.py") if "red-marker" in c.source
+    )
+    assert record.xml_text is not None
+    result = classify(
+        parse_junit(record.xml_text),
+        claim,
+        project / "test_shapes.py",
+        project,
+        returncode=record.returncode,
+        stdout_tail=record.stdout_tail,
+    )
+    print(f"rc={record.returncode} outcome={result.outcome} reason={result.reason!r}")
+    assert result.outcome is Outcome.WITNESSED and "red-MARKER" in result.reason
+
+
 def test_a_child_that_produces_no_report_names_its_cause(
     unimportable_project: Path, tmp_path: Path
 ) -> None:
@@ -435,7 +471,12 @@ def test_the_runner_keeps_the_childs_last_line(tmp_path: Path) -> None:
     )
     record = runner(probe, project, SPAWN_TIMEOUT_S)
     assert record is not None
-    print(f"tail_tail={record.stdout_tail.strip().splitlines()[-1]!r}")
+    # 🔴 The empty case is the one this test exists to catch, so the diagnostic must
+    # survive it. Probe P11 (which empties the tail) first reported CRASHED here, on an
+    # IndexError from `splitlines()[-1]` — the print raised before the assertion below
+    # could run, hiding the very reading it was added to expose.
+    lines = record.stdout_tail.strip().splitlines()
+    print(f"tail_bytes={len(record.stdout_tail)} " f"last={lines[-1] if lines else '<empty>'!r}")
     assert "outcome=CONTENDED holder_pid=424242" in record.stdout_tail
 
 
