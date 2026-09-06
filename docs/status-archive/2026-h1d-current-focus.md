@@ -2473,3 +2473,57 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the 
 > Code **9× (6 `plan-drafter`, 2 `goal-evaluator`, 1 specialist); Code 0.**
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **274-275, 276-277, 278** — THREE. 🔴 **This reconcile rotated a THIRD block** (**s269-273**, 3,294 B) when the s278 block entered: the file had drifted back to 4,041 B of headroom, and holding the window at four would have left under 3.6 KB. Rotated on the **headroom rule**, not a cap overage — all four blocks measured under 4,096 B (2,819 / 3,660 / 3,785 / 3,294). **THIS (s269-273) reconcile rotates the session-264 block** on the **window rule alone** — a fifth entered, the window is four — **not a cap overage**: caller-measured, each as its own contiguous `>` run, 3,274 · 3,101 · 3,573 · 3,668 B, all under the 4,096 B cap. 🔴 **Its s264 entry here is NOT re-archived** — both ledgers were archived **whole and PRE-PRUNE** at the s267 reconcile, so R4's move duty for it is discharged and a second copy would duplicate a move-only archive. ✅ **First reconcile ever to NET-SHRINK STATUS:** it opened with **327 B** of headroom under R1, so the new block was written to a **≤ 3,300 B** budget and two completed `[x]` TODO rows rotated alongside it. ✅ **Caller-measured:** **65,209 → 62,092 B**; CF archive **+4,267 B**, byte-identical to `git show HEAD:`, present-once / absent-from-STATUS verified separately. **THIS (s274-275) reconcile rotates the session-265-266 block** on **BOTH** rules — a first: a fifth block entered a four-wide window **and** that block measured **7,775 B, 90% over** the 4,096 B per-block cap (caller-measured; survivors 3,293 · 3,275 · 3,102 B, all under). 🔴 **Its LEDGER entry is NOT re-archived** — both ledgers were archived whole and PRE-PRUNE at s267, so R4's move duty for it is discharged; only the **block** travels, to `2026-h1d-current-focus.md`. ✅ **Second net-shrink reconcile ever:** STATUS opened at **63,480 B** with just **2,056 B** of R1 headroom, so the new block was written to a **≤ 4,096 B** budget against **7,775 B** recovered. ⚠️ **No byte delta measured — the caller owes `wc -c` + append + verify-by-DELTA.** 🔴 **THIS (s276-277) reconcile is a DEEP rotate — TWO blocks left, not one** (**s267**, and **s267 tail + 268**), on the **headroom rule**, not a cap overage: the file opened with only **3,952 B** under R1 while this reconcile had to carry **two sessions and twelve PRs**. The window therefore lands at **THREE blocks** (269-273, 274-275, 276-277), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **a short window here is deliberate; no block was lost**. Both travel VERBATIM to `2026-h1d-current-focus.md`. 🔴 **Their s267 + s268 LEDGER entries are NOT re-appended — and the reason is a corrected claim, not the usual one.** This ledger first recorded them as written *after* the whole-and-PRE-PRUNE archive of s267 and therefore unarchived; the caller measured that and it is **false** — both are present in `2026-h1d-current-focus.md` (count 1 each, against a positive control), so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **61,584 → 58,971 B** (headroom 3,952 → 6,565) — the **third net-shrink reconcile ever**; CF archive **166,234 → 173,571 B (+7,337)** for the two blocks at 3,276 + 3,103 B, carved from `git show HEAD:` rather than the subagent's paste — which mattered: a pre-write assertion caught the paste differing from the original (`central recommendation.**` vs `central recommendation**.`). Present-once in the archive and absent-from-STATUS verified separately, in both directions.]_
+
+### Rotated at the s280 reconcile — the session-276-277 Current-Focus block [on the R2 headroom rule, not a cap overage: STATUS opened at 59,218 B — 6,318 B under the 64 KB R1 ceiling — and admitting the s280 block to a three-wide window would have left about 2.2 KB, the same rule the s279 reconcile rotated on at 4,041 B. The window lands at three again (278, 279, 280), inside R2's maximum. Caller-measured: 3,659 B as carved, which is the 3,660 B the s279 ledger recorded minus the blank separator line that measurement included. Carved from `git show HEAD:docs/STATUS.md`, not from the subagent's returned paste. 🔴 This block's own Current-Focus rotation-ledger entry is NOT re-appended: it was measured already present verbatim in this file, having travelled inside the s278 rotation, so R4's move duty is discharged and a second copy would duplicate a move-only archive.]
+
+> **Session 276–277, 2026-09-04 (`dfe7fca` → `8859c27`) — TWELVE PRs merged
+> ([#1380](https://github.com/CrayJThiemsert/vero-lite/pull/1380)–[#1391](https://github.com/CrayJThiemsert/vero-lite/pull/1391)),
+> 0 open, tree clean, MS-S1 never contacted. What it established: work shipping
+> is not the ledger closing — PLAN-0120 has Steps 0–4 on `main` and `- [x]` on
+> ZERO of its 11 ACs.**
+>
+> ✅ **PLAN-0120 Steps 0–4 merged.** **Step 0 (#1383) overturned two of the
+> PLAN's own drafted premises** — F10 wrong in both directions, AC-9's pass read
+> naming an outcome the classifier never produces; six controlled measurements,
+> 17 inline corrections, second commit self-correcting the first — 🔴 **never
+> squash #1383.** Then `tests/db_guard.py` + role marker + lazy acquisition
+> (#1386), `pytest_sessionstart` + a named xdist refusal at exit 4 (#1387), the
+> creation race counted and a real error raised (#1388), the goal gate injecting
+> the marker, mapping the reserved exit code, standing down with zero residue
+> (#1389). **One pytest per checkout is ENFORCED, not advisory:** a second
+> arriver exits **75** naming the holder's pid, `application_name` and
+> `backend_start`; a no-DB-test session is unaffected (SD-4).
+>
+> 🔴 **The AC ledger is the open half — and it is a REPEAT.** Nine ACs' work
+> (AC-3/4/5/6/7/8/11 + the offline halves of AC-1/AC-2) is merged, the body
+> stamps only `Step 0 COMPLETE`, and **0 of 11 are ticked**. The s274 row below
+> records the same shape for PLAN-0117, so this is a pattern, not an accident;
+> `tools/check_ac_consistency.py` did not catch it (blind spot has its own TODO).
+> _[s278: done — the tick found only SEVEN earned, not nine; see the block above.]_
+>
+> 🔴 **Three real bugs, two in code written the same session — tests found them,
+> review did not.** `ensure_test_database` crashed on a real race **10/10**: the
+> malformed-statement shape was *swallowed*, so the caller connected to a
+> database never created; fixed by asking Postgres *"is it there now?"*, not by
+> discriminating on exception class or SQLSTATE. `TestDbGuard.release()` raised
+> unlocking a terminated backend — never executed until AC-5 killed a holder.
+> The third became **PLAN-0121** (#1384 drafted; #1385 four SDs **RULED (a)**):
+> a DB-contended child reports `GREEN`, byte-identical to a real green's reason.
+>
+> **Evidence.** Four probe batteries, all `PROBE-COVERAGE: COMPLETE`, zero gaps
+> — **74 claims, 32 WITNESSED RED**, 42 exempted; definitions were `/tmp`-only,
+> **not committed**, reproducible from each PR body's probe notes. CI **PASS on
+> all 9 heads**. Suite reconciled **by collection**: Step 1 `4846 passed, 8
+> skipped` → Step 4 `4866 passed, 8 skipped` (4,874 collected) — ⚠️ **the s275
+> baseline of `4801` is stale by exactly 12**, counted not estimated. 🔴 **Branch
+> protection: `strict: true` + `enforce_admins: true`** — every merge puts each
+> other open PR `BEHIND` (merge + push + fresh CI, no admin bypass), so n open
+> PRs cost n + (n−1) runs: **open one at a time unless truly independent**. 🔴
+> `pgrep -af "[p]ytest"` matched **its own command line** as a live pytest.
+>
+> **s276 (#1380–#1382)** cleared the s274–275 reconcile and put **two Cray
+> directions** on a tracked surface before a gitignored handoff lost them — both
+> are live Active-TODO rows (the Active-TODO file split; the **Stop-hook
+> classifier, not CI,** warming `gpt-oss:20b` on MS-S1 every turn end). #1382
+> named a bare `uv run` as it empties the shared venv; #1390 rehomed **Lessons
+> #0058 + #0059**; #1391 stopped two tools advising that same venv strip.
