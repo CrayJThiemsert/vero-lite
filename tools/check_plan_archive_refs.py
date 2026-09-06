@@ -101,6 +101,24 @@ EXEMPT_PREFIXES = (
     # RESULTS.md beside it is a genuine navigation surface, and a benchmark
     # RESULTS.md is exactly where this rot shows up.
     "benchmarks/stop_classifier/gold.yaml",
+    # The SECOND corpus file of that same gold set, split out at s280 (PLAN-0122
+    # Step 1) and therefore postdating the exemption above -- same class, same
+    # reasoning, verbatim. Added s282, when archiving PLAN-0121 reddened R8 on
+    # its `proceed-closeout-git-mv-after-go` case: an assistant turn announcing
+    # it is about to `git mv` the PLAN-0121 reference into `done/`, the exact
+    # twin of the `pause-plan-status-flip` case named above. Re-pointing it
+    # would make the simulated sentence self-contradictory AND change the
+    # corpus that FULL's held-out 29/30 was scored on -- a measurement this
+    # repo may not re-run (PLAN-0122 J4: no arm is re-run after its score is
+    # seen), so the edit is not merely wrong, it is unrecoverable.
+    #
+    # This pair is the standing cost of a FILE-scoped allowlist: a new sibling
+    # corpus file is not refused, it is simply not thought of, and the guard
+    # goes quiet on it until something moves. The file scope is still correct
+    # (see the RESULTS.md reasoning above) -- what is missing is a trigger when
+    # a new gold file appears, which is follow-up work, not a reason to widen
+    # this to the directory.
+    "benchmarks/stop_classifier/gold_s280.yaml",
 )
 
 

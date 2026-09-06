@@ -1,8 +1,8 @@
 # PLAN-0121: Probe-battery contention legibility — an aborted pytest child is reported as an infrastructure event naming its cause, never as `GREEN` or `NO-TESTS`
 
-**Status:** Draft
+**Status:** Complete (2026-09-06, session 282 — see §Closeout). 8/8 ACs ticked at s279; both batteries re-run fresh at s282 against `main` and re-read `PROBE-BATTERY: PASS` / `GAPS: 0`, so the label is `confirmed — prior intact` under CLAUDE.md §6 rather than asserted from the ledger.
 **Owner:** Claude Code (executes; commits via PR per ADR-009 D2). ✅ **All four Surfaced Decisions RULED (a) — Cray, typed, 2026-09-04, s277. Step 1 is unblocked.** SD-1 = `RunRecord`; SD-2 = a new `ABORTED` member; SD-3 = exit code ∉ `VERDICT_EXIT_CODES` as the verdict source **plus** the XML-shape second layer, with **(d) refused** — no reserved code is named; SD-4 = live shapes primary + the committed s277 artifacts as the closed-incident pin + a drift detector.
-**Batteries:** `tests/batteries/plan-0121-*.json` — the two committed probe-battery definitions whose reports this PLAN's acceptance criteria cite (added s279). `plan-0121-abort-legibility.json` covers the out-of-band oracle module (26 claims, 14 probes, 12 exemptions, `GAPS: 0`); `plan-0121-scenario-cli.json` covers the CLI seam that is the only shape able to witness a `_battery.py` mutation through a fresh driver process, §2.4 (20 claims, 2 probes, 18 exemptions, `GAPS: 0`). A coverage report is not reviewable without its definition. See `tests/batteries/README.md`.
+**Batteries:** `tests/batteries/plan-0121-*.json` — the two committed probe-battery definitions whose reports this PLAN's acceptance criteria cite (added s279). `plan-0121-abort-legibility.json` covers the out-of-band oracle module (**28 claims, 14 probes, 14 exemptions**, `GAPS: 0`); `plan-0121-scenario-cli.json` covers the CLI seam that is the only shape able to witness a `_battery.py` mutation through a fresh driver process, §2.4 (20 claims, 2 probes, 18 exemptions, `GAPS: 0`). A coverage report is not reviewable without its definition. See `tests/batteries/README.md`. 🔴 **Corrected s282 — `was an error`, not drift.** This line shipped reading *"26 claims, … 12 exemptions"* for `abort-legibility`. The fresh s282 run prints `claims: 28   witnessed RED: 14   exempted: 14   GAPS: 0   stale ids: 0`, and the committed JSON itself declares `probes: 14` + `exemptions: 14` = 28 — so the artifact was right at s279 too. Neither the JSON nor its single `claim_sources` module (`tests/tools/test_probe_battery_contention.py`) has been touched since `b382303`, which rules out denominator growth: the numbers were **wrong as committed**, off by exactly `-2` in both fields. Both the JSON and this line landed in that one commit, so the reading most consistent with the evidence is that the prose was copied from a run taken **before** the last two exemptions were added — the same shape as the s281 hazard *"generate the battery AFTER formatting, never before"*. `scenario-cli`'s figures re-read **exact**.
 **Created:** 2026-09-04 (session 277)
 **Related ADRs:** ADR-0018 **D8.5** (`:1314-1329` — contention is an *infrastructure verdict distinct from a test failure*; this PLAN applies that class to the verification instrument itself); ADR-0038 **C6** (`:358-364`, `:374-380`, `:420-423` — a RED must name what broke, and the legibility conjunct is part of the class, not a garnish); ADR-009 D1/D2 + ADR-012 D4.3 + ADR-013 D1 (drafting route + disclosure).
 **Related PLANs / lessons:** PLAN-0115 (`done/0115-…` — owns the driver's `Runner` contract and the outcome set this PLAN widens); PLAN-0120 (the Draft this PLAN was **split out of** — Cray, typed, 2026-09-04, s277: *Step 6 splits out*; everything else stays in 0120); Lesson #0043 (a probe's RED must name what broke); Lesson #0056 (suspect the instrument before the artifact — this PLAN is that lesson applied to the instrument's own output).
@@ -265,3 +265,50 @@ _[RULING (Cray, typed, 2026-09-04, s277): **(a)** — live shapes primary, the c
 - **PLAN-0120's AC-9 node `tests/tools/test_probe_battery_guard.py`** does not collide with this PLAN's `test_probe_battery_contention.py`; 0120's read must cite SD-2's outcome name (B18).
 - **No `tests/tools/fixtures/` exists yet** (B28) — convention borrowed from two other test packages; a first use, not a departure.
 - **Process depth in Step 5:** the battery over the scenario probes runs four process levels; the default per-probe timeout (600 s) is ample but the PR body should print the battery's wall time so a future timeout tune has a number.
+
+---
+
+## Closeout
+
+**Archived 2026-09-06 (session 282).** The work landed at s279 (#1399–#1402, `af0eca0`); only the
+`git mv` was outstanding, and it survived three STATUS reconciles undone.
+
+### Evidence re-read fresh against `main`, not recalled
+
+CLAUDE.md §6 double-gates the label `confirmed — prior intact`: a pass/fail read fixed **before**
+the run, plus a **fresh on-disk artifact**. The pre-committed read is this PLAN's own §Verification
+item 7 — `PROBE-BATTERY: PASS`, probes `WITNESSED`, `GAPS: 0`. Both batteries were re-run at s282
+on `main` = `e7213bd`, and each printed the value it measured:
+
+| battery | fresh s282 reading | wall | vs the header as committed |
+|---|---|---|---|
+| `plan-0121-abort-legibility.json` | `claims: 28   witnessed RED: 14   exempted: 14   GAPS: 0   stale ids: 0` · `PROBE-COVERAGE: COMPLETE` · `PROBE-BATTERY: PASS` · P1–P11 all `WITNESSED` | 25.7 s | 🔴 header was wrong (see §Batteries, corrected s282) |
+| `plan-0121-scenario-cli.json` | `claims: 20   witnessed RED: 2   exempted: 18   GAPS: 0   stale ids: 0` · `PROBE-COVERAGE: COMPLETE` · `PROBE-BATTERY: PASS` | 5.8 s | ✅ exact |
+
+Working tree **clean** after both runs — the driver's restore returned every mutated subject.
+**AC ledger: 8 of 8, unchanged.** No box was ticked or unticked at closeout; the re-run exists to
+make the archived state evidence-backed rather than remembered.
+
+### One measured consequence of archiving
+
+`tools/check_ac_consistency.py` walks `docs/plans/*.md` and **not** `docs/plans/done/`. Measured
+across this move: `86 AC(s) across 10 active PLAN(s)` → `78 AC(s) across 9 active PLAN(s)`, clean
+and exit 0 both sides. The guard drops an archived PLAN cleanly rather than erroring on its
+`**Batteries:**` glob — but it also means **nothing re-checks the figures in this file from here
+on**, which is why the `-2` error above was repaired at the moment of archiving rather than left.
+
+### What this PLAN's row in `docs/STATUS.md` used to say
+
+The Active-TODO pointer was never its own row — it was one clause inside the PLAN-0122 row. It is
+removed in the same PR as this `git mv`, so it disappears **because it became false**, not as
+tidying. Recorded verbatim here because `docs/status-archive/` does not catch it (its TODO
+rotation moves completed `[x]` rows only, and this was a clause inside a `[ ]` row):
+
+> ⚠️ PLAN-0121 is complete but still `Draft` — its closeout `git mv` has not run.
+
+Full prior text of the section is recoverable at `git show 0dcb78c:docs/STATUS.md`.
+
+### Surfaced decisions
+
+All four ruled (a) by Cray, typed, 2026-09-04 (s277), with SD-3's option (d) **refused** — recorded
+inline at §Surfaced Decisions with their dates; nothing was re-opened at closeout.

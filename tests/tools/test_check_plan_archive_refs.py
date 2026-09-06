@@ -176,6 +176,12 @@ def test_glob_does_not_match_across_the_done_boundary(repo: Path) -> None:
         "docs/status-archive/2026-h1-status.md",
         "docs/adr/0018-x.md",
         "benchmarks/stop_classifier/gold.yaml",
+        # The second corpus file of the same gold set, split out at s280 and so
+        # postdating the exemption beside it. Registered here at s282, when
+        # archiving PLAN-0121 reddened the real-repo guard on its
+        # `proceed-closeout-git-mv-after-go` case -- the twin of the PLAN-0028
+        # case named in `test_gold_set_exemption_is_file_scoped_not_directory_scoped`.
+        "benchmarks/stop_classifier/gold_s280.yaml",
     ],
 )
 def test_exempt_paths_are_not_scanned(repo: Path, rel: str) -> None:
