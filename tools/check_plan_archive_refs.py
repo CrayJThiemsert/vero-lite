@@ -229,6 +229,51 @@ def find_violations(root: Path, files: list[Path]) -> list[tuple[str, int, str, 
     return violations
 
 
+# The key that makes a YAML file a stop-classifier CORPUS rather than prose:
+# `run_eval.py` reads `id` / `expected` / `transcript_turns[].role|text` and
+# ignores every other key, so this marker -- not the filename -- is what says
+# "the paths in here are simulated agent speech". Detection is by CONTENT on
+# purpose: `benchmarks/stop_classifier/s280/GOLD-fable-NOTES.md` documents a
+# corpus named `s280-GOLD-fable.yaml`, so a `gold*.yaml` filename rule would
+# already have a known miss.
+CORPUS_MARKER = "transcript_turns"
+
+
+def corpus_files(root: Path, files: list[Path]) -> tuple[list[str], list[str]]:
+    """Tracked corpus YAMLs, split `(registered, unregistered)` against R8.
+
+    A corpus file is benchmark INPUT: a path inside one is simulated agent
+    speech, not navigation, and re-pointing it at `done/` both contradicts the
+    simulated sentence and changes what the benchmark measures.
+    `EXEMPT_PREFIXES` is FILE-scoped for a good reason (the RESULTS.md beside
+    the corpus IS navigation) -- but a file-scoped allowlist goes STALE in
+    silence: a new sibling corpus is not refused, it is simply not thought of,
+    and the guard stays quiet on it until some unrelated `git mv` trips over
+    it. Measured: `gold_s280.yaml` was split out at s280 and went unnoticed
+    until archiving PLAN-0121 reddened R8 inside an unrelated closeout at s282.
+
+    Returns BOTH halves rather than just the problem, because an empty
+    `unregistered` list is worthless without evidence the detector can see
+    anything at all: if the corpus key is ever renamed, a content probe that
+    silently matches nothing reports a clean tree forever. `main` fails closed
+    when `registered + unregistered == 0` for exactly that reason.
+    """
+    registered: list[str] = []
+    unregistered: list[str] = []
+    for rel in files:
+        rel_posix = rel.as_posix()
+        if not rel_posix.endswith((".yaml", ".yml")):
+            continue
+        try:
+            text = (root / rel).read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if CORPUS_MARKER not in text:
+            continue
+        (registered if is_exempt(rel_posix) else unregistered).append(rel_posix)
+    return registered, unregistered
+
+
 def main() -> int:
     root = Path(os.environ.get("PLAN_REF_ROOT") or ".").resolve()
     try:
@@ -237,6 +282,45 @@ def main() -> int:
         print(
             f"plan-archive-ref-guard (R8): cannot enumerate tracked files — "
             f"{exc}. Failing closed: an un-enumerable tree is not a clean tree.",
+            file=sys.stderr,
+        )
+        return 1
+    registered, unregistered = corpus_files(root, files)
+    # Print the measured values, never a bare verdict: a disagreement is then
+    # one step to diagnose instead of a hunt (CLAUDE.md §8).
+    print(
+        f"plan-archive-ref-guard (R8): corpus registered={len(registered)} "
+        f"unregistered={len(unregistered)}",
+        file=sys.stderr,
+    )
+    if not registered and not unregistered:
+        print(
+            f"plan-archive-ref-guard (R8): found ZERO corpus files. The detector "
+            f"looks for the key {CORPUS_MARKER!r} in tracked *.yaml; finding none "
+            f"means the marker moved, not that the tree is clean. Failing closed — "
+            f"an instrument that can no longer see its subject certifies nothing.",
+            file=sys.stderr,
+        )
+        return 1
+    if unregistered:
+        print(
+            f"plan-archive-ref-guard (R8): {len(unregistered)} benchmark corpus "
+            f"file(s) are NOT in EXEMPT_PREFIXES:",
+            file=sys.stderr,
+        )
+        for rel_posix in unregistered:
+            print(f"  {rel_posix}", file=sys.stderr)
+        print(
+            "\nA corpus file is benchmark INPUT: a `docs/plans/...` path inside "
+            "one is SIMULATED agent speech, not navigation. Left unregistered it "
+            "reads as navigation, and the next `git mv` of any PLAN it names "
+            "will report it as a dead pointer — at which point re-pointing it "
+            "silently changes what the benchmark measures, and for a scored arm "
+            "that may not be re-run, unrecoverably.\n\n"
+            "Add the path to EXEMPT_PREFIXES in this file, FILE-scoped (never "
+            "the directory — the RESULTS.md beside it is genuine navigation), "
+            "with a comment saying why. Register it here in the same change "
+            "that adds the corpus, not in the unrelated PR that trips over it.",
             file=sys.stderr,
         )
         return 1
