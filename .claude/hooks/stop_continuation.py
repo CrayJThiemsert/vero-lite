@@ -221,17 +221,21 @@ def _ping_telegram(message: dict[str, Any]) -> None:
         pass
 
 
-DEFAULT_DECISION_LOG_PATH = STATE_DIR / "stop-decisions.jsonl"
+#: Path and env override are PLAN-0122 §4.3's, verbatim. They shipped wrong at
+#: first (`stop-decisions.jsonl` / `CLAUDE_STOP_DECISION_LOG`), built from
+#: AC-8's pass read without reading §4.3, which specifies both — and AC-12
+#: would have looked for a file that did not exist.
+DEFAULT_DECISION_LOG_PATH = STATE_DIR / "stop-classifier-log.jsonl"
 
 
 def _decision_log_path() -> Path:
-    return Path(os.environ.get("CLAUDE_STOP_DECISION_LOG") or DEFAULT_DECISION_LOG_PATH)
+    return Path(os.environ.get("CLAUDE_STOP_CLASSIFIER_LOG") or DEFAULT_DECISION_LOG_PATH)
 
 
 def _log_decision(
     decision: dict[str, Any],
     emitted: str,
-    depth: int,
+    event: str,
 ) -> None:
     """Append ONE line per classifier verdict (PLAN-0122 SD-4 / AC-8).
 
@@ -248,7 +252,8 @@ def _log_decision(
     suggestion OR nothing when its metadata is malformed.
 
     `transport` separates a pause the MODEL decided from one manufactured
-    after a failure — see `fail_closed` in `_sonnet_classifier`. Scoring those
+    after a failure — see the `TRANSPORT_*` constants in `_sonnet_classifier`,
+    which also record two deviations from §4.3's enum. Scoring those
     together would make AC-12's defect rate a measurement of the network.
 
     Never raises: an observability write must not be able to break the Stop
@@ -257,15 +262,19 @@ def _log_decision(
     try:
         path = _decision_log_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        # Field set and order are §4.3's, exactly: ts, event, decision,
+        # emitted, reason, matched_rows, latency_s, transport, prompt_sha8.
         line = json.dumps(
             {
                 "ts": _now_iso(),
-                "verdict": str(decision.get("decision") or ""),
+                "event": event,
+                "decision": str(decision.get("decision") or ""),
                 "emitted": emitted,
-                "transport": "fail_closed" if decision.get("fail_closed") else "ok",
                 "reason": str(decision.get("reason") or ""),
                 "matched_rows": [str(r) for r in (decision.get("matched_rows") or [])],
-                "depth": depth,
+                "latency_s": decision.get("latency_s"),
+                "transport": str(decision.get("transport") or ""),
+                "prompt_sha8": str(decision.get("prompt_sha8") or ""),
             },
             ensure_ascii=False,
         )
@@ -287,14 +296,15 @@ def _classify(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         from _sonnet_classifier import classify  # local import: tolerant to absence
     except ImportError as exc:
-        # `fail_closed` mirrors the helper's own `_pause`: these two wrapper
-        # pauses are manufactured by a failure, not decided by the model, and
-        # SD-4's log must not score them as correct model pauses.
+        # `not_attempted` mirrors the helper's own `_pause` default: no request
+        # ever left the box, so labelling this `timeout` would assert a network
+        # event that never happened. SD-4's log must not score either of these
+        # wrapper pauses as a correct model pause.
         return {
             "decision": "pause",
             "matched_rows": [],
             "reason": f"classifier helper unavailable: {exc}",
-            "fail_closed": True,
+            "transport": "not_attempted",
         }
     try:
         return classify(payload)
@@ -303,7 +313,7 @@ def _classify(payload: dict[str, Any]) -> dict[str, Any]:
             "decision": "pause",
             "matched_rows": [],
             "reason": f"classifier raised unexpectedly: {exc}",
-            "fail_closed": True,
+            "transport": "not_attempted",
         }
 
 
@@ -576,6 +586,11 @@ def main() -> int:
     if payload.get("stop_hook_active") is True:
         return 0
 
+    # §4.3's `event` field. Defaults to "Stop" rather than "<unknown>": this is
+    # the Stop hook, so an absent key means the harness omitted it, not that
+    # some other event arrived.
+    event = str(payload.get("hook_event_name") or payload.get("event") or "Stop")
+
     # An L1 turn-boundary reset used to run here, ahead of everything else.
     # PLAN-0102 retired it with L1; the chain-cap is now the first arm, and it
     # touches no loop-counter state at all.
@@ -616,13 +631,13 @@ def main() -> int:
                 "stop_continuation: demoted a contentless proceed reason to " f"pause: {reason!r}",
                 file=sys.stderr,
             )
-            _log_decision(decision, "demoted", chain["depth"])
+            _log_decision(decision, "demoted", event)
             _reset_chain()
             return 0
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
-        _log_decision(decision, "block", chain["depth"])
+        _log_decision(decision, "block", event)
         print(json.dumps(_proceed_block(reason)))
         return 0
 
@@ -645,7 +660,7 @@ def main() -> int:
         if not isinstance(dispatch_meta, dict):
             # Malformed metadata stays silent, so `emitted` is "none" — the
             # verdict was `dispatch` but the agent and Cray received nothing.
-            _log_decision(decision, "none", chain["depth"])
+            _log_decision(decision, "none", event)
             _reset_chain()
             return 0
         matched_rows_raw = decision.get("matched_rows") or []
@@ -657,13 +672,13 @@ def main() -> int:
                 str(decision.get("reason", "")),
             )
         )
-        _log_decision(decision, "suggestion", chain["depth"])
+        _log_decision(decision, "suggestion", event)
         _reset_chain()
         return 0
 
     # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
     # chain so the next session starts fresh.
-    _log_decision(decision, "none", chain["depth"])
+    _log_decision(decision, "none", event)
     _reset_chain()
     return 0
 

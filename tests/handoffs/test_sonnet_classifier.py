@@ -1491,3 +1491,98 @@ def test_every_registry_gch_row_is_in_the_stop_prompt(
     assert missing == []
     # A2 — and the prompt-only set is exactly the two SD-7 recorded.
     assert prompt_only == ["C6", "C7"]
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0122 §4.3 — `transport`, `latency_s`, `prompt_sha8` on every verdict.
+#
+# The log in stop_continuation only COPIES these; whether the values are right
+# is decided here, in _run_with_retry. `transport` is not a failure flag: it
+# says how the call went, and `retry` means the model DID answer, second try.
+# ---------------------------------------------------------------------------
+
+
+_GOOD_BODY = '{"decision": "pause", "matched_rows": [], "reason": "needs Cray"}'
+
+
+def _drive(monkeypatch: pytest.MonkeyPatch, *responses: object) -> dict[str, Any]:
+    """Run _run_with_retry over a scripted transport.
+
+    Each element is either a string (returned) or an exception (raised), one
+    per attempt, in order.
+    """
+    calls = {"n": 0}
+
+    def _transport(*, strict: bool) -> str:
+        item = responses[calls["n"]]
+        calls["n"] += 1
+        if isinstance(item, BaseException):
+            raise item
+        return str(item)
+
+    return sc._run_with_retry(_transport)
+
+
+def test_a_first_attempt_that_parses_is_ok(monkeypatch: pytest.MonkeyPatch) -> None:
+    result = _drive(monkeypatch, _GOOD_BODY)
+    print(f"transport={result.get('transport')}")
+    assert result["transport"] == "ok"
+
+
+def test_an_answer_that_needed_the_retry_is_retry_not_ok(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The distinction §4.3 asks for: answered, but not first time.
+
+    Under a naive implementation that sets `ok` on any successful parse, this
+    is the only case that reddens.
+    """
+    result = _drive(monkeypatch, "not json at all", _GOOD_BODY)
+    print(f"transport={result.get('transport')}")
+    assert result["decision"] == "pause"
+    assert result["transport"] == "retry"
+
+
+def test_an_unreachable_server_is_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    result = _drive(monkeypatch, urllib.error.URLError("timed out"))
+    print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
+    assert result["transport"] == "timeout"
+
+
+def test_an_http_500_lands_in_timeout_and_says_so_in_the_reason(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deviation (2), pinned so it cannot drift unnoticed.
+
+    `HTTPError` subclasses `URLError`, so a 500 reads as `timeout` — the enum
+    §4.3 fixes has no value for "the server refused". MEASURED to matter: 286
+    of 1,756 /api/chat calls on MS-S1 were 500s, not timeouts. No information
+    is lost because `reason` carries the distinguishing text, and this test is
+    what guarantees that stays true.
+    """
+    exc = urllib.error.HTTPError(
+        url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
+    )
+    result = _drive(monkeypatch, exc)
+    print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
+    assert result["transport"] == "timeout"
+    assert "500" in result["reason"]
+
+
+def test_an_unparseable_body_is_malformed_after_the_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = _drive(monkeypatch, "junk", "still junk")
+    print(f"transport={result.get('transport')}")
+    assert result["transport"] == "malformed"
+
+
+def test_a_pause_built_before_any_request_is_not_attempted() -> None:
+    """The fifth value, and why it is not `timeout`.
+
+    A registry that is missing means nothing ever left the box. Labelling that
+    a network event would put a fabricated cause into the file AC-12 reads.
+    """
+    result = sc._pause("autonomy registry missing or empty")
+    print(f"transport={result.get('transport')}")
+    assert result["transport"] == "not_attempted"

@@ -71,9 +71,11 @@ pauses, never proceeds.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -225,34 +227,59 @@ def _model() -> str:
     return os.environ.get("CLAUDE_SONNET_MODEL") or DEFAULT_MODEL
 
 
-#: Marks a pause this module MANUFACTURED after a failure, as opposed to one
-#: the model actually decided. Both arrive as ``decision == "pause"``, and
-#: without this key they are indistinguishable downstream — so SD-4's decision
-#: log would score every transport error as a correct model pause and AC-12's
-#: defect rate would be measuring the network.
+#: How the transport went, for SD-4's decision log (PLAN-0122 §4.3, which
+#: specifies ``transport ∈ {ok, timeout, malformed, retry}``). It is NOT a
+#: failure flag: ``retry`` means the model DID answer, on the second attempt.
 #:
-#: Set here rather than at the call sites because ``_pause`` is the single
-#: chokepoint: all eight failure paths route through it, while a genuine
-#: verdict is built by ``_parse_response`` and never touches this function.
-#: Prefix-matching on ``reason`` was the obvious alternative and is REFUTED by
-#: measurement — one site (``_pause(source_or_reason)``) passes a variable and
-#: has no fixed prefix at all, so a prefix rule would silently read that
-#: failure as a success.
+#: Why it has to exist at all: a pause the model decided and a pause this
+#: module manufactured after a failure both arrive as ``decision == "pause"``.
+#: Without this key they are indistinguishable, so the log would score every
+#: transport error as a correct model pause and AC-12's defect rate would be
+#: partly a measurement of the network. Measured 2026-09-06: MS-S1 returned 500
+#: on 286 of 1,756 ``/api/chat`` calls, so this is not a hypothetical.
 #:
-#: Additive by design: the contract test asserts
-#: ``set(result.keys()) >= {"decision", "matched_rows", "reason"}`` — a
-#: SUPERSET, so extra keys are allowed and the 49 existing ``classify()`` tests
-#: are unaffected. This touches response handling only; prompt construction is
-#: untouched, so the measured held-out scores still describe the shipped arm.
-FAIL_CLOSED_KEY = "fail_closed"
+#: ⚠️ TWO deviations from §4.3's enum, both recorded rather than papered over
+#: (CLAUDE.md §8 — a case the system cannot express is registered in writing):
+#:
+#: 1. ``not_attempted`` is a FIFTH value the spec does not list. Two `_pause`
+#:    sites fire before any request leaves the box (an absent registry, an
+#:    unimportable helper). Labelling those ``timeout`` or ``malformed`` would
+#:    assert a network event that never happened. Additive, so a consumer that
+#:    only knows the four can ignore it.
+#: 2. An HTTP error response — including the 500s measured above — arrives as
+#:    ``urllib.error.HTTPError``, a subclass of ``URLError``, and so lands in
+#:    ``timeout``. That conflates "the server refused" with "the server never
+#:    answered", which we have MEASURED to be different causes. No information
+#:    is lost: ``reason`` carries the distinguishing text ("HTTP Error 500"
+#:    vs "timed out"), so AC-12 can separate them. Widening the enum is a
+#:    §4.3 amendment and therefore Cray's, not a code decision.
+TRANSPORT_OK = "ok"
+TRANSPORT_TIMEOUT = "timeout"
+TRANSPORT_MALFORMED = "malformed"
+TRANSPORT_RETRY = "retry"
+TRANSPORT_NOT_ATTEMPTED = "not_attempted"
 
 
-def _pause(reason: str, matched: list[str] | None = None) -> dict[str, Any]:
+def _pause(
+    reason: str,
+    matched: list[str] | None = None,
+    *,
+    transport: str = TRANSPORT_NOT_ATTEMPTED,
+) -> dict[str, Any]:
+    """A fail-closed pause. `transport` says HOW the call went, not whether it
+    failed — the caller sets it, because only the caller knows.
+
+    Additive by design: the contract test asserts
+    ``set(result.keys()) >= {"decision", "matched_rows", "reason"}`` — a
+    SUPERSET — so extra keys are allowed and the existing ``classify()`` tests
+    are unaffected. Response handling only; prompt construction is untouched,
+    so the measured held-out scores still describe the shipped arm.
+    """
     return {
         "decision": DECISION_PAUSE,
         "matched_rows": matched or [],
         "reason": reason,
-        FAIL_CLOSED_KEY: True,
+        "transport": transport,
     }
 
 
@@ -894,29 +921,41 @@ def _run_with_retry(transport: Any) -> dict[str, Any]:
     try:
         text = str(transport(strict=False))
     except (urllib.error.URLError, TimeoutError) as exc:
-        return _pause(f"API unreachable: {exc}")
+        # NB: `HTTPError` subclasses `URLError`, so a 500 lands here too — see
+        # deviation (2) beside the TRANSPORT_* constants. `reason` keeps the
+        # distinguishing text.
+        return _pause(f"API unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
     except ValueError as exc:
-        return _pause(f"API response malformed: {exc}")
+        return _pause(f"API response malformed: {exc}", transport=TRANSPORT_MALFORMED)
     except Exception as exc:  # defensive: never raise into the hook flow
-        return _pause(f"classifier transport error: {exc}")
+        return _pause(f"classifier transport error: {exc}", transport=TRANSPORT_TIMEOUT)
 
     try:
-        return _parse_response(text)
+        parsed = _parse_response(text)
     except ValueError:
         pass  # fall through to retry
+    else:
+        parsed["transport"] = TRANSPORT_OK
+        return parsed
 
     # Retry once with stricter prompt.
     try:
         text2 = str(transport(strict=True))
     except (urllib.error.URLError, TimeoutError) as exc:
-        return _pause(f"retry unreachable: {exc}")
+        return _pause(f"retry unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
     except Exception as exc:
-        return _pause(f"retry transport error: {exc}")
+        return _pause(f"retry transport error: {exc}", transport=TRANSPORT_TIMEOUT)
 
     try:
-        return _parse_response(text2)
+        parsed = _parse_response(text2)
     except ValueError as exc:
-        return _pause(f"classifier response unparseable after retry: {exc}")
+        return _pause(
+            f"classifier response unparseable after retry: {exc}",
+            transport=TRANSPORT_MALFORMED,
+        )
+    # The model answered, but only on the second attempt — `retry`, not `ok`.
+    parsed["transport"] = TRANSPORT_RETRY
+    return parsed
 
 
 def classify(payload: dict[str, Any]) -> dict[str, Any]:
@@ -961,10 +1000,23 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
     # VALIDATED prompt would use. Re-enabling it is a Cray decision that needs
     # AC-7 to pass first — ``test_stop_arm_is_not_slim5_until_ac7_passes``
     # guards exactly that and will redden if this line starts passing an event.
+    # `prompt_sha8` (PLAN-0122 §4.3) must be the sha of the prompt ACTUALLY
+    # sent, so it is taken here rather than from the pinned constant: the two
+    # agree today only because the Stop routing was reverted, and a log that
+    # reported the pin would go on agreeing after they diverged.
+    sent_prompt_sha8: list[str] = []
+
     def _transport(*, strict: bool) -> str:
         system = _build_system_prompt(registry, strict=strict)
+        sent_prompt_sha8.append(hashlib.sha256(system.encode("utf-8")).hexdigest()[:8])
         if backend == "sonnet":
             return _call_api(api_key, system, user_message)
         return _call_ollama(system, user_message)
 
-    return _run_with_retry(_transport)
+    started = time.monotonic()
+    result = _run_with_retry(_transport)
+    # monotonic, not wall clock: WSL2's wall clock steps backwards, which would
+    # print a negative latency into the very log AC-12 reads.
+    result["latency_s"] = round(time.monotonic() - started, 3)
+    result["prompt_sha8"] = sent_prompt_sha8[-1] if sent_prompt_sha8 else ""
+    return result
