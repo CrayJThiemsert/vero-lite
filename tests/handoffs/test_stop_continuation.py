@@ -23,6 +23,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -1087,3 +1088,216 @@ def test_ac11a_the_hook_imports_exactly_one_name_from_the_counter_module() -> No
         "these were deleted from _loop_counter.py by PLAN-0102, so this is an "
         "ImportError at module load waiting to happen"
     )
+
+
+# ---------------------------------------------------------------------------
+# AC-8 — SD-4 decision log: every classifier verdict leaves exactly one line.
+#
+# Why this exists: today the hook writes a depth counter and nothing else, so
+# the arm Cray chose to KEEP (SD-3 (a)) has no production instrument at all.
+# The 117-fire ledger this PLAN was built on existed only because blocked stops
+# reach the transcript, on ~30-day retention — without a log, the next review
+# of this arm would again have no counted evidence.
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def decision_log(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, inproc_env: dict[str, Path]
+) -> Path:
+    """Per-test decision log. Depends on inproc_env so the reload happens first.
+
+    tests/conftest.py already redirects this away from production state for the
+    WHOLE suite; this narrows it to a path one test can count.
+    """
+    path = tmp_path / "stop-decisions.jsonl"
+    monkeypatch.setenv("CLAUDE_STOP_DECISION_LOG", str(path))
+    return path
+
+
+def _log_lines(path: Path) -> list[dict[str, Any]]:
+    if not path.exists():
+        return []
+    text = path.read_text(encoding="utf-8")
+    return [json.loads(ln) for ln in text.splitlines() if ln.strip()]
+
+
+def _ac8_payload(tmp_path: Path) -> dict[str, Any]:
+    """A Stop payload whose transcript path is per-test, matching the fixture
+    convention above rather than a shared ``/tmp`` literal."""
+    return {"session_id": "s", "transcript_path": str(tmp_path / "t.jsonl")}
+
+
+_PROCEED = {"decision": "proceed", "matched_rows": [], "reason": "run pytest tests/x.py"}
+_CONTENTLESS = {"decision": "proceed", "matched_rows": [], "reason": "continue"}
+_PAUSE = {"decision": "pause", "matched_rows": [], "reason": "needs a Cray decision"}
+_TRANSPORT_PAUSE = {
+    "decision": "pause",
+    "matched_rows": [],
+    "reason": "API unreachable: <urlopen error timed out>",
+    "fail_closed": True,
+}
+
+_AC8_CASES = [
+    ("proceed", _PROCEED, "block"),
+    ("demoted-proceed", _CONTENTLESS, "demoted"),
+    ("pause", _PAUSE, "none"),
+    ("dispatch", None, "suggestion"),
+    ("transport-pause", _TRANSPORT_PAUSE, "none"),
+]
+
+
+@pytest.mark.parametrize(("case", "verdict", "expected_emitted"), _AC8_CASES)
+def test_every_classifier_verdict_is_logged(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    decision_log: Path,
+    case: str,
+    verdict: dict[str, Any] | None,
+    expected_emitted: str,
+) -> None:
+    """AC-8. One line per verdict, and the line says what the agent RECEIVED.
+
+    ``emitted`` is not recoverable from the verdict alone: a proceed emits a
+    block OR is demoted to silence by the contentless floor, and a dispatch
+    emits a Telegram suggestion OR nothing when its metadata is malformed. A
+    log carrying only the verdict would look complete and answer neither
+    question AC-12 asks.
+    """
+    _patch_classify(monkeypatch, verdict if verdict is not None else _dispatch_verdict())
+    pre = len(_log_lines(decision_log))
+
+    _run_inproc(monkeypatch, _ac8_payload(tmp_path))
+
+    lines = _log_lines(decision_log)
+    post = len(lines)
+    emitted = lines[-1]["emitted"] if lines else "<no-line>"
+    transport = lines[-1]["transport"] if lines else "<no-line>"
+    print(f"case={case} pre={pre} post={post} emitted={emitted} transport={transport}")
+
+    assert post == pre + 1, f"{case}: expected exactly one new line, got {post - pre}"
+    assert emitted == expected_emitted
+
+
+def test_an_arm_that_never_classified_writes_no_line(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    decision_log: Path,
+    inproc_env: dict[str, Path],
+) -> None:
+    """The counterpart that gives ``pre=N post=N+1`` its meaning.
+
+    The chain-cap arm returns BEFORE the classifier runs, so there is no verdict
+    to log. Without this case, a log that appended once per ``main()`` would
+    satisfy every assertion above while counting events the arm never decided —
+    and AC-12 would divide by the wrong denominator.
+    """
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 99, "last_proceed_ts": ""}), encoding="utf-8"
+    )
+    pre = len(_log_lines(decision_log))
+
+    _run_inproc(monkeypatch, _ac8_payload(tmp_path))
+
+    post = len(_log_lines(decision_log))
+    print(f"case=chain-cap pre={pre} post={post}")
+    assert post == pre
+
+
+@pytest.mark.parametrize(
+    ("case", "verdict", "expected_transport"),
+    [
+        ("model-decided", _PAUSE, "ok"),
+        ("manufactured", _TRANSPORT_PAUSE, "fail_closed"),
+    ],
+)
+def test_a_manufactured_pause_is_distinguished_from_a_decided_one(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    decision_log: Path,
+    case: str,
+    verdict: dict[str, Any],
+    expected_transport: str,
+) -> None:
+    """Both arrive as ``decision == "pause"``.
+
+    Scoring them together would make AC-12's defect rate partly a measurement of
+    the network. Parametrized rather than two asserts in one test on purpose: a
+    run stops at the first failed assert, so a single mutation could only ever
+    witness one of the two.
+    """
+    _patch_classify(monkeypatch, verdict)
+
+    _run_inproc(monkeypatch, _ac8_payload(tmp_path))
+
+    lines = _log_lines(decision_log)
+    transport = lines[-1]["transport"] if lines else "<no-line>"
+    print(f"case={case} lines={len(lines)} transport={transport}")
+    assert transport == expected_transport
+
+
+# ---------------------------------------------------------------------------
+# AC-9 — SD-5 keep-branch: the floor's limitation is PINNED, not hidden.
+#
+# SD-3 (a) keeps the arm, so the contentless floor stays. SD-5's keep-branch
+# requires its limitation to be recorded rather than quietly relied on. This
+# runs the real recorded traffic through the real floor and pins what comes out.
+# ---------------------------------------------------------------------------
+
+_LEDGER_117 = (
+    Path(__file__).resolve().parents[2]
+    / "benchmarks"
+    / "stop_classifier"
+    / "s280"
+    / "proceed-arm-ledger-117.txt"
+)
+
+#: `[  1] 07-21 12:51 66c14b68 <reason>` — index, date, time, session, reason.
+_LEDGER_ROW = re.compile(r"^\[\s*\d+\]\s+\S+\s+\S+\s+\S+\s+(.*)$")
+
+#: MEASURED at s282, not predicted: of the 117 recorded proceed fires the floor
+#: demotes exactly ONE ("Continue to the next work step"). The PLAN measured
+#: ~57% of those same 117 as defective, so the floor catches ~0.9% of the
+#: problem it sits in front of. That gap IS the limitation SD-5 ordered pinned.
+#:
+#: The AC's keep-branch names `demoted=0/24` over the 24 strings Code listed at
+#: s280. That list is not on disk, so the AC's own fallback applies — "if the
+#: list is unrecoverable, all 117" — and a different denominator gives a
+#: different number. This pins what was measured here, over the artifact that
+#: IS on disk.
+_EXPECTED_DEMOTED = 1
+
+
+def _ledger_reasons() -> list[str]:
+    rows = []
+    for line in _LEDGER_117.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        m = _LEDGER_ROW.match(line)
+        if m:
+            rows.append(m.group(1).strip())
+    return rows
+
+
+def test_floor_limitation_is_recorded_on_the_s280_ledger_strings() -> None:
+    """AC-9 (SD-5 keep). Pin how little the floor catches, against real traffic.
+
+    An EQUALITY, deliberately: a future floor edit that starts catching these
+    reddens here and earns a re-look, because widening the floor changes what
+    the agent is ordered to do and must not happen silently.
+    """
+    reasons = _ledger_reasons()
+    demoted = [r for r in reasons if _stop._reason_is_contentless(r)]
+    print(f"demoted={len(demoted)}/{len(reasons)} caught={[r for r in demoted]}")
+
+    # POSITIVE CONTROL on the parser: `demoted=N/0` would satisfy any equality
+    # on a count of zero. The ledger has 117 rows and every one must parse.
+    assert len(reasons) == 117, f"parsed {len(reasons)} of 117 ledger rows"
+
+    # POSITIVE CONTROL on the floor: a low `demoted` count is only evidence
+    # about the floor if the floor still demotes what it was built to demote.
+    # Without this, deleting `_META_REASON_TOKENS` entirely would pass.
+    assert _stop._reason_is_contentless("continue")
+    assert _stop._reason_is_contentless("ok")
+
+    assert len(demoted) == _EXPECTED_DEMOTED

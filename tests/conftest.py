@@ -104,6 +104,33 @@ class OutboundNetworkBlocked(BaseException):
 
 #: Loopback only. The suite legitimately talks to the disposable Postgres on
 #: localhost; everything else is off-box and therefore not "offline".
+@pytest.fixture(autouse=True)
+def _no_real_decision_log(tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Guarantee no test appends to the REAL Stop decision log (PLAN-0122 SD-4).
+
+    The log defaults to ``.claude/state/stop-decisions.jsonl`` — production
+    state, and the exact file AC-12 re-reads to compute the arm's defect rate.
+    A test writing there does not fail anything: the file is gitignored, so
+    nothing reddens, and the lines simply sit in the sample that a later
+    measurement treats as real traffic.
+
+    Measured, not hypothesised: the first run of the existing 131 stop-hook
+    tests appended **25 lines** to the real file before this fixture existed.
+    Only 9 of them mentioned a pytest tmp path, so "grep for pytest" would have
+    classified 16 as genuine traffic and left them in.
+
+    autouse, and here rather than in a per-test fixture, because that is the
+    socket: the hazard is a test that reaches production state WITHOUT being
+    wired to it deliberately, so the guard has to cover tests nobody thought to
+    wire. Same posture as ``_no_real_telegram`` and ``_no_outbound_network``.
+    A test that wants to assert on the log sets the variable itself; monkeypatch
+    ordering lets the narrower fixture win.
+    """
+    os.environ["CLAUDE_STOP_DECISION_LOG"] = str(
+        tmp_path_factory.mktemp("stop_decisions") / "stop-decisions.jsonl"
+    )
+
+
 _LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost", "0.0.0.0", ""})  # noqa: S104
 
 

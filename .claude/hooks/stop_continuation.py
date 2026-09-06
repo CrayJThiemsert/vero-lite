@@ -221,6 +221,60 @@ def _ping_telegram(message: dict[str, Any]) -> None:
         pass
 
 
+DEFAULT_DECISION_LOG_PATH = STATE_DIR / "stop-decisions.jsonl"
+
+
+def _decision_log_path() -> Path:
+    return Path(os.environ.get("CLAUDE_STOP_DECISION_LOG") or DEFAULT_DECISION_LOG_PATH)
+
+
+def _log_decision(
+    decision: dict[str, Any],
+    emitted: str,
+    depth: int,
+) -> None:
+    """Append ONE line per classifier verdict (PLAN-0122 SD-4 / AC-8).
+
+    Today the hook writes a depth counter and nothing else, so the arm Cray
+    chose to keep has no production instrument at all: the 117-fire ledger
+    existed only because blocked stops reach the transcript, on ~30-day
+    retention. Without this, the next review of the arm would again have no
+    counted evidence — the exact gap that left the proceed arm unadjudicated
+    by PLAN-0092.
+
+    `emitted` is what the agent actually received, which is NOT recoverable
+    from `decision` alone: a `proceed` verdict emits a block OR is demoted to
+    silence by the contentless floor, and a `dispatch` emits a Telegram
+    suggestion OR nothing when its metadata is malformed.
+
+    `transport` separates a pause the MODEL decided from one manufactured
+    after a failure — see `fail_closed` in `_sonnet_classifier`. Scoring those
+    together would make AC-12's defect rate a measurement of the network.
+
+    Never raises: an observability write must not be able to break the Stop
+    path it observes.
+    """
+    try:
+        path = _decision_log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(
+            {
+                "ts": _now_iso(),
+                "verdict": str(decision.get("decision") or ""),
+                "emitted": emitted,
+                "transport": "fail_closed" if decision.get("fail_closed") else "ok",
+                "reason": str(decision.get("reason") or ""),
+                "matched_rows": [str(r) for r in (decision.get("matched_rows") or [])],
+                "depth": depth,
+            },
+            ensure_ascii=False,
+        )
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(line + "\n")
+    except Exception as exc:  # observability must never break the arm it observes
+        print(f"stop_continuation: decision log write failed: {exc}", file=sys.stderr)
+
+
 def _classify(payload: dict[str, Any]) -> dict[str, Any]:
     """Dispatch to the Sonnet classifier with fail-closed pause.
 
@@ -233,10 +287,14 @@ def _classify(payload: dict[str, Any]) -> dict[str, Any]:
     try:
         from _sonnet_classifier import classify  # local import: tolerant to absence
     except ImportError as exc:
+        # `fail_closed` mirrors the helper's own `_pause`: these two wrapper
+        # pauses are manufactured by a failure, not decided by the model, and
+        # SD-4's log must not score them as correct model pauses.
         return {
             "decision": "pause",
             "matched_rows": [],
             "reason": f"classifier helper unavailable: {exc}",
+            "fail_closed": True,
         }
     try:
         return classify(payload)
@@ -245,6 +303,7 @@ def _classify(payload: dict[str, Any]) -> dict[str, Any]:
             "decision": "pause",
             "matched_rows": [],
             "reason": f"classifier raised unexpectedly: {exc}",
+            "fail_closed": True,
         }
 
 
@@ -557,11 +616,13 @@ def main() -> int:
                 "stop_continuation: demoted a contentless proceed reason to " f"pause: {reason!r}",
                 file=sys.stderr,
             )
+            _log_decision(decision, "demoted", chain["depth"])
             _reset_chain()
             return 0
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
+        _log_decision(decision, "block", chain["depth"])
         print(json.dumps(_proceed_block(reason)))
         return 0
 
@@ -582,6 +643,9 @@ def main() -> int:
         # for spurious noise.
         dispatch_meta = decision.get("dispatch")
         if not isinstance(dispatch_meta, dict):
+            # Malformed metadata stays silent, so `emitted` is "none" — the
+            # verdict was `dispatch` but the agent and Cray received nothing.
+            _log_decision(decision, "none", chain["depth"])
             _reset_chain()
             return 0
         matched_rows_raw = decision.get("matched_rows") or []
@@ -593,11 +657,13 @@ def main() -> int:
                 str(decision.get("reason", "")),
             )
         )
+        _log_decision(decision, "suggestion", chain["depth"])
         _reset_chain()
         return 0
 
     # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
     # chain so the next session starts fresh.
+    _log_decision(decision, "none", chain["depth"])
     _reset_chain()
     return 0
 

@@ -225,11 +225,34 @@ def _model() -> str:
     return os.environ.get("CLAUDE_SONNET_MODEL") or DEFAULT_MODEL
 
 
+#: Marks a pause this module MANUFACTURED after a failure, as opposed to one
+#: the model actually decided. Both arrive as ``decision == "pause"``, and
+#: without this key they are indistinguishable downstream — so SD-4's decision
+#: log would score every transport error as a correct model pause and AC-12's
+#: defect rate would be measuring the network.
+#:
+#: Set here rather than at the call sites because ``_pause`` is the single
+#: chokepoint: all eight failure paths route through it, while a genuine
+#: verdict is built by ``_parse_response`` and never touches this function.
+#: Prefix-matching on ``reason`` was the obvious alternative and is REFUTED by
+#: measurement — one site (``_pause(source_or_reason)``) passes a variable and
+#: has no fixed prefix at all, so a prefix rule would silently read that
+#: failure as a success.
+#:
+#: Additive by design: the contract test asserts
+#: ``set(result.keys()) >= {"decision", "matched_rows", "reason"}`` — a
+#: SUPERSET, so extra keys are allowed and the 49 existing ``classify()`` tests
+#: are unaffected. This touches response handling only; prompt construction is
+#: untouched, so the measured held-out scores still describe the shipped arm.
+FAIL_CLOSED_KEY = "fail_closed"
+
+
 def _pause(reason: str, matched: list[str] | None = None) -> dict[str, Any]:
     return {
         "decision": DECISION_PAUSE,
         "matched_rows": matched or [],
         "reason": reason,
+        FAIL_CLOSED_KEY: True,
     }
 
 
