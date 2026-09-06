@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-09-06T09:05:00+07:00
-session: 280
-current_batch: "s280 — FOUR PRs (#1404–#1407): PLAN-0122 drafted, ratified, Steps 0+1 merged. The Stop hook's proceed arm counted at ~57% defective over 47 days; two harness defects closed with controls."
+last_updated: 2026-09-06T16:20:00+07:00
+session: 281
+current_batch: "s281 — THREE PRs (#1408–#1410): PLAN-0122 Steps 2+3. SLIM5 shipped, then held-out validation FAILED AC-7 (2 unsafe) and Cray reverted it; the incumbent FULL prompt is what runs today."
 current_actor: code
-blocked_on: "Step 2 is blocked on SD-1 — RESOLVED BY ENTAILMENT (a), NOT TYPED by Cray; confirm before Steps 2/4. #1404–#1407 all merged, 0 open; only this reconcile is open."
-next_action: "Confirm SD-1 with Cray, then PLAN-0122 Step 2 (SLIM5 becomes STOP_SYSTEM_PROMPT; `_build_system_prompt(..., event)` returns it + strict suffix on Stop), then Step 3 (held-out live; needs a §8 go)."
-head_commit: 7138cc0
-recent_commits: [7138cc0, 32b0ca2, 3aec1d0, 20035fd, 1daf3f0, 8668802, bdf2666, 7fddc7f, d1aa692, 2e7f3cf]
+blocked_on: "Nothing blocking — #1408–#1410 all merged, 0 open, tree clean; only this reconcile is open."
+next_action: "PLAN-0122 Step 4 = SD-3 (a) keep-as-repaired applied to FULL, not SLIM5; no remaining step ships SLIM5. A further prompt attempt is a fresh Cray call, on SEPARATE tune/validate corpora."
+head_commit: fc01cd0
+recent_commits: [fc01cd0, 15bda8b, 074146a, 8bdd180, b30dec0, c8ea099, 7138cc0, 32b0ca2, 3aec1d0, 20035fd]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,54 @@ recent_commits: [7138cc0, 32b0ca2, 3aec1d0, 20035fd, 1daf3f0, 8668802, bdf2666, 
 ---
 
 ## Current Focus
+
+> **Session 281, 2026-09-06 (`7138cc0` → `fc01cd0`) — THREE PRs
+> ([#1408](https://github.com/CrayJThiemsert/vero-lite/pull/1408)–[#1410](https://github.com/CrayJThiemsert/vero-lite/pull/1410)),
+> all merged, 0 open, tree clean. What it established: SLIM5 — the prompt s280
+> measured at 42/49 IN-SAMPLE and shipped — was REFUTED on data it had never
+> seen and Cray reverted it. The arm running today is the INCUMBENT full prompt:
+> a success of the method, a failure of the candidate.**
+>
+> ✅ **Step 2 shipped SLIM5 (#1409)** — `STOP_SYSTEM_PROMPT` = the measured
+> bytes, sha-pinned; `_build_system_prompt(..., event=None)` returned SLIM5 on
+> `Stop`, legacy otherwise. AC-4/5/6 ticked; battery `claims 189 · RED 12 ·
+> exempted 177 · GAPS 0 · PASS`.
+>
+> 🔴 **Step 3 (#1410) measured it OUT-OF-SAMPLE and it lost.** 30 held-out
+> `gold.yaml` cases, one pass per arm, `gpt-oss:20b` on MS-S1 under a typed §8
+> go, warm call excluded, **neither arm re-run after its score was seen**:
+> **FULL 29/30 correct · 0 unsafe · 29/30 delivered** vs **SLIM5 28/30 · 2
+> unsafe · 30/30 delivered** (`pause-destructive-db`, `pause-plan-status-flip`);
+> controls `always-pause` 19/30 and `always-proceed` 8/30 both reproduced their
+> pre-committed values. AC-7's read was fixed BEFORE the run and **two of three
+> conjuncts FAILED** — `28 > 19` true, `unsafe == 0` FALSE, `28 >= 29` FALSE.
+> **AC-7 is NOT ticked.**
+>
+> 🔴 **The in-sample result INVERTED.** SLIM5 led **42/49 to 16/49 on the 49
+> cases it was TUNED against**; on 30 unseen ones the incumbent is ahead on
+> correctness and strictly better on safety, and both SLIM5 misses run the
+> dangerous way — `proceed` on a should-pause case, one a destructive DB
+> operation. PLAN-0122 §9 named the risk. Not argued away: SLIM5 delivered 30/30
+> to FULL's 29/30, but under the PARITY ruling a lost call is a pause, so FULL's
+> timeout costs a turn, never safety — and its 29/30 is that arm's FIRST honest
+> score, on the repaired harness, not the void `19/20`.
+>
+> ✅ **The revert (Cray, typed).** `classify()` no longer passes the event; every
+> arm gets the legacy prompt. **KEPT:** harness repair, sha-pinned constant,
+> AC-5/AC-6 tests, battery, the `event` seam. **ADDED:**
+> `test_stop_arm_is_not_slim5_until_ac7_passes` (probe P4d redefined to witness
+> it); battery after: `claims 191 · RED 12 · exempted 179 · GAPS 0 · PASS`.
+>
+> ⚠️ **A trap for whoever is next:** `.claude/autonomy-triggers.md` is fed
+> VERBATIM into the legacy prompt, so editing it — even only to annotate the
+> void `19/20` it still quotes — changes the FULL prompt and **voids the 29/30
+> that justifies today's configuration**. Never documentation-only.
+>
+> ⚠️ Two doc defects the `goal-evaluator` caught, both fixed in #1410: the typed
+> revert lived **in code comments only** while the PLAN still framed it as open,
+> and the s280 README still said *"No held-out numbers"* in the directory that
+> now holds them. Gate on `fc01cd0` all clean; **pytest 4917 passed, 8 skipped**;
+> CI `gate: pass` on both heads. Detail: `docs/plans/0122-*.md` Step 3.
 
 > **Session 280, 2026-09-05..06 (`af0eca0` → `7138cc0`) — FOUR PRs
 > ([#1404](https://github.com/CrayJThiemsert/vero-lite/pull/1404)–[#1407](https://github.com/CrayJThiemsert/vero-lite/pull/1407)),
@@ -133,54 +181,7 @@ recent_commits: [7138cc0, 32b0ca2, 3aec1d0, 20035fd, 1daf3f0, 8668802, bdf2666, 
 > first commit — the repo's own tooling editing a closed-incident pin. Now
 > excluded via `^tests/.*/fixtures/`.
 
-> **Session 278, 2026-09-04 (`8859c27` → `095c419`) — SEVEN PRs
-> ([#1392](https://github.com/CrayJThiemsert/vero-lite/pull/1392)–[#1398](https://github.com/CrayJThiemsert/vero-lite/pull/1398)),
-> six merged. What it established: a closure claim repeated by two artifacts is still
-> one claim — and the evidence for every AC tick in this repo was untracked by
-> default, which is why nobody could check it.**
->
-> 🔴 **"9 of 11 closed" was wrong; SEVEN were earned.** The s277 handoff and this file
-> both asserted nine. Measured against PLAN-0120's own bar — *no AC box is ticked
-> before its probe(s) report WITNESSED* — **AC-1**'s shipped test read the env var
-> directly, witnessing the marker **arriving**, never its second conjunct that it
-> **changes the database**; its declared **probe 1b had never run**. **AC-2**'s claim
-> was an **exemption**, not a witness. ✅ **Cray ruled route (ก), typed:** write the
-> tests the ACs specify rather than relax the ACs. #1394 did — probes 1b/1c/2 all
-> WITNESSED. 🔴 **Probe 2 refuted the PLAN's own prediction** (it reddens the
-> inequality, not the equality); that equality is a **co-moving agreement claim** and
-> is exempted with that reason.
->
-> 🔴 **The battery definitions were in `/tmp`, tracked nowhere.** PLAN-0120 Step 5
-> demanded they travel with the report *citing PLAN-0117 for skipping it* — then it
-> was skipped again. The s278 audit worked only because four `/tmp` files survived.
-> **Four independent specialist reviews of an unrelated question each escalated this
-> unprompted, ahead of what they were asked.** #1395 commits seven definitions to
-> `tests/batteries/` with the convention, and PLAN-0120 gains a machine-addressable
-> `**Batteries:**` line.
->
-> 🔴 **Committing them exposed a gap in THIS session's own ticks.** #1396: AC-7's
-> artifact (a) and AC-8's cross-file pin sat in **no** battery's `claim_sources`, and
-> declared **probe 8c had never run** — so `PROBE-COVERAGE: COMPLETE` was computed over
-> a denominator excluding them, and both were ticked on that reading hours earlier.
-> Closed by two new batteries rather than by unticking, route (ก) again. **Ledger 0 → 8
-> of 11**, now evidenced.
->
-> ✅ **The join is mechanised (#1397).** `check_ac_consistency` **Check 3** fails a
-> ticked AC whose artifact module is in no battery, fails a PLAN that binds ticks to
-> probes and names none, and treats an empty `**Batteries:**` glob as an **error, never
-> a skip**. Module-level by measurement: a probe-id join recovers **37%** and would
-> raise 12 false alarms of 19. Two of its own false positives were measured and fixed
-> before shipping, and are now regression tests. Witnessed by six probes on its own
-> tests — including the **over-fire** direction, since a guard that accuses correct
-> work gets silenced too.
->
-> ✅ **#1398 homed what had no home:** R6 gains where a rotation payload comes from
-> (`git show HEAD:`, not a subagent's paste) and a pre-append present-once check with a
-> positive control — the second a **precedence correction**, since the derived skill
-> already carried it and its canonical did not. Lesson **#0047** gains the addendum
-> with its ADR-0038 tally. A proposed third finding was **dropped on the evidence**.
-
-_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1d-current-focus.md`](status-archive/2026-h1d-current-focus.md). Window = **278, 279, 280** — THREE. 🔴 **THIS (s280) reconcile rotates the session-276-277 block** (caller-measured **3,660 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **59,218 B** — **6,318 B** under R1 — and a fourth block would have left ~2.2 KB, the same rule the s279 reconcile rotated on at 4,041 B. The window lands at **THREE** again (278, 279, 280), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **deliberate; no block was lost**; the s280 block was written under the cap from the start. 🔴 **This ledger's own s276-277 entry is NOT re-appended — probed and found ALREADY in the archive verbatim** (count 1, against a positive control), having travelled inside the s278 rotation, so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **59,218 → 57,638 B**; CF archive **185,073 → 189,622 B (+4,549)**, the block **3,659 B** carved from `git show HEAD:`, present-once verified by **DELTA** (pre=0 post=1) with absence-from-STATUS checked separately. ⚠️ **CF archive headroom is now 6,986 B under R4's 196,608 B split trigger — the next reconcile or two must open `2026-h1e-current-focus.md`.** 🔴 **THIS (s279) reconcile rotates the session-274-275 block** on **BOTH** rules — a fourth block entered a three-wide window **and** it measured **7,577 B, 85% over** the 4,096 B per-block cap (caller-measured); the new block was written under the cap at **~3.9 KB**. 🔴 **This ledger's own s269-273 and s274-275 entries rotate with it**, probed against the archive with a positive control: the **s269-273** entry is **present verbatim** (it travelled inside the s275 slice) and is **not** re-appended; the **s274-275** entry is **absent** — only the archive's `## Rotated at the session-275 reconcile` header records it — so it travels to the caller. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.** 🔴 **This reconcile rotated a THIRD block** (**s269-273**, 3,294 B) when the s278 block entered: the file had drifted back to 4,041 B of headroom, and holding the window at four would have left under 3.6 KB. Rotated on the **headroom rule**, not a cap overage — all four blocks measured under 4,096 B (2,819 / 3,660 / 3,785 / 3,294).]_
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md) — `2026-h1d-current-focus.md` is CLOSED to appends at **189,622 B**. Window = **279, 280, 281** — THREE. 🔴 **THIS (s281) reconcile rotates the session-278 block** (caller-measured **3,270 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **57,638 B**, **7,898 B** under R1, and a fourth block would have left ~4 KB. The window lands at **THREE** again (279, 280, 281) — deliberate; no block was lost. 🔴 **The chain OPENS A NEW LETTER — the block goes to `2026-h1e-current-focus.md` (NEW FILE)**: `h1d` is CLOSED at 189,622 B, since +3,270 B would reach **192,892 B**, essentially where `h1c` closed (**193,007 B**). 🔴 **This ledger's own s278 entry is NOT re-appended — probed and found ALREADY in `2026-h1d-current-focus.md` verbatim** (count 1, against a positive control run on h1d because an empty new file cannot control anything), having travelled inside the s278 rotation's own slice, so R4's move duty is discharged. **Second consecutive reconcile this shape has fired** — treat a rotating block's ledger entry as PROBABLY already archived and probe before appending, never after. ✅ **Caller-measured:** STATUS **57,638 → 59,342 B**; `h1e` created at **5,968 B** (the block 3,269 B as carved — the 3,270 B above counts the blank separator line — plus its header); `h1d` **CLOSED** at **190,011 B** after its own banner edit, per the s227 precedent that a closing chain file rewrites its own header. Present-once verified by **DELTA** (pre=0 post=1), absence-from-STATUS checked separately. 🔴 **THIS (s280) reconcile rotates the session-276-277 block** (caller-measured **3,660 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **59,218 B** — **6,318 B** under R1 — and a fourth block would have left ~2.2 KB, the same rule the s279 reconcile rotated on at 4,041 B. The window lands at **THREE** again (278, 279, 280), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **deliberate; no block was lost**; the s280 block was written under the cap from the start. 🔴 **This ledger's own s276-277 entry is NOT re-appended — probed and found ALREADY in the archive verbatim** (count 1, against a positive control), having travelled inside the s278 rotation, so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **59,218 → 57,638 B**; CF archive **185,073 → 189,622 B (+4,549)**, the block **3,659 B** carved from `git show HEAD:`, present-once verified by **DELTA** (pre=0 post=1) with absence-from-STATUS checked separately. ⚠️ **CF archive headroom is now 6,986 B under R4's 196,608 B split trigger — the next reconcile or two must open `2026-h1e-current-focus.md`.** 🔴 **THIS (s279) reconcile rotates the session-274-275 block** on **BOTH** rules — a fourth block entered a three-wide window **and** it measured **7,577 B, 85% over** the 4,096 B per-block cap (caller-measured); the new block was written under the cap at **~3.9 KB**. 🔴 **This ledger's own s269-273 and s274-275 entries rotate with it**, probed against the archive with a positive control: the **s269-273** entry is **present verbatim** (it travelled inside the s275 slice) and is **not** re-appended; the **s274-275** entry is **absent** — only the archive's `## Rotated at the session-275 reconcile` header records it — so it travels to the caller. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**]_
 
 
 ## Prior focus (archived)
@@ -200,6 +201,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-09-06 | **s281 — THREE PRs (#1408–#1410): PLAN-0122 Steps 2+3 — SLIM5 shipped, then REFUTED on 30 HELD-OUT cases and REVERTED (Cray, typed).** **FULL 29/30, 0 unsafe** vs **SLIM5 28/30, 2 unsafe** — both misses the dangerous way, one a destructive DB op. 🔴 **AC-7 failed two of its three conjuncts and is NOT ticked.** The 42/49 headline was **IN-SAMPLE** on the 49 tuned cases and **inverted** out of sample; FULL's 29/30 is its first honest score. The Stop arm runs the **incumbent** prompt — KEPT: harness repair, sha-pinned constant, `event` seam, plus a new guard test. | `fc01cd0` / [#1409](https://github.com/CrayJThiemsert/vero-lite/pull/1409) / [#1410](https://github.com/CrayJThiemsert/vero-lite/pull/1410) / `docs/plans/0122-*.md` · `benchmarks/stop_classifier/s280/RESULTS.md` |
 | 2026-09-06 | **s280 — FOUR PRs (#1404–#1407): PLAN-0122 drafted, ratified and Steps 0+1 merged; the Stop hook's proceed arm is ~57% defective over 47 days, counted for the first time.** Two harness defects closed WITH controls — a label leak (`leak_pre=79 leak_post=0`) and a transport divergence (`pre=75 post=3`) — lifting the same model, nothing else changed, from 16/49 to **42/49, 0 unsafe, 49/49 delivered**. ⚠️ **IN-SAMPLE** (one pass, temp 0, tuned on the same 49 cases). 🔴 **SD-1 is resolved by ENTAILMENT, not typed — Step 2 is BLOCKED**, and Step 2.3's `.claude/hooks/*` edit is expected to hit G20. | `7138cc0` / [#1406](https://github.com/CrayJThiemsert/vero-lite/pull/1406) / [#1407](https://github.com/CrayJThiemsert/vero-lite/pull/1407) / `docs/plans/0122-*.md` · `benchmarks/stop_classifier/s280/` |
 | 2026-09-05 | **s279 — FOUR PRs (#1399–#1402): PLAN-0121 executed end to end — a cut-off pytest child now reports `ABORTED`, not `GREEN`, naming rc, the child's last line and which of two layers decided. 8 of 8 ACs WITNESSED (16 probes, `GAPS: 0`); suite 4876 → 4901.** 🔴 **Six PLAN premises fell to measurement, none to review** — chiefly AC-1's probe **P1 could not redden**, fixed by distinct lead clauses + a conjunction read + AC-5's P9. ✅ **Cray ruled, typed:** `CLAUDE.md` §7 beats the harness's `Co-Authored-By` instruction — no trailer; AI assistance in the commit body. | `af0eca0` / [#1400](https://github.com/CrayJThiemsert/vero-lite/pull/1400) / [#1402](https://github.com/CrayJThiemsert/vero-lite/pull/1402) / `docs/plans/0121-probe-battery-contention-legibility.md` · `tests/batteries/plan-0121-*.json` |
 | 2026-09-04 | **s278 — SEVEN PRs (#1392–#1398): the "9 of 11 closed" claim did NOT survive audit (seven earned), and committing the battery definitions then exposed a gap in s278's own ticks.** 🔴 **AC-1**'s test witnessed the marker *arriving*, not that it *changes the database*; its **probe 1b had never run**. **AC-2**'s claim was an **exemption**. ✅ Cray ruled **route (ก)** — write the tests the ACs specify; probes 1b/1c/2 WITNESSED, **ledger 0 → 8 of 11**. 🔴 The definitions lived only in `/tmp` though Step 5 demanded otherwise **citing the previous skip**; committed to `tests/batteries/`, which immediately showed AC-7/AC-8 sitting outside every denominator. ✅ **Check 3** now joins PLAN to battery mechanically; R6 + #0047 amended. | `095c419` / [#1395](https://github.com/CrayJThiemsert/vero-lite/pull/1395) / [#1397](https://github.com/CrayJThiemsert/vero-lite/pull/1397) / `tests/batteries/README.md` |
@@ -209,9 +211,8 @@ than restated: the Active TODO owns that status.]_
 | 2026-09-03 | **s269–273 — TWELVE PRs (#1357–#1370): PLAN-0118 COMPLETE 6/6 and archived; the empty-body failure is MEASURED as the `num_predict` cap, and it is the CALL PATH, not the model.** 45 of 45 empty attempts carry `done_reason=length` with `eval_count` 1024 across three arms, and both Qwen arms are **worse** than `gpt-oss` (74% / 75% vs 53%). 🔴 **Three of Code's own claims were withdrawn on re-measurement** (#1370) — `eval_count` was never broken, the arithmetic was Code's; the reasoning-ate-the-budget mechanism is unsupported; a second-segment budget is CONTESTED and open. ✅ The three subagent write guards are live and witnessed (#1362/#1363), marked `was an error` (#1366). | `8ac17f5` / [#1369](https://github.com/CrayJThiemsert/vero-lite/pull/1369) / `docs/plans/done/0118-intake-extraction-benchmark.md` · `benchmarks/intake_extraction/RESULTS.md` · Lesson #0057 · ADR-0018 §Amendment |
 | 2026-09-01 | **s267 tail + s268 — EIGHT PRs (#1348–#1355): three are one lesson — a claim is only as good as the surface its consumer reads.** 🔴 **The `llm_assist` gate advisory is DO-NOT-WIRE** — the model's whole input is `" ".join(reasons)`, already on the approver's screen, and `detail.narrative` has **one writer, zero readers**; #1349's rubric, ruled that morning, scored a position #1352 cut that night. Offline, **§8 go UNUSED**. ✅ **PLAN-0118 drafted (#1353), five SDs RULED (#1354), Steps 1–2 shipped (#1355)** — 11 intake cases, 8 scored. 🔴 The Step-2 authoring check was **vacuous by construction** (8 of 8 → honest **4 of 8**). | `a0b743b` / [#1352](https://github.com/CrayJThiemsert/vero-lite/pull/1352) / [#1355](https://github.com/CrayJThiemsert/vero-lite/pull/1355) / `benchmarks/model_compare/DECISION.md` §5a-RESULT |
 | 2026-09-01 | **s267 — FOUR PRs (#1343–#1346): two published numbers were measuring the apparatus.** 🔴 **A p95 below 20 samples IS the sample maximum** — nearest-rank `ceil(0.95n)` = `n` for `n < 20`, so the n=14 procedure bar and the NL lane published maxima under a percentile's name in **every run ever made**; fixed at the reporting layer (`tail_s`/`tail_label`), 4 call sites, NL half previously untested. 🔴 **`think_off` costs rationale quality** — qwen q4 `fleet`: `full` 7/14 · `think_off` 4/14 · `skip` 5/14, control-gated; `names_amount` still **inverts** the ratified bar, now inside one model. Batteries 11/11 WITNESSED. | `8843000` / [#1344](https://github.com/CrayJThiemsert/vero-lite/pull/1344) / [#1346](https://github.com/CrayJThiemsert/vero-lite/pull/1346) / `benchmarks/model_compare/RESULTS-1.6.md` |
-| 2026-08-31 | **s265-266 — TWELVE PRs (#1329-#1340): PLAN-0117 EXECUTED and its experiment MEASURED.** `Vendor` 3 to 12 properties in two ruled bands; all 9 ACs closed, 16 of 16 WITNESSED. The AFTER run on MS-S1 (typed §8 go) shows the unlock **usable** (supplier band gpt-oss 1 of 3, qwen 3 of 3) and **zero harm** — `fl-01`..`fl-10` identical to BEFORE case-for-case on both models despite a +56% prompt. 🔴 The s265 handoff's `fl-03` discriminator claim is **RETIRED by measurement** (`truck_class` gained no synonyms). 🔴 **OPEN:** whether `fl-21` and `fl-22` should score the answer or the query shape. | `docs/plans/done/0117-fleet-ontology-supplier-evaluation-facts.md` · `benchmarks/nl_query_feasibility/RESULTS.md` · [#1335](https://github.com/CrayJThiemsert/vero-lite/pull/1335) · [#1337](https://github.com/CrayJThiemsert/vero-lite/pull/1337) |
 
-_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's own window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **278, 279, 280** — three, matching the Current-Focus window. The oldest row (**s264**) rotated to `2026-h1-status.md` at THIS (s280) reconcile — one row entered, so one left to hold the table at ten, on the **count rule alone**; its substance keeps the home the row itself names (`benchmarks/procedure_baseline/grader.py`), **read off the row, not re-grepped here**, so `asserted-not-verified`. Also rotated under the R2 completed-row carve-out: **one `[x]` TODO row** (PLAN-0121, complete at s279, homed at `docs/plans/0121-*.md`). 🔴 **All three were probed SEPARATELY and all three appended** — each absent (count 0) against three positive controls, one of them proving the method finds a known-archived ledger entry, so the s278 FALSE-NEGATIVE shape did not recur. ✅ **Caller-measured:** base archive **151,590 → 157,226 B (+5,636)** — s264 row 927 B, the completed PLAN-0121 TODO row 917 B, the three ledger entries 2,795 B; present-once verified by **DELTA** (pre=0 post=1 each), absence-from-STATUS separate. 🔴 **The s264 row has a SIBLING already archived at s279** — probe this file at ~120 characters; a 21-character needle matches the sibling and reads as a false duplicate. The oldest row (**s263**) rotated to the same file at THIS (s278) reconcile on the **count rule alone**; caller-measured. Its substance keeps the home the row itself names — `benchmarks/model_compare/RESULTS-1.6.md` — read off the row, not re-grepped here, so `asserted-not-verified`.]_
+_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's own window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md). Window = **279, 280, 281** — three, matching the Current-Focus window. 🔴 **THIS (s281) reconcile rotates the oldest row (s265-266)** to `2026-h1-status.md` on the **count rule alone** — one row entered, so one left to hold the table at ten. Its substance keeps the home the row itself names (`docs/plans/done/0117-*.md` · `benchmarks/nl_query_feasibility/RESULTS.md`), read off the row and not re-grepped here, so `asserted-not-verified`. **No `[x]` TODO row rotated — the section holds none.** 🔴 **This ledger's own s278 entry was probed absent and appended**; the Current-Focus ledger's s278 entry was probed and found ALREADY archived, so it was NOT re-appended — the two ledgers' entries did not share a fate, which is why each is probed separately rather than as one blob. ✅ **Caller-measured:** base archive **157,226 → 158,953 B (+1,727)** for the s265-266 row (869 B) and that ledger entry (289 B), both carved from `git show HEAD:`, present-once by **DELTA** (pre=0 post=1 each) with the 157,226 B prefix proven byte-identical afterwards. **No `[x]` TODO row rotated: the section holds zero.** The oldest row (**s264**) rotated to `2026-h1-status.md` at THIS (s280) reconcile — one row entered, so one left to hold the table at ten, on the **count rule alone**; its substance keeps the home the row itself names (`benchmarks/procedure_baseline/grader.py`), **read off the row, not re-grepped here**, so `asserted-not-verified`. Also rotated under the R2 completed-row carve-out: **one `[x]` TODO row** (PLAN-0121, complete at s279, homed at `docs/plans/0121-*.md`). 🔴 **All three were probed SEPARATELY and all three appended** — each absent (count 0) against three positive controls, one of them proving the method finds a known-archived ledger entry, so the s278 FALSE-NEGATIVE shape did not recur. ✅ **Caller-measured:** base archive **151,590 → 157,226 B (+5,636)** — s264 row 927 B, the completed PLAN-0121 TODO row 917 B, the three ledger entries 2,795 B; present-once verified by **DELTA** (pre=0 post=1 each), absence-from-STATUS separate. 🔴 **The s264 row has a SIBLING already archived at s279** — probe this file at ~120 characters; a 21-character needle matches the sibling and reads as a false duplicate.]_
 
 ## In-Flight Discussions
 
@@ -223,7 +224,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Active TODOs
 
-- [ ] **🆕 PLAN-0122 (Stop-hook classifier prompt repair) — `Accepted`; Steps 0+1 MERGED (#1406/#1407), Step 2 NOT started.** 🔴 **Blocked: SD-1 is resolved by ENTAILMENT, not typed** — *(a) ship SLIM5 byte-identical, Stop-only, sha-pinned, conditioned on AC-7 passing first* follows from SD-2 + SD-3, but Cray never typed it and anything narrower changes Steps 2 **and** 4. ⚠️ Step 2.3 must edit `.claude/hooks/*`, which the auto-mode classifier (G20) is expected to **DENY** — the PLAN forbids routing around it. ⚠️ Step 3 (held-out live validation) needs a typed §8 go, and the 86% headline is **IN-SAMPLE** (§9). ⚠️ PLAN-0121 is complete but still `Draft` in `docs/plans/` — its closeout `git mv` has not run. **Read:** `docs/plans/0122-*.md`.
+- [ ] **🆕 PLAN-0122 (Stop-hook classifier prompt repair) — `Accepted`; Steps 0–3 EXECUTED (#1406–#1410); AC-4/5/6 ticked, 🔴 AC-7 FAILED and is NOT ticked.** The held-out run refuted SLIM5 out of sample (FULL 29/30 / 0 unsafe vs SLIM5 28/30 / **2 unsafe**), so it was **REVERTED (Cray, typed)** — the Stop arm runs the incumbent prompt. **Step 4 = SD-3 (a) keep-as-repaired applied to FULL; no remaining step ships SLIM5**, and a further attempt is a fresh Cray call needing SEPARATE tune/validate corpora. ⚠️ Editing `.claude/autonomy-triggers.md` voids the 29/30 — it feeds the live prompt verbatim. ⚠️ PLAN-0121 is complete but still `Draft` — its closeout `git mv` has not run. **Read:** `docs/plans/0122-*.md`.
 - [ ] **🆕 PLAN-0120 (goal-gate test-database isolation) — `Draft`; Steps 0–4 MERGED, AC ledger **8 of 11** and now evidenced (s278).** 🔴 The s277 claim of nine did not survive audit, and **AC-7/AC-8's first s278 tick was itself premature** — their artifacts sat in no battery's `claim_sources` until #1396. Both closed by new batteries, not by unticking. **Remaining: AC-1's live WSLENV half + AC-10 (Step 7, one pass), and AC-9 (Step 5).** ⚠️ AC-9's pass read is coupled to PLAN-0121 SD-2's `ABORTED`. **Read:** `docs/plans/0120-*.md` and `tests/batteries/README.md`.
 - [ ] **🆕 PLAN-0119 (five-class local-model serving policy: Gate / Structure / Judge / Narrate / Author) — `Draft`, all NINE SDs RULED (Cray, typed, s274) + three factual defects corrected; nothing scheduled.** Its FIRST work is the **offline instrument repair**, before any further live run: the benchmark recorder drops `load_duration` and `prompt_eval_duration` that `CallMetrics` already computes, and there is no flag to set a cap at all. ⚠️ Ruled-but-unscheduled is exactly the drift the PLAN-0116 row below exists to stop. **Read:** `docs/plans/0119-*.md`.
 - [ ] **🆕 CRAY'S CALL — core `Counterparty` promotion: DEFERRED by the SD-2 SPLIT (s265); needs its own ADR (formally reopening ADR-0033 D6) + PLAN.** Not rejected — split off PLAN-0117 so a generator-mechanism change never rides a 5-property YAML edit. 🔴 Structural blocker: `_ORM_COMMITTED_DEST` routes namespace→ONE file and `emit_orm` takes one output path (`code_generator.py:900-914,936-938`) — a second core object type needs per-object-type routing first. Bill: 2 committed files + an alembic migration (CI `alembic check` reddens without it) + 3 tooling gaps (pre-commit glob skips `ontology/`; no `vero-lite generate core`; stale runbook `ontology-migration-autogenerate.md:11-13`). ⚠️ The future work must NOT delete fleet's `Vendor` (`test_golden_e2e.py:344`). Shape lean: `core.Counterparty` = `counterparty_id`+`name` only, HAS-A via `ref` — the DSL has NO inheritance. **Read:** PLAN-0117 § Out of Scope (deferred-core record).
@@ -269,7 +270,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Next Steps
 
-> **Immediate next action is confirming SD-1 with Cray** — PLAN-0122 Step 2 is blocked on it — then **Step 2**: `STOP_SYSTEM_PROMPT` becomes the SLIM5 bytes, `_build_system_prompt(registry, *, strict=False, event=None)` returns SLIM5 + the strict suffix when `event == "Stop"` and the legacy prompt otherwise, and `classify()` passes the event. **Step 3** then runs held-out live validation, which needs a Cray host-state go (SD-2 ruled validation BEFORE shipping). ⚠️ Step 2.3 edits `.claude/hooks/*` and G20 is expected to DENY — surface it, do not route around. **Independent alternative, blocking nothing: PLAN-0120 Step 5** (AC-9) and **Step 7** (AC-1's live WSLENV half + AC-10, one pass); PLAN-0119's offline instrument repair stays the queued follow-on. ⚠️ Housekeeping: PLAN-0121 is complete (8 of 8, s279) but still `Status: Draft` in `docs/plans/` — the closeout `git mv` to `done/` has not run. The items below are the long-horizon register and none of them gates it.
+> **Immediate next action is PLAN-0122 Step 4 — SD-3 (a) *keep as repaired*, applied to the INCUMBENT FULL prompt, not SLIM5.** Steps 0–3 are executed; AC-7 **failed** on held-out data (SLIM5 28/30 with **2 unsafe** vs FULL 29/30 / 0 unsafe), SLIM5 was reverted, and the PLAN as written has **no remaining step that ships it**. Whether to attempt a further prompt is a **fresh Cray decision**, and it would need tuning and validation on **separate** corpora. ⚠️ `.claude/autonomy-triggers.md` is fed verbatim into the live prompt — any edit, even annotating the void `19/20` it quotes, voids the 29/30 and owes its own re-measurement. **Independent alternative, blocking nothing: PLAN-0120 Step 5** (AC-9) and **Step 7** (AC-1's live WSLENV half + AC-10, one pass); PLAN-0119's offline instrument repair stays the queued follow-on. ⚠️ Housekeeping: PLAN-0121 is complete (8 of 8, s279) but still `Status: Draft` in `docs/plans/` — the closeout `git mv` to `done/` has not run. The items below are the long-horizon register and none of them gates it.
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework, mapping layer, ORM emitter, base-Postgres → the custom-Postgres image, registry discovery). _[Corrected s153: dropped the stale "→ ADR-011+" and "→ PLAN-002 (≥ADR-014)" pointers — **ADR-011 does not exist** (earmark only, per the Active TODO above) and **PLAN-002 was never drafted** with its ADR floor moot; each item's corrected status lives in Active TODOs.]_
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
