@@ -16,7 +16,9 @@ from pathlib import Path
 import pytest
 
 from tools.check_plan_archive_refs import (
+    CORPUS_MARKER,
     EnumerationError,
+    corpus_files,
     find_violations,
     has_moved,
     is_exempt,
@@ -257,6 +259,75 @@ def test_tracked_files_lists_a_real_repo(tmp_path: Path) -> None:
 
 
 # --- non-vacuity of the repo's own clean state -----------------------------
+
+
+# --- corpus registration tripwire ------------------------------------------
+#
+# Why this exists: EXEMPT_PREFIXES is FILE-scoped by design, and a file-scoped
+# allowlist goes stale in SILENCE. `gold_s280.yaml` was split out at s280 and
+# nobody registered it; the miss surfaced at s282 as an R8 failure inside an
+# unrelated PLAN-0121 closeout PR. These make the staleness fail LOUDLY, at the
+# commit that adds the corpus, naming the file.
+
+
+def _corpus(body_note: str) -> str:
+    """A minimal file that `run_eval.py` would accept as a gold corpus."""
+    return (
+        "cases:\n"
+        "  - id: some-case\n"
+        "    expected: pause\n"
+        f"    {CORPUS_MARKER}:\n"
+        "      - role: assistant\n"
+        f"        text: {body_note}\n"
+    )
+
+
+def test_a_new_corpus_file_is_reported_unregistered(repo: Path) -> None:
+    rel = "benchmarks/stop_classifier/gold_s999.yaml"
+    _write(repo, rel, _corpus("about to git mv the PLAN reference into done/"))
+    registered, unregistered = corpus_files(repo, [Path(rel)])
+    assert unregistered == [rel]
+    assert registered == []
+
+
+def test_an_exempt_corpus_file_is_reported_registered(repo: Path) -> None:
+    """The positive half: registration is what moves a file between the lists."""
+    rel = "benchmarks/stop_classifier/gold.yaml"
+    _write(repo, rel, _corpus("simulated turn"))
+    registered, unregistered = corpus_files(repo, [Path(rel)])
+    assert registered == [rel]
+    assert unregistered == []
+
+
+def test_a_yaml_without_the_marker_is_not_a_corpus(repo: Path) -> None:
+    """Discriminator: the marker, not the directory, is what makes a corpus.
+
+    Without this, `corpus_files` could be a directory rule wearing a content
+    rule's clothes, and every non-corpus YAML added beside a gold set would
+    demand a pointless exemption.
+    """
+    rel = "benchmarks/stop_classifier/thresholds.yaml"
+    _write(repo, rel, "timeout_s: 120\ncap: 16384\n")
+    assert corpus_files(repo, [Path(rel)]) == ([], [])
+
+
+def test_the_real_repo_has_every_corpus_registered() -> None:
+    """The tripwire itself, asserted against the tree this ships with.
+
+    Deliberately an assertion, not a smoke test — the same standing as
+    `test_the_real_repo_is_clean` below.
+    """
+    root = Path(__file__).resolve().parents[2]
+    registered, unregistered = corpus_files(root, tracked_files(root))
+    assert unregistered == [], (
+        f"{len(unregistered)} benchmark corpus file(s) not in EXEMPT_PREFIXES: "
+        f"{unregistered}. Register each one FILE-scoped, in the change that adds it."
+    )
+    # POSITIVE CONTROL against a vacuous pass: an empty `unregistered` proves
+    # nothing if the detector matched no files at all. If the corpus key is ever
+    # renamed, this is what reddens instead of the guard going quiet forever.
+    assert "benchmarks/stop_classifier/gold.yaml" in registered
+    assert "benchmarks/stop_classifier/gold_s280.yaml" in registered
 
 
 def test_the_real_repo_is_clean() -> None:
