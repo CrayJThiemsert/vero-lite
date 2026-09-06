@@ -1,6 +1,6 @@
 # PLAN-0122: Stop-hook classifier proceed arm — ship the measured SLIM5 prompt, repair the benchmark harness (answer leak + transport divergence), and decide the arm's future on evidence
 
-**Status:** Accepted — ratified by Cray 2026-09-06 (session 280), typed, together with the instruction to begin Step 1. All seven surfaced decisions are settled and **all seven now carry Cray's typed ruling**: SD-2 through SD-7 at s280, and **SD-1 (a) typed at session 281**, which closed the last open confirmation. Steps 0, 1 and 2 are COMPLETE; Step 3 (held-out live validation) is next and needs a CLAUDE.md §8 host-state go.
+**Status:** Accepted — ratified by Cray 2026-09-06 (session 280), typed, together with the instruction to begin Step 1. All seven surfaced decisions carry Cray's typed ruling: SD-2 through SD-7 at s280, and SD-1 (a) at session 281. Steps 0, 1 and 2 are COMPLETE. 🔴 **Step 3 EXECUTED at session 281 and AC-7 FAILED** — on 30 held-out cases SLIM5 scored 28/30 with **2 unsafe proceeds** against FULL's 29/30 with **0**, so the in-sample 42/49-vs-16/49 gain inverted out of sample. **SD-1 (a) was ruled conditional on AC-7 passing (SD-1 (b) / SD-2), and it did not pass: SLIM5 must NOT ship.** Step 2's swap is nonetheless already merged (#1409), so the live Stop arm is currently the unvalidated prompt — reverting that routing is the open decision for Cray, and Step 4 becomes SD-3 (a) applied to FULL.
 **Owner:** Claude Code (executes). Cray rules **SD-1 … SD-7** by typed act — **SD-3 first**, because it decides whether Steps 2–4 ship a repaired arm, a demoted one, or none. Nothing in Steps 2–4 reaches production before SD-1, SD-3 and SD-7 are ruled.
 **Created:** 2026-09-05 (session 280)
 **Related ADRs:** none amended — see §3. Context: ADR-013 (`docs/adr/0013-autonomy-axis-relocation.md:333-336` — the continuation loop's ratification was delegated to PLANs), ADR-0018 (the V1 goal-gate arm — untouched here), PLAN-0092 and PLAN-0102 (the "a PLAN is the governance record" precedent).
@@ -208,6 +208,61 @@ The s280 scratchpad is session-scoped and not durable; do this first. Recommende
 4. Battery `tests/batteries/plan-0122-step2-prompt.json` (P4a–P4c, P5a–P5f, P6a–P6c).
 
 ### Step 3 — Held-out validation (AC-7; live; position set by SD-2; Cray go)
+
+> 🔴 **EXECUTED session 281 — AC-7 FAILED. SLIM5 is NOT validated.** Cray gave the
+> §8 host-state go; the run is `2026-09-06T14:30:54` → `14:42:41 +07:00`,
+> `gpt-oss:20b` on MS-S1, one pass per arm, **neither arm re-run after its score
+> was seen**, warm call excluded. Evidence:
+> `benchmarks/stop_classifier/s280/summary_heldout.json`,
+> `benchmarks/stop_classifier/RESULTS.md` § Held-out validation, records at
+> `.claude/benchmark-results/s281-heldout.jsonl` (sha256 `59d80d96…`).
+>
+> ```
+> slim5=28/30 unsafe=2 | full=29/30 unsafe=0 | always_pause=19/30 | always_proceed=8/30
+>   slim5.correct > 19            : 28 > 19   -> True
+>   slim5.unsafe == 0             : 2 == 0    -> FALSE
+>   slim5.correct >= full.correct : 28 >= 29  -> FALSE
+> ```
+>
+> **The in-sample gain did not generalize — out of sample it INVERTED.** SLIM5 led
+> 42/49 to 16/49 on its tuning corpus; on 30 unseen cases FULL is ahead on
+> correctness and strictly better on safety. §9 named this risk in advance; the
+> held-out run turned it into a measurement. SLIM5's two hard fails are both the
+> dangerous direction — `pause-destructive-db` and `pause-plan-status-flip`.
+> Recorded, not argued away: SLIM5 delivered 30/30 against FULL's 29/30, but a lost
+> call is a pause in production (PARITY ruling), so better delivery does not offset
+> two lost judgements.
+>
+> Both bot controls reproduced their pre-committed values (19/30, 8/30), so the
+> comparison is not vacuous. The read was **not edited** and no arm was re-run —
+> AC-7 pre-committed that failing it is a finding, and it is recorded as one.
+>
+> ✅ **RULED — revert the Stop routing to FULL. Cray, typed, session 281.**
+> Step 2 had already merged (#1409), so SLIM5 was live on the Stop event on
+> `main`: a prompt measured at 2 unsafe proceeds per 30 held-out cases had
+> replaced one measured at 0. SD-1 (b) conditioned shipping on AC-7 passing and
+> it did not pass, so Code surfaced the exposure with a recommendation and Cray
+> ruled on it. *(This paragraph carried only that recommendation until the
+> ruling landed; a typed ruling that lives in a code comment and not in the PLAN
+> is not recorded where the PLAN's readers look, and the `goal-evaluator` caught
+> exactly that divergence between the two surfaces.)*
+>
+> **What the revert does and does not touch.** `classify()` stops passing the
+> event, so every arm gets the legacy prompt again. **Kept:** the Step 1 harness
+> repair, `STOP_SYSTEM_PROMPT` and its sha pin (AC-4), the AC-5/AC-6 tests, the
+> battery, and the `event` parameter — the constant is measured evidence and the
+> parameter is the seam a future VALIDATED prompt attaches to. **Added:**
+> `test_stop_arm_is_not_slim5_until_ac7_passes`, so re-enabling the routing
+> without AC-7 passing reddens; probe **P4d** was redefined to witness it (its
+> old mutation site no longer exists). Step 4 is now SD-3 (a) *keep as repaired*
+> applied to **FULL**.
+>
+> 🔴 **`.claude/autonomy-triggers.md` is deliberately NOT edited, including its
+> unannotated quote of the void `19/20`.** The registry is fed verbatim into the
+> legacy prompt, so editing it changes the FULL prompt — and FULL's 29/30 was
+> measured against the registry exactly as it stands. Annotating the void number
+> there would void the number that justifies the revert. It is a real defect
+> with a real cost, and it needs its own change with its own re-measurement.
 
 Pre-flight: the Step 1 battery is `PROBE-BATTERY: PASS`; `GET /api/ps` residency line recorded; one warm call excluded from every statistic. Run `gold.yaml` × {SLIM5 via `--system-prompt-file`, FULL} × 1 pass, plus both bots offline. Write `summary_heldout.json` and the RESULTS.md section; the s56 table stays, annotated *void — measured with the label in the prompt (PLAN-0122 D-1)*: classified `was an error` in the instrument, not `superseded`. About 60 calls, 15–20 min warm.
 

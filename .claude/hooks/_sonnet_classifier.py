@@ -6,12 +6,14 @@ Called by ``.claude/hooks/stop_continuation.py`` (Step 4) on every
 *proceed* (keep iterating without Cray), *pause* (yield to Cray), or
 *dispatch* (auto-handoff to a co-located subagent — PLAN-0009 Step 5c).
 
-Reads ``.claude/autonomy-triggers.md`` as the decision registry —
-**verbatim only for non-Stop events**. Since PLAN-0122 Step 2 the ``Stop``
-arm uses :data:`STOP_SYSTEM_PROMPT` (the measured SLIM5 prompt), which
-carries its own inline row list instead of embedding the registry; the
-registry is still loaded and ``classify()`` still fails closed when it is
-missing, for both arms. Calls the Anthropic Messages API with Sonnet 4.6
+Reads ``.claude/autonomy-triggers.md`` verbatim as the decision registry,
+for **every** event. PLAN-0122 Step 2 briefly routed ``Stop`` to
+:data:`STOP_SYSTEM_PROMPT` (the measured SLIM5 prompt); Step 3's held-out
+validation refuted it — 28/30 with **2 unsafe proceeds** against this
+prompt's 29/30 with **0** — and session 281 reverted the routing on Cray's
+call. The constant and the ``event`` selector remain as sha-pinned evidence
+and as the seam for a future validated prompt; nothing passes an event
+today. Calls the Anthropic Messages API with Sonnet 4.6
 (pin per PLAN-0008 OQ-B), parses a JSON response, and returns
 ``{decision, matched_rows, reason}`` (plus ``dispatch`` metadata when
 decision == "dispatch").
@@ -916,14 +918,28 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
         return _pause("autonomy registry missing or empty")
 
     user_message = _build_user_message(payload)
-    # Same expression _build_user_message reads: the payload is the only place
-    # the event name exists at this layer, and PreToolUse must keep the legacy
-    # prompt (PLAN-0122 §4.1). An unrecognised or absent event falls through to
-    # the legacy branch, which is the fail-safe direction.
-    event = payload.get("hook_event_name") or payload.get("event")
 
+    # 🔴 The event is deliberately NOT passed, so EVERY arm gets the legacy
+    # prompt. PLAN-0122 Step 2 routed Stop to STOP_SYSTEM_PROMPT (SLIM5);
+    # Step 3's held-out validation then REFUTED it and the routing was reverted
+    # at session 281 on Cray's typed call. Measured on 30 cases SLIM5 had never
+    # seen:
+    #
+    #     SLIM5  28/30 correct, 2 unsafe  (proceed on pause-destructive-db
+    #                                      and on pause-plan-status-flip)
+    #     FULL   29/30 correct, 0 unsafe
+    #
+    # The in-sample result inverted out of sample — SLIM5 led 42/49 to 16/49 on
+    # its own tuning corpus. AC-7's read was fixed before the run and failed two
+    # of three conjuncts, and SD-1 (b) conditioned shipping on it passing.
+    #
+    # STOP_SYSTEM_PROMPT and the ``event`` parameter are kept: the constant is
+    # sha-pinned evidence (AC-4) and the parameter is the seam a future,
+    # VALIDATED prompt would use. Re-enabling it is a Cray decision that needs
+    # AC-7 to pass first — ``test_stop_arm_is_not_slim5_until_ac7_passes``
+    # guards exactly that and will redden if this line starts passing an event.
     def _transport(*, strict: bool) -> str:
-        system = _build_system_prompt(registry, strict=strict, event=event)
+        system = _build_system_prompt(registry, strict=strict)
         if backend == "sonnet":
             return _call_api(api_key, system, user_message)
         return _call_ollama(system, user_message)

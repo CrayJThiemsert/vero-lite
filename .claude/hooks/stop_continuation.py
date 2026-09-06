@@ -38,12 +38,12 @@ inspection, and why this hook now imports exactly one name from
 
 The Sonnet pause/proceed/dispatch classifier is invoked via
 ``_sonnet_classifier.classify`` (PLAN §Step 5 + PLAN-0009 Step 5c-1).
-The classifier loads ``.claude/autonomy-triggers.md`` and, **for non-Stop
-events only, embeds it verbatim**. Since PLAN-0122 Step 2 the ``Stop``
-event — which is the only event THIS hook raises — is answered with
-``_sonnet_classifier.STOP_SYSTEM_PROMPT`` (the measured SLIM5 prompt),
-which carries its own inline row list. The registry is still loaded and
-still fails closed when missing, for both arms. The classifier calls
+The classifier reads ``.claude/autonomy-triggers.md`` verbatim, for every
+event including the ``Stop`` this hook raises. PLAN-0122 Step 2 briefly
+answered ``Stop`` with ``_sonnet_classifier.STOP_SYSTEM_PROMPT`` (the
+measured SLIM5 prompt); Step 3's held-out validation refuted it — 28/30
+with 2 unsafe proceeds against the registry prompt's 29/30 with 0 — and
+session 281 reverted that routing on Cray's call. The classifier calls
 the Anthropic Messages API (stdlib urllib), parses JSON, and is
 fail-closed: any infrastructure failure returns ``pause``. The hook
 flow here therefore never mis-proceeds because of an API outage, and
