@@ -108,7 +108,7 @@ class OutboundNetworkBlocked(BaseException):
 def _no_real_decision_log(tmp_path_factory: pytest.TempPathFactory) -> None:
     """Guarantee no test appends to the REAL Stop decision log (PLAN-0122 SD-4).
 
-    The log defaults to ``.claude/state/stop-decisions.jsonl`` — production
+    The log defaults to ``.claude/state/stop-classifier-log.jsonl`` — production
     state, and the exact file AC-12 re-reads to compute the arm's defect rate.
     A test writing there does not fail anything: the file is gitignored, so
     nothing reddens, and the lines simply sit in the sample that a later
@@ -126,8 +126,8 @@ def _no_real_decision_log(tmp_path_factory: pytest.TempPathFactory) -> None:
     A test that wants to assert on the log sets the variable itself; monkeypatch
     ordering lets the narrower fixture win.
     """
-    os.environ["CLAUDE_STOP_DECISION_LOG"] = str(
-        tmp_path_factory.mktemp("stop_decisions") / "stop-decisions.jsonl"
+    os.environ["CLAUDE_STOP_CLASSIFIER_LOG"] = str(
+        tmp_path_factory.mktemp("stop_classifier_log") / "stop-classifier-log.jsonl"
     )
 
 

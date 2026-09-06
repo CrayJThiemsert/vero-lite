@@ -1110,8 +1110,8 @@ def decision_log(
     tests/conftest.py already redirects this away from production state for the
     WHOLE suite; this narrows it to a path one test can count.
     """
-    path = tmp_path / "stop-decisions.jsonl"
-    monkeypatch.setenv("CLAUDE_STOP_DECISION_LOG", str(path))
+    path = tmp_path / "stop-classifier-log.jsonl"
+    monkeypatch.setenv("CLAUDE_STOP_CLASSIFIER_LOG", str(path))
     return path
 
 
@@ -1128,14 +1128,42 @@ def _ac8_payload(tmp_path: Path) -> dict[str, Any]:
     return {"session_id": "s", "transcript_path": str(tmp_path / "t.jsonl")}
 
 
-_PROCEED = {"decision": "proceed", "matched_rows": [], "reason": "run pytest tests/x.py"}
-_CONTENTLESS = {"decision": "proceed", "matched_rows": [], "reason": "continue"}
-_PAUSE = {"decision": "pause", "matched_rows": [], "reason": "needs a Cray decision"}
+# Canned verdicts carry the shape `classify()` really returns after PLAN-0122
+# §4.3: `transport`, `latency_s` and `prompt_sha8` come back with every call.
+# These tests assert the LOG faithfully records them; that the VALUES are
+# derived correctly is a separate claim, tested at the derivation site in
+# tests/handoffs/test_sonnet_classifier.py.
+_PROCEED = {
+    "decision": "proceed",
+    "matched_rows": [],
+    "reason": "run pytest tests/x.py",
+    "transport": "ok",
+    "latency_s": 1.25,
+    "prompt_sha8": "deadbeef",
+}
+_CONTENTLESS = {
+    "decision": "proceed",
+    "matched_rows": [],
+    "reason": "continue",
+    "transport": "ok",
+    "latency_s": 0.5,
+    "prompt_sha8": "deadbeef",
+}
+_PAUSE = {
+    "decision": "pause",
+    "matched_rows": [],
+    "reason": "needs a Cray decision",
+    "transport": "ok",
+    "latency_s": 2.0,
+    "prompt_sha8": "deadbeef",
+}
 _TRANSPORT_PAUSE = {
     "decision": "pause",
     "matched_rows": [],
     "reason": "API unreachable: <urlopen error timed out>",
-    "fail_closed": True,
+    "transport": "timeout",
+    "latency_s": 75.1,
+    "prompt_sha8": "deadbeef",
 }
 
 _AC8_CASES = [
@@ -1208,7 +1236,7 @@ def test_an_arm_that_never_classified_writes_no_line(
     ("case", "verdict", "expected_transport"),
     [
         ("model-decided", _PAUSE, "ok"),
-        ("manufactured", _TRANSPORT_PAUSE, "fail_closed"),
+        ("manufactured", _TRANSPORT_PAUSE, "timeout"),
     ],
 )
 def test_a_manufactured_pause_is_distinguished_from_a_decided_one(
