@@ -93,9 +93,14 @@ established that the empties were not solely the harness's `num_predict` artefac
 ## What is deliberately absent
 
 - **No rubric scores.** See above.
-- **No held-out numbers.** `gold.yaml`'s 30 cases could not be run until D-1 was
-  fixed — all 30 carry their expected label in the transcript filename. That is
-  PLAN-0122 Step 3.
+- **No held-out numbers — ✅ SUPERSEDED at session 281, and this directory now
+  holds them.** When this line was written `gold.yaml`'s 30 cases could not be
+  run: all 30 carry their expected label in the transcript filename and D-1 was
+  still open. Step 3 ran them on the repaired harness and the result is
+  `summary_heldout.json`, here, with the narrative in `../RESULTS.md`
+  § Held-out validation. 🔴 **It refuted SLIM5** — 28/30 with 2 unsafe proceeds
+  against FULL's 29/30 with 0, so the in-sample result in `summary.json` beside
+  this file **inverted out of sample**. Read the two together or not at all.
 - **No qwen arms.** Both `qwen3.8:27b` candidates measured 54–68 s per call,
   inside the 45–120 s band `../RESULTS.md` disqualified a priori for a hook that
   fires at every turn end. The problem a model swap was meant to solve was fixed

@@ -365,14 +365,15 @@ def test_default_backend_is_ollama_and_needs_no_api_key(
         "dispatch",
     ]
     assert body["messages"][0]["role"] == "system"
-    # PLAN-0122 Step 2 (SD-1 ruled (a)): the Stop arm no longer embeds the
-    # registry — it sends SLIM5. Classified `superseded by new info`, NOT
-    # `was an error`: `"REGISTRY START" in ...` was correct for the prompt that
-    # shipped before this PLAN, and is asserted here in its new home, the
-    # PreToolUse arm (test below). The identity check is stronger than the old
-    # substring one: it would redden on any drift, not just a missing registry.
-    assert body["messages"][0]["content"] == sc.STOP_SYSTEM_PROMPT
-    assert "REGISTRY START" not in body["messages"][0]["content"]
+    # PLAN-0122 Step 3: the Stop arm embeds the registry AGAIN. Step 2 briefly
+    # routed it to SLIM5; the held-out validation refuted that (SLIM5 2 unsafe
+    # per 30 against FULL's 0) and session 281 reverted the routing on Cray's
+    # call. The s56-era assertion is restored because it is true again — not
+    # because the Step 2 version was wrong when it was written. The companion
+    # negative is what makes this more than the original: it fails if SLIM5
+    # comes back without AC-7 passing.
+    assert "REGISTRY START" in body["messages"][0]["content"]
+    assert body["messages"][0]["content"] != sc.STOP_SYSTEM_PROMPT
 
 
 def test_pretooluse_still_embeds_the_registry_verbatim(
@@ -401,6 +402,50 @@ def test_pretooluse_still_embeds_the_registry_verbatim(
     system = seen["body"]["messages"][0]["content"]
     assert "REGISTRY START" in system
     assert system != sc.STOP_SYSTEM_PROMPT
+
+
+def test_stop_arm_is_not_slim5_until_ac7_passes(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    """PLAN-0122 Step 3 — the guard on the reverted routing.
+
+    Step 2 routed the Stop event to ``STOP_SYSTEM_PROMPT``. Step 3's held-out
+    validation refuted it on 30 cases SLIM5 had never seen::
+
+        SLIM5  28/30 correct, 2 unsafe   FULL  29/30 correct, 0 unsafe
+
+    Both SLIM5 hard fails were the dangerous direction — proceed on a
+    should-pause case, one of them a destructive database operation. AC-7's read
+    was fixed before the run and failed two of its three conjuncts, and SD-1 (b)
+    conditioned shipping on that read passing, so ``classify`` no longer passes
+    the event and every arm gets the legacy prompt.
+
+    This test exists so the revert cannot be quietly undone: it reddens the
+    moment ``classify`` starts routing Stop to SLIM5 again. Re-enabling is a
+    Cray decision that needs AC-7 to pass first. Deleting this test to make that
+    change green is the failure it is written against.
+
+    The constant and the ``event`` parameter are deliberately still here and
+    still pinned by AC-4/AC-5/AC-6 — the measurement is evidence worth keeping,
+    and the seam is where a future VALIDATED prompt would attach.
+    """
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(req: Any, timeout: float) -> MagicMock:
+        seen["body"] = json.loads(req.data.decode("utf-8"))
+        return _make_ollama_response('{"decision": "pause", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+
+    # both spellings of the event key the payload can carry
+    for payload in ({"hook_event_name": "Stop"}, {"event": "Stop"}):
+        seen.clear()
+        sc.classify(payload)
+        system = seen["body"]["messages"][0]["content"]
+        assert system != sc.STOP_SYSTEM_PROMPT, f"SLIM5 is live on Stop for {payload}"
+        assert "REGISTRY START" in system, f"Stop lost the registry prompt for {payload}"
 
 
 def test_ollama_env_overrides_url_and_model(
