@@ -20,9 +20,11 @@ CI per OQ-G).
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
+import re
 import sys
 import urllib.error
 from pathlib import Path
@@ -363,7 +365,42 @@ def test_default_backend_is_ollama_and_needs_no_api_key(
         "dispatch",
     ]
     assert body["messages"][0]["role"] == "system"
-    assert "REGISTRY START" in body["messages"][0]["content"]
+    # PLAN-0122 Step 2 (SD-1 ruled (a)): the Stop arm no longer embeds the
+    # registry — it sends SLIM5. Classified `superseded by new info`, NOT
+    # `was an error`: `"REGISTRY START" in ...` was correct for the prompt that
+    # shipped before this PLAN, and is asserted here in its new home, the
+    # PreToolUse arm (test below). The identity check is stronger than the old
+    # substring one: it would redden on any drift, not just a missing registry.
+    assert body["messages"][0]["content"] == sc.STOP_SYSTEM_PROMPT
+    assert "REGISTRY START" not in body["messages"][0]["content"]
+
+
+def test_pretooluse_still_embeds_the_registry_verbatim(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    """The PLAN-0122 prompt swap is Stop-only, and this is the other half of it.
+
+    SLIM5's rule 4 — "This is a hook event, not a permission request. Do not
+    answer whether an action is allowed" — is exactly WRONG for a PreToolUse
+    call, where whether the action is allowed IS the question.
+    ``pretooluse_classifier_dispatch.py`` shares this ``classify()``, so a swap
+    that ignored the event would silently mis-instruct that arm (PLAN-0122
+    §4.1, G11).
+    """
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(req: Any, timeout: float) -> MagicMock:
+        seen["body"] = json.loads(req.data.decode("utf-8"))
+        return _make_ollama_response('{"decision": "pause", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    sc.classify({"hook_event_name": "PreToolUse"})
+
+    system = seen["body"]["messages"][0]["content"]
+    assert "REGISTRY START" in system
+    assert system != sc.STOP_SYSTEM_PROMPT
 
 
 def test_ollama_env_overrides_url_and_model(
@@ -423,7 +460,12 @@ def test_system_prompt_carries_the_completion_consistency_rule() -> None:
     stop. Without this rule the classifier was observed returning proceed
     with reasons like 'Session is cleanly complete... natural stop', burning
     a continuation turn on finished work. Contract test so the rule never
-    silently regresses out of the prompt."""
+    silently regresses out of the prompt.
+
+    PLAN-0122 Step 2 re-scope (G9): this pins the LEGACY builder — the prompt
+    every NON-Stop event still receives, today PreToolUse. It calls
+    ``_build_system_prompt`` without ``event``, which is the legacy branch by
+    design. The Stop arm is pinned separately by the AC-4/AC-5 tests below."""
     prompt = sc._build_system_prompt("registry text here")
     assert "CONCRETE remaining work" in prompt
     assert "Decision and reason" in prompt and "AGREE" in prompt
@@ -447,7 +489,11 @@ def test_system_prompt_reserves_cray_only_actions_out_of_proceed() -> None:
     nothing deterministic would have caught it: ``pretooluse_git_deny``'s regex
     is anchored on ``git`` so ``gh pr merge`` never matches, and that gate
     permits the main Code agent in any case. The prompt is the only layer that
-    can hold this line, so pin it."""
+    can hold this line, so pin it.
+
+    PLAN-0122 Step 2 re-scope (G9): this pins the LEGACY builder (non-Stop /
+    PreToolUse). SLIM5 holds the same line through its STEP 1 row list and its
+    REASON RULES, pinned by ``test_slim5_pins_*`` below."""
     prompt = sc._build_system_prompt("registry text here")
     assert "RESERVED FOR CRAY" in prompt
     assert "Merging a PR" in prompt
@@ -473,6 +519,12 @@ def test_system_prompt_describes_dispatch_as_a_suggestion_not_an_order() -> None
     same prompt, and the registry already described the no-directive behaviour
     correctly — so the model was being handed ordering framing in the preamble and
     suggestion framing in the embedded registry, in one call.
+
+    PLAN-0122 Step 2 re-scope (G9): this pins the LEGACY builder (non-Stop /
+    PreToolUse), which is still the arm that embeds the registry verbatim — so
+    the contradiction this test guards against is still possible there, and
+    still guarded. SLIM5's dispatch framing is pinned by
+    ``test_slim5_pins_the_dispatch_metadata_shape``.
     """
     prompt = sc._build_system_prompt("registry text here")
     assert "ROUTING SUGGESTION" in prompt
@@ -492,6 +544,11 @@ def test_the_dispatch_decision_value_and_schema_are_unchanged() -> None:
     formats the ping from the ``dispatch`` metadata block, so a reworded prompt that
     also renamed the verdict or dropped the metadata would silence the suggestion
     channel entirely — the failure this pins against.
+
+    PLAN-0122 Step 2 re-scope (G9): this pins the LEGACY builder (non-Stop /
+    PreToolUse). The Stop arm's copy of the same envelope is pinned by
+    ``test_slim5_pins_the_dispatch_metadata_shape``; both consumers parse
+    through the one ``_validate_dispatch_metadata``, so both need pinning.
     """
     prompt = sc._build_system_prompt("registry text here")
     assert '"decision": "proceed" | "pause" | "dispatch"' in prompt
@@ -1228,3 +1285,164 @@ def test_live_classifier_smoke() -> None:
     assert result["decision"] in ("proceed", "pause")
     assert isinstance(result["matched_rows"], list)
     assert isinstance(result["reason"], str)
+
+
+# --- PLAN-0122 Step 2: the Stop-event prompt swap (AC-4, AC-5, AC-6) ---------
+#
+# Every test below reads the SHIPPED constant, never a copy declared here: a
+# guard that asserts against its own constant is vacuous by construction. The
+# subject is `sc.STOP_SYSTEM_PROMPT` as the interpreter built it.
+
+_SLIM5_ARTIFACT = (
+    Path(__file__).resolve().parents[2]
+    / "benchmarks"
+    / "stop_classifier"
+    / "s280"
+    / "SLIM5-PROMPT.txt"
+)
+_REGISTRY_ARTIFACT = Path(__file__).resolve().parents[2] / ".claude" / "autonomy-triggers.md"
+
+
+def test_stop_prompt_is_the_measured_slim5(capsys: pytest.CaptureFixture[str]) -> None:
+    """AC-4 — what ships on Stop is byte-identical to what was measured.
+
+    SD-1 (a) and SD-7 (a) both turn on this: the 42/49 was measured against
+    these exact bytes, so any drift silently trades a known number for an
+    unknown one. The hash is the only assertion that can see a one-byte edit.
+    Registry-independence is asserted separately because SLIM5 carries an
+    inline row list — if the builder ever appended the registry again, the
+    prompt would still contain every pinned sentence and only this would catch
+    it.
+    """
+    measured = _SLIM5_ARTIFACT.read_text(encoding="utf-8")
+    over_a = sc._build_system_prompt("REGISTRY-A", event="Stop")
+    over_b = sc._build_system_prompt("REGISTRY-B" * 200, event="Stop")
+
+    sha_live = hashlib.sha256(over_a.encode("utf-8")).hexdigest()
+    sha_measured = hashlib.sha256(measured.encode("utf-8")).hexdigest()
+    print(
+        f"sha_live={sha_live} sha_measured={sha_measured} "
+        f"chars={len(over_a)} registry_independent={over_a == over_b}"
+    )
+
+    # A1 — the registry argument changes nothing on the Stop arm.
+    assert over_a == over_b
+    # A2 — and those bytes are the measured ones.
+    assert sha_live == sha_measured
+    # A3 — the strict retry variant is base + the existing suffix, nothing else.
+    strict = sc._build_system_prompt("REGISTRY-A", strict=True, event="Stop")
+    assert strict == over_a + sc._STRICT_JSON_SUFFIX
+
+
+def test_slim5_pins_the_not_forbidden_carveouts() -> None:
+    """AC-5 (i) — the carve-outs that stop STEP 1 over-firing.
+
+    Four of the s280 ledger's defective proceeds were the inverse: the arm
+    cited a G/C row against an action the row does not cover. These sentences
+    are what a one-sided rule was missing — a rule needs when it fires, when it
+    must NOT fire, and what wins on conflict.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert "THESE ARE NOT FORBIDDEN. Do not cite a row against them:" in prompt
+    assert "`git commit`, and `git push` of a FEATURE branch" in prompt
+    assert "opening a PR with `gh pr create`." in prompt
+    assert "printing or asserting on a DIAGNOSTIC MARKER string" in prompt
+
+
+def test_slim5_pins_the_c6_waiver_exception() -> None:
+    """AC-5 (ii) — the conflict clause, and its one exception.
+
+    "An explicit Cray go means the row does not fire" is the conflict rule;
+    C6 (a credential into a file) is the single row no go waives. Dropping the
+    exception would let an in-excerpt "go" wave a credential through.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert "except C6, which no go waives" in prompt
+
+
+def test_slim5_pins_the_reason_rules() -> None:
+    """AC-5 (iii) — the four REASON RULES.
+
+    These exist because ``stop_continuation._proceed_block`` passes ``reason``
+    to the agent VERBATIM as its next instruction. Specimen #124 of the s280
+    ledger fabricated Cray's authorization in a reason while a question was
+    pending; rules 1-3 are what that violates, and rule 4 is the one that keeps
+    the arm from answering a permission question it was never asked.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert "Decision and reason MUST agree" in prompt
+    assert "APPEARS IN THE EXCERPT" in prompt
+    assert "Never write in the first person" in prompt
+    assert "This is a hook event, not a permission request" in prompt
+
+
+def test_slim5_pins_the_last_turn_governs_step() -> None:
+    """AC-5 (iv) — STEP 2 and, just as load-bearing, when it must NOT fire.
+
+    The rule alone made the arm pause on every ordinary working turn, because
+    a turn that reports finished work and then names the next step looks like a
+    stop. Both halves are pinned: a copy of this prompt carrying only the first
+    sentence is the failure this test exists to catch.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert "STEP 2 - THE LAST TURN GOVERNS" in prompt
+    assert "THIS STEP DOES NOT FIRE on an ordinary working turn" in prompt
+
+
+def test_slim5_pins_the_pause_bias() -> None:
+    """AC-5 (v) — the tie-break, which is the whole safety argument.
+
+    AC-3 measured always-proceed at 27 unsafe verdicts against SLIM5's zero.
+    The bias sentence is why the arm lands on the safe side of a tie.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert "Default to PAUSE" in prompt
+    assert "A spurious pause is cheaper than a spurious proceed" in prompt
+
+
+def test_slim5_pins_the_dispatch_metadata_shape() -> None:
+    """AC-5 (vi) — the dispatch envelope the consumer actually parses.
+
+    ``_validate_dispatch_metadata`` requires all three fields and only accepts
+    ``plan-drafter``; a prompt that stopped describing them would fail closed to
+    pause and silence the suggestion channel without any error.
+    """
+    prompt = sc.STOP_SYSTEM_PROMPT
+    assert '"subagent": "plan-drafter"' in prompt
+    assert '"artifact_kind": "adr" or "plan"' in prompt
+    assert '`subagent` is always the literal string "plan-drafter"' in prompt
+
+
+def test_every_registry_gch_row_is_in_the_stop_prompt(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """AC-6 — the registry↔prompt drift guard (SD-7 (a)).
+
+    SLIM5 stops embedding ``.claude/autonomy-triggers.md`` and carries an
+    inline row list instead, so the two can now disagree silently. This reads
+    BOTH artifacts — neither is a constant declared here — and fails when a
+    registry row has no prompt line.
+
+    ``C6`` and ``C7`` are prompt-only by ruling: SD-7 (a) ships the inline rows
+    byte-identical and records that giving them real registry rows is a
+    follow-up with its own blast radius. Pinning the exact prompt-only set is
+    what keeps that debt visible instead of letting it become permanent.
+    """
+    registry = _REGISTRY_ARTIFACT.read_text(encoding="utf-8")
+    prompt = sc.STOP_SYSTEM_PROMPT
+
+    registry_rows = sorted(set(re.findall(r"^\| *([GCH]\d+) *\|", registry, re.M)))
+    prompt_rows = sorted(set(re.findall(r"^\s+([GCH]\d+) - ", prompt, re.M)))
+    missing = sorted(set(registry_rows) - set(prompt_rows))
+    prompt_only = sorted(set(prompt_rows) - set(registry_rows))
+    in_prompt = len(set(registry_rows) & set(prompt_rows))
+    print(f"registry_rows={len(registry_rows)} in_prompt={in_prompt} prompt_only={prompt_only}")
+
+    # The parser must actually find rows, or both assertions below are vacuous:
+    # an empty registry satisfies "every row is in the prompt" for free.
+    assert registry_rows, "registry parser found no G/C/H rows - instrument broken"
+    assert prompt_rows, "prompt parser found no G/C/H rows - instrument broken"
+    # A1 — no registry row has gone missing from the prompt.
+    assert missing == []
+    # A2 — and the prompt-only set is exactly the two SD-7 recorded.
+    assert prompt_only == ["C6", "C7"]

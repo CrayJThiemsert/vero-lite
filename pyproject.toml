@@ -88,6 +88,14 @@ allowed-confusables = ["α", "β", "γ"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S603"]
+# PLAN-0122 Step 2: this module holds STOP_SYSTEM_PROMPT, the Stop-event system
+# prompt shipped BYTE-IDENTICAL to benchmarks/stop_classifier/s280/SLIM5-PROMPT.txt
+# and pinned by sha256 in AC-4. Its own lines run to 524 chars, and re-wrapping
+# them to satisfy E501 would change the bytes and void the measured 42/49 — so the
+# rule is genuinely inapplicable to the literal, not merely inconvenient. E501 is
+# suppressed for the file because ruff has no line-range scope; every other rule
+# stays live here.
+".claude/hooks/_sonnet_classifier.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"
