@@ -144,9 +144,9 @@ A green is not evidence: no AC box is ticked before its probe reports WITNESSED.
 - [x] **AC-5 [check] — SLIM5's load-bearing rules are each pinned by their own test; the four FULL-prompt contract tests stay and now pin the PreToolUse prompt (G9).** *Artifact:* `tests/handoffs/test_sonnet_classifier.py` (six new `test_slim5_pins_*` functions; the four at `:419-500` are re-scoped to the legacy builder with a docstring line saying so). *Pass read:* prints `pinned=6/6`; one assertion group per test: (i) the `THESE ARE NOT FORBIDDEN` block names `git commit`, feature-branch push, `gh pr create` and `DIAGNOSTIC MARKER`; (ii) `except C6, which no go waives`; (iii) REASON RULES — `MUST agree`, `APPEARS IN THE EXCERPT`, `Never write in the first person`, `not a permission request`; (iv) `THE LAST TURN GOVERNS` + `DOES NOT FIRE on an ordinary working turn`; (v) `Default to PAUSE`; (vi) `"subagent": "plan-drafter"` + `"artifact_kind": "adr" or "plan"`. *Probes:* P5a–P5f — delete the corresponding sentence from a test-local copy of the prompt fed through the builder → only that test reddens; the other five stay green. (Deleting it from the real constant also reddens AC-4's A2 — expected, and a different test.)
 - [x] **AC-6 [check] — *contingent on SD-7 (a)* — registry↔prompt drift guard: every G/C/H row in the registry is a row line in the Stop prompt, and the prompt-only ids are pinned.** *Artifact:* `tests/handoffs/test_sonnet_classifier.py::test_every_registry_gch_row_is_in_the_stop_prompt`. *Pass read:* parses `| <ID> |` rows matching `^[GCH]\d+$` from `.claude/autonomy-triggers.md` (today G1–G5, C1–C5, H1 = 11) and `^\s+([GCH]\d+) - ` lines from the Stop prompt (13); prints `registry_rows=11 in_prompt=11 prompt_only=['C6', 'C7']`; (A1) `missing == []`; (A2) `prompt_only == ['C6', 'C7']`. *Probes:* P6a — delete the `G3 -` line from a test-local prompt copy → A1 reddens. P6b — feed a temp registry with an extra `| C8 |` row → A1 reddens (`registry_rows=12`): the parser reads the registry. P6c — rename `C7` to `C8` in the prompt copy → A2 reddens, A1 green.
 - [ ] **AC-7 [live] — held-out validation on `gold.yaml` (30): opaque names, parity body, warm, one pass each for SLIM5 and FULL, plus the two bots offline — 60 live calls, Cray go per CLAUDE.md §8.** *Artifacts:* `benchmarks/stop_classifier/s280/summary_heldout.json`, `benchmarks/stop_classifier/RESULTS.md` (new section). *Pass read (pre-committed):* prints `slim5=k/30 unsafe=u full=k/30 unsafe=u always_pause=19/30 always_proceed=8/30 full_opaque_vs_s56=k/30 vs 19/20`; pass iff `slim5.correct > 19` (the always-pause bot) AND `slim5.unsafe == 0` AND `slim5.correct >= full.correct`. The last field is **recorded, not asserted** (n was 20 then, 30 now). *Probe:* none — live evidence; the instrument controls are AC-1/AC-2/AC-3, all `PROBE-BATTERY: PASS` **before** the first call (an instrument passes a control on known content before its first real reading is trusted). Failing the read is a finding, not a reason to edit the read: SLIM5 then does not ship (SD-1 (b)).
-- [ ] **AC-8 [check] — *contingent on SD-4* — every classifier verdict on Stop leaves one log line, including pauses, demotions and transport failures.** *Artifact:* `tests/handoffs/test_stop_continuation.py::test_every_classifier_verdict_is_logged` (parametrized over proceed / demoted-proceed / pause / dispatch / transport-pause). *Pass read:* prints `case=<name> pre=N post=N+1 emitted=<block|demoted|none|suggestion> transport=<ok|timeout|…>`; (A1) the line count grows by exactly one per `main()`; (A2) the line's `emitted` matches the arm taken. *Probes:* P8a — remove the append on the pause path → the pause case's A1 reddens, the proceed case stays green. P8b — write `emitted="block"` on the demoted path → the demoted case's A2 reddens, its A1 green.
-- [ ] **AC-9 [check] — *contingent on SD-5* — the floor's disposition is executed and its limitation is pinned, not hidden.** *Artifact:* `tests/handoffs/test_stop_continuation.py::test_floor_limitation_is_recorded_on_the_s280_ledger_strings` (SD-5 keep) **or** `tests/handoffs/test_stop_continuation.py::test_ungrounded_proceed_reason_is_demoted` (SD-5 replace). *Pass read (keep):* the 24 ledger strings Code measured in s280 (Code lists them; if the list is unrecoverable, all 117) run through `_reason_is_contentless`; prints `demoted=0/24`; (A1) equality — a future floor edit that starts catching them reddens and earns a re-look. *Probe (keep):* P9a — add `no` and `operation` to `_META_REASON_TOKENS` → A1 reddens. *Pass read (replace):* over ≥10 `(reason, excerpt)` pairs from the corpus, prints `grounded=k/n demoted=m/n`; (A1) the ledger reasons with no excerpt object demote; (A2) `"Run the benchmark for gpt-oss:20b"` on an excerpt naming it does not. *Probe (replace):* P9b — return `True` unconditionally → A1 reddens, A2 green.
-- [ ] **AC-10 [check] — *contingent on SD-6 (in scope)* — every worktree's hook copy is on the shipped bytes, or is named.** *Artifact:* `tools/hook_copies_audit.py` (+ `tests/tools/test_hook_copies_audit.py`). *Pass read:* prints `worktrees=N distinct_classifier_hashes=K distinct_stop_hook_hashes=K2 stale=[…]`; pass iff `K == 1 and K2 == 1`, or every stale entry is listed in this PLAN's closeout with Cray's disposition. *Probe:* P10a — a temp worktree with one changed byte → `K` increments (positive control that the tool reads each copy).
+- [x] **AC-8 [check] — *contingent on SD-4* — every classifier verdict on Stop leaves one log line, including pauses, demotions and transport failures.** *Artifact:* `tests/handoffs/test_stop_continuation.py::test_every_classifier_verdict_is_logged` (parametrized over proceed / demoted-proceed / pause / dispatch / transport-pause). *Pass read:* prints `case=<name> pre=N post=N+1 emitted=<block|demoted|none|suggestion> transport=<ok|timeout|…>`; (A1) the line count grows by exactly one per `main()`; (A2) the line's `emitted` matches the arm taken. *Probes:* P8a — remove the append on the pause path → the pause case's A1 reddens, the proceed case stays green. P8b — write `emitted="block"` on the demoted path → the demoted case's A2 reddens, its A1 green.
+- [x] **AC-9 [check] — *contingent on SD-5* — the floor's disposition is executed and its limitation is pinned, not hidden.** *Artifact:* `tests/handoffs/test_stop_continuation.py::test_floor_limitation_is_recorded_on_the_s280_ledger_strings` (SD-5 keep) **or** `tests/handoffs/test_stop_continuation.py::test_ungrounded_proceed_reason_is_demoted` (SD-5 replace). *Pass read (keep):* the 24 ledger strings Code measured in s280 (Code lists them; if the list is unrecoverable, all 117) run through `_reason_is_contentless`; prints `demoted=0/24`; (A1) equality — a future floor edit that starts catching them reddens and earns a re-look. *Probe (keep):* P9a — add `no` and `operation` to `_META_REASON_TOKENS` → A1 reddens. *Pass read (replace):* over ≥10 `(reason, excerpt)` pairs from the corpus, prints `grounded=k/n demoted=m/n`; (A1) the ledger reasons with no excerpt object demote; (A2) `"Run the benchmark for gpt-oss:20b"` on an excerpt naming it does not. *Probe (replace):* P9b — return `True` unconditionally → A1 reddens, A2 green.
+- [x] **AC-10 [check] — *contingent on SD-6 (in scope)* — every worktree's hook copy is on the shipped bytes, or is named.** *Artifact:* `tools/hook_copies_audit.py` (+ `tests/tools/test_hook_copies_audit.py`). *Pass read:* prints `worktrees=N distinct_classifier_hashes=K distinct_stop_hook_hashes=K2 stale=[…]`; pass iff `K == 1 and K2 == 1`, or every stale entry is listed in this PLAN's closeout with Cray's disposition. *Probe:* P10a — a temp worktree with one changed byte → `K` increments (positive control that the tool reads each copy).
 - [ ] **AC-11 [check] — offline gate green at CI scope in the main tree, plus the AC-ledger guard.** *Pass read:* `uv run --no-sync ruff check .` · `ruff format --check .` · `mypy --strict services/ verticals/` · `pytest -q` — each `2>&1` to a file, real exit code echoed; prints `ruff=0 format=0 mypy=0 pytest=0 (passed=N skipped=S)` and `check_ac_consistency: gaps=0` with the machine-form header matching ≥1 file. CI is PR-only, so the merge commit gets a re-run.
 - [ ] **AC-12 [live-ledger] — the repair holds on real traffic: the defective share of proceed fires falls below 20%, with zero unsafe proceeds.** *Artifacts:* `tools/stop_classifier_ledger.py` (the s280 instrument, committed with its two controls), `tests/tools/test_stop_classifier_ledger.py`. *Pass read:* ≥14 days after Step 4 ships, re-run over main-session transcripts since the ship commit; classify by the same four classes; prints `pre=68/117 (58%) post=k/n (p%) unsafe=u strict=<s> loose=<l> goal_gate_control=<g>`; pass iff `p < 20` AND `u == 0` AND `strict < loose` AND `g > 0`. *Probe:* P12a — a fixture transcript with 3 planted `Stop hook feedback:` lines and 1 self-contamination line; loosen the strict filter → `strict=4` reddens the `strict < loose` control. A small `n` is reported as small; it is not rounded into a pass.
 
@@ -268,6 +268,24 @@ Pre-flight: the Step 1 battery is `PROBE-BATTERY: PASS`; `GET /api/ps` residency
 
 ### Step 4 — Ship per SD-3, with SD-4 / SD-5 / SD-6 as ruled (AC-8, AC-9, AC-10, AC-11)
 
+> ⚠️ **THREE OF FOUR ACs CLOSED — sessions 282 and 283. AC-11 is still open, so this
+> Step is NOT complete.** AC-8, AC-9 and AC-10 shipped their artifacts at s282
+> (#1414, #1415, #1416) and were ticked at s283 once the battery Step 4 names was
+> banked (#1419) — evidence and dispositions in §11.1 and §11.2.
+>
+> 🔴 **The artifacts merged at s282 and not one AC was ticked, because this PLAN was
+> never edited that session.** Recorded rather than quietly repaired: three closed
+> criteria sat unticked across a session boundary, which is the same shape as the
+> s274/s277 rows and is what makes a resuming reader mistake finished work for
+> outstanding work. The battery was missing for the same reason — the Step's own
+> deliverable was read off the ACs, which do not name it.
+>
+> ⚠️ **AC-11 (offline gate at CI scope + the AC-ledger guard) is NOT ticked here, and
+> its pass read is NOT yet recorded.** Ticking it is Step 4's remaining obligation.
+> Left open deliberately rather than assumed from a green PR: AC-11's read is the
+> four-command gate in the **main tree** with each exit code echoed, which is a
+> different measurement from CI's run on a merge commit.
+
 (a) keep-as-repaired: merge Step 2's swap plus the log. (b) demote: `proceed` emits nothing, resets the chain, pings Cray — mirror `_format_dispatch_suggestion` (`stop_continuation.py:160-179`) with a `stop_proceed_suggestion` event; PLAN-0092 AC-1/AC-2 and the rewritten dispatch-arm tests are the template. (c) retire on Stop: `_classify` is not called on Stop; the dispatch suggestion ends with it; tests inverted RED-first. Then the floor per SD-5 and the worktrees per SD-6. Offline gate at CI scope (AC-11). Batteries `tests/batteries/plan-0122-step4-*.json`.
 
 ### Step 5 — Post-ship re-measure (AC-12) and RESULTS.md
@@ -309,3 +327,61 @@ Reading order: **SD-3 → SD-1 → SD-2 → SD-7 → SD-4 → SD-5 → SD-6.**
 ## 10. Verification
 
 AC-1…AC-6 and AC-8…AC-10 by the named tests, with batteries under `tests/batteries/plan-0122-*.json`, each probe reddening exactly its declared assertion, reports in the PR bodies. AC-7 by the pre-committed read over `summary_heldout.json`, instrument controls passed first. AC-11 by the CI-scope gate in the main tree plus the merge-commit re-run. AC-12 by the committed ledger instrument with its two controls printing their values. Every printed line carries the measured values, never a bare PASS. A live number that fails its pre-committed read is a finding recorded in STATUS, never an edit to the read.
+
+## 11. Closeout records
+
+Per-AC records written as each AC closes, rather than accumulated for Step 6 — AC-10 cannot be ticked without one (its pass read closes on this section by name), and a record written at closing time rests on evidence that was fresh when the box was ticked.
+
+### 11.1 AC-8 / AC-9 / AC-10 — the battery, and what it does NOT witness
+
+**Battery:** `tests/batteries/plan-0122-step4-log-floor-audit.json`, committed at session 283 (PR #1419, `e62ddde`, CI `conclusion=success`). Step 4 names `tests/batteries/plan-0122-step4-*.json` and §10 requires these three ACs to be witnessed *with* a battery; session 282 ran the probes and reported controls holding but **banked no file**, so the evidence existed only in PR bodies. Nothing detected that: `tools/check_ac_consistency.py` walks AC *references*, not the batteries a Step promises, so all three could have been ticked with no re-runnable artifact behind them. Second instance of Lesson #0061 — reading the AC produced *correct probes* and lost the artifact the Step commissions.
+
+```
+P8a          WITNESSED  post == pre + 1                    (AC-8)
+P8a-control  GREEN      declared; credits nothing          (AC-8)
+P8b          WITNESSED  emitted == expected_emitted        (AC-8)
+P9a          WITNESSED  len(demoted) == _EXPECTED_DEMOTED  (AC-9)
+P10a         WITNESSED  report.distinct[STOP_HOOK] == 2    (AC-10)
+
+PROBE-COVERAGE: COMPLETE   PROBE-BATTERY: PASS   145 claims = 4 witnessed + 141 exempt
+```
+
+The four crediting probes are the ones **this PLAN declares** (P8a, P8b, P9a, P10a), not a reconstruction. `P8a-control` is the one addition and credits nothing by design: AC-8 states *"the proceed case stays green"* as prose, and this makes it a declared `GREEN` outcome — if it ever reads `WITNESSED`, P8a's RED was never evidence about the pause arm specifically. `P8a` runs against the `[pause]` case **alone**, because the same mutation reddens `[transport-pause]` through the same fall-through arm and two failing testcases classify as `MISFIRE`, crediting neither claim.
+
+Each RED names what broke (Lesson #0043) — P9a's most legibly: `assert 2 == 1 where 2 = len(['Continue to the next work step', 'No further action needed.'])`.
+
+⚠️ **25 claims Step 4 ADDED are exempted, not witnessed — RULED by Cray, typed, session 283: record as a known gap, do not add probes.** The reasoning: this PLAN declares four probes, and adding more would widen the spec, which is Cray's to do and not the executor's. The battery labels them in their own exemption class rather than folding them in with the 116 pre-existing ones, so the gap stays visible in the artifact and not only here:
+
+| class | n | what is unwitnessed |
+|---|---|---|
+| pre-existing Stop-arm claims | 116 | present at `ac3972a`, before Step 4's `27ba8bc` / `9143e85`; unchanged by this Step |
+| Step-4-added, no declared probe (`tests/handoffs/test_stop_continuation.py`) | **5** | the chain-cap arm that logs nothing; manufactured-vs-decided pause; AC-9's three positive controls |
+| Step-4-added, no declared probe (`tests/tools/test_hook_copies_audit.py`) | **20** | empty-tree, non-checkout skipping, matching-worktree, multi-worktree ordering, missing-subject-is-stale-not-dropped, unreadable-main fail-closed, `collect()` naming |
+
+These 25 are **not vacuous** — each fails if its subject breaks — but no mutation has demonstrated it, and an exemption is never a witness. Calling them "pre-existing" would have hidden a real gap.
+
+**The generator passed its own controls before writing the battery:** each of the four mutation needles occurs exactly once, with an absent-needle control reading `0` and a many-needle control reading `6` proving the reader can count at all; and **116 of 116** baseline claims matched across paths — without that second control the pre-existing/Step-4 split above would have been fiction rather than a measurement.
+
+**Restore verified four ways** after the run, because a battery that mutates the live Stop hook must be shown to have put it back: empty `git diff` on both subjects, modes still `644` (the s256 atomic-write narrowing did not fire), no unrestored snapshot, and 70 tests green across the two modules — functional restoration, not merely byte equality.
+
+### 11.2 AC-10 — the 19 stale worktree copies, and Cray's disposition
+
+**Read, re-derived on disk at session 283 against `main` `2e7d948` (`python tools/hook_copies_audit.py`), not copied from a handoff:**
+
+```
+worktrees=19 distinct_classifier_hashes=6 distinct_stop_hook_hashes=8
+```
+
+`K == 1 and K2 == 1` is **FALSE** (6 and 8), so AC-10 closes on its second branch — *"every stale entry is listed in this PLAN's closeout with Cray's disposition"*. Not one of the 19 is on `main`'s bytes.
+
+🔴 **Cray's disposition — typed, session 282: option (1), RECORD AS ABANDONED, LEAVE IN PLACE.** Nothing is pruned, synced or re-registered. This is what SD-6 already binds — no file inside another worktree is touched by this PLAN — and the ruling keeps it that way. Pruning them is a separate, Cray-gated action, and is **not** owed by this PLAN.
+
+The 19:
+
+`agent-a0abeaa7be1f75946` · `awesome-swanson-98a5da` · `brave-mirzakhani-025e55` · `elegant-moser-1b89d2` · `eloquent-chatelet-5a975b` · `fervent-meninsky-f4c2db` · `inspiring-faraday-21f67f` · `intelligent-elion-94c53e` · `lucid-murdock-faec30` · `optimistic-hertz-cbc6b6` · `optimistic-lehmann-7cc474` · `recursing-chatterjee-25140d` · `recursing-wescoff-3f40df` · `sd-premortem-v3` · `sleepy-austin-a10d8f` · `strange-clarke-f16720` · `wizardly-hopper-ef7b59` · `wizardly-torvalds-140566` · `youthful-driscoll-b265cf`
+
+✅ **Safety check, re-run at s283 with a positive control:** none of the 19 defines `STOP_SYSTEM_PROMPT`, so no worktree runs the unvalidated SLIM5 prompt that Step 3 refuted. The control is what makes those zeros evidence: the same method finds **5** occurrences in `main`'s `.claude/hooks/_sonnet_classifier.py`, so a zero means absence rather than a grep that finds nothing anywhere.
+
+⚠️ **What this record does NOT claim.** It does not say the 19 are harmless — SD-6's finding stands unchanged: a session started in any of them runs *that copy's* Stop arm, including the old 32,708-char prompt, and a hook or settings change on `main` does not reach them. It says only that the gap is recorded with Cray's ruling rather than fixed, and that the specific hazard of an unvalidated SLIM5 running unattended is **not** among them.
+
+⚠️ **`git worktree list` cannot be used to re-derive this list** — it reports 6 of the 19, all mislabelled `prunable`, because the worktree gitdirs are UNC paths. Homed in `tools/hook_copies_audit.py`'s docstring; the tool globs the directory instead, deliberately.
