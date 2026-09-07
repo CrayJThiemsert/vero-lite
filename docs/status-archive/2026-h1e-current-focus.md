@@ -188,3 +188,57 @@ of this file after the append.
 > (G20) is expected to **DENY**; the PLAN forbids routing around it.
 
 🔴 **THIS (s280) reconcile rotates the session-276-277 block** (caller-measured **3,660 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **59,218 B** — **6,318 B** under R1 — and a fourth block would have left ~2.2 KB, the same rule the s279 reconcile rotated on at 4,041 B. The window lands at **THREE** again (278, 279, 280), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **deliberate; no block was lost**; the s280 block was written under the cap from the start. 🔴 **This ledger's own s276-277 entry is NOT re-appended — probed and found ALREADY in the archive verbatim** (count 1, against a positive control), having travelled inside the s278 rotation, so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **59,218 → 57,638 B**; CF archive **185,073 → 189,622 B (+4,549)**, the block **3,659 B** carved from `git show HEAD:`, present-once verified by **DELTA** (pre=0 post=1) with absence-from-STATUS checked separately. ⚠️ **CF archive headroom is now 6,986 B under R4's 196,608 B split trigger — the next reconcile or two must open `2026-h1e-current-focus.md`.**
+
+## Rotated this reconcile — session 285 (2026-09-08)
+
+### Rotated at the s285 reconcile — the session-281 Current-Focus block [on the R2 headroom rule, not a cap overage: the block is **3,128 B** as carved, under the 4,096 B per-block cap — STATUS's own ledger line says **3,130 B**, which counts the blank separator line the carve strips; same block, two conventions, recorded rather than silently reconciled (the s281 append documents the identical 3,269/3,270 B pair). STATUS opened at **62,509 B**, only **3,027 B** under R1's 65,536 B ceiling, and the CF window had a free slot — the byte ceiling forced the prune, not the block count. The window lands at THREE again (282, 283-284, 285).]
+
+> **Session 281, 2026-09-06 (`7138cc0` → `fc01cd0`) — THREE PRs
+> ([#1408](https://github.com/CrayJThiemsert/vero-lite/pull/1408)–[#1410](https://github.com/CrayJThiemsert/vero-lite/pull/1410)),
+> all merged, 0 open, tree clean. What it established: SLIM5 — the prompt s280
+> measured at 42/49 IN-SAMPLE and shipped — was REFUTED on data it had never
+> seen and Cray reverted it. The arm running today is the INCUMBENT full prompt:
+> a success of the method, a failure of the candidate.**
+>
+> ✅ **Step 2 shipped SLIM5 (#1409)** — `STOP_SYSTEM_PROMPT` = the measured
+> bytes, sha-pinned; `_build_system_prompt(..., event=None)` returned SLIM5 on
+> `Stop`, legacy otherwise. AC-4/5/6 ticked; battery `claims 189 · RED 12 ·
+> exempted 177 · GAPS 0 · PASS`.
+>
+> 🔴 **Step 3 (#1410) measured it OUT-OF-SAMPLE and it lost.** 30 held-out
+> `gold.yaml` cases, one pass per arm, `gpt-oss:20b` on MS-S1 under a typed §8
+> go, warm call excluded, **neither arm re-run after its score was seen**:
+> **FULL 29/30 correct · 0 unsafe · 29/30 delivered** vs **SLIM5 28/30 · 2
+> unsafe · 30/30 delivered** (`pause-destructive-db`, `pause-plan-status-flip`);
+> controls `always-pause` 19/30 and `always-proceed` 8/30 both reproduced their
+> pre-committed values. AC-7's read was fixed BEFORE the run and **two of three
+> conjuncts FAILED** — `28 > 19` true, `unsafe == 0` FALSE, `28 >= 29` FALSE.
+> **AC-7 is NOT ticked.**
+>
+> 🔴 **The in-sample result INVERTED.** SLIM5 led **42/49 to 16/49 on the 49
+> cases it was TUNED against**; on 30 unseen ones the incumbent is ahead on
+> correctness and strictly better on safety, and both SLIM5 misses run the
+> dangerous way — `proceed` on a should-pause case, one a destructive DB
+> operation. PLAN-0122 §9 named the risk. Not argued away: SLIM5 delivered 30/30
+> to FULL's 29/30, but under the PARITY ruling a lost call is a pause, so FULL's
+> timeout costs a turn, never safety — and its 29/30 is that arm's FIRST honest
+> score, on the repaired harness, not the void `19/20`.
+>
+> ✅ **The revert (Cray, typed).** `classify()` no longer passes the event; every
+> arm gets the legacy prompt. **KEPT:** harness repair, sha-pinned constant,
+> AC-5/AC-6 tests, battery, the `event` seam. **ADDED:**
+> `test_stop_arm_is_not_slim5_until_ac7_passes` (probe P4d redefined to witness
+> it); battery after: `claims 191 · RED 12 · exempted 179 · GAPS 0 · PASS`.
+>
+> ⚠️ **A trap for whoever is next:** `.claude/autonomy-triggers.md` is fed
+> VERBATIM into the legacy prompt, so editing it — even only to annotate the
+> void `19/20` it still quotes — changes the FULL prompt and **voids the 29/30
+> that justifies today's configuration**. Never documentation-only.
+>
+> ⚠️ Two doc defects the `goal-evaluator` caught, both fixed in #1410: the typed
+> revert lived **in code comments only** while the PLAN still framed it as open,
+> and the s280 README still said *"No held-out numbers"* in the directory that
+> now holds them. Gate on `fc01cd0` all clean; **pytest 4917 passed, 8 skipped**;
+> CI `gate: pass` on both heads. Detail: `docs/plans/0122-*.md` Step 3.
+
+🔴 **THIS (s281) reconcile rotates the session-278 block** (caller-measured **3,270 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **57,638 B**, **7,898 B** under R1, and a fourth block would have left ~4 KB. The window lands at **THREE** again (279, 280, 281) — deliberate; no block was lost. 🔴 **The chain OPENS A NEW LETTER — the block goes to `2026-h1e-current-focus.md` (NEW FILE)**: `h1d` is CLOSED at 189,622 B, since +3,270 B would reach **192,892 B**, essentially where `h1c` closed (**193,007 B**). 🔴 **This ledger's own s278 entry is NOT re-appended — probed and found ALREADY in `2026-h1d-current-focus.md` verbatim** (count 1, against a positive control run on h1d because an empty new file cannot control anything), having travelled inside the s278 rotation's own slice, so R4's move duty is discharged. **Second consecutive reconcile this shape has fired** — treat a rotating block's ledger entry as PROBABLY already archived and probe before appending, never after. ✅ **Caller-measured:** STATUS **57,638 → 59,342 B**; `h1e` created at **5,968 B** (the block 3,269 B as carved — the 3,270 B above counts the blank separator line — plus its header); `h1d` **CLOSED** at **190,011 B** after its own banner edit, per the s227 precedent that a closing chain file rewrites its own header. Present-once verified by **DELTA** (pre=0 post=1), absence-from-STATUS checked separately.
