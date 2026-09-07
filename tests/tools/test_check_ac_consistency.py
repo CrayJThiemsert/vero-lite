@@ -347,6 +347,94 @@ def test_an_ac_with_no_test_artifact_is_not_a_gap(guard: ModuleType, tmp_path: P
     assert guard.find_battery_gaps(tmp_path) == []
 
 
+def _plan_with_two_artifacts(pattern: str, flag: str, first: str, second: str) -> str:
+    """One AC naming TWO artifact tokens — the shape PLAN-0122 introduced.
+
+    Written as its own helper rather than bolted onto ``_plan_with_batteries``, whose
+    single-token signature every test above depends on.
+    """
+    body = "**Status:** Draft\n" + f"**Batteries:** `{pattern}`\n\n" + _BINDS + "\n\n"
+    body += f"- [{flag}] **AC-1 [check] — a criterion.** *Artifact:* `{first}` (+ `{second}`).\n"
+    return body
+
+
+def test_an_implementation_artifact_is_covered_through_its_test_module(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🟢 The s283 false positive, which accused a correctly-evidenced AC.
+
+    A tool carries no claims of its own (`enumerate_claims` reads assertions;
+    `tools/hook_copies_audit.py` has 0), so requiring it inside a denominator OF CLAIMS
+    can only be satisfied by adding a module that contributes zero — buying a green by
+    making the coverage report blind.
+    """
+    _write(
+        tmp_path,
+        "docs/plans/0122-x.md",
+        _plan_with_two_artifacts(
+            "tests/batteries/*.json",
+            "x",
+            "tools/hook_copies_audit.py",
+            "tests/tools/test_hook_copies_audit.py",
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/tools/test_hook_copies_audit.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_an_implementation_artifact_whose_test_module_is_also_uncovered_is_still_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 POSITIVE CONTROL for the exemption above.
+
+    Without this, the exemption could have gone blind — every implementation artifact
+    passing regardless — and the s278 defect it exists to catch would be back. Both
+    named modules are reported, because neither is witnessed by anything.
+    """
+    _write(
+        tmp_path,
+        "docs/plans/0122-x.md",
+        _plan_with_two_artifacts(
+            "tests/batteries/*.json",
+            "x",
+            "tools/hook_copies_audit.py",
+            "tests/tools/test_hook_copies_audit.py",
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_unrelated.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+
+    # Parse the module out of the reason's backticks rather than substring-matching it:
+    # "hook_copies_audit.py" IS a substring of "test_hook_copies_audit.py", so a naive
+    # `in g.reason` would match both gaps and read as agreement where there is none.
+    reported = sorted(g.reason.split("`")[1] for g in gaps)
+    assert reported == ["hook_copies_audit.py", "test_hook_copies_audit.py"]
+
+
+def test_a_second_test_module_missing_from_the_denominator_is_still_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The exemption is for IMPLEMENTATION modules only.
+
+    A test module carries claims, so each one an AC names must be in the denominator.
+    Otherwise pairing a covered test module with an uncovered one would hide the
+    uncovered half — the exact under-counting the check was built to stop.
+    """
+    _write(
+        tmp_path,
+        "docs/plans/0122-x.md",
+        _plan_with_two_artifacts(
+            "tests/batteries/*.json",
+            "x",
+            "tests/a/test_covered.py",
+            "tests/a/test_uncovered.py",
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_covered.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "test_uncovered.py" in g.reason) for g in gaps] == [(1, True)]
+
+
 def test_the_live_repo_has_no_battery_gaps(guard: ModuleType) -> None:
     """The guard must agree with the tree it ships in."""
     assert guard.find_battery_gaps(REPO_ROOT) == []
