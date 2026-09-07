@@ -184,7 +184,11 @@ That is a small benefit and arguably a negative one against the repo's stated
 - The harness terminates the hook. **Whether it kills the process tree or only the hook
   process is an explicitly OPEN question**: `docs/adr/0018-axis-b-verification-loop.md:1472-1474`
   (**D8-VX-4**, *"Measure once, before the timeout/budget fix is shaped"*) and
-  `docs/plans/0120-goal-gate-test-db-isolation.md:147` (marked ❌). I am not asserting either way.
+  `docs/plans/done/0120-goal-gate-test-db-isolation.md` §Out of Scope → **D8-VX-4** (marked ❌).
+  I am not asserting either way. ✎ *s285: repathed on archival, and the `:147` anchor this line
+  used to carry is dropped rather than re-pointed — it had already rotted (line 147 is the
+  lease-file bullet; D8-VX-4 moved to 149 when s285's closure added two lines above it). A
+  section anchor cannot rot that way; a line number into a living document rots by construction.*
 - **Established consequence:** no directive on stdout → the Stop fires. From the user's
   seat that is the *same* visible outcome as a pause. So the outer timeout is **not louder**
   than the inner one; it is equally quiet in the normal case.
