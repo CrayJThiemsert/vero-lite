@@ -127,3 +127,64 @@ of this file after the append.
 > excluded via `^tests/.*/fixtures/`.
 
 🔴 **THIS (s279) reconcile rotates the session-274-275 block** on **BOTH** rules — a fourth block entered a three-wide window **and** it measured **7,577 B, 85% over** the 4,096 B per-block cap (caller-measured); the new block was written under the cap at **~3.9 KB**. 🔴 **This ledger's own s269-273 and s274-275 entries rotate with it**, probed against the archive with a positive control: the **s269-273** entry is **present verbatim** (it travelled inside the s275 slice) and is **not** re-appended; the **s274-275** entry is **absent** — only the archive's `## Rotated at the session-275 reconcile` header records it — so it travels to the caller. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
+
+## Rotated this reconcile — sessions 283 + 284 (2026-09-07)
+
+### Rotated at the s284 reconcile — the session-280 Current-Focus block [on the R2 headroom rule, NOT a cap overage: the block is **3,690 B** as carved, under the 4,096 B per-block cap. STATUS opened at **63,219 B** — only **2,317 B** under the 64 KB R1 ceiling — and admitting the new s283-284 block to a four-wide window would have breached it. The window lands at **THREE** again (281, 282, 283-284); the **fifth consecutive** reconcile to land there on headroom. 🔴 **This block's own Current-Focus rotation-ledger entry IS appended here — it was probed and found ABSENT from all five CF archives**, against a positive control that found a known entry (`reconcile rotates the session-274-275`, count 1) and a fabricated needle that found none. That **BREAKS the run of three** consecutive reconciles (s280, s281, s282) whose rotating entry was already archived — the prior is informative, never a substitute for the probe. ⚠️ **Two instrument traps caught by controls at s284**, recorded so the next rotation avoids them: the CF slice does **not** run to the section end — the rotation-ledger line sits between the last block and `## Prior focus` and must STAY, and taking the slice to the section end measured **7,668 B** against the correct **3,691 B**; and a ledger-entry probe carrying the `🔴 **THIS (sNNN) ` prefix returned 0 **including on its positive control**, which is what exposed the needle rather than the archive as wrong. ✅ Caller-measured: STATUS **63,219 → 61,764 B** (3,772 B of headroom left — the next reconcile must rotate again). Carved from `git show HEAD:docs/STATUS.md`, never from the subagent's return.]
+
+> **Session 280, 2026-09-05..06 (`af0eca0` → `7138cc0`) — FOUR PRs
+> ([#1404](https://github.com/CrayJThiemsert/vero-lite/pull/1404)–[#1407](https://github.com/CrayJThiemsert/vero-lite/pull/1407)),
+> all merged, 0 open, tree clean. What it established: the Stop hook's proceed
+> arm is **~57% defective over 47 days** — counted, not felt — and the harness
+> grading its replacement was broken two ways, both flattering the incumbent.**
+>
+> ✅ **PLAN-0122 drafted (#1404), ratified (#1405), Steps 0+1 merged
+> (#1406/#1407)** — 12 ACs, 7 SDs, six typed by Cray at merge. Step 0 froze the
+> evidence into `benchmarks/stop_classifier/s280/` (13 files) before it expired;
+> the raw 294-envelope jsonl stays gitignored, sha256 recorded. The ledger — 117
+> proceed-arm fires, ~57% defective — was trusted only after its instrument
+> passed controls (strict 150 < loose 156; a positive control found all 28
+> goal-gate directives).
+>
+> 🔴 **Two harness defects confirmed WITH controls, not asserted.** **D-1, label
+> leak:** the harness put `{case_id}.jsonl` in the prompt, grading the incumbent
+> on a leaked label — AC-1 prints `cases=79 leak_pre=79 leak_post=0`, `leak_pre`
+> being the control proving the detector can see a leak. **D-2, transport
+> divergence:** the harness sent a body production never sends, penalising the
+> challengers — AC-2 prints `prod_options={'temperature': 0}`, `pre=75 post=3`,
+> `prod_t=1.02 harness_t=1.00`.
+>
+> ✅ **Same model, before → after the repair, nothing else changed: 16/49 (33%),
+> 0/18 proceed, 10 calls lost → 42/49 (86%), 0 unsafe, 49/49 delivered**, from a
+> six-arm A/B over 294 live MS-S1 calls; both degenerate bots lose (AC-3
+> `slim5=42/49 unsafe=0 | always_pause=22/49 unsafe=0 | always_proceed=22/49
+> unsafe=27`), and a bigger model, a raised `num_predict` and an output
+> word-filter were ruled OUT **on measurement**. ⚠️ **The 86% is IN-SAMPLE and
+> never travels without that:** one pass at temperature 0, no variance estimate,
+> SLIM→SLIM5 tuned on the same 49 cases (PLAN-0122 §9).
+>
+> 🔴 **Three corrections to the session's OWN figures — the load-bearing part.**
+> (i) The scorer counted timeouts and unparseable replies as `delivered`,
+> inflating FULL and SLIM4 by one case each — caught only because Step 1.4 makes
+> the frozen file meet the already-reported figures, which is its purpose.
+> (ii) `SLIM3 unsafe` was reported as 2 all session; the repaired scorer says
+> **4** and was right — it counts *proceed on a dispatch-gold case* as a hard
+> fail, documented since s56; corrected visibly in the PR body, and it changes
+> no ruling (SD-3 was decided on SLIM5). (iii) Two probes (P2b, P2c) MISFIRED on
+> first declaration — the mutation reddened a neighbouring line, not the
+> declared claim; the driver refused to credit them and **the prediction was
+> fixed, never the assertion**.
+>
+> **Evidence, not restated** — read the PR bodies and the frozen dir: battery
+> `tests/batteries/plan-0122-step1-harness.json` claims 48, RED 8, exempted 40,
+> **GAPS 0**, `PROBE-BATTERY: PASS`; `ruff` + `ruff format --check` (725 files)
+> + `check_ac_consistency` (86 ACs / 10 PLANs) clean; CI `success` on both heads.
+>
+> 🔴 **PLAN-0122 is NOT done — Step 2 has not started because SD-1 is RESOLVED
+> BY ENTAILMENT, NOT TYPED.** It follows from SD-2 + SD-3 as *(a) ship SLIM5
+> byte-identical, Stop-only, sha-pinned, conditioned on AC-7 passing first* —
+> but Cray never typed "SD-1", and anything narrower changes Steps 2 **and** 4.
+> ⚠️ Step 2.3 must also edit `.claude/hooks/*`, which the auto-mode classifier
+> (G20) is expected to **DENY**; the PLAN forbids routing around it.
+
+🔴 **THIS (s280) reconcile rotates the session-276-277 block** (caller-measured **3,660 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **59,218 B** — **6,318 B** under R1 — and a fourth block would have left ~2.2 KB, the same rule the s279 reconcile rotated on at 4,041 B. The window lands at **THREE** again (278, 279, 280), inside R2's `≤ 4 sessions / ≤ 8 blocks` maximum — **deliberate; no block was lost**; the s280 block was written under the cap from the start. 🔴 **This ledger's own s276-277 entry is NOT re-appended — probed and found ALREADY in the archive verbatim** (count 1, against a positive control), having travelled inside the s278 rotation, so R4's move duty is discharged and a second copy would duplicate a move-only archive. ✅ **Caller-measured:** STATUS **59,218 → 57,638 B**; CF archive **185,073 → 189,622 B (+4,549)**, the block **3,659 B** carved from `git show HEAD:`, present-once verified by **DELTA** (pre=0 post=1) with absence-from-STATUS checked separately. ⚠️ **CF archive headroom is now 6,986 B under R4's 196,608 B split trigger — the next reconcile or two must open `2026-h1e-current-focus.md`.**
