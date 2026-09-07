@@ -1,0 +1,37 @@
+{
+  "claim_sources": ["tests/tools/test_probe_battery_guard.py"],
+  "probes": [
+    {
+      "name": "9a",
+      "subject": "tests/db_support.py",
+      "old": "        pytest.exit(guard.contention_reason(), returncode=db_guard.CONTENDED_EXIT)",
+      "new": "        pass",
+      "node_id": "tests/tools/test_probe_battery_guard.py::test_a_battery_child_under_contention_never_credits_a_claim",
+      "expect_claim": "test_a_battery_child_under_contention_never_credits_a_claim|credited is False|#0",
+      "note": "🔴 The fail-OPEN direction, and the whole point of AC-9. The chokepoint still ASKS the guard — `guard.acquire()` runs and still answers CONTENDED — but the refusal is dropped, so the child proceeds onto a database another session is bound to. It then reaches the planted mutation, goes genuinely RED, and the battery classifies it WITNESSED, which credits. That is the fabrication AC-9 exists to make impossible: an infrastructure collision published as 'this assertion was witnessed'. ✎ Subject is `tests/db_support.py`, NOT `tests/db_guard.py` as PLAN-0120's AC-9 text says — `db_guard.py` contains no `pytest.exit` at all (its own docstring records why: `_pytest.outcomes.Exit` subclasses `Exception`, so a bare `except Exception` swallows it, and every guard-driven exit must therefore sit outside those blocks). ⚠️ This mutation deliberately re-creates the pre-PLAN-0120 collision for the length of one probe: the unguarded child's autouse fixture drops the parent's `public` schema. Contained by construction — the outer child runs exactly one node, and that node touches no table (`SELECT 1`), so the reddening is the assertion and not a teardown error. `outcome is Outcome.ABORTED` is NOT-REACHED under this probe and is claimed by 9b instead, never green here."
+    },
+    {
+      "name": "9b",
+      "subject": "tests/db_support.py",
+      "old": "        pytest.exit(guard.contention_reason(), returncode=db_guard.CONTENDED_EXIT)",
+      "new": "        pytest.skip(guard.contention_reason())",
+      "node_id": "tests/tools/test_probe_battery_guard.py::test_a_battery_child_under_contention_never_credits_a_claim",
+      "expect_claim": "test_a_battery_child_under_contention_never_credits_a_claim|outcome is Outcome.ABORTED|#0",
+      "note": "🔴 The exact degradation PLAN-0120 §2 names as the silent failure: a mass skip reads as a pass on the summary line, and the floor that catches mass skips is armed only under CI=1 with args exactly ['tests'] — i.e. never in a gate check or a battery child. The refusal still happens, so nothing is corrupted and nothing is credited; only its SHAPE changes, from a verdict-less abort to a skip. `credited is False` stays GREEN as the sibling, and that green is what makes this probe attributable: it says the outcome moved, not that crediting broke. One mutation, one claim, as AC-9 declares."
+    },
+    {
+      "name": "9c",
+      "subject": "tests/db_support.py",
+      "old": "    if _ROLE:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_probe_battery_guard.py::test_a_battery_child_with_its_own_role_reaches_a_verdict",
+      "expect_claim": "test_a_battery_child_with_its_own_role_reaches_a_verdict|outcome is Outcome.WITNESSED|#0",
+      "note": "🟢 The probe that makes the POSITIVE CONTROL a control rather than a decoration. PLAN-0120's AC-9 declares only 9a and 9b; without a third, the control's own assertion would have to be exempted, and an unwitnessed control is exactly the shape CLAUDE.md §8 warns about — an instrument nobody has shown can move. Ignoring the role marker makes the control child resolve the PARENT's database instead of its own, so it contends, aborts, and never reaches a verdict: `WITNESSED` reddens. Both claims of the contention test stay GREEN under it (still ABORTED, still not credited), so the reddening is attributable to the control alone. This is the same lever s278 used as B1/P5 for AC-4, applied here to the opposite claim."
+    }
+  ],
+  "exemptions": {
+    "test_the_child_node_binds_the_database|rows == CHILD_EXPECTED_ROWS|#0": "🟢 This is the INNER probe's own target — the assertion `_run_child_through_the_battery` plants `CHILD_EXPECTED_ROWS = 99` against. It is witnessed, but one level down rather than by an outer probe: `test_a_battery_child_with_its_own_role_reaches_a_verdict` reporting `WITNESSED` IS the measurement that flipping this constant reddens this assertion, because `WITNESSED` is by definition the classifier confirming the declared claim failed at its own site. An outer probe pointed at it would witness the same fact twice while destroying the control that proves the inner path can credit at all.",
+    "parent_guard|guard.state == db_guard.ACQUIRED|#0": "A precondition assertion, not a claim about the battery seam. It exists so the contention test cannot silently become a race — if the parent did not hold the lock, the child might arrive first and acquire, and a clean run would be reported as evidence of a guard. It stays GREEN under all three probes by design: 9a and 9b mutate what happens AFTER `acquire()` answers, and 9c changes only which database name is resolved, not whether the parent acquires one. A mutation that reddened it would be mutating the guard's acquisition, which AC-3 and AC-4 already witness on their own artifacts.",
+    "child_role|left == 0|#0": "A cleanup assertion (the scratch `…_b<pid>` database was dropped), not a claim about contention. It is here so a leaked database per run is loud rather than accumulating silently on the dev cluster; no mutation to the chokepoint or the role suffix changes `DROP DATABASE`. Same shape, and the same reason, as the `fresh_name|left == 0|#0` exemption in `plan-0120-step3-race-report.json`."
+  }
+}
