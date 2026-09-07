@@ -132,6 +132,54 @@ def _battery_sources(root: Path, pattern: str) -> tuple[set[str], int]:
     return sources, len(files)
 
 
+def _uncovered_artifacts(plan_name: str, text: str, sources: set[str]) -> list[BatteryGap]:
+    """Every ticked AC in ``text`` naming an artifact module outside ``sources``.
+
+    Split out of :func:`find_battery_gaps` to keep that function under the complexity
+    ceiling once the implementation-module rule below was added; the two read as one
+    check and are only separated for that reason.
+
+    **The rule.** A test module carries claims, so each one an AC names must be in the
+    denominator. An IMPLEMENTATION module carries none — ``enumerate_claims`` reads
+    assertions, and a tool has zero (measured s283: ``tools/hook_copies_audit.py`` ->
+    0 claims) — so demanding it appear in a denominator OF CLAIMS is a category error,
+    satisfiable only by adding a module that contributes nothing, which buys a green by
+    making the coverage report blind. It is witnessed THROUGH a test module, so it is
+    covered when this AC names one that is in the denominator.
+
+    An AC naming NO test module falls back to the original rule, so a tool-only AC
+    still cannot slip through unwitnessed — the s278 defect stays caught.
+    """
+    out: list[BatteryGap] = []
+    for flag, num in _AC_BOX.findall(text):
+        if flag != "x":
+            continue
+        line = next((ln for ln in text.splitlines() if ln.startswith(f"- [x] **AC-{num} ")), "")
+        seg = _ARTIFACT_SEG.search(line)
+        if seg is None:
+            continue  # an AC with no test artifact (a command-run AC) is not a gap
+        modules = [t.split("/")[-1].split("::")[0] for t in _ARTIFACT_NODE.findall(seg.group(1))]
+        covered_by_a_test = any(m.startswith("test_") and m in sources for m in modules)
+        for module in modules:
+            if module in sources:
+                continue
+            if covered_by_a_test and not module.startswith("test_"):
+                continue
+            out.append(
+                BatteryGap(
+                    plan=plan_name,
+                    ac=int(num),
+                    reason=(
+                        f"ticked, but its artifact `{module}` is in no battery's "
+                        f"claim_sources — so PROBE-COVERAGE was computed over a "
+                        f"denominator that excluded it. fix: add a battery covering "
+                        f"that module, or untick until one exists."
+                    ),
+                )
+            )
+    return out
+
+
 def find_battery_gaps(root: Path) -> list[BatteryGap]:
     """Check 3 — a ticked AC's named artifact must be inside some battery's denominator.
 
@@ -145,6 +193,25 @@ def find_battery_gaps(root: Path) -> list[BatteryGap]:
     against real batteries — probe names drift from the PLAN's ids — and a subject-level
     join fires on a legitimately revised mutation. The module join measured 0 false
     positives across PLAN-0120's eleven ACs.
+
+    ⚠️ **That 0-false-positive figure was measured on a population containing none of
+    the shape below.** An AC may name an IMPLEMENTATION module as its artifact —
+    the tool it delivers — alongside the test module that witnesses it. Measured s283
+    across 899 AC lines in ``docs/plans/`` and ``docs/plans/done/``: exactly **four**
+    do, all four in PLAN-0122 (``run_eval.py`` twice, ``hook_copies_audit.py``,
+    ``stop_classifier_ledger.py``), and PLAN-0122 AC-10 was the first ever ticked.
+    So this check met the shape for the first time three sessions after it shipped,
+    and accused a correctly-evidenced AC.
+
+    The pairing is NOT by filename — AC-2 and AC-3 pair ``run_eval.py`` with
+    ``test_stop_classifier_gold.py``, so a ``test_<stem>.py`` convention would not
+    have fixed them. The rule is therefore per-AC, not per-name: the AC's own
+    artifact clause is what associates a subject with its witness.
+
+    Deliberately coarse, and consistent with the node_id refusal above: an AC pairing
+    an unrelated implementation module with a covered test module passes. What is
+    protected is "this ticked AC has witnessed coverage at all", not "every named
+    file is individually probed" — the latter is what the 37% measurement rejected.
     """
     out: list[BatteryGap] = []
     for plan in active_plans(root):
@@ -188,28 +255,7 @@ def find_battery_gaps(root: Path) -> list[BatteryGap]:
             )
             continue
 
-        for flag, num in _AC_BOX.findall(text):
-            if flag != "x":
-                continue
-            line = next((ln for ln in text.splitlines() if ln.startswith(f"- [x] **AC-{num} ")), "")
-            seg = _ARTIFACT_SEG.search(line)
-            if seg is None:
-                continue  # an AC with no test artifact (a command-run AC) is not a gap
-            for token in _ARTIFACT_NODE.findall(seg.group(1)):
-                module = token.split("/")[-1].split("::")[0]
-                if module not in sources:
-                    out.append(
-                        BatteryGap(
-                            plan=plan.name,
-                            ac=int(num),
-                            reason=(
-                                f"ticked, but its artifact `{module}` is in no battery's "
-                                f"claim_sources — so PROBE-COVERAGE was computed over a "
-                                f"denominator that excluded it. fix: add a battery covering "
-                                f"that module, or untick until one exists."
-                            ),
-                        )
-                    )
+        out.extend(_uncovered_artifacts(plan.name, text, sources))
     return out
 
 
