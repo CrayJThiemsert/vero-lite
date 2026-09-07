@@ -1,12 +1,12 @@
 ---
 last_updated: 2026-09-07T20:25+07:00
 session: 284
-current_batch: "s283 (#1418–#1421, merged) + s284 (#1422 open, CI green): PLAN-0122 6/12 → 10/12; a stale PLAN Status line refuted in code; AC-12's window found collecting nothing measurable."
+current_batch: "s283 (#1418–#1421) + s284 (#1422), all merged: PLAN-0122 6/12 → 10/12; a stale PLAN Status line refuted in code; AC-12's window found collecting nothing measurable."
 current_actor: code
-blocked_on: "Nothing blocking work — 1 open PR (#1422, CI green, awaiting Cray's merge); #1418–#1421 merged, tree clean."
+blocked_on: "Nothing blocking work — #1418–#1422 all merged (#1422 at Cray's instruction, s284), tree clean; this reconcile is the only PR open."
 next_action: "Cray to weigh AC-12 — extend the 14-day window, change the spec, or stop the clock; its log has n=0 `proceed` fires, so do NOT build `tools/stop_classifier_ledger.py` yet (blocker is data, not code)."
-head_commit: 006ffd0
-recent_commits: [006ffd0, 3a3497d, dd42e2e, a573725, 2e7d948, e62ddde, 3b941cf, bca71eb, 653f7a7, 60c72dd]
+head_commit: 55d7ec8
+recent_commits: [55d7ec8, fff851c, 006ffd0, 3a3497d, dd42e2e, a573725, 2e7d948, e62ddde, 3b941cf, bca71eb]
 ---
 
 # vero-lite — Project Status
@@ -20,8 +20,8 @@ recent_commits: [006ffd0, 3a3497d, dd42e2e, a573725, 2e7d948, e62ddde, 3b941cf, 
 
 > **Session 283–284, 2026-09-06..07 (`22fc98f` → `006ffd0`) — FOUR PRs merged
 > ([#1418](https://github.com/CrayJThiemsert/vero-lite/pull/1418)–[#1421](https://github.com/CrayJThiemsert/vero-lite/pull/1421))
-> plus [#1422](https://github.com/CrayJThiemsert/vero-lite/pull/1422) **OPEN, CI
-> green**. What it established: PLAN-0122 went **6/12 → 10/12** on evidence, a
+> plus [#1422](https://github.com/CrayJThiemsert/vero-lite/pull/1422) — **all
+> merged**. What it established: PLAN-0122 went **6/12 → 10/12** on evidence, a
 > stale line in the PLAN itself was refuted **in code**, and **AC-12's 14-day
 > window is running while measuring nothing.****
 >
@@ -32,7 +32,7 @@ recent_commits: [006ffd0, 3a3497d, dd42e2e, a573725, 2e7d948, e62ddde, 3b941cf, 
 > their §11 closeout records. Also landed **Lesson #0061** (an AC is not a spec)
 > and the STATUS TODO for the uninstrumented PreToolUse arm.
 >
-> ✅ **s284 (#1422 — open, head `fff851c`, CI `success`, run 34123293869).**
+> ✅ **s284 (#1422 — `fff851c` → `55d7ec8`, CI `success`, run 34123293869).**
 > Ticked **AC-1/AC-2/AC-3** on a battery re-run — **8/8 WITNESSED,
 > `PROBE-COVERAGE COMPLETE`, GAPS 0** — and **AC-11** on a clean gate: `ruff` 0 ·
 > `format` 0 · `mypy` 0 · `pytest` 0 with **4948 passed / 8 skipped** ·
@@ -186,7 +186,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-09-07 | **s283 + s284 — FOUR PRs merged (#1418–#1421) + #1422 OPEN (CI green): PLAN-0122 goes 6/12 → 10/12** — AC-8/9/10 (s283), AC-1/2/3 + AC-11 (s284), each with a §11 closeout record; AC-11's clean `check_ac_consistency` carried a positive control printing exactly the 5 predicted gaps. 🔴 A stale PLAN Status line claiming the live Stop arm runs SLIM5 was **false since s281** — refuted in code (`_sonnet_classifier.py:1009-1010`). 🔴 **AC-12's window has n=0**: 48 log lines, `proceed` 0, 39 transport failures — the blocker is DATA, not the missing ledger tool. **Cray's call.** | `006ffd0` / [#1421](https://github.com/CrayJThiemsert/vero-lite/pull/1421) / [#1422](https://github.com/CrayJThiemsert/vero-lite/pull/1422) / `docs/plans/0122-*.md` §4.3 · §11.3/§11.4 · `docs/lessons/0061-*.md` |
+| 2026-09-07 | **s283 + s284 — FIVE PRs merged (#1418–#1422): PLAN-0122 goes 6/12 → 10/12** — AC-8/9/10 (s283), AC-1/2/3 + AC-11 (s284), each with a §11 closeout record; AC-11's clean `check_ac_consistency` carried a positive control printing exactly the 5 predicted gaps. 🔴 A stale PLAN Status line claiming the live Stop arm runs SLIM5 was **false since s281** — refuted in code (`_sonnet_classifier.py:1009-1010`). 🔴 **AC-12's window has n=0**: 48 log lines, `proceed` 0, 39 transport failures — the blocker is DATA, not the missing ledger tool. **Cray's call.** | `006ffd0` / [#1421](https://github.com/CrayJThiemsert/vero-lite/pull/1421) / [#1422](https://github.com/CrayJThiemsert/vero-lite/pull/1422) / `docs/plans/0122-*.md` §4.3 · §11.3/§11.4 · `docs/lessons/0061-*.md` |
 | 2026-09-06 | **s282 — FIVE PRs (#1412–#1416): PLAN-0121 archived, an R8 unregistered-corpus guard shipped (Lesson #0060), and PLAN-0122's AC-8/9/10 artifacts ALL landed with NOT ONE AC ticked.** 🔴 AC-10's audit: `worktrees=19 · classifier=6 · stop-hook=8` distinct hashes, **not one on main's bytes**. 🔴 **#1416 corrected #1415** — the SD-4 log was built from a pass read, not §4.3. 🔴 Its first production lines exposed **286 of 1,756 MS-S1 `/api/chat` 500s since 2026-08-28**; an offline audit then **CLEARED** s281's held-out run. ✅ **Cray, typed:** worktrees = record-as-abandoned; MS-S1 = change nothing, collect 14 days; registry repair = ONE PLAN after AC-12. | `22fc98f` / [#1414](https://github.com/CrayJThiemsert/vero-lite/pull/1414) / [#1416](https://github.com/CrayJThiemsert/vero-lite/pull/1416) / `docs/plans/0122-*.md` · `tools/hook_copies_audit.py` · `docs/lessons/0060-*.md` |
 | 2026-09-06 | **s281 — THREE PRs (#1408–#1410): PLAN-0122 Steps 2+3 — SLIM5 shipped, then REFUTED on 30 HELD-OUT cases and REVERTED (Cray, typed).** **FULL 29/30, 0 unsafe** vs **SLIM5 28/30, 2 unsafe** — both misses the dangerous way, one a destructive DB op. 🔴 **AC-7 failed two of its three conjuncts and is NOT ticked.** The 42/49 headline was **IN-SAMPLE** on the 49 tuned cases and **inverted** out of sample; FULL's 29/30 is its first honest score. The Stop arm runs the **incumbent** prompt — KEPT: harness repair, sha-pinned constant, `event` seam, plus a new guard test. | `fc01cd0` / [#1409](https://github.com/CrayJThiemsert/vero-lite/pull/1409) / [#1410](https://github.com/CrayJThiemsert/vero-lite/pull/1410) / `docs/plans/0122-*.md` · `benchmarks/stop_classifier/s280/RESULTS.md` |
 | 2026-09-06 | **s280 — FOUR PRs (#1404–#1407): PLAN-0122 drafted, ratified and Steps 0+1 merged; the Stop hook's proceed arm is ~57% defective over 47 days, counted for the first time.** Two harness defects closed WITH controls — a label leak (`leak_pre=79 leak_post=0`) and a transport divergence (`pre=75 post=3`) — lifting the same model, nothing else changed, from 16/49 to **42/49, 0 unsafe, 49/49 delivered**. ⚠️ **IN-SAMPLE** (one pass, temp 0, tuned on the same 49 cases). 🔴 **SD-1 is resolved by ENTAILMENT, not typed — Step 2 is BLOCKED**, and Step 2.3's `.claude/hooks/*` edit is expected to hit G20. | `7138cc0` / [#1406](https://github.com/CrayJThiemsert/vero-lite/pull/1406) / [#1407](https://github.com/CrayJThiemsert/vero-lite/pull/1407) / `docs/plans/0122-*.md` · `benchmarks/stop_classifier/s280/` |
@@ -257,7 +257,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## Next Steps
 
-> **Immediate next action is a Cray decision, not code: AC-12's 14-day window is running but collecting nothing to measure.** `.claude/state/stop-classifier-log.jsonl` holds **48 lines over ~19 hours** with `"decision":"proceed"` appearing **0 times** and **39 of 48** lines being transport failures, so AC-12's `post=k/n` read has **n = 0**; and because the log stores only `decision`/`emitted`, it cannot supply the defective-class judgement (INVERSION / PERMISSION-FRAME / ROLE-CONFUSION) **at all** — it is §4.3's durability backstop, not AC-12's input, which is main-session transcripts. 🔴 So **do NOT write `tools/stop_classifier_ledger.py` yet**: today it would be an instrument with nothing to read. **The blocker is data, not code — Cray: extend the window, change the spec, or stop the clock.** ✅ PLAN-0122 is otherwise **10 of 12** (AC-7 failed and stays failed; **Step 4 stays SD-3 (a) *keep as repaired*, applied to the INCUMBENT FULL prompt, not SLIM5** — a further prompt attempt is a fresh Cray decision on **separate** tune/validate corpora). ⚠️ **#1422 is open with CI green and awaits Cray's merge**; nothing else is blocked on it. ⚠️ `.claude/autonomy-triggers.md` is fed verbatim into the live prompt — any edit voids the 29/30 and owes its own re-measurement. **Independent alternative, blocking nothing: PLAN-0120 Step 5** (AC-9) and **Step 7** (AC-1's live WSLENV half + AC-10, one pass); PLAN-0119's offline instrument repair stays the queued follow-on. The items below are the long-horizon register and none of them gates it.
+> **Immediate next action is a Cray decision, not code: AC-12's 14-day window is running but collecting nothing to measure.** `.claude/state/stop-classifier-log.jsonl` holds **48 lines over ~19 hours** with `"decision":"proceed"` appearing **0 times** and **39 of 48** lines being transport failures, so AC-12's `post=k/n` read has **n = 0**; and because the log stores only `decision`/`emitted`, it cannot supply the defective-class judgement (INVERSION / PERMISSION-FRAME / ROLE-CONFUSION) **at all** — it is §4.3's durability backstop, not AC-12's input, which is main-session transcripts. 🔴 So **do NOT write `tools/stop_classifier_ledger.py` yet**: today it would be an instrument with nothing to read. **The blocker is data, not code — Cray: extend the window, change the spec, or stop the clock.** ✅ PLAN-0122 is otherwise **10 of 12** (AC-7 failed and stays failed; **Step 4 stays SD-3 (a) *keep as repaired*, applied to the INCUMBENT FULL prompt, not SLIM5** — a further prompt attempt is a fresh Cray decision on **separate** tune/validate corpora). ✅ **#1422 merged at Cray's instruction (s284, `55d7ec8`)**; nothing was blocked on it. ⚠️ `.claude/autonomy-triggers.md` is fed verbatim into the live prompt — any edit voids the 29/30 and owes its own re-measurement. **Independent alternative, blocking nothing: PLAN-0120 Step 5** (AC-9) and **Step 7** (AC-1's live WSLENV half + AC-10, one pass); PLAN-0119's offline instrument repair stays the queued follow-on. The items below are the long-horizon register and none of them gates it.
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework, mapping layer, ORM emitter, base-Postgres → the custom-Postgres image, registry discovery). _[Corrected s153: dropped the stale "→ ADR-011+" and "→ PLAN-002 (≥ADR-014)" pointers — **ADR-011 does not exist** (earmark only, per the Active TODO above) and **PLAN-002 was never drafted** with its ADR floor moot; each item's corrected status lives in Active TODOs.]_
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
