@@ -91,7 +91,7 @@ async def _score_one(
 async def test_nl_query_reason_then_structure_ab_live() -> None:
     """AC-7: the 3-arm nl_query A/B on the live model. Measures + prints the per-variant SD-4
     verdict (regression floor + hard-class win) vs baseline; HARD-asserts only valid measurement."""
-    client = OllamaClient(base_url=_BASE_URL, model=_MODEL)
+    client = OllamaClient(workload="S", base_url=_BASE_URL, model=_MODEL)
     hard = [f for f in FIXTURES if f.hard_class]
     per_arm_all: dict[str, list[float]] = {arm: [] for arm in _ARMS}
     per_arm_hard: dict[str, list[float]] = {arm: [] for arm in _ARMS}

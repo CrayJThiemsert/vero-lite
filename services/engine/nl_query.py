@@ -51,6 +51,7 @@ from services.engine.llm.client import (
     OllamaClient,
     OllamaError,
     OllamaUnreachableError,
+    Workload,
 )
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
@@ -299,16 +300,28 @@ class QueryTranslationError(RuntimeError):
 # --- backend selection (mirrors recommender; tests monkeypatch this) -------
 
 
-def _build_chat_client() -> ChatClient:
+def _build_chat_client(workload: Workload) -> ChatClient:
     """Select the reasoning-hook chat backend (mirrors ``recommender``).
 
     ``llm_backend='local'`` -> the Ollama client on MS-S1 MAX (ADR-010 D1).
     ``llm_backend='hosted'`` is the seam-only stub (PLAN-0006 SD-5) — it
     raises, which the orchestrator turns into a graceful "assistant
     unavailable" answer. Tests monkeypatch this factory.
+
+    **``workload`` is a parameter because this factory serves TWO classes**
+    (PLAN-0119 SD-1.1, resolved in Step 3 by its recommended route). The clients
+    it builds feed ``_translate`` — an **S Structure** call, plus a **J Judge**
+    reasoning pass on the ``two_pass`` arm — and ``_phrase``, an **N Narrate**
+    call on the published demo's headline surface. Those classes have different
+    generation demands, so one client cannot honestly carry both.
+
+    The class stays a CONSTRUCTOR argument; it is the factory that grew a
+    parameter. Widening it into a ``chat()`` keyword is the design SD-1 ruled
+    against and is not an implementer's choice to make.
     """
     if settings.llm_backend == "local":
         return OllamaClient(
+            workload=workload,
             base_url=settings.ollama_host,
             model=settings.recommender_model,
             timeout=settings.llm_request_timeout_s,
@@ -1316,7 +1329,13 @@ async def answer_question(  # noqa: C901
     type_index = {t.name: t for t in meta.object_types}
 
     try:
-        chat = client if client is not None else _build_chat_client()
+        # PLAN-0119 SD-1.1: ONE client used to serve both call sites, and they are
+        # different classes — `_translate` is S (with a J reasoning pass on the
+        # two_pass arm), `_phrase` is N. Two clients, one per class, so each can
+        # ask for its own budget. An INJECTED client is deliberately used for both:
+        # it is the offline test seam, and a double has no budget to get wrong.
+        chat = client if client is not None else _build_chat_client("S")
+        phrase_chat = client if client is not None else _build_chat_client("N")
     except Exception as exc:  # backend unavailable (e.g. hosted seam-only stub)
         logger.warning("NL-query backend unavailable for '%s': %s", vertical, exc)
         return _ungrounded(question, "The query assistant is currently unavailable.")
@@ -1404,7 +1423,9 @@ async def answer_question(  # noqa: C901
     # matched). The aggregate is already computed over `matched`, never this slice.
     source_objects = matched[: query.limit] if query.operation == "list" else matched
     source_ids = [_object_id(obj, obj_meta) for obj in source_objects]
-    phrased = await _phrase(chat, question, vertical, query, source_objects, obj_meta, aggregate)
+    phrased = await _phrase(
+        phrase_chat, question, vertical, query, source_objects, obj_meta, aggregate
+    )
     return NlAnswer(
         question=question,
         answer=phrased.text,

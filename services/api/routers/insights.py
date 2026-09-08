@@ -241,7 +241,8 @@ async def translate_run_question(question: str) -> StructuredQuery:
     handler catches it to answer "I couldn't translate that" — so an unreachable
     MS-S1 degrades the endpoint honestly instead of breaking it.
     """
-    client = nl_query._build_chat_client()
+    # S Structure: the constrained run-corpus translate call (PLAN-0119 §3).
+    client = nl_query._build_chat_client("S")
     return await run_query.translate_run_query(
         client, question, retry_budget=settings.llm_retry_budget
     )
@@ -264,7 +265,10 @@ async def phrase_run_answer(
     The model receives only the computed facts, never a run record.
     """
     try:
-        client = nl_query._build_chat_client()
+        # N Narrate: the free-prose phrasing call (PLAN-0119 §3). A DIFFERENT class
+        # from the translate call above, which is why the factory takes the class
+        # rather than baking one in (SD-1.1).
+        client = nl_query._build_chat_client("N")
     except (NotImplementedError, ValueError) as exc:
         logger.warning(
             "run-corpus phrasing backend unavailable (%s); answering deterministically", exc

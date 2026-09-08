@@ -143,6 +143,7 @@ def _two_call_client(call1: httpx.Response, call2: httpx.Response) -> OllamaClie
         return call2 if "format" in body else call1
 
     return OllamaClient(
+        workload="J",
         base_url="http://ollama.test",
         model="qwen3.8:27b-mtp-q4_K_M",
         transport=httpx.MockTransport(handler),

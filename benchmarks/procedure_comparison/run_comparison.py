@@ -92,8 +92,12 @@ async def _main(args: argparse.Namespace) -> None:
         f"top-k={args.k}, corpus={args.corpus.name} ({len(corpus)} snippets) ==="
     )
 
+    # J Judge: the comparison arm scores judgments.
     base = OllamaClient(
-        base_url=args.ollama_host, model=args.model, timeout=settings.llm_request_timeout_s
+        workload="J",
+        base_url=args.ollama_host,
+        model=args.model,
+        timeout=settings.llm_request_timeout_s,
     )
     if args.warm:
         await base.warm(keep_alive=_DEFAULT_KEEP_ALIVE)

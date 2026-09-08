@@ -58,6 +58,8 @@ def _chat_client() -> OllamaClient:
     if settings.llm_backend != "local":
         raise RuntimeError(f"llm_backend={settings.llm_backend!r} is not 'local'")
     return OllamaClient(
+        # S Structure: the measured intake extraction call.
+        workload="S",
         base_url=settings.ollama_host,
         model=settings.recommender_model,
         timeout=settings.llm_request_timeout_s,

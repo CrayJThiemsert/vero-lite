@@ -97,6 +97,8 @@ def _chat_client() -> OllamaClient:
     if settings.llm_backend != "local":
         raise LocalBackendUnavailableError(f"llm_backend={settings.llm_backend!r} is not 'local'")
     return OllamaClient(
+        # S Structure: the generator's two structuring calls (classify + skeleton).
+        workload="S",
         base_url=settings.ollama_host,
         model=_GENERATOR_MODEL,
         timeout=settings.llm_request_timeout_s,

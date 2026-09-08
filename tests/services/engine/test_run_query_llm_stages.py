@@ -245,7 +245,9 @@ async def test_the_outbound_network_guard_fires_on_what_it_forbids() -> None:
     the guard's type SURVIVES httpx / httpcore / anyio instead of being converted
     into an ordinary ``ConnectError`` the application would quietly tolerate.
     """
-    client = OllamaClient(base_url="http://192.168.1.133:11434", model="gpt-oss:20b", timeout=1.0)
+    client = OllamaClient(
+        workload="S", base_url="http://192.168.1.133:11434", model="gpt-oss:20b", timeout=1.0
+    )
     try:
         await client.chat([{"role": "user", "content": "this must never leave the box"}])
     except BaseException as exc:

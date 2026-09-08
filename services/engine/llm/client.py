@@ -131,6 +131,40 @@ class ChatResult:
 CallRole = Literal["reasoning", "structuring"]
 
 
+#: The five-class workload taxonomy (PLAN-0119 §3; canonical table with the full
+#: per-class contract in ``docs/conventions/llm-workload-taxonomy.md``). A client
+#: declares one at construction and every call it makes inherits it.
+#:
+#: A literal rather than a free string for the same reason ``CallRole`` is one: the
+#: whole point is to keep classes with order-of-magnitude different demands apart,
+#: and a mistyped class would silently merge two of them. A SIXTH member is a
+#: PLAN-level event, not an implementer's choice — the guard test
+#: ``tests/services/engine/llm/test_workload_inventory_contract.py`` pins the set.
+Workload = Literal["G", "S", "J", "N", "A"]
+
+
+#: Per-class generation cap, in tokens, sent as Ollama's ``num_predict``.
+#:
+#: 🔴 **Every class ships at today's 1024 on purpose (PLAN-0119 Step 3).** This
+#: commit is a PURE REFACTOR: it builds the seam through which a class can later ask
+#: for a different budget, and changes no budget. The experiment programme (Steps
+#: 5-8) is what fills these numbers in, ONE INTERVENTION PER ARM, each under its own
+#: CLAUDE.md §8 go with a pass/fail read fixed before the run.
+#:
+#: Bundling a new default here is precisely the confound the sequencing rule exists
+#: to prevent: a later arm measuring 4096 against a baseline that had silently
+#: already moved would be uninterpretable, and no amount of care afterwards could
+#: separate the seam's effect from the budget's. The numbers being identical today
+#: is the feature, not an oversight.
+_WORKLOAD_NUM_PREDICT: dict[Workload, int] = {
+    "G": 1024,
+    "S": 1024,
+    "J": 1024,
+    "N": 1024,
+    "A": 1024,
+}
+
+
 @dataclass(frozen=True)
 class CallMetrics:
     """Per-call generation accounting, read off the Ollama response envelope.
@@ -152,12 +186,23 @@ class CallMetrics:
     that was cut off. The second failure is the dangerous one precisely because
     it is quiet, and ``done_reason`` is the only thing that makes it visible.
 
-    ``eval_count`` is generated tokens — the model's actual DEMAND, which is what
-    a cap should be chosen from. Measuring demand directly beats searching over
-    caps: a search returns one pass/fail bit per run and converges on the
+    ``eval_count`` is generated tokens. Measuring demand directly beats searching
+    over caps: a search returns one pass/fail bit per run and converges on the
     smallest value that happens to work, which is exactly the clipping cap above.
     ``prompt_eval_count`` rides along because a demand number is only
     interpretable next to the input that produced it.
+
+    ⚠️ **``eval_count`` is the CONTENT segment's tokens, not the whole call's
+    demand** (PLAN-0119 AC-11; corrected here at the source rather than only in a
+    PLAN, because this docstring is where the number gets read). This sentence
+    previously said it was "the model's actual DEMAND, which is what a cap should
+    be chosen from". On PLAN-0118's evidence that under-counts by whatever the
+    reasoning pass cost: ``gpt-oss:20b`` reasons unconditionally and the reasoning
+    shares the one ``num_predict`` budget on a single-call path, so a cap sized
+    from ``eval_count`` alone is sized from the smaller half of what it must cover.
+    Use it as the content-segment demand it is; the whole-call figure needs the
+    reasoning channel too, which is why ``thinking_chars`` sits beside it and why
+    the benchmark recorder now also keeps the raw reasoning string (Step 2).
 
     ``thinking_chars`` is kept apart from ``content_chars`` because in ``full``
     mode the reasoning lands in its own channel; the split is what tells a reader
@@ -270,7 +315,7 @@ def call_metrics(result: ChatResult, *, role: CallRole) -> CallMetrics:
     )
 
 
-class OllamaClient:
+class OllamaAdminClient:
     """Async Ollama ``/api/chat`` wrapper bound to one model + base URL."""
 
     def __init__(
@@ -296,73 +341,6 @@ class OllamaClient:
     def model(self) -> str:
         """The model this client is bound to."""
         return self._model
-
-    async def chat(
-        self,
-        messages: list[dict[str, str]],
-        *,
-        think: bool | str | None = None,
-        response_format: dict[str, Any] | None = None,
-        temperature: float = 0.0,
-    ) -> ChatResult:
-        """Run one chat completion against the Ollama server.
-
-        ``think`` toggles the model's reasoning pass (Pattern B call 1 sets
-        it ``True``). ``response_format`` is a JSON Schema supplied as the
-        Ollama ``format`` field for constrained generation (Pattern B call
-        2). Per the CHECKPOINT-0 contract above, callers must not pass
-        ``think=False`` together with ``response_format``.
-
-        Raises :class:`OllamaError` on any transport, HTTP, or
-        response-envelope failure.
-        """
-        body: dict[str, Any] = {
-            "model": self._model,
-            "messages": messages,
-            "stream": False,
-            # `num_predict` bounds generation SERVER-side. Without it Ollama
-            # generates until the context is exhausted, so the only thing bounding
-            # a call was the client-side timeout — which aborts and DISCARDS every
-            # token already produced. That is why phase 1.6's deadline breaches
-            # recorded no answer at all instead of a short one that could still be
-            # graded: the run was cut, not bounded, and what it would have said is
-            # unknowable. Sits beside `temperature` rather than in a per-call
-            # argument for the same reason the in-flight cap is read here — eight
-            # call sites construct a client, and a bound that must be passed
-            # correctly at each of them is one forgotten argument from being off.
-            "options": {
-                "temperature": temperature,
-                "num_predict": settings.llm_max_output_tokens,
-            },
-            # Nothing set this before, so every chat call inherited Ollama's own
-            # 5-minute default and the model was evicted between visitors. On the
-            # published demo that is not a latency detail: PLAN-0100 Step 11
-            # measured a ~22 s cold load against a 25 s request timeout, so the
-            # first visitor after any quiet spell waited the whole timeout and
-            # then got a DEGRADED, ungrounded answer — on the one surface whose
-            # headline is natural-language query.
-            #
-            # Reuses `ollama_keep_alive` — the knob /warm and the Telegram ping
-            # already drive — rather than adding a chat-specific twin. A warm that
-            # says 30m while chat says something else is a warm that ordinary
-            # traffic can silently undo.
-            "keep_alive": settings.ollama_keep_alive,
-        }
-        if think is not None:
-            body["think"] = think
-        if response_format is not None:
-            body["format"] = response_format
-
-        # The in-flight cap is read HERE rather than injected per client, because
-        # eight call sites construct an OllamaClient and a cap that has to be
-        # passed correctly at each of them is a cap that is one forgotten argument
-        # away from being silently off. One chokepoint cannot be bypassed.
-        #
-        # Pattern B's two calls (reason, then structure) each take and release a
-        # slot in turn; they are sequential, so a request never blocks itself.
-        async with _inflight_slot(settings.llm_max_inflight):
-            payload = await self._request_json("POST", "/api/chat", json=body)
-        return _parse_chat_payload(payload, self._model)
 
     async def _request_json(
         self, method: str, path: str, *, json: dict[str, Any] | None = None
@@ -439,3 +417,134 @@ def _parse_chat_payload(payload: Any, model: str) -> ChatResult:
     thinking = thinking_raw if isinstance(thinking_raw, str) and thinking_raw else None
 
     return ChatResult(content=content, thinking=thinking, model=model, raw=payload)
+
+
+class OllamaClient(OllamaAdminClient):
+    """The generating client: everything the admin client does, plus ``chat``.
+
+    **Why the split (PLAN-0119 Step 3; Cray, typed, s286).** The workload taxonomy
+    describes GENERATION DEMAND — reasoning or not, output size, latency budget,
+    truncation behaviour. Every one of those columns is meaningless for a client
+    that never generates a token, and two of the eight construction sites are
+    exactly that: ``admin.py`` builds clients only to ``warm()`` a model and to
+    ``ps()`` for residency. Requiring them to declare a class would have forced
+    either a sixth class whose every column reads N/A, or a false declaration.
+
+    Both were refused in favour of splitting the TYPE, so the distinction is
+    carried by the compiler rather than by a convention: a client that cannot
+    generate cannot be asked to declare how much it generates — and, as a bonus
+    nobody has to remember, ``admin.py`` can no longer reach ``chat`` at all.
+
+    The rejected alternative is recorded because the reasoning matters more than
+    the outcome: adding a sixth class would have re-made the exact defect
+    PLAN-0119 §3 was corrected for in the same session — one table serving two
+    different sets.
+    """
+
+    def __init__(
+        self,
+        *,
+        workload: Workload,
+        base_url: str,
+        model: str,
+        timeout: float = 120.0,
+        transport: httpx.AsyncBaseTransport | None = None,
+    ) -> None:
+        """Create a generating client bound to one model, for one workload class.
+
+        ``workload`` has **no default, deliberately** (SD-1 = (b), SD-3 = (b), both
+        ruled s274). The absent default IS the enforcement: constructing a client
+        without declaring its class is a ``mypy`` error at full ``services/`` scope,
+        caught before the code runs rather than by a reviewer noticing. A default
+        would make the seam advisory, and an advisory budget seam is what this PLAN
+        exists to replace.
+
+        Declared at CONSTRUCTION rather than per call, so ``chat``'s signature — and
+        therefore both ``ChatClient`` Protocols and every test double implementing
+        them — is untouched. Where one factory serves call sites of two classes, the
+        factory takes the class and constructs one client per class (SD-1.1's
+        recommendation); it must never widen into a per-call argument, which is the
+        design SD-1 ruled against.
+        """
+        super().__init__(base_url=base_url, model=model, timeout=timeout, transport=transport)
+        self._workload = workload
+
+    @property
+    def workload(self) -> Workload:
+        """The workload class this client was constructed for."""
+        return self._workload
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | str | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        """Run one chat completion against the Ollama server.
+
+        ``think`` toggles the model's reasoning pass (Pattern B call 1 sets
+        it ``True``). ``response_format`` is a JSON Schema supplied as the
+        Ollama ``format`` field for constrained generation (Pattern B call
+        2). Per the CHECKPOINT-0 contract above, callers must not pass
+        ``think=False`` together with ``response_format``.
+
+        Raises :class:`OllamaError` on any transport, HTTP, or
+        response-envelope failure.
+        """
+        body: dict[str, Any] = {
+            "model": self._model,
+            "messages": messages,
+            "stream": False,
+            # `num_predict` bounds generation SERVER-side. Without it Ollama
+            # generates until the context is exhausted, so the only thing bounding
+            # a call was the client-side timeout — which aborts and DISCARDS every
+            # token already produced. That is why phase 1.6's deadline breaches
+            # recorded no answer at all instead of a short one that could still be
+            # graded: the run was cut, not bounded, and what it would have said is
+            # unknowable.
+            #
+            # PLAN-0119 Step 3 — where this number now comes from, and why that is
+            # still one chokepoint. It is derived HERE from the class the client was
+            # constructed for, not read from a global and not passed per call. The
+            # original argument for the global was that "eight call sites construct a
+            # client, and a bound that must be passed correctly at each of them is one
+            # forgotten argument from being off" — sound about FORGETTING, which is
+            # why the class is declared at construction with NO DEFAULT: forgetting it
+            # is a mypy error, not a silently wrong budget. What the global could not
+            # do was let two workloads with order-of-magnitude different demands ask
+            # for different budgets at all; that is the structural gap this closes.
+            "options": {
+                "temperature": temperature,
+                "num_predict": _WORKLOAD_NUM_PREDICT[self._workload],
+            },
+            # Nothing set this before, so every chat call inherited Ollama's own
+            # 5-minute default and the model was evicted between visitors. On the
+            # published demo that is not a latency detail: PLAN-0100 Step 11
+            # measured a ~22 s cold load against a 25 s request timeout, so the
+            # first visitor after any quiet spell waited the whole timeout and
+            # then got a DEGRADED, ungrounded answer — on the one surface whose
+            # headline is natural-language query.
+            #
+            # Reuses `ollama_keep_alive` — the knob /warm and the Telegram ping
+            # already drive — rather than adding a chat-specific twin. A warm that
+            # says 30m while chat says something else is a warm that ordinary
+            # traffic can silently undo.
+            "keep_alive": settings.ollama_keep_alive,
+        }
+        if think is not None:
+            body["think"] = think
+        if response_format is not None:
+            body["format"] = response_format
+
+        # The in-flight cap is read HERE rather than injected per client, because
+        # eight call sites construct an OllamaClient and a cap that has to be
+        # passed correctly at each of them is a cap that is one forgotten argument
+        # away from being silently off. One chokepoint cannot be bypassed.
+        #
+        # Pattern B's two calls (reason, then structure) each take and release a
+        # slot in turn; they are sequential, so a request never blocks itself.
+        async with _inflight_slot(settings.llm_max_inflight):
+            payload = await self._request_json("POST", "/api/chat", json=body)
+        return _parse_chat_payload(payload, self._model)

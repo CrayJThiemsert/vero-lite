@@ -341,20 +341,20 @@ async def test_translate_exhausts_budget_and_raises() -> None:
 
 def test_build_chat_client_selects_local_backend(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "llm_backend", "local")
-    client = _build_chat_client()
+    client = _build_chat_client("S")
     assert isinstance(client, OllamaClient)
 
 
 def test_build_chat_client_hosted_backend_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "llm_backend", "hosted")
     with pytest.raises(NotImplementedError):
-        _build_chat_client()
+        _build_chat_client("S")
 
 
 def test_build_chat_client_unknown_backend_raises(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "llm_backend", "wat")
     with pytest.raises(ValueError, match="unknown llm_backend"):
-        _build_chat_client()
+        _build_chat_client("N")
 
 
 # --- translate response parsing (deterministic) ----------------------------

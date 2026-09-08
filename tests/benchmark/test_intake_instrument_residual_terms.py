@@ -40,12 +40,13 @@ import pytest
 
 from benchmarks.intake_extraction.harness import load_gold, scored_cases
 from benchmarks.intake_extraction.run_benchmark import (
+    _BENCH_WORKLOAD,
     RecordingChatClient,
     _apply_num_predict,
     case_artifact,
     run_case,
 )
-from services.api.config import settings
+from services.engine.llm.client import _WORKLOAD_NUM_PREDICT
 from tests.benchmark.intake_canned import CannedTransport
 
 # --------------------------------------------------------------------------- envelopes
@@ -294,23 +295,32 @@ def test_think_false_is_refused_rather_than_quietly_supported() -> None:
 def test_num_predict_override_moves_what_the_chokepoint_actually_reads(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """``--num-predict`` has no seam to pass through until Step 3, so it moves the
-    setting ``OllamaClient.chat`` reads at the chokepoint (``client.py:335``).
+    """``--num-predict`` moves what the chokepoint actually reads for this class.
 
-    Asserted against ``settings.llm_max_output_tokens`` itself rather than a literal,
-    because that attribute IS what the client consults — a test against a constant
-    would keep passing if the client were later repointed elsewhere. The default path
-    is checked first and matters more: a run WITHOUT the flag must leave the shipped
-    cap alone, or every baseline silently measures a different cap than production and
-    the PLAN-0118 comparison Step 10 rests on is void.
+    ⚠️ **Re-pointed at Step 3, and the failure that forced it is the point.** This
+    test used to assert against ``settings.llm_max_output_tokens``, which WAS what
+    ``OllamaClient.chat`` consulted. Step 3 moved the chokepoint to a per-class budget
+    table, and this test went RED on the spot — which is exactly what an assertion
+    aimed at the real mechanism is supposed to do when the mechanism moves. Had it
+    been written against a literal 4096, it would have kept passing green while the
+    flag silently stopped affecting the wire.
+
+    So the target is updated, not the strength: it still reads the value the client
+    consults rather than a constant. The default path is checked first and matters
+    more — a run WITHOUT the flag must leave the class's shipped budget alone, or
+    every baseline silently measures a different cap than production and the
+    PLAN-0118 comparison Step 10 rests on is void.
     """
-    monkeypatch.setattr(settings, "llm_max_output_tokens", 1024)
+    monkeypatch.setitem(_WORKLOAD_NUM_PREDICT, _BENCH_WORKLOAD, 1024)
 
     unchanged = _apply_num_predict(None)
-    assert (unchanged, settings.llm_max_output_tokens) == (1024, 1024), "None must not move it"
+    assert (unchanged, _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]) == (
+        1024,
+        1024,
+    ), "None must not move it"
 
     applied = _apply_num_predict(4096)
-    assert (applied, settings.llm_max_output_tokens) == (
+    assert (applied, _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]) == (
         4096,
         4096,
-    ), f"the chokepoint still reads {settings.llm_max_output_tokens}, not 4096"
+    ), f"the chokepoint still reads {_WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]}, not 4096"

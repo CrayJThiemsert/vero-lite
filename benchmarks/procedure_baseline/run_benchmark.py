@@ -143,7 +143,9 @@ async def run_dataset(
         if dataset.goal_parameter_exemption:
             print(f"  exemption: {dataset.goal_parameter_exemption.strip()}")
     model = model_override or agent_model
+    # J Judge: the procedure-judgment Pattern B pair.
     base = OllamaClient(
+        workload="J",
         base_url=host,
         model=model,
         timeout=request_timeout_s or settings.llm_request_timeout_s,

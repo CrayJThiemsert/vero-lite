@@ -16,7 +16,7 @@ import httpx
 import pytest
 
 from services.api.config import settings
-from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
+from services.engine.llm.client import ChatResult, OllamaClient, OllamaError, Workload
 
 Handler = Callable[[httpx.Request], httpx.Response]
 
@@ -26,9 +26,20 @@ def _client(
     *,
     model: str = "gpt-oss:20b",
     base_url: str = "http://ollama.test",
+    workload: Workload = "S",
 ) -> OllamaClient:
-    """Build an OllamaClient wired to a fake transport."""
-    return OllamaClient(base_url=base_url, model=model, transport=httpx.MockTransport(handler))
+    """Build an OllamaClient wired to a fake transport.
+
+    ``workload`` defaults to ``S`` so every pre-PLAN-0119 caller is unchanged, and is
+    a parameter so a test can drive a DIFFERENT class through the same transport and
+    read what reached the wire (PLAN-0119 AC-3).
+    """
+    return OllamaClient(
+        workload=workload,
+        base_url=base_url,
+        model=model,
+        transport=httpx.MockTransport(handler),
+    )
 
 
 def _ok_response(content: str = "draft text", thinking: str | None = None) -> httpx.Response:
