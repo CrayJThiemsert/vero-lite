@@ -540,6 +540,8 @@ class OllamaClient(OllamaAdminClient):
 
         # The in-flight cap is read HERE rather than injected per client, because
         # eight call sites construct an OllamaClient and a cap that has to be
+        # (VERIFIED BY COUNT at s286: exactly 8 under services/ + verticals/ - this
+        # figure had been asserted here and never counted, which PLAN-0119 flagged)
         # passed correctly at each of them is a cap that is one forgotten argument
         # away from being silently off. One chokepoint cannot be bypassed.
         #
