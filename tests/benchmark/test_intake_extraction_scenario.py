@@ -42,65 +42,8 @@ from benchmarks.intake_extraction.run_benchmark import (
     run_benchmark,
     run_case,
 )
-from services.engine.llm.client import ChatResult, OllamaUnreachableError
-
-# --------------------------------------------------------------------------- canned transport
-
-
-class CannedTransport:
-    """A ``ChatClient`` that replays pre-set message bodies instead of calling a box.
-
-    Attached at ``intake.py``'s own injection seam. When the scripted contents run
-    out it repeats the last one, so a single valid body can serve a whole-gold-set
-    run without the script having to enumerate every case.
-    """
-
-    def __init__(
-        self,
-        contents: list[str],
-        *,
-        model: str = "canned-model",
-        raises: Exception | None = None,
-        envelopes: list[dict[str, Any]] | None = None,
-        thinkings: list[str | None] | None = None,
-    ) -> None:
-        self._contents = contents
-        self._model = model
-        self._raises = raises
-        # `envelopes` is the Ollama response envelope `ChatResult.raw` carries — the
-        # generation accounting (`done_reason`, `eval_count`, the ns durations) the
-        # recorder reads via `call_metrics`. Default `{}` keeps every pre-existing
-        # test on the optional-tolerant path, which is itself the behaviour a live
-        # server with an older envelope would produce.
-        self._envelopes = envelopes
-        self._thinkings = thinkings
-        self.calls = 0
-
-    async def chat(
-        self,
-        messages: list[dict[str, str]],
-        *,
-        think: bool | str | None = None,
-        response_format: dict[str, Any] | None = None,
-        temperature: float = 0.0,
-    ) -> ChatResult:
-        self.calls += 1
-        if self._raises is not None:
-            raise self._raises
-        index = min(self.calls - 1, len(self._contents) - 1)
-
-        def _pick(seq: list[Any] | None, default: Any) -> Any:
-            if seq is None:
-                return default
-            return seq[min(self.calls - 1, len(seq) - 1)]
-
-        return ChatResult(
-            content=self._contents[index],
-            thinking=_pick(self._thinkings, None),
-            model=self._model,
-            raw=_pick(self._envelopes, {}),
-        )
-
+from services.engine.llm.client import OllamaUnreachableError
+from tests.benchmark.intake_canned import CannedTransport
 
 # --------------------------------------------------------------------------- fixtures
 

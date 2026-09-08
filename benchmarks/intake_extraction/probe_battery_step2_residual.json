@@ -1,0 +1,161 @@
+{
+  "claim_sources": ["tests/benchmark/test_intake_instrument_residual_terms.py"],
+  "probes": [
+    {
+      "name": "R1-load-duration-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                load_duration_ns=metrics.load_duration_ns,",
+      "new": "                load_duration_ns=None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_recorder_captures_the_terms_that_decompose_the_residual",
+      "expect_claim": "test_the_recorder_captures_the_terms_that_decompose_the_residual|attempt.load_duration_ns == 900_000_000|#0",
+      "note": "🔴 Exactly the mutation PLAN-0119 AC-2 names: remove ONE captured field and watch THAT assertion redden. This is the field whose absence caused the defect — a cold load of up to 46 s was landing in the same unattributable residual as prefill and grammar compilation, so `total_duration - eval_duration` could not be read as token time. `None` rather than a wrong number, because that is the actual pre-Step-2 state: `CallMetrics` computed it at client.py:191 and the recorder simply never asked."
+    },
+    {
+      "name": "R2-prefill-duration-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                prompt_eval_duration_ns=metrics.prompt_eval_duration_ns,",
+      "new": "                prompt_eval_duration_ns=None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_recorder_captures_the_terms_that_decompose_the_residual",
+      "expect_claim": "test_the_recorder_captures_the_terms_that_decompose_the_residual|attempt.prompt_eval_duration_ns == 300_000_000|#0",
+      "note": "🔴 The sibling half, and the one AC-4 depends on: with `prompt_eval_count` this yields a PREFILL RATE, and `prefill` is an unmeasured term in the budget rule `cap / decode_rate + load + prefill < timeout`. Until it is recorded that rule is not evaluable at all. The `load_duration_ns` assertion stays GREEN under this mutation and is checked FIRST, so its pass is what makes this reddening attributable to prefill rather than to the recorder falling over."
+    },
+    {
+      "name": "R3-residual-no-longer-decomposes",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                total_duration_ns=metrics.total_duration_ns,",
+      "new": "                total_duration_ns=metrics.eval_duration_ns,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_recorder_captures_the_terms_that_decompose_the_residual",
+      "expect_claim": "test_the_recorder_captures_the_terms_that_decompose_the_residual|(residual, unattributed) == (1_300_000_000, 100_000_000)|#0",
+      "note": "🔴 The arithmetic claim, probed separately from the two field claims because a recorder can carry all four durations and still make the residual meaningless. Sourcing `total_duration` from `eval_duration` collapses the residual to zero, so `unattributed` goes NEGATIVE — the shape a mis-wired envelope key actually produces. Both field assertions stay GREEN and are evaluated first, so this witnesses the subtraction and nothing else. The mutation is deliberately NOT a mis-assignment of load or prefill: that would redden an earlier assertion, the run would stop there, and this claim would never be reached."
+    },
+    {
+      "name": "R4-cold-and-warm-load-collapse",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                load_duration_ns=metrics.load_duration_ns,",
+      "new": "                load_duration_ns=metrics.prompt_eval_duration_ns,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_a_cold_load_is_distinguishable_from_a_warm_one",
+      "expect_claim": "test_a_cold_load_is_distinguishable_from_a_warm_one|(loads, prefills) == ( [900_000_000, 11_000_000], [300_000_000, 300_000_000], )|#0",
+      "note": "🔴 The reading-one-field-twice failure, which a presence check cannot see: both fields are populated, both are plausible nanosecond counts, and the cold/warm discrimination is silently gone (loads become [300M, 300M], identical to prefills). This is why the fixtures pin a ~80x gap between the two envelopes' loads while holding prefill IDENTICAL — the invariant prefill is what makes collapsed loads legible as a collapse rather than as a changed prompt."
+    },
+    {
+      "name": "R5-raw-thinking-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                thinking=result.thinking,",
+      "new": "                thinking=None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_raw_thinking_string_is_recorded_not_only_its_length",
+      "expect_claim": "test_the_raw_thinking_string_is_recorded_not_only_its_length|attempt.thinking == reasoning|#0",
+      "note": "🔴 The two-sources claim made falsifiable. `CallMetrics` carries only `thinking_chars`, an int; the raw string comes off `ChatResult.thinking`, and PLAN-0119's first draft implied both came from one record (corrected s274). The `thinking_chars` assertion stays GREEN here — that green IS the point, because it shows count and string are read from DIFFERENT places. A recorder that sourced both from `CallMetrics` would lose the string and keep the count, which is precisely this probe's output."
+    },
+    {
+      "name": "R6-thinking-count-not-captured",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                thinking_chars=metrics.thinking_chars,",
+      "new": "                thinking_chars=None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_raw_thinking_string_is_recorded_not_only_its_length",
+      "expect_claim": "test_the_raw_thinking_string_is_recorded_not_only_its_length|attempt.thinking_chars == len(reasoning)|#0",
+      "note": "🟢 The mirror of R5, and the reason both assertions live in one test: the new raw string must arrive BESIDE the pre-existing count, not instead of it. Adding a field is the classic way to quietly displace a neighbour, and the string assertion stays GREEN under this mutation — so the pair together shows the two survive independently rather than one standing in for the other."
+    },
+    {
+      "name": "R7-a-failed-call-fabricates-accounting",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            self.attempts.append(AttemptRecord(index=index, content=None, model=None, error=detail))",
+      "new": "            self.attempts.append(AttemptRecord(index=index, content=None, model=None, error=detail, load_duration_ns=0))",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_a_transport_failure_fabricates_no_residual_terms",
+      "expect_claim": "test_a_transport_failure_fabricates_no_residual_terms|(attempt.load_duration_ns, attempt.prompt_eval_duration_ns, attempt.thinking) == ( None, None, None, )|#0",
+      "note": "🔴 A zero is the dangerous fabrication here, not a wrong number: `load_duration = 0` is a perfectly plausible WARM reading, so a fabricated zero on a call that never returned would enter the dataset indistinguishable from a real measurement and quietly bias every load statistic toward warm. `None` is the only honest value when there is no envelope. `pytest.raises(RuntimeError)` stays GREEN, so the reddening names the fabrication and not the re-raise."
+    },
+    {
+      "name": "R8-the-recorder-swallows-the-transport-failure",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            raise\n",
+      "new": "            return ChatResult(content=\"\", thinking=None, model=\"swallowed\", raw={})\n",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_a_transport_failure_fabricates_no_residual_terms",
+      "expect_claim": "test_a_transport_failure_fabricates_no_residual_terms|pytest.raises(RuntimeError)|#0",
+      "note": "🔴 The recorder's founding contract is that it observes and never repairs: anything it caught, it re-raises. Swallowing a transport failure and returning an empty body would turn 'MS-S1 was unreachable' into 'the model returned nothing' — the exact conflation PLAN-0118 SD-5 keeps apart, where a transport error is UNSCORED and leaves the denominator while an empty body scores wrong and stays in it. One dropped `raise` silently moves cases between those two populations."
+    },
+    {
+      "name": "R9-absent-counters-coerced-to-zero",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "                load_duration_ns=metrics.load_duration_ns,",
+      "new": "                load_duration_ns=metrics.load_duration_ns or 0,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_an_envelope_without_the_new_counters_degrades_rather_than_raising",
+      "expect_claim": "test_an_envelope_without_the_new_counters_degrades_rather_than_raising|(attempt.done_reason, attempt.load_duration_ns, attempt.prompt_eval_duration_ns) == ( \"stop\", None, None, )|#0",
+      "note": "🔴 The absent-vs-zero conflation, aimed at the older-server path a live arm is most likely to meet unannounced. `or 0` is chosen over a literal because it is what a well-meaning author actually writes to 'tidy up' an Optional — and it is invisible to R1, whose envelope carries a real 900M load, so only a test with a COUNTER-LESS envelope can catch it. That is why this claim needs its own probe rather than riding on R1's."
+    },
+    {
+      "name": "R10-artifact-drops-the-load-term",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            \"load_duration_ns\": self.load_duration_ns,",
+      "new": "            \"load_duration_ns\": None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_artifact_carries_the_residual_terms_for_every_attempt",
+      "expect_claim": "test_the_artifact_carries_the_residual_terms_for_every_attempt|[a[\"load_duration_ns\"] for a in record[\"attempts\"]] == [900_000_000, 11_000_000]|#0",
+      "note": "🔴 An in-memory field nothing serialises answers OQ-1 for nobody — the whole point is re-adjudication without a re-run. Set to None rather than deleting the key: deletion raises KeyError inside the comprehension, which the driver classifies CRASHED (a non-assertion exception) and which credits nothing. A wrong VALUE is the failure this guard must catch; a missing key is a different and much louder bug."
+    },
+    {
+      "name": "R11-artifact-drops-the-prefill-term",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            \"prompt_eval_duration_ns\": self.prompt_eval_duration_ns,",
+      "new": "            \"prompt_eval_duration_ns\": None,",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_artifact_carries_the_residual_terms_for_every_attempt",
+      "expect_claim": "test_the_artifact_carries_the_residual_terms_for_every_attempt|[a[\"prompt_eval_duration_ns\"] for a in record[\"attempts\"]] == [300_000_000, 300_000_000]|#0",
+      "note": "🔴 The serialisation half of R2. The load assertion above stays GREEN and runs first, so the reddening names prefill specifically — the two terms are dumped by adjacent lines and a single-probe battery could not tell a dropped prefill from a dropped load."
+    },
+    {
+      "name": "R12-artifact-drops-the-thinking-string",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "            \"thinking\": self.thinking,",
+      "new": "            \"thinking\": \"\",",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_artifact_carries_the_residual_terms_for_every_attempt",
+      "expect_claim": "test_the_artifact_carries_the_residual_terms_for_every_attempt|[a[\"thinking\"] for a in record[\"attempts\"]] == [\"cut off here\", None]|#0",
+      "note": "🔴 An empty string rather than None, because empty-vs-absent is the distinction this field exists to preserve: a truncated reasoning pass and a call that never reasoned must not serialise identically. The value stays JSON-serialisable on purpose, so the failure is the assertion and not a dump error. Both duration assertions above stay GREEN and run first."
+    },
+    {
+      "name": "R13-think-override-never-reaches-the-wire",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        effective_think = think if think is not None else self._think_override",
+      "new": "        effective_think = think",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_think_override_reaches_the_wire_where_the_call_site_passed_nothing",
+      "expect_claim": "test_the_think_override_reaches_the_wire_where_the_call_site_passed_nothing|transport.thinks == [ \"low\" ]|#0",
+      "note": "🔴 The inert-flag failure: argparse accepts `--think low`, the runner prints it, the record shows an effort arm was requested, and the model was never actually asked. That run would be published as a think-level arm having tested nothing. The assertion reads the TRANSPORT's record of what arrived rather than the parsed flag, because the wire is the only place the claim is true or false."
+    },
+    {
+      "name": "R14-override-overrules-an-explicit-call-site",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        effective_think = think if think is not None else self._think_override",
+      "new": "        effective_think = self._think_override if self._think_override is not None else think",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_the_override_never_overrules_a_call_site_that_chose",
+      "expect_claim": "test_the_override_never_overrules_a_call_site_that_chose|transport.thinks == [ True ]|#0",
+      "note": "🔴 The precedence inversion, and the quiet direction: with it, `--think low` silently rewrites a call site that explicitly asked for `think=True`, and a later arm measures something other than what it declared. One change of operand order, and no field-presence or type check anywhere would notice. This is what makes the negative assertion non-vacuous — without R13 showing the override CAN win when the call site is silent, `transport.thinks == [True]` would also be satisfied by a lever that never worked at all."
+    },
+    {
+      "name": "R15-think-false-quietly-accepted",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        if think_override is not None and think_override.strip().lower() in {\"false\", \"0\", \"no\"}:",
+      "new": "        if False:",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_think_false_is_refused_rather_than_quietly_supported",
+      "expect_claim": "test_think_false_is_refused_rather_than_quietly_supported|outcomes == [(value, True) for value in refused]|#0",
+      "note": "🔴 Ollama #18044: `think: false` disables the thinking PARSER, not the thinking GENERATION — `eval_count` is unchanged. Accepting it would produce an arm that looks like an intervention, reads as a null result, and tested nothing; it also constructs the `think=False` + `response_format` pairing the CHECKPOINT-0 contract (ADR-001) forbids. The refusal's own positive control is R13, which shows a VALID override is accepted and reaches the wire, so this is not a constructor that rejects everything. ✎ The test collects all five spellings into ONE assertion rather than parametrising: a parametrised node fails as five testcases at once, which the driver classifies MISFIRE ('more than one test failed') and cannot attribute — measured on this very battery's first run."
+    },
+    {
+      "name": "R16-num-predict-default-path-mutates-the-cap",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "    if cap is not None:",
+      "new": "    if True:",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_num_predict_override_moves_what_the_chokepoint_actually_reads",
+      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(unchanged, settings.llm_max_output_tokens) == (1024, 1024)|#0",
+      "note": "🔴 The default path matters most and is easiest to get wrong: a run WITHOUT `--num-predict` must leave the shipped cap alone, or every baseline silently measures a different cap than production and the PLAN-0118 comparison that Step 10 rests on is void. Under this mutation the None case writes None over the cap, so the guard reddens before any override case is reached."
+    },
+    {
+      "name": "R17-num-predict-override-does-nothing",
+      "subject": "benchmarks/intake_extraction/run_benchmark.py",
+      "old": "        settings.llm_max_output_tokens = cap",
+      "new": "        pass",
+      "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_num_predict_override_moves_what_the_chokepoint_actually_reads",
+      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(applied, settings.llm_max_output_tokens) == ( 4096, 4096, )|#0",
+      "note": "🔴 The other inert-flag failure, and the reason the assertion reads `settings.llm_max_output_tokens` itself rather than a literal 4096: that attribute IS what `OllamaClient.chat` consults at the chokepoint (client.py:335), so a test against a constant would keep passing if the client were later repointed at a different setting. The default-path assertion stays GREEN under this mutation and runs first, so the reddening names the override specifically."
+    }
+  ],
+  "exemptions": {
+    "test_the_artifact_carries_the_residual_terms_for_every_attempt|json.loads(json.dumps(record))[\"attempts\"][0][\"thinking\"] == \"cut off here\"|#0": "🟡 A serialisability tripwire, not the evidence, and it cannot be witnessed alone. It sits after the value assertions in the same test and a pytest run stops at the first failed assert, so every mutation that changes what `thinking` serialises to reddens `[a[\"thinking\"] for a in record[\"attempts\"]]` (probe R12) before this line is reached. The only mutation that could redden THIS line specifically is one making the value unserialisable, which raises inside `json.dumps` and classifies CRASHED rather than WITNESSED, crediting nothing. It is retained because `thinking` is the first free-text field in this record: a future field that breaks the dump should fail here, in a fast offline test, rather than at write time part-way through a live §8-gated run."
+  }
+}

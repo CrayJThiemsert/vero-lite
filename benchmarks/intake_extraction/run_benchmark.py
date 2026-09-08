@@ -55,6 +55,7 @@ from benchmarks.intake_extraction.harness import (
     summarize,
     summarize_injection,
 )
+from services.api.config import settings
 from services.engine.llm.client import ChatResult, OllamaClient, OllamaError, call_metrics
 from services.engine.llm.intake import (
     ChatClient,
@@ -93,6 +94,30 @@ class AttemptRecord:
     number cannot be checked back against it) — ``total_duration_ns`` is the per-call
     latency AC-6 asks for.
 
+    🔴 **``load_duration_ns``, ``prompt_eval_duration_ns`` and the raw ``thinking``
+    string are what PLAN-0119 Step 2 adds, and they exist to make OQ-1 answerable.**
+    The residual ``total_duration - eval_duration`` implied ~1,089-1,292 tokens on
+    delivering calls — above the 1024 cap, which would mean the reasoning and content
+    channels hold SEPARATE budgets — while Ollama's own splitter implies ONE shared
+    budget. The reconstruction cannot settle it because that residual silently mixes
+    three different things: a cold model load, prompt prefill, and grammar
+    compilation. Recording load and prefill SEPARATELY is what turns the residual
+    from one unattributable number into terms that can be subtracted. **Nothing may
+    be built on the reconstruction until this measures it.**
+
+    The two durations come off ``CallMetrics`` (``client.py:191-192``, computed there
+    and dropped here until now). The raw ``thinking`` string does **not** — that
+    record carries only ``thinking_chars``, an ``int``, and a character count cannot
+    say whether the reasoning was cut mid-sentence. The string comes off
+    ``ChatResult.thinking`` instead, which this recorder already holds. Two sources,
+    not one; the distinction is recorded because PLAN-0119's first draft implied one
+    and was corrected at s274.
+
+    ``prompt_eval_duration_ns`` also earns its place on its own: with
+    ``prompt_eval_count`` it yields a PREFILL RATE, and ``prefill`` is an unmeasured
+    term in the budget rule ``cap / decode_rate + load + prefill < timeout`` that
+    PLAN-0119 AC-4 makes checkable. Until it is measured, that rule is not evaluable.
+
     Every field is ``None``-tolerant by construction (``call_metrics`` degrades rather
     than raises on an envelope that omits a counter), and all of them are ``None`` on
     a transport failure, where there is no envelope at all.
@@ -106,8 +131,15 @@ class AttemptRecord:
     eval_count: int | None = None
     prompt_eval_count: int | None = None
     thinking_chars: int | None = None
+    #: The reasoning channel's RAW text, not just its length. A count says how much
+    #: was reasoned; only the string says whether it ended mid-sentence — which is
+    #: the observation that separates "clipped by the cap" from "reasoned briefly".
+    thinking: str | None = None
     total_duration_ns: int | None = None
     eval_duration_ns: int | None = None
+    #: Cold-load and prefill, split out of the residual so OQ-1 can be settled.
+    load_duration_ns: int | None = None
+    prompt_eval_duration_ns: int | None = None
 
     @property
     def truncated(self) -> bool:
@@ -132,8 +164,11 @@ class AttemptRecord:
             "prompt_eval_count": self.prompt_eval_count,
             "content_chars": len(self.content) if self.content is not None else None,
             "thinking_chars": self.thinking_chars,
+            "thinking": self.thinking,
             "total_duration_ns": self.total_duration_ns,
             "eval_duration_ns": self.eval_duration_ns,
+            "load_duration_ns": self.load_duration_ns,
+            "prompt_eval_duration_ns": self.prompt_eval_duration_ns,
         }
 
 
@@ -146,8 +181,32 @@ class RecordingChatClient:
     caught, it re-raises.
     """
 
-    def __init__(self, inner: ChatClient) -> None:
+    def __init__(self, inner: ChatClient, *, think_override: str | None = None) -> None:
+        """``think_override`` is the ``--think`` arm's lever (PLAN-0119 Step 2).
+
+        Intake's shipped call passes no ``think`` at all, so there is otherwise no way
+        to ask the model for a different reasoning effort without editing the shipped
+        prompt path — which would change the demand and confound every later arm.
+        The override is applied ONLY where the caller passed nothing, so it can add a
+        knob but can never silently overrule a call site that made its own choice.
+
+        ``think=False`` is refused rather than supported. Per the CHECKPOINT-0 contract
+        (ADR-001, ``client.py:16-18``) a caller must not pass ``think=False`` together
+        with a ``response_format``, and intake's call always carries one — so the flag
+        would construct exactly the combination the contract forbids. Ollama #18044 is
+        the second reason: ``think: false`` disables the thinking PARSER, not the
+        thinking generation, leaving ``eval_count`` unchanged. It is not a lever, and
+        offering it would produce a measurement that looks like an intervention and
+        is not one.
+        """
+        if think_override is not None and think_override.strip().lower() in {"false", "0", "no"}:
+            raise ValueError(
+                "think=False is not a lever: it disables the thinking PARSER, not the "
+                "generation (Ollama #18044, eval_count unchanged), and pairing it with "
+                "intake's response_format violates the CHECKPOINT-0 contract (ADR-001)"
+            )
         self._inner = inner
+        self._think_override = think_override
         self.attempts: list[AttemptRecord] = []
 
     def reset(self) -> None:
@@ -163,10 +222,13 @@ class RecordingChatClient:
         temperature: float = 0.0,
     ) -> ChatResult:
         index = len(self.attempts) + 1
+        # Applied only where the call site passed nothing, so `--think` can ADD a knob
+        # to intake's shipped no-think call but can never overrule an explicit choice.
+        effective_think = think if think is not None else self._think_override
         try:
             result = await self._inner.chat(
                 messages,
-                think=think,
+                think=effective_think,
                 response_format=response_format,
                 temperature=temperature,
             )
@@ -188,8 +250,14 @@ class RecordingChatClient:
                 eval_count=metrics.eval_count,
                 prompt_eval_count=metrics.prompt_eval_count,
                 thinking_chars=metrics.thinking_chars,
+                # NOT from `metrics` — `CallMetrics` carries only `thinking_chars`,
+                # an int. The raw string lives on the ChatResult this method already
+                # holds. Two sources, deliberately (PLAN-0119 AC-2, clarified s274).
+                thinking=result.thinking,
                 total_duration_ns=metrics.total_duration_ns,
                 eval_duration_ns=metrics.eval_duration_ns,
+                load_duration_ns=metrics.load_duration_ns,
+                prompt_eval_duration_ns=metrics.prompt_eval_duration_ns,
             )
         )
         return result
@@ -369,10 +437,40 @@ def _print_run(run: BenchmarkRun) -> None:
         print(f"  obeyed_injection: {run.injection} (excluded from fraction: {excluded})")
 
 
+def _apply_num_predict(cap: int | None) -> int:
+    """Point the shipped chokepoint at ``cap`` for this process, and report what moved.
+
+    **Why a settings override and not an argument.** ``OllamaClient.chat`` builds
+    ``options.num_predict`` from ``settings.llm_max_output_tokens`` at the chokepoint
+    (``client.py:335``) and takes no per-call budget; the seam that would let a caller
+    ask for one is PLAN-0119 **Step 3**, which has not landed. Until it does, the only
+    way to move the cap without editing the shipped call path is to move what the
+    chokepoint reads. The client reads the attribute per call, so the change takes
+    effect immediately and applies to every call this run makes.
+
+    **What that costs, stated rather than hidden.** This mutates a process-global
+    singleton. It is contained because the benchmark is a standalone CLI process that
+    serves no requests — but it is NOT a pattern to copy into anything long-lived, and
+    it is exactly the wart Step 3 removes. When the seam lands, this function should
+    be deleted in favour of declaring a ``Workload``, not kept as a shortcut.
+
+    Returns the cap actually in force, so the caller can record it beside the numbers
+    it produces: a recorded duration is uninterpretable without the cap that bounded it.
+    """
+    before = settings.llm_max_output_tokens
+    if cap is not None:
+        settings.llm_max_output_tokens = cap
+    after = settings.llm_max_output_tokens
+    print(f"num_predict: before={before} after={after} (override={'none' if cap is None else cap})")
+    return after
+
+
 async def _main(args: argparse.Namespace) -> None:
     gold = load_gold() if args.gold is None else load_gold(args.gold)
+    applied_cap = _apply_num_predict(args.num_predict)
     inner = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
-    client = RecordingChatClient(inner)
+    client = RecordingChatClient(inner, think_override=args.think)
+    print(f"think: {args.think or 'not requested (intake ships no think)'}  cap={applied_cap}")
     n_scored = len(scored_cases(gold))
     n_inj = len(injection_cases(gold))
     print(f"intake-extraction benchmark: {n_scored} scored + {n_inj} injection cases")
@@ -412,6 +510,25 @@ def _parse_args() -> argparse.Namespace:
         help="Validation retries per case (intake default 3).",
     )
     parser.add_argument("--artifact-dir", type=Path, default=None)
+    parser.add_argument(
+        "--num-predict",
+        type=int,
+        default=None,
+        help=(
+            "Override the server-side generation cap for this run. Default: leave "
+            "settings.llm_max_output_tokens (1024) alone. See _apply_num_predict for "
+            "why this is a settings override and not an argument."
+        ),
+    )
+    parser.add_argument(
+        "--think",
+        default=None,
+        help=(
+            "Reasoning effort to request on intake's otherwise no-think call, e.g. "
+            "'low'. `false` is REFUSED — it disables the thinking parser, not the "
+            "generation (Ollama #18044), so it is not a lever."
+        ),
+    )
     return parser.parse_args()
 
 
