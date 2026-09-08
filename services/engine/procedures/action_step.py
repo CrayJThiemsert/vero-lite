@@ -55,8 +55,13 @@ from services.engine.actions import (
     RecommendedAction,
 )
 from services.engine.economic_impact import build_economic_steps
-from services.engine.llm.client import OllamaClient
-from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
+from services.engine.llm.client import OllamaClient, OllamaError
+from services.engine.llm.structured import (
+    ChatClient,
+    JudgmentResult,
+    StructuredOutputError,
+    generate_judgment,
+)
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
 from services.engine.procedures.gate_hooks import fire_on_resolved
 from services.engine.procedures.orchestrator import (
@@ -282,6 +287,78 @@ def _compose_action(
     )
 
 
+_DEGRADE_DISCLOSURE_CAP = 300
+"""Truncation cap for a degrade disclosure, matching ``recommender._DISCLOSURE_CAP``."""
+
+
+def _compose_degraded_action(
+    event: Mapping[str, Any],
+    vertical: str,
+    exc: Exception,
+    *,
+    handler: str,
+    economic_steps: list[ReasoningStep],
+) -> RecommendedAction:
+    """Compose a DISCLOSED, deterministic stand-in when the LLM arm fails (D-1, AC-6).
+
+    **What this replaces.** Before this, an ``OllamaError`` or
+    ``StructuredOutputError`` from ``generate_judgment`` escaped the loop and the
+    orchestrator's D4 fail-and-divert recorded a ``FAILED`` / ``WAITING_HUMAN``
+    step carrying a bare ``error`` trace and NO judgment. The reviewer inherited a
+    stack-trace fragment where a governed decision should have been: nothing
+    naming the entity, nothing naming the handler the procedure author declared,
+    nothing saying an LLM had even been attempted.
+
+    **What it does NOT do — the safety property this must not spend.** The trace
+    is NOT ``build_llm_reasoning_trace``. That function assembles an
+    ``llm_inference`` step carrying a model-asserted narrative, and there is no
+    model assertion here: presenting a harness-authored stand-in in the shape of
+    model reasoning is the exact mislabelling ADR-010 D3 exists to prevent. The
+    trace instead carries one ``rule_check`` disclosure, reusing the CI-pinned
+    kind the recommender's fail-safe already uses rather than minting a new one.
+
+    ``confidence`` is 0.0 and advisory-only either way (ADR-010 IN-3). It is
+    stated rather than omitted so nothing downstream reads a missing value as a
+    high one.
+    """
+    event_id = str(event.get("event_id", "unknown"))
+    disclosure = (f"LLM arm failed; no model judgment was produced: {exc}")[
+        :_DEGRADE_DISCLOSURE_CAP
+    ]
+    return RecommendedAction(
+        id=f"action-{event_id}",
+        title="Human review required — the LLM arm failed",
+        description=(
+            "The reasoning model did not produce a judgment for this event, so no "
+            "recommendation is asserted here. The declared handler and the affected "
+            f"entity are carried through unchanged for a human to act on. {disclosure}"
+        ),
+        vertical=vertical,
+        reasoning_trace=[
+            ReasoningStep(
+                step_id="llm-degrade-disclosure",
+                kind="rule_check",
+                summary=(
+                    "LLM arm failed; this action is a disclosed deterministic "
+                    "stand-in and carries no model judgment."
+                ),
+                detail={
+                    "recommendation_mode": "llm-degrade-stand-in",
+                    "llm_status": type(exc).__name__,
+                    "llm_disclosure": disclosure,
+                },
+            ),
+            *economic_steps,
+        ],
+        confidence=0.0,
+        affected_entities=[_loop_entity_ref(event)],
+        suggested_handler=handler,
+        handler_payload={},
+        audit_metadata=build_llm_audit_metadata("degraded"),
+        created_at=datetime.now(UTC),
+    )
+
+
 def _entry(record: ActionRecord, receipt: dict[str, Any] | None) -> dict[str, Any]:
     """Serialise one ActionRecord + optional handler receipt for the step artifact
     (JSONB ``output_set``). ``action`` round-trips via ``RecommendedAction.model_validate``."""
@@ -431,21 +508,54 @@ class ActionStepExecutor:
         economic_trace: list[dict[str, Any]] = []
         for entity in input_set:
             event = dict(entity) if isinstance(entity, Mapping) else {"value": entity}
-            judgment = await generate_judgment(
-                client, event, ctx.vertical, retry_budget=budget, goal=ctx.goal
-            )
-            # ADR-0030 / PLAN-0071: the advisory economic-impact facet on the governed
-            # action path — the FIRST appended advisory step on this composition; the
-            # helper never raises (ADR-0030 D5), so it cannot break the run.
+            # PLAN-0119 D-1 / AC-6. Before this guard the two failures below escaped
+            # into the orchestrator's D4 fail-and-divert, which recorded a FAILED /
+            # WAITING_HUMAN step carrying a bare `error` trace and no judgment at all.
+            # Catching them HERE keeps the governed shape — an entity, the declared
+            # handler, a trace a reviewer can read — and says plainly that no model
+            # judgment stands behind it.
+            #
+            # Deliberately narrow: only the two LLM-arm failures. A bug in this module
+            # must still reach the orchestrator and fail the step loudly, because a
+            # blanket `except Exception` here would convert every programming error
+            # into a plausible-looking action awaiting human approval.
+            degraded = False
             economic_steps = await build_economic_steps(event, ctx.vertical)
-            action = _compose_action(
-                event, ctx.vertical, judgment, handler=step.handler, economic_steps=economic_steps
-            )
+            try:
+                judgment = await generate_judgment(
+                    client, event, ctx.vertical, retry_budget=budget, goal=ctx.goal
+                )
+            except (OllamaError, StructuredOutputError) as exc:
+                degraded = True
+                action = _compose_degraded_action(
+                    event,
+                    ctx.vertical,
+                    exc,
+                    handler=step.handler,
+                    economic_steps=economic_steps,
+                )
+            else:
+                # ADR-0030 / PLAN-0071: the advisory economic-impact facet on the governed
+                # action path — the FIRST appended advisory step on this composition; the
+                # helper never raises (ADR-0030 D5), so it cannot break the run.
+                action = _compose_action(
+                    event,
+                    ctx.vertical,
+                    judgment,
+                    handler=step.handler,
+                    economic_steps=economic_steps,
+                )
             # ...and onto the STEP trace, which is the surface the ฿ rollup reads. See
             # :meth:`_unseen_economic` for why here, and why once per run.
             economic_trace.extend(self._unseen_economic(action.id, economic_steps))
             record = ActionRecord(action=action)
-            if auto:
+            # 🔴 A degraded action is NEVER auto-executed, and that is a PRESERVED
+            # property rather than a new one: before AC-6 the exception failed the
+            # step outright, so no run has ever auto-executed a handler on a failed
+            # LLM arm. Disclosing the failure must not quietly buy execution rights
+            # the old behaviour did not grant — a fix that improves the record while
+            # weakening the posture would be worse than the defect.
+            if auto and not degraded:
                 approve(record)
                 receipt = await gate_execute(record)
                 output.append(_entry(record, receipt))

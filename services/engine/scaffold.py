@@ -680,7 +680,55 @@ async def _llm_records(
         raise
     except Exception as exc:  # transport / client error -> fallback
         raise LlmSyntheticError(f"chat call failed: {exc}") from exc
-    return _parse_synthetic(result.content, roles, config, doc)
+    try:
+        return _parse_synthetic(result.content, roles, config, doc)
+    except LlmSyntheticError as exc:
+        raise LlmSyntheticError(f"{exc}{_generation_evidence(result)}") from exc
+
+
+def _generation_evidence(result: Any) -> str:
+    """The generation accounting for a draft that failed to parse (PLAN-0119 D-2).
+
+    🔴 **Why a parse failure has to say ``done_reason``.** The A Author call
+    produces the largest output in the system, so it is the likeliest to run into
+    its cap — and a call CUT at ``num_predict`` returns exactly what a broken
+    model returns: content that will not parse. Without the server's own
+    ``done_reason`` those two are indistinguishable on disk, and the only record
+    anybody keeps is a log line reading *"LLM synthetic draft unusable"*. That
+    sentence has been true of both a truncation and a transport fault for as long
+    as this path has existed, which is D-2.
+
+    ``done_reason="length"`` is the truncation ORACLE (see ``CallMetrics``): it is
+    the difference between "raise the cap" and "the model is broken" — two
+    conclusions with nothing in common.
+
+    ``eval_count`` rides along because a truncation is only fully legible next to
+    the budget it ran into: ``eval_count`` equal to the configured ``num_predict``
+    is the signature PLAN-0118 measured on all 45 empty attempts.
+
+    *(Deliberately NOT reported here: the applied per-workload budget. It would
+    read well next to ``eval_count`` — "cut at 1024, which is what the A class
+    asked for" — but ``CallMetrics.budget`` arrives with Step 3 part 2, and
+    reaching for it would make this step depend on that PR for no gain the
+    criterion asks for. AC-7 wants ``done_reason``; a one-line follow-up can add
+    the budget once both have landed.)*
+
+    Best-effort by construction: this runs on a path whose whole contract is
+    *never raise*, so a double that returns a bare object must degrade to saying
+    less, never to breaking the fallback it is describing.
+    """
+    from services.engine.llm.client import call_metrics
+
+    try:
+        metrics = call_metrics(result, role="structuring")
+    except Exception:  # a double need not carry a full envelope
+        return ""
+    parts = [
+        f"done_reason={metrics.done_reason!r}",
+        f"content_chars={metrics.content_chars}",
+        f"eval_count={metrics.eval_count}",
+    ]
+    return " [" + " ".join(parts) + "]"
 
 
 def llm_synthetic_or_none(
