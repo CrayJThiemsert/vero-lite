@@ -25,7 +25,11 @@ from services.engine.llm.capacity import (
     UnlistedModelError,
     capacity_for,
     derive_call_shape,
+    estimate_prompt_tokens,
+    evaluate_budget,
     fits_in_timeout,
+    needs_explicit_context,
+    required_context_tokens,
 )
 
 # The three figures PLAN-0118 measured, in tokens/s, derived from the known-1024
@@ -100,8 +104,8 @@ def test_think_false_counts_as_set_because_it_does_not_stop_the_reasoning() -> N
 def test_a_listed_model_returns_its_measured_capacity() -> None:
     cap = capacity_for("gpt-oss:20b")
     assert (
-        cap.decode_tokens_per_s == 48.3
-    ), f"gpt-oss:20b decode rate drifted: {cap.decode_tokens_per_s}"
+        cap.decode_tokens_per_s.value == 48.3
+    ), f"gpt-oss:20b decode rate drifted: {cap.decode_tokens_per_s.value}"
 
 
 def test_an_unlisted_model_is_refused_rather_than_defaulted() -> None:
@@ -129,34 +133,90 @@ def test_the_measured_decode_rates_are_the_plan_0118_figures() -> None:
     Every model is checked in ONE assertion: they support the single claim "the
     table still holds what PLAN-0118 measured".
     """
-    actual = {model: cap.decode_tokens_per_s for model, cap in _MODEL_CAPACITY.items()}
+    actual = {model: cap.decode_tokens_per_s.value for model, cap in _MODEL_CAPACITY.items()}
     assert actual == PLAN_0118_DECODE_RATES, (
         f"decode rates drifted from PLAN-0118: expected {PLAN_0118_DECODE_RATES}, " f"got {actual}"
     )
 
 
-def test_load_prefill_and_context_are_unmeasured_for_every_listed_model() -> None:
-    """The three terms Step 4b fills in are ``None``, meaning never measured.
+def test_only_the_decode_rate_is_measured_and_the_other_three_are_not() -> None:
+    """The provenance split, asserted in BOTH directions.
 
-    🔴 This is a NEGATIVE assertion -- "these are all None" is satisfied by an
-    EMPTY table -- so it carries its own positive control: the table must first
-    be non-empty and hold the models we expect. Without that control a mutation
-    emptying ``_MODEL_CAPACITY`` would pass this test green.
+    🔴 Half of this is a NEGATIVE assertion -- "load, prefill and context are not
+    measured" is satisfied vacuously by an EMPTY table -- so it carries its own
+    positive control twice over: the table's membership is pinned first, and the
+    decode rate must come back as measured. Without those, a mutation emptying
+    ``_MODEL_CAPACITY`` or flipping every term to unmeasured would pass green.
+
+    🔴 **This test is the tripwire for Step 4b.** When the live run supplies real
+    load / prefill / context numbers, this reddens -- which is the point. It is
+    not an obstacle to that landing; it is the thing that stops the numbers
+    landing SILENTLY, with nobody updating the places that reason about whether
+    the budget rule can be trusted yet.
     """
     assert set(_MODEL_CAPACITY) == set(PLAN_0118_DECODE_RATES), (
         f"positive control failed -- the table is not the expected set: "
         f"{sorted(_MODEL_CAPACITY)}"
     )
-    measured = {
-        model: (cap.load_s, cap.prefill_tokens_per_s, cap.safe_context_tokens)
+
+    unmeasured_decode = [
+        m for m, c in _MODEL_CAPACITY.items() if not c.decode_tokens_per_s.measured
+    ]
+    assert not unmeasured_decode, (
+        f"positive control failed -- the decode rate IS measured and must say so; "
+        f"models claiming otherwise: {unmeasured_decode}"
+    )
+
+    wrongly_measured = {
+        model: [
+            name
+            for name, term in (
+                ("load_s", cap.load_s),
+                ("prefill_s", cap.prefill_s),
+                ("safe_context_tokens", cap.safe_context_tokens),
+            )
+            if term.measured
+        ]
         for model, cap in _MODEL_CAPACITY.items()
-        if cap.load_s is not None
-        or cap.prefill_tokens_per_s is not None
-        or cap.safe_context_tokens is not None
+        if cap.load_s.measured or cap.prefill_s.measured or cap.safe_context_tokens.measured
     }
-    assert not measured, (
-        f"a term claims to be measured before Step 4b ran: {measured}. "
-        f"If Step 4b HAS run, this test is the place that records it."
+    assert not wrongly_measured, (
+        f"a term claims to be MEASURED before Step 4b ran: {wrongly_measured}. "
+        f"If Step 4b HAS run, this test is the place that records it -- update it "
+        f"deliberately rather than deleting it."
+    )
+
+
+def test_every_provisional_term_names_the_step_that_replaces_it() -> None:
+    """A stand-in whose replacement is unnamed is a stand-in nobody will retire.
+
+    Carries a positive control: provisional terms must actually EXIST for this to
+    mean anything, so the count is asserted non-zero before the property is
+    checked on them.
+    """
+    provisional = [
+        (model, name, term)
+        for model, cap in _MODEL_CAPACITY.items()
+        for name, term in (
+            ("load_s", cap.load_s),
+            ("prefill_s", cap.prefill_s),
+            ("safe_context_tokens", cap.safe_context_tokens),
+        )
+        if not term.measured
+    ]
+    assert len(provisional) == 9, (
+        f"positive control failed -- expected 9 provisional terms "
+        f"(3 models x 3 terms), found {len(provisional)}"
+    )
+    unnamed = [(m, n) for m, n, t in provisional if not t.replaced_by or not t.source]
+    assert not unnamed, f"provisional terms with no source or no replaced_by: {unnamed}"
+
+
+def test_no_model_reports_itself_fully_measured_before_step_4b() -> None:
+    claiming = [model for model, cap in _MODEL_CAPACITY.items() if cap.fully_measured]
+    assert not claiming, (
+        f"models claiming full measurement before Step 4b ran: {claiming}. "
+        f"fully_measured gates whether a budget verdict can be trusted."
     )
 
 
@@ -275,3 +335,119 @@ def test_a_non_positive_decode_rate_is_refused_rather_than_answered() -> None:
             prefill_s=0.0,
             timeout_s=120.0,
         )
+
+
+# --------------------------------------------------------------------------
+# evaluate_budget -- the rule applied through the table, carrying provenance
+# --------------------------------------------------------------------------
+
+
+def test_a_verdict_built_from_provisional_terms_says_it_is_not_measured() -> None:
+    """The whole point of the posture: a caller cannot act on this verdict
+    without being able to see that it rests on a stand-in.
+    """
+    verdict = evaluate_budget(model="gpt-oss:20b", cap_tokens=1024, timeout_s=120.0)
+    assert not verdict.terms_measured, (
+        f"before Step 4b no verdict may claim measured terms; "
+        f"projected={verdict.projected_s:.1f}s load={verdict.load_s:.1f}s"
+    )
+
+
+def test_the_shipped_1024_cap_fits_on_the_model_every_system_actually_runs() -> None:
+    """A regression floor: today's shipped configuration must project as fitting.
+
+    If this reddens, the seam has made the CURRENT behaviour unservable -- which
+    would be a defect in the seam, not a discovery about the budget.
+    """
+    verdict = evaluate_budget(model="gpt-oss:20b", cap_tokens=1024, timeout_s=120.0)
+    assert verdict.fits, (
+        f"the shipped cap must fit: decode={verdict.decode_s:.1f}s "
+        f"load={verdict.load_s:.1f}s prefill={verdict.prefill_s:.1f}s "
+        f"projected={verdict.projected_s:.1f}s timeout={verdict.timeout_s:.1f}s"
+    )
+
+
+def test_qwen_at_2048_is_refused_through_the_table_not_only_by_hand() -> None:
+    """AC-4's named failing case, reached the way production would reach it.
+
+    The by-hand version above proves the RULE; this proves the rule plus the
+    TABLE, which is what a caller actually gets. The provisional load term is
+    what carries the refusal -- see the by-hand pair for why that matters.
+    """
+    verdict = evaluate_budget(model="qwen3.8:27b-mtp-q4_K_M", cap_tokens=2048, timeout_s=120.0)
+    assert not verdict.fits, (
+        f"qwen-q4 at 2048 must be refused: decode={verdict.decode_s:.1f}s "
+        f"load={verdict.load_s:.1f}s prefill={verdict.prefill_s:.1f}s "
+        f"projected={verdict.projected_s:.1f}s timeout={verdict.timeout_s:.1f}s"
+    )
+
+
+def test_evaluating_a_budget_for_an_unlisted_model_refuses() -> None:
+    with pytest.raises(UnlistedModelError):
+        evaluate_budget(model="llama3:70b", cap_tokens=1024, timeout_s=120.0)
+
+
+# --------------------------------------------------------------------------
+# AC-5 -- num_ctx and the context headroom
+# --------------------------------------------------------------------------
+
+
+def test_the_prompt_estimate_counts_every_field_not_only_content() -> None:
+    """A role, a name, or any other field a caller included is serialised onto
+    the wire and occupies context too. Counting only ``content`` would
+    under-state the prompt, which is the unsafe direction.
+    """
+    with_role_only = estimate_prompt_tokens([{"role": "user", "content": "hello"}])
+    with_extra_field = estimate_prompt_tokens(
+        [{"role": "user", "content": "hello", "name": "a-much-longer-value"}]
+    )
+    assert with_extra_field > with_role_only, (
+        f"an extra serialised field must raise the estimate: "
+        f"{with_role_only} -> {with_extra_field}"
+    )
+
+
+def test_a_short_prompt_never_estimates_as_zero_tokens() -> None:
+    """Rounding UP matters: a zero-token prompt would make the headroom check
+    believe the whole context is available for generation.
+    """
+    estimate = estimate_prompt_tokens([{"role": "u", "content": "x"}])
+    assert estimate >= 1, f"estimate rounded down to {estimate}"
+
+
+def test_a_1024_cap_against_a_4096_window_does_not_need_an_explicit_context() -> None:
+    """Today's shipped configuration, and the reason AC-5 is not already firing:
+    741 + 1024 is well inside 4096. This is the positive control for the test
+    below -- without it, a ``needs_explicit_context`` stuck at True would look
+    correct.
+    """
+    assert not needs_explicit_context(
+        prompt_tokens=741, cap_tokens=1024, safe_context_tokens=4096
+    ), "the shipped cap must not require an explicit num_ctx"
+
+
+def test_a_4096_cap_against_the_same_window_does_need_one() -> None:
+    """Step 6's arm, and exactly the breach PLAN-0119 warns about: a 741-token
+    prompt plus a 4096 cap does not fit a 4096 window, and NOT sending
+    ``num_ctx`` truncates the PROMPT -- a failure ``done_reason`` cannot see.
+    """
+    assert needs_explicit_context(
+        prompt_tokens=741, cap_tokens=4096, safe_context_tokens=4096
+    ), "a 741-token prompt plus a 4096 cap breaches a 4096 window"
+
+
+def test_the_context_sent_always_holds_the_prompt_plus_the_whole_cap() -> None:
+    """AC-5's claim, asserted over a spread of shapes in ONE assertion.
+
+    🔴 The spread IS the positive control. A constant implementation -- one
+    returning 4096 whatever it was asked -- passes any single small case and
+    fails here on the large prompt, which is the case it must not be allowed to
+    pass by luck.
+    """
+    cases = [(741, 1024), (741, 4096), (8000, 4096), (1, 1), (32000, 8192)]
+    breaches = [
+        (prompt, cap, required_context_tokens(prompt_tokens=prompt, cap_tokens=cap))
+        for prompt, cap in cases
+        if prompt + cap > required_context_tokens(prompt_tokens=prompt, cap_tokens=cap)
+    ]
+    assert not breaches, f"num_ctx smaller than prompt + cap for (prompt, cap, ctx): {breaches}"

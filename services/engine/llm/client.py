@@ -25,11 +25,12 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import httpx
 
 from services.api.config import settings
+from services.engine.llm.capacity import capacity_for
 
 
 class OllamaError(RuntimeError):
@@ -441,6 +442,18 @@ class OllamaClient(OllamaAdminClient):
     different sets.
     """
 
+    #: Whether construction requires the bound model to have a measured capacity
+    #: (SD-2 = (b), ruled s274). True here; :class:`OllamaMeasurementClient` sets
+    #: it False, and that subclass is the ONLY sanctioned way to get an unmeasured
+    #: model past this check.
+    #:
+    #: A class attribute rather than a constructor flag, deliberately. A flag
+    #: would make the refusal advisory — anything could pass it — which is the
+    #: shape SD-1 ruled against for the budget seam and the same objection applies
+    #: here. As a type distinction it is visible at the construction site, greppable,
+    #: and impossible to set "just this once".
+    _REQUIRE_MEASURED_CAPACITY: ClassVar[bool] = True
+
     def __init__(
         self,
         *,
@@ -465,7 +478,16 @@ class OllamaClient(OllamaAdminClient):
         factory takes the class and constructs one client per class (SD-1.1's
         recommendation); it must never widen into a per-call argument, which is the
         design SD-1 ruled against.
+
+        Raises :class:`~services.engine.llm.capacity.UnlistedModelError` when
+        ``model`` has no measured serving capacity (SD-2 = (b)). The refusal is
+        here rather than at the first call because a client bound to a model
+        nobody has measured cannot have its budget bounded — it would serve with
+        the rule switched off, and the failure would surface as a timeout at some
+        later, unrelated moment.
         """
+        if self._REQUIRE_MEASURED_CAPACITY:
+            capacity_for(model)
         super().__init__(base_url=base_url, model=model, timeout=timeout, transport=transport)
         self._workload = workload
 
@@ -550,3 +572,33 @@ class OllamaClient(OllamaAdminClient):
         async with _inflight_slot(settings.llm_max_inflight):
             payload = await self._request_json("POST", "/api/chat", json=body)
         return _parse_chat_payload(payload, self._model)
+
+
+class OllamaMeasurementClient(OllamaClient):
+    """The one client permitted to bind a model with no measured capacity.
+
+    **Why this type exists (PLAN-0119 Step 3 part 2; Cray, typed, s287).** SD-2's
+    refuse-at-construction has a bootstrapping problem the PLAN did not
+    anticipate: the instruments that MEASURE a model construct their client from
+    a ``--model`` tag supplied on the command line
+    (``benchmarks/nl_query_feasibility/*``, ``benchmarks/procedure_baseline``).
+    If an unmeasured model is refused at construction, the tool that would have
+    measured it cannot be built — and the capacity table can never gain a row.
+    A rule that forbids its own precondition is not a strict rule, it is a stuck
+    one.
+
+    The alternative considered and rejected was a per-construction
+    ``allow_unmeasured=True`` flag. That is precisely the advisory seam SD-1
+    ruled against for the budget: anything may pass a flag, so the refusal would
+    hold only by convention. Splitting the TYPE instead follows the route Cray
+    ruled at s286 for the admin clients — the distinction is carried by the
+    compiler and is visible at the construction site, and "this call is measuring
+    a model, not serving one" becomes a fact a reader can grep for.
+
+    🔴 **Not for production paths.** A client built here has no bounded budget,
+    because there is no measurement to bound it with. Every production
+    construction site uses :class:`OllamaClient` and is checked; this subclass
+    belongs to ``benchmarks/`` and to nothing else.
+    """
+
+    _REQUIRE_MEASURED_CAPACITY: ClassVar[bool] = False

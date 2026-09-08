@@ -28,8 +28,39 @@ presence of an unknown term is a posture decision recorded below.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Any, Literal
+from dataclasses import dataclass, replace
+from math import ceil
+from typing import Any, Generic, Literal, TypeVar
+
+T = TypeVar("T")
+
+
+@dataclass(frozen=True)
+class Term(Generic[T]):
+    """One capacity number, carrying where it came from.
+
+    🔴 **The provenance is the point, not decoration.** A provisional number that
+    looks like a measured one is the failure this type exists to make
+    impossible: a placeholder silently hardens into a fact, and every decision
+    downstream inherits a confidence nobody ever earned. CLAUDE.md Sec 6 states
+    the general rule -- an inherited premise a decision rests on is a claim, not
+    context, and must be marked ``asserted-not-verified`` where the decision is
+    recorded. This is that marking, in the type system.
+
+    ``measured`` False means the value is a stand-in chosen to be pessimistic:
+    it may make the budget rule refuse a cap that would in fact have fitted, and
+    that direction is deliberate. It must never make the rule ACCEPT a cap it
+    could not otherwise justify.
+
+    ``replaced_by`` names the step that will supply the real number, so a reader
+    who wants to know when this stops being a guess does not have to search.
+    """
+
+    value: T
+    measured: bool
+    source: str
+    replaced_by: str | None = None
+
 
 #: Which of the three shapes a single chat call takes, derived at the chokepoint.
 #:
@@ -74,19 +105,111 @@ def derive_call_shape(
 
 @dataclass(frozen=True)
 class ModelCapacity:
-    """What has been measured about one model's serving behaviour.
+    """One model's serving capacity, term by term, each carrying its provenance.
 
-    ``decode_tokens_per_s`` is measured and real (PLAN-0118, derived from the
-    known-1024 truncated calls). The remaining three are ``None`` until Step 4b
-    runs, and ``None`` here means exactly "never measured" -- never "zero".
-    A zero would be a measurement that never happened wearing the shape of one
-    that did, which is the same trap ``call_metrics`` avoids field by field.
+    Exactly one term is measured today -- ``decode_tokens_per_s``, from PLAN-0118,
+    derived from the known-1024 truncated calls. The other three are provisional
+    and Step 4b replaces them.
+
+    Every term is a :class:`Term` rather than a bare number, uniformly, so that
+    "is this measured?" is answered the same way for all of them. A design where
+    only the doubtful ones were wrapped would make the wrapper itself the signal
+    -- and the day a fourth term arrived, the person adding it would have to
+    already know the convention to get it right.
     """
 
-    decode_tokens_per_s: float
-    load_s: float | None = None
-    prefill_tokens_per_s: float | None = None
-    safe_context_tokens: int | None = None
+    decode_tokens_per_s: Term[float]
+    load_s: Term[float]
+    prefill_s: Term[float]
+    safe_context_tokens: Term[int]
+
+    @property
+    def fully_measured(self) -> bool:
+        """True only when no term is still standing in for a measurement."""
+        return all(
+            term.measured
+            for term in (
+                self.decode_tokens_per_s,
+                self.load_s,
+                self.prefill_s,
+                self.safe_context_tokens,
+            )
+        )
+
+
+def _provisional_load(seconds: float) -> Term[float]:
+    """A model's load time, standing in until Step 4b measures it.
+
+    The stand-in is PLAN-0118's observed WARM time for that model. It is the only
+    load-shaped number on disk, and it is pessimistic in the right direction: a
+    warm pays the full weight load, so a call arriving at an already-resident
+    model is charged for something it will not actually pay.
+    """
+    return Term(
+        value=seconds,
+        measured=False,
+        source="PLAN-0118 observed warm time (the only load-shaped figure on disk)",
+        replaced_by="PLAN-0119 Step 4b (load_duration_ns, recordable since Step 2)",
+    )
+
+
+def _unmeasured_prefill() -> Term[float]:
+    """Prefill time, with NO stand-in value -- deliberately zero.
+
+    🔴 A tempting stand-in exists and is FORBIDDEN. PLAN-0118 measured a
+    ``total_duration - eval_duration`` residual of 10.4-54.4 s that "contains
+    prefill and grammar-compilation time", and subtracting the warm time from it
+    would yield a prefill-shaped number. That is the contested OQ-1 residual, and
+    PLAN-0119's Out of Scope forbids it in as many words: nothing in this PLAN
+    may be built on that reconstruction. The decomposition is also visibly
+    unstable -- it puts q8's prefill BELOW q4's, which is the wrong order.
+
+    So this term contributes nothing to the projection and says so. The safety
+    margin before Step 4b comes entirely from the load term, which does have an
+    anchor. Inventing a number here to look thorough would be exactly the
+    placeholder-hardening failure :class:`Term` exists to prevent -- and it would
+    be worse than a zero, because a zero cannot be mistaken for evidence.
+    """
+    return Term(
+        value=0.0,
+        measured=False,
+        source=(
+            "no measurement exists; deriving one from the OQ-1 residual is "
+            "forbidden by PLAN-0119 Out of Scope"
+        ),
+        replaced_by="PLAN-0119 Step 4b (prompt_eval_duration_ns, recordable since Step 2)",
+    )
+
+
+def _unmeasured_context() -> Term[int]:
+    """The effective runtime context window -- OQ-7, never measured.
+
+    4096 is the pessimistic reading, and pessimistic here means SMALL: a smaller
+    assumed window makes AC-5 send an explicit ``num_ctx`` sooner, which is the
+    safe direction. The box reports a model ``context_length`` of 32768, but
+    Ollama's RUNTIME ``num_ctx`` default is a separate thing and is what actually
+    binds. Assuming the larger number is what would let a prompt be silently
+    truncated instead of the output -- a strictly worse failure, because
+    ``done_reason`` cannot see it.
+    """
+    return Term(
+        value=4096,
+        measured=False,
+        source=(
+            "pessimistic assumption of Ollama's runtime num_ctx default; the "
+            "model's reported context_length of 32768 is a DIFFERENT number"
+        ),
+        replaced_by="PLAN-0119 Step 4b / OQ-7",
+    )
+
+
+def _measured_decode(rate: float) -> Term[float]:
+    """A model's decode rate -- the one term that is genuinely measured."""
+    return Term(
+        value=rate,
+        measured=True,
+        source="PLAN-0118, derived from the known-1024 truncated calls",
+    )
 
 
 #: Serving capacity per model. The key is the exact model string a client binds.
@@ -99,9 +222,24 @@ _MODEL_CAPACITY: dict[str, ModelCapacity] = {
     # The only model any published system actually runs today: `recommender_model`
     # defaults to it, `procedure_draft._GENERATOR_MODEL` pins it, and no
     # published.env overrides either (verified by grep at s287).
-    "gpt-oss:20b": ModelCapacity(decode_tokens_per_s=48.3),
-    "qwen3.8:27b-mtp-q4_K_M": ModelCapacity(decode_tokens_per_s=19.5),
-    "qwen3.8:27b-mtp-q8_0": ModelCapacity(decode_tokens_per_s=18.5),
+    "gpt-oss:20b": ModelCapacity(
+        decode_tokens_per_s=_measured_decode(48.3),
+        load_s=_provisional_load(5.5),
+        prefill_s=_unmeasured_prefill(),
+        safe_context_tokens=_unmeasured_context(),
+    ),
+    "qwen3.8:27b-mtp-q4_K_M": ModelCapacity(
+        decode_tokens_per_s=_measured_decode(19.5),
+        load_s=_provisional_load(24.0),
+        prefill_s=_unmeasured_prefill(),
+        safe_context_tokens=_unmeasured_context(),
+    ),
+    "qwen3.8:27b-mtp-q8_0": ModelCapacity(
+        decode_tokens_per_s=_measured_decode(18.5),
+        load_s=_provisional_load(46.0),
+        prefill_s=_unmeasured_prefill(),
+        safe_context_tokens=_unmeasured_context(),
+    ),
 }
 
 
@@ -201,3 +339,78 @@ def fits_in_timeout(
         timeout_s=timeout_s,
         terms_measured=True,
     )
+
+
+def evaluate_budget(*, model: str, cap_tokens: int, timeout_s: float) -> BudgetVerdict:
+    """Apply AC-4's rule to a model, reading its terms from the capacity table.
+
+    The seam between this and :func:`fits_in_timeout` is where the posture lives:
+    the rule is pure arithmetic and does not know whether its inputs are real,
+    while this function does and says so on the way out. ``terms_measured`` is
+    narrowed to the model's own ``fully_measured``, so no caller can act on a
+    verdict without being able to see that it rests on a stand-in.
+
+    Raises :class:`UnlistedModelError` for a model with no capacity entry.
+    """
+    capacity = capacity_for(model)
+    verdict = fits_in_timeout(
+        cap_tokens=cap_tokens,
+        decode_tokens_per_s=capacity.decode_tokens_per_s.value,
+        load_s=capacity.load_s.value,
+        prefill_s=capacity.prefill_s.value,
+        timeout_s=timeout_s,
+    )
+    return replace(verdict, terms_measured=capacity.fully_measured)
+
+
+#: Characters per generated token, measured across PLAN-0118's arms as
+#: ``content_chars / eval_count`` = 2.71-3.47. The LOW end is used deliberately:
+#: fewer characters per token means MORE tokens estimated for the same text, which
+#: over-states the prompt. For a context-headroom check, over-stating the prompt is
+#: the safe error -- it sends an explicit ``num_ctx`` sooner than strictly needed,
+#: where under-stating it lets the prompt be silently truncated.
+#:
+#: ⚠️ It is a ratio measured on GENERATED content, applied here to PROMPT text.
+#: Nothing on disk measures the prompt-side ratio; this is the closest anchor that
+#: exists, and it is used only to decide whether to send a bound, never to report a
+#: token count as a measurement.
+_CHARS_PER_TOKEN = 2.71
+
+
+def estimate_prompt_tokens(messages: list[dict[str, str]]) -> int:
+    """Estimate the prompt's token count from the characters actually being sent.
+
+    Counts every value in every message, not just ``content``: a role, a name or
+    any other field the caller included is serialised onto the wire and occupies
+    context too. Rounds UP, so a short prompt never estimates as zero tokens.
+    """
+    characters = sum(len(value) for message in messages for value in message.values())
+    return ceil(characters / _CHARS_PER_TOKEN)
+
+
+def needs_explicit_context(
+    *, prompt_tokens: int, cap_tokens: int, safe_context_tokens: int
+) -> bool:
+    """True when prompt + cap could breach the context window (AC-5's trigger).
+
+    Below this line the server's own default is adequate and sending ``num_ctx``
+    would only add a knob to reason about. Above it, NOT sending one moves the
+    failure somewhere invisible: the prompt gets truncated rather than the
+    output, and ``done_reason`` -- the truncation oracle this whole PLAN rests on
+    -- reports nothing at all, because from the server's point of view nothing
+    was cut short.
+    """
+    return prompt_tokens + cap_tokens > safe_context_tokens
+
+
+def required_context_tokens(*, prompt_tokens: int, cap_tokens: int) -> int:
+    """The ``num_ctx`` to send so that prompt + generation both fit.
+
+    Guarantees ``prompt_tokens + cap_tokens <= result`` -- that is AC-5's whole
+    claim, and it is what the test asserts. The 10% margin absorbs the estimate's
+    error (``estimate_prompt_tokens`` approximates from characters), and the
+    round up to a 512-token boundary keeps the value tidy without ever rounding
+    DOWN, which would silently undo the guarantee.
+    """
+    needed = ceil((prompt_tokens + cap_tokens) * 1.1)
+    return ceil(needed / 512) * 512

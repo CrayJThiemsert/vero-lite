@@ -38,7 +38,7 @@ from benchmarks.procedure_comparison.comparison import (
 )
 from benchmarks.procedure_comparison.rag_arm import DEFAULT_CORPUS, DEFAULT_TOP_K, load_corpus
 from services.api.config import settings
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaMeasurementClient
 
 _DEFAULT_MODEL = "gpt-oss:20b"  # ADR-001 pin
 _DEFAULT_KEEP_ALIVE = "10m"
@@ -93,7 +93,7 @@ async def _main(args: argparse.Namespace) -> None:
     )
 
     # J Judge: the comparison arm scores judgments.
-    base = OllamaClient(
+    base = OllamaMeasurementClient(
         workload="J",
         base_url=args.ollama_host,
         model=args.model,
