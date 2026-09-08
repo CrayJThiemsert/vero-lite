@@ -13,6 +13,13 @@ interception point. Anything higher — a fake ``chat``, a patched
 ``_request_json`` — would test the code above it, and these are claims about the
 bytes that leave the process.
 
+⚠️ **No assertion here is a conjunction.** ``assert x is not None and x.y == z``
+is two claims wearing one assert: a mutation reddens it without saying which half
+failed, and the probe driver cannot attribute the result to a claim. Every
+"is not None" precondition is therefore funnelled through :func:`_budget_of`,
+where it is ONE claim that can be exempted with a reason, rather than repeated in
+a dozen asserts that each become an unprobeable half.
+
 What these tests CANNOT claim, stated plainly: anything about a model or a real
 server. The transport is a double; no number here was produced by MS-S1. They
 test that the client sends what the rule says, not that the rule's provisional
@@ -22,13 +29,23 @@ them.
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 import httpx
 import pytest
 
-from services.engine.llm.capacity import capacity_for
-from services.engine.llm.client import _WORKLOAD_NUM_PREDICT, OllamaClient
+from services.engine.llm.capacity import (
+    UnlistedModelError,
+    capacity_for,
+    estimate_prompt_tokens,
+)
+from services.engine.llm.client import (
+    _WORKLOAD_NUM_PREDICT,
+    AppliedBudget,
+    ChatResult,
+    OllamaClient,
+)
 
 _SHIPPED_MODEL = "gpt-oss:20b"
 
@@ -40,8 +57,6 @@ class _WireRecorder:
         self.bodies: list[dict[str, Any]] = []
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
-        import json
-
         self.bodies.append(json.loads(request.content))
         return httpx.Response(
             200,
@@ -55,11 +70,30 @@ class _WireRecorder:
 
     @property
     def options(self) -> dict[str, Any]:
-        """The ``options`` block of the single request recorded."""
+        """The ``options`` block of the single request recorded.
+
+        The length check is a PRECONDITION of every wire assertion in this
+        module, not a claim about the clamp: it records that exactly one request
+        was observed, which is the condition under which "the wire carries X"
+        means anything at all.
+        """
         assert len(self.bodies) == 1, f"expected exactly one call, got {len(self.bodies)}"
         options = self.bodies[0]["options"]
-        assert isinstance(options, dict)
-        return options
+        return dict(options)
+
+
+def _budget_of(result: ChatResult) -> AppliedBudget:
+    """The budget record the chokepoint attached, or fail loudly.
+
+    A PRECONDITION funnel, deliberately. Without it every test below would carry
+    its own ``result.budget is not None`` — either as a conjunction (unprobeable)
+    or as a separate claim repeated a dozen times (a denominator full of noise
+    that says nothing about the clamp). Here it is one claim, and a mutation that
+    stopped the chokepoint attaching a record reddens every test at once, which
+    is the honest signal for a failure of that size.
+    """
+    assert result.budget is not None, "the chokepoint must attach a budget record"
+    return result.budget
 
 
 def _client(recorder: _WireRecorder, *, timeout: float = 120.0) -> OllamaClient:
@@ -79,8 +113,8 @@ def _short_message() -> list[dict[str, str]]:
 def _long_message() -> list[dict[str, str]]:
     """A prompt long enough that prompt + the shipped 1024 cap breaches 4096.
 
-    ~12,000 characters at the measured 2.71 chars/token is ~4,428 tokens, so
-    4,428 + 1,024 = 5,452 against an assumed 4,096 window.
+    ~12,650 characters at the measured 2.71 chars/token is ~4,668 tokens, so
+    4,668 + 1,024 = 5,692 against an assumed 4,096 window.
     """
     return [{"role": "user", "content": "boiler telemetry line. " * 550}]
 
@@ -106,9 +140,9 @@ async def test_the_shipped_configuration_does_not_clamp() -> None:
         f"the shipped cap must reach the wire unchanged; "
         f"wire={recorder.options['num_predict']} expected={_WORKLOAD_NUM_PREDICT['S']}"
     )
-    assert (
-        result.budget is not None and not result.budget.clamped
-    ), f"the shipped configuration must not clamp; budget={result.budget}"
+    assert not _budget_of(
+        result
+    ).clamped, f"the shipped configuration must not clamp; budget={_budget_of(result)}"
 
 
 async def test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire() -> None:
@@ -119,18 +153,15 @@ async def test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire() ->
     inside 20 s is 700 — ``ceil((20.0 - 5.5) * 48.3) - 1``.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder, timeout=20.0).chat(_short_message())
+    budget = _budget_of(await _client(recorder, timeout=20.0).chat(_short_message()))
 
-    assert result.budget is not None
-    assert recorder.options["num_predict"] == result.budget.applied_num_predict, (
+    assert recorder.options["num_predict"] == budget.applied_num_predict, (
         f"the wire must carry what the clamp decided; "
-        f"wire={recorder.options['num_predict']} "
-        f"decided={result.budget.applied_num_predict}"
+        f"wire={recorder.options['num_predict']} decided={budget.applied_num_predict}"
     )
-    assert result.budget.applied_num_predict == 700, (
+    assert budget.applied_num_predict == 700, (
         f"expected the exact largest fitting cap 700, got "
-        f"{result.budget.applied_num_predict} "
-        f"(requested {result.budget.requested_num_predict})"
+        f"{budget.applied_num_predict} (requested {budget.requested_num_predict})"
     )
 
 
@@ -141,12 +172,11 @@ async def test_the_clamp_never_hands_a_class_more_than_it_asked_for() -> None:
     could decode far more than 1024 tokens, and the wire must still carry 1024.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder, timeout=3600.0).chat(_short_message())
+    await _client(recorder, timeout=3600.0).chat(_short_message())
 
     assert recorder.options["num_predict"] == _WORKLOAD_NUM_PREDICT["S"], (
         f"a generous timeout must not raise the cap; " f"wire={recorder.options['num_predict']}"
     )
-    assert result.budget is not None and not result.budget.clamped
 
 
 async def test_a_clamp_that_fires_is_disclosed_with_the_numbers_it_used() -> None:
@@ -157,10 +187,9 @@ async def test_a_clamp_that_fires_is_disclosed_with_the_numbers_it_used() -> Non
     less room than its class asks for, and why.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder, timeout=20.0).chat(_short_message())
+    budget = _budget_of(await _client(recorder, timeout=20.0).chat(_short_message()))
 
-    assert result.budget is not None and result.budget.clamped
-    reason = result.budget.reason or ""
+    reason = budget.reason or ""
     missing = [token for token in ("1024", "700", "20.0", "clamped") if token not in reason]
     assert not missing, f"the disclosure omitted {missing}; reason was: {reason!r}"
 
@@ -173,12 +202,11 @@ async def test_a_clamped_call_says_its_terms_are_not_all_measured() -> None:
     measurement at exactly the moment the number is being used to take room away.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder, timeout=20.0).chat(_short_message())
+    budget = _budget_of(await _client(recorder, timeout=20.0).chat(_short_message()))
 
-    assert result.budget is not None and result.budget.reason is not None
-    assert "terms not all measured" in result.budget.reason, (
-        f"a clamp on provisional terms must disclose that; " f"reason was: {result.budget.reason!r}"
-    )
+    assert "terms not all measured" in (
+        budget.reason or ""
+    ), f"a clamp on provisional terms must disclose that; reason was: {budget.reason!r}"
 
 
 # --------------------------------------------------------------------------
@@ -207,32 +235,28 @@ async def test_a_prompt_that_breaches_the_window_puts_num_ctx_on_the_wire() -> N
     because from the server's side nothing was cut short.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder).chat(_long_message())
+    budget = _budget_of(await _client(recorder).chat(_long_message()))
 
-    assert "num_ctx" in recorder.options, (
-        f"a breaching prompt must be given an explicit window; " f"options={recorder.options}"
+    assert recorder.options.get("num_ctx") == budget.num_ctx, (
+        f"the wire must carry the window the chokepoint decided; "
+        f"wire={recorder.options.get('num_ctx')} decided={budget.num_ctx}"
     )
-    assert result.budget is not None
-    assert recorder.options["num_ctx"] == result.budget.num_ctx
 
 
 async def test_the_window_sent_holds_the_whole_prompt_and_the_whole_cap() -> None:
     """AC-5's actual claim: prompt + cap <= context.
 
-    Asserted against the estimate the client itself used, so a change to the
+    Asserted against the estimate the client itself uses, so a change to the
     estimator cannot quietly decouple the two.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder).chat(_long_message())
-
-    assert result.budget is not None and result.budget.num_ctx is not None
-    from services.engine.llm.capacity import estimate_prompt_tokens
+    budget = _budget_of(await _client(recorder).chat(_long_message()))
 
     prompt_tokens = estimate_prompt_tokens(_long_message())
-    needed = prompt_tokens + result.budget.applied_num_predict
-    assert result.budget.num_ctx >= needed, (
-        f"num_ctx={result.budget.num_ctx} is smaller than prompt({prompt_tokens}) "
-        f"+ cap({result.budget.applied_num_predict}) = {needed}"
+    needed = prompt_tokens + budget.applied_num_predict
+    assert (budget.num_ctx or 0) >= needed, (
+        f"num_ctx={budget.num_ctx} is smaller than prompt({prompt_tokens}) "
+        f"+ cap({budget.applied_num_predict}) = {needed}"
     )
 
 
@@ -248,13 +272,12 @@ async def test_a_sent_num_ctx_is_never_smaller_than_the_assumed_window() -> None
     This test is what keeps the property true after the guard is gone.
     """
     recorder = _WireRecorder()
-    result = await _client(recorder).chat(_long_message())
+    budget = _budget_of(await _client(recorder).chat(_long_message()))
 
     assumed = capacity_for(_SHIPPED_MODEL).safe_context_tokens.value
-    assert result.budget is not None and result.budget.num_ctx is not None
-    assert result.budget.num_ctx >= assumed, (
-        f"num_ctx={result.budget.num_ctx} would SHRINK the assumed window "
-        f"{assumed} — the provisional value must never cost real headroom"
+    assert (budget.num_ctx or 0) >= assumed, (
+        f"num_ctx={budget.num_ctx} would SHRINK the assumed window {assumed} — "
+        f"the provisional value must never cost real headroom"
     )
 
 
@@ -267,25 +290,20 @@ async def test_the_disclosed_shape_tracks_the_arguments_of_the_call() -> None:
     """The chokepoint's derivation is recorded, not just computed.
 
     All three shapes are folded into ONE assertion: they support the single claim
-    "the shape on the record is the shape of the call".
+    "the shape on the record is the shape of the call". Kept out of
+    ``parametrize`` on purpose — a parametrised node fails as N cases, which the
+    probe driver classifies MISFIRE.
     """
     shapes = []
-    for kwargs in (
-        {"response_format": {"type": "object"}},
-        {"think": True},
-        {},
-    ):
+    for kwargs in ({"response_format": {"type": "object"}}, {"think": True}, {}):
         recorder = _WireRecorder()
         result = await _client(recorder).chat(_short_message(), **kwargs)  # type: ignore[arg-type]
-        assert result.budget is not None
-        shapes.append(result.budget.shape)
+        shapes.append(_budget_of(result).shape)
 
     assert shapes == ["structuring", "reasoning", "plain"], f"got {shapes}"
 
 
 async def test_an_unlisted_model_cannot_even_be_constructed() -> None:
     """SD-2, at the seam a caller actually touches."""
-    from services.engine.llm.capacity import UnlistedModelError
-
     with pytest.raises(UnlistedModelError):
         OllamaClient(workload="S", base_url="http://ollama.test", model="llama3:70b")
