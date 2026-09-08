@@ -25,11 +25,21 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, ClassVar, Literal
 
 import httpx
 
 from services.api.config import settings
+from services.engine.llm.capacity import (
+    CallShape,
+    capacity_for,
+    derive_call_shape,
+    estimate_prompt_tokens,
+    evaluate_budget,
+    largest_fitting_cap,
+    needs_explicit_context,
+    required_context_tokens,
+)
 
 
 class OllamaError(RuntimeError):
@@ -109,6 +119,33 @@ async def _inflight_slot(limit: int) -> AsyncIterator[None]:
 
 
 @dataclass(frozen=True)
+class AppliedBudget:
+    """What the chokepoint actually sent for one call, and whether it had to bend.
+
+    SD-8 = (b): **a clamp that fires is disclosed.** This record is that
+    disclosure, and it travels the route that already exists — onto
+    :class:`ChatResult`, copied onto :class:`CallMetrics`, carried in
+    ``JudgmentResult.calls`` and available to the reasoning trace. A clamp that
+    fired silently would be the worst of both designs: the budget rule would be
+    protecting the call while the answer looked like an ordinary one, and a
+    reviewer reading a short judgment would have no way to learn that its author
+    was given less room than its class asks for.
+
+    ``requested_num_predict`` is what the workload class asked for;
+    ``applied_num_predict`` is what went on the wire. They differ only when
+    ``clamped`` is True, and ``reason`` says why.
+    """
+
+    workload: Workload
+    shape: CallShape
+    requested_num_predict: int
+    applied_num_predict: int
+    num_ctx: int | None
+    clamped: bool
+    reason: str | None = None
+
+
+@dataclass(frozen=True)
 class ChatResult:
     """The parsed result of one Ollama chat call.
 
@@ -116,12 +153,19 @@ class ChatResult:
     (Pattern B call 1); it becomes the ``llm_inference`` reasoning
     narrative (ADR-010 D3). ``content`` is the assistant message body — a
     draft on call 1, the schema-constrained envelope JSON on call 2.
+
+    ``budget`` records what the chokepoint sent (PLAN-0119 Step 3). It defaults
+    to ``None`` so the ~55 places that construct a ChatResult by hand — almost
+    all of them test doubles standing in for a server — keep working unchanged;
+    ``None`` reads as "this result did not come through the real chokepoint",
+    which for a double is the truth.
     """
 
     content: str
     thinking: str | None
     model: str
     raw: dict[str, Any]
+    budget: AppliedBudget | None = None
 
 
 #: Which of the two Pattern B calls a :class:`CallMetrics` describes. A literal
@@ -237,6 +281,17 @@ class CallMetrics:
     prompt_eval_duration_ns: int | None = None
     eval_duration_ns: int | None = None
 
+    #: What the chokepoint sent for this call, including whether the per-model
+    #: capacity clamp fired (SD-8 = (b), PLAN-0119 Step 3). ``None`` when the
+    #: result did not come through the real chokepoint — a test double, say.
+    #:
+    #: It belongs on THIS record rather than in a parallel channel because this
+    #: is the record that already reaches the reasoning trace, and because a
+    #: clamped cap is the single most useful thing to know next to
+    #: ``done_reason``: together they separate "the model was cut at the budget
+    #: it asked for" from "the model was cut at a budget it never asked for".
+    budget: AppliedBudget | None = None
+
     @property
     def decode_tokens_per_s(self) -> float | None:
         """Generated tokens per second, or ``None`` when it cannot be computed.
@@ -312,6 +367,7 @@ def call_metrics(result: ChatResult, *, role: CallRole) -> CallMetrics:
         load_duration_ns=_ns("load_duration"),
         prompt_eval_duration_ns=_ns("prompt_eval_duration"),
         eval_duration_ns=_ns("eval_duration"),
+        budget=result.budget,
     )
 
 
@@ -401,7 +457,9 @@ class OllamaAdminClient:
         return models if isinstance(models, list) else []
 
 
-def _parse_chat_payload(payload: Any, model: str) -> ChatResult:
+def _parse_chat_payload(
+    payload: Any, model: str, *, budget: AppliedBudget | None = None
+) -> ChatResult:
     """Validate the Ollama ``/api/chat`` response shape into a ChatResult."""
     if not isinstance(payload, dict):
         raise OllamaError(f"Ollama returned an unexpected body type: {type(payload).__name__}")
@@ -416,7 +474,7 @@ def _parse_chat_payload(payload: Any, model: str) -> ChatResult:
     thinking_raw = message.get("thinking")
     thinking = thinking_raw if isinstance(thinking_raw, str) and thinking_raw else None
 
-    return ChatResult(content=content, thinking=thinking, model=model, raw=payload)
+    return ChatResult(content=content, thinking=thinking, model=model, raw=payload, budget=budget)
 
 
 class OllamaClient(OllamaAdminClient):
@@ -440,6 +498,18 @@ class OllamaClient(OllamaAdminClient):
     PLAN-0119 §3 was corrected for in the same session — one table serving two
     different sets.
     """
+
+    #: Whether construction requires the bound model to have a measured capacity
+    #: (SD-2 = (b), ruled s274). True here; :class:`OllamaMeasurementClient` sets
+    #: it False, and that subclass is the ONLY sanctioned way to get an unmeasured
+    #: model past this check.
+    #:
+    #: A class attribute rather than a constructor flag, deliberately. A flag
+    #: would make the refusal advisory — anything could pass it — which is the
+    #: shape SD-1 ruled against for the budget seam and the same objection applies
+    #: here. As a type distinction it is visible at the construction site, greppable,
+    #: and impossible to set "just this once".
+    _REQUIRE_MEASURED_CAPACITY: ClassVar[bool] = True
 
     def __init__(
         self,
@@ -465,7 +535,16 @@ class OllamaClient(OllamaAdminClient):
         factory takes the class and constructs one client per class (SD-1.1's
         recommendation); it must never widen into a per-call argument, which is the
         design SD-1 ruled against.
+
+        Raises :class:`~services.engine.llm.capacity.UnlistedModelError` when
+        ``model`` has no measured serving capacity (SD-2 = (b)). The refusal is
+        here rather than at the first call because a client bound to a model
+        nobody has measured cannot have its budget bounded — it would serve with
+        the rule switched off, and the failure would surface as a timeout at some
+        later, unrelated moment.
         """
+        if self._REQUIRE_MEASURED_CAPACITY:
+            capacity_for(model)
         super().__init__(base_url=base_url, model=model, timeout=timeout, transport=transport)
         self._workload = workload
 
@@ -473,6 +552,74 @@ class OllamaClient(OllamaAdminClient):
     def workload(self) -> Workload:
         """The workload class this client was constructed for."""
         return self._workload
+
+    def _resolve_budget(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | str | None,
+        response_format: dict[str, Any] | None,
+    ) -> AppliedBudget:
+        """Decide what this call actually sends: the cap, and whether to bound context.
+
+        Three things happen here and they are deliberately in one place, because
+        they are one decision. The class asks for a budget; the per-model capacity
+        clamp bounds that request to what the BOUND model can actually deliver
+        inside the client's own timeout; and the context check decides whether the
+        pair (prompt, cap) needs an explicit ``num_ctx`` to be safe.
+
+        **The clamp only ever narrows.** It cannot hand a class more room than it
+        asked for, so a model with generous capacity does not silently inflate a
+        budget somebody chose on purpose.
+
+        **The context bound only ever widens, and that holds by construction
+        rather than by a guard.** It matters because the window is a PROVISIONAL,
+        pessimistic 4096 (OQ-7): if the server's real default is the 32768 the
+        model reports, sending a SMALLER computed value would make things worse.
+        It cannot happen. The bound is only sent when
+        ``prompt + cap > safe_context``, and ``required_context_tokens`` returns
+        at least ``prompt + cap``; so any value sent is already greater than the
+        assumed window. An explicit ``max(..., safe_context)`` was written here
+        first and then removed once that was proved — it could never have fired,
+        and dead defensive code invites the reader to believe a check is
+        happening. ``test_a_sent_num_ctx_is_never_smaller_than_the_assumed_window``
+        asserts the property instead.
+        """
+        shape = derive_call_shape(think=think, response_format=response_format)
+        requested = _WORKLOAD_NUM_PREDICT[self._workload]
+
+        verdict = evaluate_budget(model=self._model, cap_tokens=requested, timeout_s=self._timeout)
+        applied = requested
+        reason: str | None = None
+        if not verdict.fits:
+            applied = largest_fitting_cap(model=self._model, timeout_s=self._timeout)
+            reason = (
+                f"{requested} tokens projects {verdict.projected_s:.1f}s "
+                f"(decode {verdict.decode_s:.1f}s + load {verdict.load_s:.1f}s + "
+                f"prefill {verdict.prefill_s:.1f}s) against a "
+                f"{verdict.timeout_s:.1f}s timeout; clamped to {applied}"
+                + ("" if verdict.terms_measured else " [terms not all measured]")
+            )
+
+        capacity = capacity_for(self._model)
+        prompt_tokens = estimate_prompt_tokens(messages)
+        num_ctx: int | None = None
+        if needs_explicit_context(
+            prompt_tokens=prompt_tokens,
+            cap_tokens=applied,
+            safe_context_tokens=capacity.safe_context_tokens.value,
+        ):
+            num_ctx = required_context_tokens(prompt_tokens=prompt_tokens, cap_tokens=applied)
+
+        return AppliedBudget(
+            workload=self._workload,
+            shape=shape,
+            requested_num_predict=requested,
+            applied_num_predict=applied,
+            num_ctx=num_ctx,
+            clamped=applied != requested,
+            reason=reason,
+        )
 
     async def chat(
         self,
@@ -493,6 +640,14 @@ class OllamaClient(OllamaAdminClient):
         Raises :class:`OllamaError` on any transport, HTTP, or
         response-envelope failure.
         """
+        budget = self._resolve_budget(messages, think=think, response_format=response_format)
+        options: dict[str, Any] = {
+            "temperature": temperature,
+            "num_predict": budget.applied_num_predict,
+        }
+        if budget.num_ctx is not None:
+            options["num_ctx"] = budget.num_ctx
+
         body: dict[str, Any] = {
             "model": self._model,
             "messages": messages,
@@ -515,10 +670,7 @@ class OllamaClient(OllamaAdminClient):
             # is a mypy error, not a silently wrong budget. What the global could not
             # do was let two workloads with order-of-magnitude different demands ask
             # for different budgets at all; that is the structural gap this closes.
-            "options": {
-                "temperature": temperature,
-                "num_predict": _WORKLOAD_NUM_PREDICT[self._workload],
-            },
+            "options": options,
             # Nothing set this before, so every chat call inherited Ollama's own
             # 5-minute default and the model was evicted between visitors. On the
             # published demo that is not a latency detail: PLAN-0100 Step 11
@@ -549,4 +701,34 @@ class OllamaClient(OllamaAdminClient):
         # slot in turn; they are sequential, so a request never blocks itself.
         async with _inflight_slot(settings.llm_max_inflight):
             payload = await self._request_json("POST", "/api/chat", json=body)
-        return _parse_chat_payload(payload, self._model)
+        return _parse_chat_payload(payload, self._model, budget=budget)
+
+
+class OllamaMeasurementClient(OllamaClient):
+    """The one client permitted to bind a model with no measured capacity.
+
+    **Why this type exists (PLAN-0119 Step 3 part 2; Cray, typed, s287).** SD-2's
+    refuse-at-construction has a bootstrapping problem the PLAN did not
+    anticipate: the instruments that MEASURE a model construct their client from
+    a ``--model`` tag supplied on the command line
+    (``benchmarks/nl_query_feasibility/*``, ``benchmarks/procedure_baseline``).
+    If an unmeasured model is refused at construction, the tool that would have
+    measured it cannot be built — and the capacity table can never gain a row.
+    A rule that forbids its own precondition is not a strict rule, it is a stuck
+    one.
+
+    The alternative considered and rejected was a per-construction
+    ``allow_unmeasured=True`` flag. That is precisely the advisory seam SD-1
+    ruled against for the budget: anything may pass a flag, so the refusal would
+    hold only by convention. Splitting the TYPE instead follows the route Cray
+    ruled at s286 for the admin clients — the distinction is carried by the
+    compiler and is visible at the construction site, and "this call is measuring
+    a model, not serving one" becomes a fact a reader can grep for.
+
+    🔴 **Not for production paths.** A client built here has no bounded budget,
+    because there is no measurement to bound it with. Every production
+    construction site uses :class:`OllamaClient` and is checked; this subclass
+    belongs to ``benchmarks/`` and to nothing else.
+    """
+
+    _REQUIRE_MEASURED_CAPACITY: ClassVar[bool] = False

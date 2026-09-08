@@ -1,0 +1,306 @@
+{
+  "claim_sources": [
+    "tests/services/engine/llm/test_capacity.py"
+  ],
+  "probes": [
+    {
+      "name": "B0-comment-only-GREEN-control",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "#: Characters per generated token, measured across PLAN-0118's arms as",
+      "new": "#: Characters per generated token (control mutation), measured across PLAN-0118's arms as",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_measured_decode_rates_are_the_plan_0118_figures",
+      "expect": "GREEN",
+      "expect_claim": "test_the_measured_decode_rates_are_the_plan_0118_figures|actual == PLAN_0118_DECODE_RATES|#0",
+      "note": "🟢 The battery's own control. Editing a comment must change nothing, so a RED here would mean every reading below is measuring something other than the mutation it names. An uncontrolled instrument does not fail loudly, it fails confidently (Lesson #0056)."
+    },
+    {
+      "name": "B1-a-constrained-call-is-not-called-structuring",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        return \"structuring\"",
+      "new": "        return \"plain\"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_response_format_makes_the_call_a_structuring_pass",
+      "expect_claim": "test_a_response_format_makes_the_call_a_structuring_pass|shape == \"structuring\"|#0",
+      "note": "🔴 The schema-constrained call stops being recognised as one. Budgets chosen per shape would then be applied to the wrong shape, which is the single thing the derivation exists to prevent."
+    },
+    {
+      "name": "B2-a-thinking-call-is-not-called-reasoning",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        return \"reasoning\"",
+      "new": "        return \"plain\"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_think_without_a_response_format_makes_it_a_reasoning_pass",
+      "expect_claim": "test_think_without_a_response_format_makes_it_a_reasoning_pass|shape == \"reasoning\"|#0",
+      "note": "🔴 The reasoning pass -- the expensive one, the one PLAN-0118 measured at an order of magnitude more demand -- becomes indistinguishable from a plain generation."
+    },
+    {
+      "name": "B3-an-unadorned-call-is-misread-as-reasoning",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return \"plain\"",
+      "new": "    return \"reasoning\"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_neither_argument_makes_it_a_plain_generation",
+      "expect_claim": "test_neither_argument_makes_it_a_plain_generation|shape == \"plain\"|#0",
+      "note": "🔴 The opposite error to B2, and the reason 'plain' exists as a third value rather than being folded into 'reasoning': over-classifying every unadorned call would inflate its budget on the basis of reasoning it never does."
+    },
+    {
+      "name": "B4-precedence-inverts-when-both-arguments-are-set",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    if response_format is not None:",
+      "new": "    if response_format is not None and think is None:",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_response_format_wins_when_both_arguments_are_set",
+      "expect_claim": "test_a_response_format_wins_when_both_arguments_are_set|shape == \"structuring\"|#0",
+      "note": "🔴 The realistic version of this defect: not a wrong branch but a wrong PRECEDENCE. Pattern B call 2 with `think` left on would be classified reasoning, and B1's claim stays GREEN under it because that case sets no `think` -- which is what makes the attribution exact."
+    },
+    {
+      "name": "B5-a-falsey-think-reads-as-absent",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    if think is not None:",
+      "new": "    if think:",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_think_false_counts_as_set_because_it_does_not_stop_the_reasoning",
+      "expect_claim": "test_think_false_counts_as_set_because_it_does_not_stop_the_reasoning|shapes == (\"reasoning\", \"reasoning\")|#0",
+      "note": "🔴 The exact mistake Ollama #18044 punishes: `think: false` disables the thinking PARSER, not the thinking GENERATION, so a truthiness test under-budgets precisely the calls still paying for a reasoning pass."
+    },
+    {
+      "name": "B6-the-shipped-models-decode-rate-drifts",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        decode_tokens_per_s=_measured_decode(48.3),",
+      "new": "        decode_tokens_per_s=_measured_decode(50.0),",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_listed_model_returns_its_measured_capacity",
+      "expect_claim": "test_a_listed_model_returns_its_measured_capacity|cap.decode_tokens_per_s.value == 48.3|#0",
+      "note": "🔴 The one genuinely MEASURED term in the table, on the only model any published system runs. A drift here silently re-prices every budget decision downstream."
+    },
+    {
+      "name": "B7-an-unmeasured-model-is-quietly-defaulted",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        return _MODEL_CAPACITY[model]",
+      "new": "        return next(iter(_MODEL_CAPACITY.values()))",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_an_unlisted_model_is_refused_rather_than_defaulted",
+      "expect_claim": "test_an_unlisted_model_is_refused_rather_than_defaulted|pytest.raises(UnlistedModelError)|#0",
+      "note": "🔴 SD-2 = (b) replaced by the failure mode it was ruled against: serving an unmeasured model under some OTHER model's capacity. Every number the budget rule produced would then be about a model that is not running."
+    },
+    {
+      "name": "B8-the-refusal-does-not-name-the-model",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "            f\"model {model!r} has no measured serving capacity; \"",
+      "new": "            f\"a model has no measured serving capacity; \"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_an_unlisted_model_is_refused_rather_than_defaulted",
+      "expect_claim": "test_an_unlisted_model_is_refused_rather_than_defaulted|\"llama3:70b\" in str( excinfo.value )|#0",
+      "note": "🔴 Aimed so B7's claim stays GREEN: it still raises, so pytest reaches this second assertion. A refusal that does not say WHICH model it refused is unactionable in a process binding several (Lesson #0043 -- a RED must name what broke)."
+    },
+    {
+      "name": "B9-the-refusal-is-swallowed-into-a-fallback",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    except KeyError:",
+      "new": "    except KeyError:\n        return next(iter(_MODEL_CAPACITY.values()))",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_refusal_names_the_models_that_would_have_been_accepted",
+      "expect_claim": "test_the_refusal_names_the_models_that_would_have_been_accepted|pytest.raises(UnlistedModelError)|#0",
+      "note": "🔴 The refusal is swallowed by an early fallback return -- the raise below it becomes unreachable. ⚠️ An earlier draft of this probe swapped `except KeyError` for `except ZeroDivisionError`, letting a bare KeyError escape. That is a NON-assertion exception, which the driver classifies CRASHED and credits nothing: the probe would have witnessed nothing while looking like it had. The same trap is documented on B23. A mutation aimed at a `pytest.raises` claim must make the code raise NOTHING, never raise something else."
+    },
+    {
+      "name": "B10-the-refusal-hides-what-would-have-worked",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        listed = \", \".join(sorted(_MODEL_CAPACITY))",
+      "new": "        listed = \"see the capacity table\"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_refusal_names_the_models_that_would_have_been_accepted",
+      "expect_claim": "test_the_refusal_names_the_models_that_would_have_been_accepted|not missing|#0",
+      "note": "🔴 B9's claim stays GREEN here -- it still raises the right type -- so pytest reaches this one. An error that sends the reader to the source to discover what WAS acceptable has given up the one job an error message has."
+    },
+    {
+      "name": "B11-a-second-models-rate-drifts",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        decode_tokens_per_s=_measured_decode(19.5),",
+      "new": "        decode_tokens_per_s=_measured_decode(19.6),",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_measured_decode_rates_are_the_plan_0118_figures",
+      "expect_claim": "test_the_measured_decode_rates_are_the_plan_0118_figures|actual == PLAN_0118_DECODE_RATES|#0",
+      "note": "🔴 Deliberately a TINY drift, on a model B6 does not touch. The pin has to catch a plausible typo, not only an obvious replacement -- 19.6 for 19.5 is what a careless edit actually looks like."
+    },
+    {
+      "name": "B12-a-model-key-is-mistyped",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    \"qwen3.8:27b-mtp-q8_0\": ModelCapacity(",
+      "new": "    \"qwen3.8:27b-mtp-q8_0-typo\": ModelCapacity(",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_only_the_decode_rate_is_measured_and_the_other_three_are_not",
+      "expect_claim": "test_only_the_decode_rate_is_measured_and_the_other_three_are_not|set(_MODEL_CAPACITY) == set(PLAN_0118_DECODE_RATES)|#0",
+      "note": "🔴 The POSITIVE CONTROL of a negative test. The two assertions after it are 'nothing claims to be measured' -- satisfied vacuously by an empty or wrong table -- so this membership check is what stops those from passing on nothing."
+    },
+    {
+      "name": "B13-the-measured-term-stops-saying-it-is-measured",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        value=rate,\n        measured=True,",
+      "new": "        value=rate,\n        measured=False,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_only_the_decode_rate_is_measured_and_the_other_three_are_not",
+      "expect_claim": "test_only_the_decode_rate_is_measured_and_the_other_three_are_not|not unmeasured_decode|#0",
+      "note": "🔴 The second positive control of the same test, and it needs its own probe because pytest stops at the first failed assert -- B12 reddens the membership check and could never reach this one. The membership claim stays GREEN here, which is what makes the attribution exact."
+    },
+    {
+      "name": "B14-a-provisional-term-promotes-itself-to-measured",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        value=seconds,\n        measured=False,",
+      "new": "        value=seconds,\n        measured=True,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_only_the_decode_rate_is_measured_and_the_other_three_are_not",
+      "expect_claim": "test_only_the_decode_rate_is_measured_and_the_other_three_are_not|not wrongly_measured|#0",
+      "note": "🔴 THE tripwire for Step 4b, and the failure the whole s287 posture exists to prevent: a stand-in hardening into a fact with nobody noticing. Both earlier assertions in this test stay GREEN under it, so this exact claim is what reddens."
+    },
+    {
+      "name": "B15-a-provisional-term-goes-missing-from-the-count",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        value=4096,\n        measured=False,",
+      "new": "        value=4096,\n        measured=True,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_every_provisional_term_names_the_step_that_replaces_it",
+      "expect_claim": "test_every_provisional_term_names_the_step_that_replaces_it|len(provisional) == 9|#0",
+      "note": "🔴 The positive control for the naming check below: 'every provisional term names its replacement' is vacuously true of ZERO provisional terms, so the count has to be pinned before the property means anything."
+    },
+    {
+      "name": "B16-a-stand-in-does-not-name-what-replaces-it",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        replaced_by=\"PLAN-0119 Step 4b (prompt_eval_duration_ns, recordable since Step 2)\",",
+      "new": "        replaced_by=None,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_every_provisional_term_names_the_step_that_replaces_it",
+      "expect_claim": "test_every_provisional_term_names_the_step_that_replaces_it|not unnamed|#0",
+      "note": "🔴 B15's count claim stays GREEN -- the term is still provisional, just anonymous -- so pytest reaches this one. A stand-in whose replacement is unnamed is a stand-in nobody will retire."
+    },
+    {
+      "name": "B17-a-model-claims-full-measurement-early",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "            term.measured",
+      "new": "            True",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_no_model_reports_itself_fully_measured_before_step_4b",
+      "expect_claim": "test_no_model_reports_itself_fully_measured_before_step_4b|not claiming|#0",
+      "note": "🔴 `fully_measured` is what gates whether a budget verdict can be trusted. Hard-coding it True makes every verdict present itself as measured while three of its four terms are still guesses."
+    },
+    {
+      "name": "B18-the-budget-rule-always-says-yes",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        fits=projected_s < timeout_s,",
+      "new": "        fits=True,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_qwen_at_2048_does_not_fit_a_120s_timeout_once_load_is_paid",
+      "expect_claim": "test_qwen_at_2048_does_not_fit_a_120s_timeout_once_load_is_paid|not verdict.fits|#0",
+      "note": "🔴 AC-4's named failing case. A rule that cannot refuse is not a rule, and this is the mutation that proves the criterion is not closing on a formality."
+    },
+    {
+      "name": "B19-the-budget-rule-always-says-no",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        fits=projected_s < timeout_s,",
+      "new": "        fits=False,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_qwen_case_fits_when_load_and_prefill_are_zero",
+      "expect_claim": "test_the_qwen_case_fits_when_load_and_prefill_are_zero|verdict.fits|#0",
+      "note": "🔴 The other direction, and the reason both are needed: a rule stuck on 'no' passes B18's test perfectly. This claim is also the one that documents WHY the posture ruled at s287 matters -- the same case flips to fitting the moment the unmeasured terms are treated as zero."
+    },
+    {
+      "name": "B20-the-decode-rate-is-applied-inverted",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    decode_s = cap_tokens / decode_tokens_per_s",
+      "new": "    decode_s = cap_tokens / (decode_tokens_per_s / 10)",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_gpt_oss_at_4096_fits_the_same_timeout",
+      "expect_claim": "test_gpt_oss_at_4096_fits_the_same_timeout|verdict.fits|#0",
+      "note": "🔴 AC-4's PASSING case, which needs its own probe: a rule that refuses everything would satisfy every failing-case test in this module. This is the arm Step 6 is aiming at, so a false refusal here would block the experiment programme rather than protect it."
+    },
+    {
+      "name": "B21-equality-is-treated-as-fitting",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        fits=projected_s < timeout_s,",
+      "new": "        fits=projected_s <= timeout_s,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_projection_landing_exactly_on_the_deadline_does_not_fit",
+      "expect_claim": "test_a_projection_landing_exactly_on_the_deadline_does_not_fit|not verdict.fits|#0",
+      "note": "🔴 The realistic boundary defect, and not a pedantic one: the timeout ABORTS and discards every token already produced, so a projection landing exactly on the deadline is a total loss rather than a near miss. `<=` looks tidier and is wrong."
+    },
+    {
+      "name": "B22-the-verdict-drops-a-term-it-was-given",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        load_s=load_s,",
+      "new": "        load_s=0.0,",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_verdict_carries_every_term_it_used",
+      "expect_claim": "test_the_verdict_carries_every_term_it_used|terms == ( 1024 / 48.3, 1.0, 2.0, 120.0, )|#0",
+      "note": "🔴 CLAUDE.md section 8: a report prints the values it measured, never a bare verdict. A verdict that silently zeroes a term it was handed makes every disagreement a hunt instead of one step."
+    },
+    {
+      "name": "B23-a-corrupt-rate-gets-a-plausible-answer",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "            f\"decode_tokens_per_s must be positive, got {decode_tokens_per_s!r}; \"",
+      "new": "            f\"decode_tokens_per_s is invalid, got {decode_tokens_per_s!r}; \"",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_non_positive_decode_rate_is_refused_rather_than_answered",
+      "expect_claim": "test_a_non_positive_decode_rate_is_refused_rather_than_answered|pytest.raises(ValueError, match=\"must be positive\")|#0",
+      "note": "🔴 Mutates the MESSAGE rather than the guard, deliberately: removing the guard raises ZeroDivisionError, which the driver classifies CRASHED and credits nothing. This keeps the failure an assertion failure, so the probe witnesses instead of merely crashing."
+    },
+    {
+      "name": "B24-a-provisional-verdict-presents-itself-as-measured",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return replace(verdict, terms_measured=capacity.fully_measured)",
+      "new": "    return verdict",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_verdict_built_from_provisional_terms_says_it_is_not_measured",
+      "expect_claim": "test_a_verdict_built_from_provisional_terms_says_it_is_not_measured|not verdict.terms_measured|#0",
+      "note": "🔴 The seam between the pure rule and the posture. `fits_in_timeout` leaves terms_measured True because it cannot know; if `evaluate_budget` forgets to narrow it, every caller is told a guess is a measurement."
+    },
+    {
+      "name": "B25-todays-shipped-cap-stops-fitting",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        load_s=_provisional_load(5.5),",
+      "new": "        load_s=_provisional_load(500.0),",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_shipped_1024_cap_fits_on_the_model_every_system_actually_runs",
+      "expect_claim": "test_the_shipped_1024_cap_fits_on_the_model_every_system_actually_runs|verdict.fits|#0",
+      "note": "🔴 The regression floor in arithmetic form. If the shipped configuration stops projecting as servable, the seam has broken CURRENT behaviour -- a defect in the seam, not a discovery about budgets."
+    },
+    {
+      "name": "B26-zeroing-the-unmeasured-load-lets-the-refused-case-pass",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        load_s=_provisional_load(24.0),",
+      "new": "        load_s=_provisional_load(0.0),",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_qwen_at_2048_is_refused_through_the_table_not_only_by_hand",
+      "expect_claim": "test_qwen_at_2048_is_refused_through_the_table_not_only_by_hand|not verdict.fits|#0",
+      "note": "🔴 THE probe that priced the s287 ruling. AC-4 requires a case that FAILS, and this shows the failure is carried entirely by the provisional load term: with it zeroed, qwen at 2048 projects 105.0s against a 120s timeout and FITS. A posture treating unmeasured terms as zero could not have closed AC-4 at all -- measured before the ruling, not argued."
+    },
+    {
+      "name": "B27-the-table-lookup-is-bypassed",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    capacity = capacity_for(model)\n    verdict = fits_in_timeout(",
+      "new": "    capacity = capacity_for(\"gpt-oss:20b\")\n    verdict = fits_in_timeout(",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_evaluating_a_budget_for_an_unlisted_model_refuses",
+      "expect_claim": "test_evaluating_a_budget_for_an_unlisted_model_refuses|pytest.raises(UnlistedModelError)|#0",
+      "note": "🔴 SD-2's refusal reaching the caller. A hard-coded lookup would answer for EVERY model with one model's capacity -- and answer plausibly, which is worse than failing."
+    },
+    {
+      "name": "B28-the-prompt-estimate-counts-only-content",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    characters = sum(len(value) for message in messages for value in message.values())",
+      "new": "    characters = sum(len(m.get(\"content\", \"\")) for m in messages)",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_prompt_estimate_counts_every_field_not_only_content",
+      "expect_claim": "test_the_prompt_estimate_counts_every_field_not_only_content|with_extra_field > with_role_only|#0",
+      "note": "🔴 Under-stating the prompt is the UNSAFE direction: every serialised field occupies context, and a short estimate delays the explicit num_ctx past the point where the prompt starts being truncated invisibly."
+    },
+    {
+      "name": "B29-a-short-prompt-estimates-as-zero-tokens",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return ceil(characters / _CHARS_PER_TOKEN)",
+      "new": "    return int(characters / _CHARS_PER_TOKEN)",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_short_prompt_never_estimates_as_zero_tokens",
+      "expect_claim": "test_a_short_prompt_never_estimates_as_zero_tokens|estimate >= 1|#0",
+      "note": "🔴 Rounding down instead of up. A zero-token prompt tells the headroom check the entire context window is free for generation -- the estimator's one job, inverted, on the shortest inputs."
+    },
+    {
+      "name": "B30-the-context-trigger-is-stuck-on",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return prompt_tokens + cap_tokens > safe_context_tokens",
+      "new": "    return True",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_1024_cap_against_a_4096_window_does_not_need_an_explicit_context",
+      "expect_claim": "test_a_1024_cap_against_a_4096_window_does_not_need_an_explicit_context|not needs_explicit_context( prompt_tokens=741, cap_tokens=1024, safe_context_tokens=4096 )|#0",
+      "note": "🔴 The positive control for AC-5's arithmetic: 'the trigger fires when it should' is worth nothing unless 'it stays quiet when it should' can fail. 741 + 1024 is well inside 4096, which is why AC-5 is dormant on today's shipped configuration."
+    },
+    {
+      "name": "B31-the-context-trigger-is-stuck-off",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return prompt_tokens + cap_tokens > safe_context_tokens",
+      "new": "    return False",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_a_4096_cap_against_the_same_window_does_need_one",
+      "expect_claim": "test_a_4096_cap_against_the_same_window_does_need_one|needs_explicit_context( prompt_tokens=741, cap_tokens=4096, safe_context_tokens=4096 )|#0",
+      "note": "🔴 Step 6's arm, unprotected: a 741-token prompt plus a 4096 cap does not fit a 4096 window, and a trigger stuck off means the PROMPT is truncated rather than the output -- invisible to done_reason, the oracle this PLAN rests on."
+    },
+    {
+      "name": "B32-the-window-stops-covering-prompt-plus-cap",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    needed = ceil((prompt_tokens + cap_tokens) * 1.1)",
+      "new": "    needed = ceil((prompt_tokens + cap_tokens) * 0.5)",
+      "node_id": "tests/services/engine/llm/test_capacity.py::test_the_context_sent_always_holds_the_prompt_plus_the_whole_cap",
+      "expect_claim": "test_the_context_sent_always_holds_the_prompt_plus_the_whole_cap|not breaches|#0",
+      "note": "🔴 AC-5's literal guarantee. The assertion sweeps five (prompt, cap) shapes in ONE claim precisely so a constant implementation cannot pass by luck on a small case -- the large-prompt case is what this mutation reddens."
+    }
+  ],
+  "exemptions": {}
+}

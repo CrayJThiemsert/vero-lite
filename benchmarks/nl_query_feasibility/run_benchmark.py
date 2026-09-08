@@ -44,7 +44,7 @@ from typing import Any
 
 from benchmarks.nl_query_feasibility.harness import CaseResult, load_gold, run_case, summarize
 from benchmarks.procedure_baseline.harness import P95_MIN_SAMPLES
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaMeasurementClient
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.fleet_maintenance.data_adapter import register_fleet_maintenance_adapter
 
@@ -131,7 +131,7 @@ async def _main(args: argparse.Namespace) -> None:
         )
     registrar()
     # S Structure: the constrained NL-query translate call.
-    client = OllamaClient(
+    client = OllamaMeasurementClient(
         workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
     )
     print(f"NL-query feasibility spike: {len(cases)} questions, vertical '{vertical}'")

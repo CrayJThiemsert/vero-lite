@@ -1,23 +1,25 @@
 {
-  "claim_sources": ["tests/services/engine/llm/test_workload_budget_seam.py"],
+  "claim_sources": [
+    "tests/services/engine/llm/test_workload_budget_seam.py"
+  ],
   "probes": [
     {
       "name": "S1-chokepoint-ignores-the-class",
       "subject": "services/engine/llm/client.py",
-      "old": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[self._workload],",
-      "new": "                \"num_predict\": 1024,",
+      "old": "        requested = _WORKLOAD_NUM_PREDICT[self._workload]",
+      "new": "        requested = 1024",
       "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_wire_carries_the_budget_of_the_class_the_client_declared",
       "expect_claim": "test_the_wire_carries_the_budget_of_the_class_the_client_declared|(structure.num_predicts, judge.num_predicts) == ([1234], [4321])|#0",
-      "note": "🔴 THE probe for AC-3, and the reason the test patches the budget table. This mutation is the pre-Step-3 world: a hard-coded cap that ignores the declared class entirely. It is invisible to any test that asserts against the SHIPPED values, because every class ships at 1024 today — such a test would report a green seam that does not exist. Only giving two classes different budgets and driving one client of each can tell 'derived from the class' apart from 'a constant that happens to match'."
+      "note": "🔴 THE probe for AC-3, and the reason the test patches the budget table. This mutation is the pre-Step-3 world: a hard-coded cap that ignores the declared class entirely. It is invisible to any test that asserts against the SHIPPED values, because every class ships at 1024 today — such a test would report a green seam that does not exist. Only giving two classes different budgets and driving one client of each can tell 'derived from the class' apart from 'a constant that happens to match'. [Re-anchored at s287: PLAN-0119 Step 3 part 2 moved the class lookup out of the body dict into _resolve_budget, so the original anchor no longer existed. The claim is unchanged; only its address moved. Found by grepping the old anchor and reading 0.]"
     },
     {
       "name": "S2-budget-resolved-for-the-wrong-class",
       "subject": "services/engine/llm/client.py",
-      "old": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[self._workload],",
-      "new": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[\"J\"],",
+      "old": "        requested = _WORKLOAD_NUM_PREDICT[self._workload]",
+      "new": "        requested = _WORKLOAD_NUM_PREDICT[\"J\"]",
       "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_every_attempt_of_the_retry_loop_carries_the_class_budget",
       "expect_claim": "test_every_attempt_of_the_retry_loop_carries_the_class_budget|recorder.num_predicts == [ 777, 777, 777, ]|#0",
-      "note": "🔴 A subtler failure than S1's: the class IS consulted, just not the client's own. A seam that resolved a fixed class would look correct in review, produce plausible numbers, and quietly bill every workload against one budget. Aimed at the RETRY-loop test so the assertion also covers all three attempts — a budget resolved once outside the loop, or rebuilt from a default on retry, would leave attempt 1 correct and attempts 2-3 wrong, which asserting only `[0]` could never see."
+      "note": "🔴 A subtler failure than S1's: the class IS consulted, just not the client's own. A seam that resolved a fixed class would look correct in review, produce plausible numbers, and quietly bill every workload against one budget. Aimed at the RETRY-loop test so the assertion also covers all three attempts — a budget resolved once outside the loop, or rebuilt from a default on retry, would leave attempt 1 correct and attempts 2-3 wrong, which asserting only `[0]` could never see. [Re-anchored at s287: PLAN-0119 Step 3 part 2 moved the class lookup out of the body dict into _resolve_budget, so the original anchor no longer existed. The claim is unchanged; only its address moved. Found by grepping the old anchor and reading 0.]"
     },
     {
       "name": "S3-the-shipped-cap-moved-during-a-refactor",

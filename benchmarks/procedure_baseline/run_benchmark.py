@@ -47,7 +47,7 @@ from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Dataset
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaMeasurementClient
 from services.engine.llm.structured import ReasoningMode
 from services.engine.procedures.spec import Procedure, load_procedures
 from services.engine.registry import registry
@@ -144,7 +144,7 @@ async def run_dataset(
             print(f"  exemption: {dataset.goal_parameter_exemption.strip()}")
     model = model_override or agent_model
     # J Judge: the procedure-judgment Pattern B pair.
-    base = OllamaClient(
+    base = OllamaMeasurementClient(
         workload="J",
         base_url=host,
         model=model,
