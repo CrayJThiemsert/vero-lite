@@ -242,3 +242,64 @@ of this file after the append.
 > CI `gate: pass` on both heads. Detail: `docs/plans/0122-*.md` Step 3.
 
 🔴 **THIS (s281) reconcile rotates the session-278 block** (caller-measured **3,270 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **57,638 B**, **7,898 B** under R1, and a fourth block would have left ~4 KB. The window lands at **THREE** again (279, 280, 281) — deliberate; no block was lost. 🔴 **The chain OPENS A NEW LETTER — the block goes to `2026-h1e-current-focus.md` (NEW FILE)**: `h1d` is CLOSED at 189,622 B, since +3,270 B would reach **192,892 B**, essentially where `h1c` closed (**193,007 B**). 🔴 **This ledger's own s278 entry is NOT re-appended — probed and found ALREADY in `2026-h1d-current-focus.md` verbatim** (count 1, against a positive control run on h1d because an empty new file cannot control anything), having travelled inside the s278 rotation's own slice, so R4's move duty is discharged. **Second consecutive reconcile this shape has fired** — treat a rotating block's ledger entry as PROBABLY already archived and probe before appending, never after. ✅ **Caller-measured:** STATUS **57,638 → 59,342 B**; `h1e` created at **5,968 B** (the block 3,269 B as carved — the 3,270 B above counts the blank separator line — plus its header); `h1d` **CLOSED** at **190,011 B** after its own banner edit, per the s227 precedent that a closing chain file rewrites its own header. Present-once verified by **DELTA** (pre=0 post=1), absence-from-STATUS checked separately.
+
+## Rotated this reconcile — session 286 (2026-09-08)
+
+### Rotated at the s286 reconcile — the session-282 Current-Focus block [on the R2 headroom rule, not a cap overage: the block is **3,733 B** as carved (54 lines), under the 4,096 B per-block cap. STATUS opened at **61,320 B**, only **4,216 B** under R1's 65,536 B ceiling, and the CF window had a free slot — the byte ceiling forced the prune, not the block count. The window lands at THREE again (283-284, 285, 286), the fifth consecutive reconcile of this shape.]
+
+> **Session 282, 2026-09-06 (`fc01cd0` → `22fc98f`) — FIVE PRs
+> ([#1412](https://github.com/CrayJThiemsert/vero-lite/pull/1412)–[#1416](https://github.com/CrayJThiemsert/vero-lite/pull/1416)),
+> all merged, 0 open, tree clean. What it established: three PLAN-0122 artifacts
+> landed (AC-8/9/10) and **not one is ticked**; the first to run in production
+> exposed a 40-day blind spot, and an offline audit CLEARED s281's held-out run.**
+>
+> ✅ **PLAN-0121 archived (#1412).** The closeout `git mv` broke **three**
+> pre-archive pointers and **R8 caught all three** — two re-pointed, the third
+> deliberately **not** (a gold-corpus line whose text IS the fixture); plus a
+> `-2` battery-header error wrong **as committed** since s279. ✅ **Lesson #0060
+> + a guard (#1413):** R8 now fails on an **unregistered benchmark corpus**,
+> detecting corpora by **CONTENT** (`transcript_turns`), not filename, and
+> **failing closed** on zero.
+>
+> 🔴 **AC-10's audit (#1414), `tools/hook_copies_audit.py`: `worktrees=19
+> distinct_classifier_hashes=6 distinct_stop_hook_hashes=8` — not ONE of the 19
+> is on main's bytes**, and main's version exists in a single copy. ⚠️ `git
+> worktree list` reports only **6 of 19** (UNC gitdirs read `prunable`), so the
+> audit enumerates by **filesystem**, never by git.
+>
+> ✅ **AC-8 + AC-9 (#1415)** — the SD-4 decision log (one line per classifier
+> verdict, all five arms) and the AC-9 floor pin `demoted=1/117`; plus an autouse
+> **socket guard** in `tests/conftest.py`, after the suite was measured writing
+> **25 lines into production state**. 🔴 **#1416 CORRECTED it the same session:**
+> the log was built from AC-8's pass read **without reading §4.3**, which
+> specifies the artifact in full — wrong path, wrong env var, wrong field names,
+> missing `event` / `latency_s` / `prompt_sha8`, and a **boolean** where the spec
+> has a four-value `transport` enum. **A pass read is not a spec.**
+>
+> 🔴 **The log's first production lines showed the Stop classifier failing on
+> MS-S1 in THREE shapes** — HTTP 500 (Ollama's harmony parser rejects a `python`
+> tool call the model emits), timeout, and **HTTP 200 with an empty body**
+> (`malformed`). Read-only server-log inspection measured **286 of 1,756
+> `/api/chat` calls returning 500 since 2026-08-28** — pre-existing and
+> previously invisible. ✅ **An offline audit of `s281-heldout.jsonl` CLEARED the
+> Step 3 measurement:** exactly **1 of 60** live calls was lost and scored
+> `invalid`, never silently credited — FULL answered 29 and got **all 29 right**,
+> SLIM5 answered 30 and got **2 dangerously wrong**. **The revert stands.**
+>
+> ✅ **Cray ruled, typed:** (1) the 19 stale worktrees — **record as abandoned,
+> leave in place**, no worktree file touched; (2) the MS-S1 classifier failures —
+> **change nothing now**, let the log collect **14 days**, then decide; (3) the
+> registry repair (the void `19/20` + SD-7's homeless `C6`/`C7`) stays **ONE**
+> follow-up PLAN, **ONE** live re-measurement, **after** AC-12's window closes.
+>
+> 🔴 **AC-8/9/10 all have their artifacts on `main` and NONE is ticked** —
+> PLAN-0122 was not edited at all this session (`Accepted`, so the closeout edit
+> may be G1-gated; it was not attempted). Same shape as the s274 and s277 rows.
+> ⚠️ Open, none blocking: AC-10's closeout record (19 names + Cray's disposition)
+> is unwritten, and **`tools/stop_classifier_ledger.py` — AC-12's instrument —
+> DOES NOT EXIST**; it must be rebuilt **inside** the 14-day window, not
+> discovered missing on day 14. **Proposed, not ruled:** the AC-12 clock starts
+> at #1416's merge (`22fc98f`), not #1415 (`ff656a8`) — that is where the file
+> AC-12 reads begins.
+
+🔴 **THIS (s282) reconcile rotates the session-279 block** — 59 lines, **est. ~4.4 KB** (no shell; the caller owes `wc -c`), i.e. likely **over** the 4,096 B per-block cap as retained — and on the **headroom rule**: STATUS opened at **59,608 B**, only **5,928 B** under R1, and keeping a fourth block would have left ~2 KB. The window lands at **THREE** again (280, 281, 282) — deliberate, the **fourth consecutive** reconcile of this shape; no block was lost. Destination is the OPEN chain file **`2026-h1e-current-focus.md`** (5,968 B, opened at s281), nowhere near R4's 196,608 B split trigger. 🔴 **This ledger's own s279 entry travels with it — PROBE BEFORE APPENDING**: the s281 and s280 reconciles both found their rotating entry ALREADY archived, so probe with a positive control; a false negative appends a duplicate. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
