@@ -1,5 +1,7 @@
 {
-  "claim_sources": ["tests/services/engine/llm/test_workload_inventory_contract.py"],
+  "claim_sources": [
+    "tests/services/engine/llm/test_workload_inventory_contract.py"
+  ],
   "probes": [
     {
       "name": "1a",
@@ -43,8 +45,8 @@
       "old": "                and child.func.attr == \"chat\"",
       "new": "                and child.func.attr == \"chatx\"",
       "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_enumerator_actually_sees_a_new_call_site",
-      "expect_claim": "test_the_enumerator_actually_sees_a_new_call_site|seen == {\"structuring\": [(1, \"structuring\")], \"reasoning\": [(1, \"reasoning\")]}|#0",
-      "note": "🟢 The probe that makes the POSITIVE CONTROL a control rather than a decoration. Blinding the AST matcher is the exact failure mode that would make every guard above pass vacuously — an enumerator returning `[]` satisfies 'nothing is undeclared' perfectly. Because the assertion compares a measured DICT rather than a count, the failure message prints what the enumerator actually saw (`{'structuring': [(0, None)], ...}`), so a disagreement is one step to diagnose instead of a hunt (CLAUDE.md §8: a report prints the values it measured)."
+      "expect_claim": "test_the_enumerator_actually_sees_a_new_call_site|seen == { \"structuring\": [(1, \"structuring\")], \"reasoning\": [(1, \"reasoning\")], }|#0",
+      "note": "🟢 The probe that makes the POSITIVE CONTROL a control rather than a decoration. Blinding the AST matcher is the exact failure mode that would make every guard above pass vacuously — an enumerator returning `[]` satisfies 'nothing is undeclared' perfectly. Because the assertion compares a measured DICT rather than a count, the failure message prints what the enumerator actually saw (`{'structuring': [(0, None)], ...}`), so a disagreement is one step to diagnose instead of a hunt (CLAUDE.md §8: a report prints the values it measured). [Claim key re-pointed at s287: the assertion this probe addresses drifted (AC-1 by a ruff-format reflow; AC-2 when Step 3 part 1 moved the chokepoint off settings.llm_max_output_tokens). The CLAIM is unchanged -- only the text a stable_key is built from. Found by re-running the battery before ticking the AC, not by any guard: check_ac_consistency reported clean throughout, because it does not run batteries.]"
     },
     {
       "name": "1f",
