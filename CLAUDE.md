@@ -165,6 +165,7 @@ Deep rationale + the claim-vs-decision worked example: [`docs/lessons/0027-verif
 **Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `style`
 **Branches:** `main` (protected — **no direct push, no exceptions**), `feat/*`, `fix/*`, `docs/*`, `chore/*`
 **Workflow to `main`:** **All commits land via feature / `chore/*` / `docs/*` branch + PR + merge — no exceptions.** This includes single-file `docs(status):`, `docs(constitution):`, `docs(plans):`, `docs(lessons):`, and `docs(adr):` updates. Even one-line edits use a small `chore/*` or `docs/*` PR. Rationale: classifier-friendly (auto-mode guards direct push to default branch unconditionally — see Lesson #10), consistent history (every change has an explicit boundary + reviewable diff), trivially-revertable, and reinforces ADR-009 D2 "only Code commits" boundary.
+**Auto-merge (Cray, typed, s285):** `docs/*` and `chore/*` PRs may be opened with `--auto` — they land themselves once the gate passes. **Every other branch class waits for Cray**, who decides when it lands; `--auto` *is* a merge, so it is never set on a `feat/*` or `fix/*` PR. Report green either way. (Enabled the same session: `allow_auto_merge` + `allow_update_branch` are now `true`; `strict: true` is unchanged, so a queued branch that falls behind still stalls until updated.)
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
 **Commit messages:** Write to a file → `git commit -F` (never an inline backtick/`$var`/code-block heredoc).
@@ -278,4 +279,4 @@ The **verify-loop hygiene rule** — a re-checked, evidence-backed prior is logg
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-09-02 (session 269). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
+*Last updated: 2026-09-08 (session 285). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
