@@ -29,7 +29,7 @@ from benchmarks.nl_query_feasibility.text_to_sql import (
     run_case,
     summarize,
 )
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaMeasurementClient
 
 
 def _print_case(r: SqlResult) -> None:
@@ -45,7 +45,7 @@ async def _main(args: argparse.Namespace) -> None:
     _vertical, cases = load_gold(args.gold) if args.gold else load_gold()
     conn = build_db()
     # S Structure: the text-to-SQL translate arm.
-    client = OllamaClient(
+    client = OllamaMeasurementClient(
         workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
     )
     print(f"text-to-SQL arm: {len(cases)} questions  model={args.model} @ {args.ollama_host}\n")

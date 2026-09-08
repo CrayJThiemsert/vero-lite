@@ -58,8 +58,8 @@ from benchmarks.intake_extraction.harness import (
 from services.engine.llm.client import (
     _WORKLOAD_NUM_PREDICT,
     ChatResult,
-    OllamaClient,
     OllamaError,
+    OllamaMeasurementClient,
     Workload,
     call_metrics,
 )
@@ -488,7 +488,7 @@ def _apply_num_predict(cap: int | None) -> int:
 async def _main(args: argparse.Namespace) -> None:
     gold = load_gold() if args.gold is None else load_gold(args.gold)
     applied_cap = _apply_num_predict(args.num_predict)
-    inner = OllamaClient(
+    inner = OllamaMeasurementClient(
         # S Structure -- intake extraction (PLAN-0119 §3, row for intake.py:182).
         workload=_BENCH_WORKLOAD,
         base_url=args.ollama_host,

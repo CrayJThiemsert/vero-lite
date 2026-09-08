@@ -43,7 +43,7 @@ from typing import Any
 
 import services.engine.nl_query as nlq
 from benchmarks.nl_query_feasibility.harness import CaseResult, load_gold, run_case
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaMeasurementClient
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.ontology_meta import OntologyMeta
 from verticals.energy.data_adapter import register_energy_adapter
@@ -153,7 +153,7 @@ async def _main(args: argparse.Namespace) -> None:
     cases = [by_id[q] for q in wanted if q in by_id]
     register_energy_adapter()
     # S Structure: prompt variants over the same translate call.
-    client = OllamaClient(
+    client = OllamaMeasurementClient(
         workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
     )
 

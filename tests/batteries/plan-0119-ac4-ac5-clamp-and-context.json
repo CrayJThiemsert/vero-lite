@@ -1,0 +1,136 @@
+{
+  "claim_sources": ["tests/services/engine/llm/test_workload_clamp.py"],
+  "probes": [
+    {
+      "name": "A0-comment-only-GREEN-control",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "#: Characters per generated token, measured across PLAN-0118's arms as",
+      "new": "#: Characters per generated token (control mutation), measured across PLAN-0118's arms as",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_shipped_configuration_does_not_clamp",
+      "expect": "GREEN",
+      "expect_claim": "test_the_shipped_configuration_does_not_clamp|recorder.options[\"num_predict\"] == _WORKLOAD_NUM_PREDICT[\"S\"]|#0",
+      "note": "🟢 The battery's own control. Editing a comment must change nothing, so a RED here would mean the readings below are measuring something other than the mutations they name — an uncontrolled instrument does not fail loudly, it fails confidently. Every RED in this file is only worth what this GREEN is worth."
+    },
+    {
+      "name": "C1-the-wire-ignores-the-resolved-budget",
+      "subject": "services/engine/llm/client.py",
+      "old": "            \"num_predict\": budget.applied_num_predict,",
+      "new": "            \"num_predict\": 999,",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_shipped_configuration_does_not_clamp",
+      "expect_claim": "test_the_shipped_configuration_does_not_clamp|recorder.options[\"num_predict\"] == _WORKLOAD_NUM_PREDICT[\"S\"]|#0",
+      "note": "🔴 The regression floor. Today's shipped cap must reach the wire untouched; a chokepoint that sends any other number breaks the CURRENT behaviour, which is what makes this the first thing a reviewer should see stay green."
+    },
+    {
+      "name": "C2-every-call-reports-itself-clamped",
+      "subject": "services/engine/llm/client.py",
+      "old": "            clamped=applied != requested,",
+      "new": "            clamped=True,",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_shipped_configuration_does_not_clamp",
+      "expect_claim": "test_the_shipped_configuration_does_not_clamp|not _budget_of( result ).clamped|#0",
+      "note": "🔴 Chosen so the OTHER assertion of the same test stays green: the wire still carries 1024, so C1's claim passes and pytest reaches this one. That green is the only thing ruling out 'something unrelated broke' — a mutation reddening both would witness neither cleanly, because a pytest run stops at the first failed assert."
+    },
+    {
+      "name": "C3-the-wire-carries-the-request-not-the-decision",
+      "subject": "services/engine/llm/client.py",
+      "old": "            \"num_predict\": budget.applied_num_predict,",
+      "new": "            \"num_predict\": budget.requested_num_predict,",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire",
+      "expect_claim": "test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire|recorder.options[\"num_predict\"] == budget.applied_num_predict|#0",
+      "note": "🔴 The subtlest failure this seam can have: the clamp runs, decides correctly, records its decision honestly — and the body is built from the pre-clamp number anyway. The record would say 700 while the server was asked for 1024. Invisible to any test that only reads the record, which is exactly why the double sits at the transport."
+    },
+    {
+      "name": "C4-the-largest-fitting-cap-is-off-by-one",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return max(0, ceil(budget_s * capacity.decode_tokens_per_s.value) - 1)",
+      "new": "    return max(0, ceil(budget_s * capacity.decode_tokens_per_s.value) - 2)",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire",
+      "expect_claim": "test_a_timeout_too_short_for_the_class_clamps_the_cap_on_the_wire|budget.applied_num_predict == 700|#0",
+      "note": "🔴 Aimed so C3's assertion, earlier in the same test, stays GREEN: under this mutation the wire and the record both carry 699, so they still agree and pytest reaches the exact-value claim. One mutation, one witnessed assertion. An off-by-one is also the realistic defect here — the strict `<` that keeps a projection off the deadline is exactly the kind of boundary a later edit rounds away."
+    },
+    {
+      "name": "C5-the-clamp-widens-as-well-as-narrows",
+      "subject": "services/engine/llm/client.py",
+      "old": "        applied = requested",
+      "new": "        applied = largest_fitting_cap(model=self._model, timeout_s=self._timeout)",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_clamp_never_hands_a_class_more_than_it_asked_for",
+      "expect_claim": "test_the_clamp_never_hands_a_class_more_than_it_asked_for|recorder.options[\"num_predict\"] == _WORKLOAD_NUM_PREDICT[\"S\"]|#0",
+      "note": "🔴 A clamp that always returns the model's capacity rather than bounding the request. It looks reasonable — 'use what the model can do' — and it silently overrides every budget anybody chose on purpose, in the direction that costs money and latency. With an hour of timeout it would send ~173,000 tokens where the class asked for 1024."
+    },
+    {
+      "name": "C6-the-disclosure-drops-the-number-it-refused",
+      "subject": "services/engine/llm/client.py",
+      "old": "                f\"{requested} tokens projects {verdict.projected_s:.1f}s \"",
+      "new": "                f\"tokens projects {verdict.projected_s:.1f}s \"",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_clamp_that_fires_is_disclosed_with_the_numbers_it_used",
+      "expect_claim": "test_a_clamp_that_fires_is_disclosed_with_the_numbers_it_used|not missing|#0",
+      "note": "🔴 SD-8 = (b) asks for a DISCLOSED clamp, and a disclosure that says 'clamped' without saying from what is not one. The failure message names which token went missing, so the RED is actionable rather than merely present (Lesson #0043)."
+    },
+    {
+      "name": "C7-a-provisional-clamp-presents-itself-as-measured",
+      "subject": "services/engine/llm/client.py",
+      "old": "                + (\"\" if verdict.terms_measured else \" [terms not all measured]\")",
+      "new": "                + \"\"",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_clamped_call_says_its_terms_are_not_all_measured",
+      "expect_claim": "test_a_clamped_call_says_its_terms_are_not_all_measured|\"terms not all measured\" in ( budget.reason or \"\" )|#0",
+      "note": "🔴 The whole posture ruled at s287 fails silently here. Every clamp before Step 4b rests on a provisional load term; a disclosure that omits that lets a reader take a stand-in for a measurement at the exact moment the number is being used to take room away. C6's claim stays GREEN under this mutation — all four of its tokens survive — which is what makes the attribution exact."
+    },
+    {
+      "name": "C8-a-context-bound-is-sent-on-every-call",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return prompt_tokens + cap_tokens > safe_context_tokens",
+      "new": "    return True",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_shipped_cap_with_an_ordinary_prompt_sends_no_num_ctx",
+      "expect_claim": "test_the_shipped_cap_with_an_ordinary_prompt_sends_no_num_ctx|\"num_ctx\" not in recorder.options|#0",
+      "note": "🔴 This is the POSITIVE CONTROL for AC-5 as much as a probe. 'num_ctx appears when it should' is worth nothing unless 'num_ctx stays away when it should not' can fail — a trigger stuck on would satisfy every other AC-5 test in this module while adding an unrequested knob to every call the system makes."
+    },
+    {
+      "name": "C9-the-wire-carries-a-different-window-than-the-record",
+      "subject": "services/engine/llm/client.py",
+      "old": "            options[\"num_ctx\"] = budget.num_ctx",
+      "new": "            options[\"num_ctx\"] = 4096",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_prompt_that_breaches_the_window_puts_num_ctx_on_the_wire",
+      "expect_claim": "test_a_prompt_that_breaches_the_window_puts_num_ctx_on_the_wire|recorder.options.get(\"num_ctx\") == budget.num_ctx|#0",
+      "note": "🔴 The num_ctx twin of C3, and a worse failure than it looks: pinning the window to the ASSUMED 4096 while the record claims the computed value is precisely the silent prompt-truncation PLAN-0119 warns about — done_reason cannot see it, because from the server's side nothing was cut short."
+    },
+    {
+      "name": "C10-the-window-no-longer-covers-prompt-plus-cap",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    needed = ceil((prompt_tokens + cap_tokens) * 1.1)",
+      "new": "    needed = ceil((prompt_tokens + cap_tokens) * 0.5)",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_window_sent_holds_the_whole_prompt_and_the_whole_cap",
+      "expect_claim": "test_the_window_sent_holds_the_whole_prompt_and_the_whole_cap|(budget.num_ctx or 0) >= needed|#0",
+      "note": "🔴 AC-5's literal claim — 'a test proving prompt + cap <= context'. The margin is what absorbs the estimator's error; halving it turns the guarantee into a coin flip while every other AC-5 assertion in this module still passes."
+    },
+    {
+      "name": "C11-a-provisional-window-shrinks-a-real-one",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "    return ceil(needed / 512) * 512",
+      "new": "    return 512",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_a_sent_num_ctx_is_never_smaller_than_the_assumed_window",
+      "expect_claim": "test_a_sent_num_ctx_is_never_smaller_than_the_assumed_window|(budget.num_ctx or 0) >= assumed|#0",
+      "note": "🔴 This probe is the reason a REMOVED guard is still safe. `_resolve_budget` originally floored num_ctx at the assumed window; the floor was then proved unreachable and deleted rather than shipped as defensive code that cannot fire. The property it protected is now held by this assertion, and this mutation is what proves the assertion can still fail."
+    },
+    {
+      "name": "C12-the-shape-derivation-collapses-two-shapes-into-one",
+      "subject": "services/engine/llm/capacity.py",
+      "old": "        return \"structuring\"",
+      "new": "        return \"reasoning\"",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_the_disclosed_shape_tracks_the_arguments_of_the_call",
+      "expect_claim": "test_the_disclosed_shape_tracks_the_arguments_of_the_call|shapes == [\"structuring\", \"reasoning\", \"plain\"]|#0",
+      "note": "🔴 Pattern B's two calls become indistinguishable — the exact thing the taxonomy exists to keep apart, since a reasoning pass and a structuring pass on one model differ in demand by an order of magnitude. Asserted as one list rather than three parametrised cases: a parametrised node fails as N testcases, which the driver classifies MISFIRE."
+    },
+    {
+      "name": "C13-an-unmeasured-model-is-served-instead-of-refused",
+      "subject": "services/engine/llm/client.py",
+      "old": "        if self._REQUIRE_MEASURED_CAPACITY:",
+      "new": "        if False:",
+      "node_id": "tests/services/engine/llm/test_workload_clamp.py::test_an_unlisted_model_cannot_even_be_constructed",
+      "expect_claim": "test_an_unlisted_model_cannot_even_be_constructed|pytest.raises(UnlistedModelError)|#0",
+      "note": "🔴 SD-2 = (b) switched off. A client bound to an unmeasured model cannot have its budget bounded — it would serve with the rule this whole PLAN builds switched off, and the failure would surface later as a timeout with no connection to its cause."
+    }
+  ],
+  "exemptions": {
+    "options|len(self.bodies) == 1|#0": "🟡 A PRECONDITION of every wire assertion in this module, not a claim about the clamp. It records that exactly one request was observed, which is the condition under which 'the wire carries X' means anything. A mutation making it false would change how many requests each test observes and redden several claims at once, so it cannot be witnessed alone. Kept as an assertion rather than a silent index so that, if the shipped client ever issues a second call from one chat(), this module fails loudly instead of quietly reading the wrong body.",
+    "_budget_of|result.budget is not None|#0": "🟡 A PRECONDITION funnel, deliberately not a claim. Every test here needs a non-None budget record; carrying that check in each of them would either produce conjunctions (which the driver cannot attribute) or repeat one claim a dozen times in the denominator while saying nothing about the clamp. A mutation that stopped the chokepoint attaching a record reddens EVERY test in this module at once — the honest signal for a failure of that size, and not something a single probe can witness cleanly. The record's contents are covered by C1-C13; only its existence is exempted here."
+  }
+}
