@@ -1,0 +1,71 @@
+{
+  "claim_sources": ["tests/services/engine/llm/test_workload_inventory_contract.py"],
+  "probes": [
+    {
+      "name": "1a",
+      "subject": "services/engine/llm/intake.py",
+      "old": "        result = await client.chat(messages, response_format=schema)",
+      "new": "        await client.chat(messages, think=True)\n        result = await client.chat(messages, response_format=schema)",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_every_call_site_is_declared_in_the_taxonomy",
+      "expect_claim": "test_every_call_site_is_declared_in_the_taxonomy|not undeclared|#0",
+      "note": "🔴 The positive control AC-1 names in its own text: 'a newly added call site must redden it'. A REASONING call is planted next to intake's existing structuring call, so the new key `intake.py::extract_package::reasoning` is one the inventory has never seen. Chosen over a brand-new file deliberately: a new file would also prove the rglob walks, but this proves the harder direction — that a site added inside an ALREADY-INVENTORIED function is still caught, which is where a per-file guard would go blind. `not duplicates` stays GREEN (the planted key is distinct), and that green is what makes the reddening attributable to undeclared-ness rather than to the enumerator falling over."
+    },
+    {
+      "name": "1b",
+      "subject": "services/engine/llm/intake.py",
+      "old": "        result = await client.chat(messages, response_format=schema)",
+      "new": "        await client.chat(messages, response_format=schema)\n        result = await client.chat(messages, response_format=schema)",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_site_key_addresses_each_call_site_uniquely",
+      "expect_claim": "test_the_site_key_addresses_each_call_site_uniquely|not duplicates|#0",
+      "note": "🔴 The collision Cray's s286 ruling named as option (c)'s one cost, made real: a SECOND call of the same shape in the same function. Without this test the collision is silent — `_inventory()` is a dict, so the two sites would share one row and that row would vouch for a site nobody classified. The mutation is one character-class away from 1a's and reddens a DIFFERENT assertion, which is the cleanest available evidence that the two guards are actually distinct rather than one guard with two names. `not undeclared` stays GREEN here (the duplicate key IS declared), the exact mirror of 1a."
+    },
+    {
+      "name": "1c",
+      "subject": "docs/conventions/llm-workload-taxonomy.md",
+      "old": "| `services/engine/scaffold.py::_llm_records::structuring` | A | 676 | yes (CLI) | no |",
+      "new": "| `services/engine/scaffold.py::_llm_records::structuring` | A | 676 | yes (CLI) | no |\n| `services/engine/removed.py::gone_away::structuring` | S | 1 | no | no |",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_inventory_does_not_list_sites_that_no_longer_exist",
+      "expect_claim": "test_the_inventory_does_not_list_sites_that_no_longer_exist|not stale|#0",
+      "note": "🔴 The OTHER rot direction, and the one a tree-enumerating guard is naturally blind to: a row for a call site that no longer exists. Mutating the ARTIFACT rather than deleting a real call site is deliberate — deleting a site would redden `not stale` AND `not undeclared` together, and a probe that reddens two assertions witnesses neither cleanly. The planted row carries a VALID class (`S`) precisely so `not bad` stays GREEN; a bogus class would have reddened 1d's claim too and confounded both."
+    },
+    {
+      "name": "1d",
+      "subject": "docs/conventions/llm-workload-taxonomy.md",
+      "old": "| `services/engine/scaffold.py::_llm_records::structuring` | A | 676 | yes (CLI) | no |",
+      "new": "| `services/engine/scaffold.py::_llm_records::structuring` | X | 676 | yes (CLI) | no |",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_every_declared_class_is_one_of_the_five",
+      "expect_claim": "test_every_declared_class_is_one_of_the_five|not bad|#0",
+      "note": "🔴 A typo'd class letter is the quiet hole this guard exists for: the row still DECLARES the site, so `not undeclared` and `not stale` both stay GREEN and every other check reads clean — the site is listed, just not classified. Same anchor line as 1c, one cell over, which is what makes the pair attributable: the same edit location reddens two different assertions depending only on which cell moved."
+    },
+    {
+      "name": "1e",
+      "subject": "tests/services/engine/llm/test_workload_inventory_contract.py",
+      "old": "                and child.func.attr == \"chat\"",
+      "new": "                and child.func.attr == \"chatx\"",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_enumerator_actually_sees_a_new_call_site",
+      "expect_claim": "test_the_enumerator_actually_sees_a_new_call_site|seen == {\"structuring\": [(1, \"structuring\")], \"reasoning\": [(1, \"reasoning\")]}|#0",
+      "note": "🟢 The probe that makes the POSITIVE CONTROL a control rather than a decoration. Blinding the AST matcher is the exact failure mode that would make every guard above pass vacuously — an enumerator returning `[]` satisfies 'nothing is undeclared' perfectly. Because the assertion compares a measured DICT rather than a count, the failure message prints what the enumerator actually saw (`{'structuring': [(0, None)], ...}`), so a disagreement is one step to diagnose instead of a hunt (CLAUDE.md §8: a report prints the values it measured)."
+    },
+    {
+      "name": "1f",
+      "subject": "docs/conventions/llm-workload-taxonomy.md",
+      "old": "<!-- INVENTORY-TABLE-END -->",
+      "new": "<!-- INVENTORY-TABLE-ENDX -->",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_artifact_still_has_the_markers_the_parser_reads",
+      "expect_claim": "test_the_artifact_still_has_the_markers_the_parser_reads|text.count(marker) == 1|#0",
+      "note": "🟢 The parser reads the table by splitting on two HTML comments. Rename one and `_inventory()` raises rather than silently returning an EMPTY dict — but 'raises' is only true today, and a future refactor to a forgiving parser would turn a renamed marker into a guard that declares nothing and passes. This claim pins the markers themselves so that refactor cannot happen quietly. The START marker's own count stays GREEN under this mutation, so the reddening names the END marker specifically."
+    },
+    {
+      "name": "1g",
+      "subject": "docs/conventions/llm-workload-taxonomy.md",
+      "old": "## 2. Call-site inventory",
+      "new": "## 2. Call site inventory",
+      "node_id": "tests/services/engine/llm/test_workload_inventory_contract.py::test_the_artifact_still_has_the_markers_the_parser_reads",
+      "expect_claim": "test_the_artifact_still_has_the_markers_the_parser_reads|re.search(r\"^## 2\\. Call-site inventory\", text, re.M)|#0",
+      "note": "🟢 The SECOND assertion of the same test, and it needs its own probe because a pytest run stops at the first failed assert — 1f could never reach it. One mutation witnesses one assertion (probe-battery refusal #2). Dropping a single hyphen is chosen over deleting the heading so that the marker assertion above stays GREEN: that green is what rules out 'something unrelated broke the file'."
+    }
+  ],
+  "exemptions": {
+    "test_the_enumerator_is_not_returning_an_empty_tree|len(sites) >= 1|#0": "🟡 Cannot be witnessed ALONE, and saying so is more honest than manufacturing a probe that pretends otherwise. Every mutation that empties the enumeration — a wrong `_SERVICES` root, a blinded attribute match, a broken rglob — also empties the key set, which reddens `not stale` in the same run (all 14 declared rows become stale at once). A probe reddening two assertions witnesses neither, so there is no available single-claim mutation. The PROPERTY it guards is not unwitnessed: probe 1e blinds the matcher and shows directly that the enumerator stops finding a known call site, which is the same fact measured on synthetic content where the sibling assertions are not in play. This assertion is retained as a cheap in-suite tripwire, not as the evidence."
+  }
+}
