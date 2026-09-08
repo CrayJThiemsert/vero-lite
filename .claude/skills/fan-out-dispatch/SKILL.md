@@ -85,9 +85,12 @@ commits. Go back to step 3 below and move the shared write out.
 
 - 1st PR: free.
 - Each later PR: `gh api --method PUT repos/CrayJThiemsert/vero-lite/pulls/<N>/update-branch`
-  (`gh pr update-branch` does not exist in this `gh` version) → wait ~3 min for the gate →
-  merge. If the shared region truly conflicts, `update-branch` **fails** and needs a manual
-  merge.
+  (`gh pr update-branch` does not exist in this `gh` version) → wait for the gate on the
+  **new** head → merge. If the shared region truly conflicts, `update-branch` **fails** and
+  needs a manual merge. ✎ *s285: the wait was written as "~3 min"; measured 9–13 min
+  (11m51s / 13m5s / 11m31s), which is what makes the serial cost below real rather than
+  nominal. The mechanics now live in the `git-workflow` skill — the one that loads when you
+  are actually merging — and this row keeps only what bears on fan-out economics.*
 
 You pay N sessions of tokens and get serial wall-clock. Never `--admin`.
 
