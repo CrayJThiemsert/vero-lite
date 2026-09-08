@@ -363,6 +363,29 @@ def evaluate_budget(*, model: str, cap_tokens: int, timeout_s: float) -> BudgetV
     return replace(verdict, terms_measured=capacity.fully_measured)
 
 
+def largest_fitting_cap(*, model: str, timeout_s: float) -> int:
+    """The biggest ``num_predict`` whose projection still lands inside the timeout.
+
+    This is what the clamp bounds a class's request DOWN to. It is exact, not a
+    search: the largest integer strictly below ``budget * rate`` is
+    ``ceil(budget * rate) - 1``, and strictness is what keeps a projection landing
+    exactly on the deadline out of the answer -- the timeout aborts and discards
+    every token produced, so equality is a total loss.
+
+    Returns 0 when the load and prefill terms alone already exceed the timeout.
+    A zero cap is not servable, and a caller receiving one should refuse rather
+    than send it; it means the model cannot answer at all within the deadline,
+    which is a configuration fault rather than a budgeting one.
+
+    Raises :class:`UnlistedModelError` for a model with no capacity entry.
+    """
+    capacity = capacity_for(model)
+    budget_s = timeout_s - capacity.load_s.value - capacity.prefill_s.value
+    if budget_s <= 0:
+        return 0
+    return max(0, ceil(budget_s * capacity.decode_tokens_per_s.value) - 1)
+
+
 #: Characters per generated token, measured across PLAN-0118's arms as
 #: ``content_chars / eval_count`` = 2.71-3.47. The LOW end is used deliberately:
 #: fewer characters per token means MORE tokens estimated for the same text, which
