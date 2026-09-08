@@ -118,6 +118,55 @@ it for readability and silently deletes a witness, with every check still green.
 
 ---
 
+## Shape 3 — every value in the subject is identical, so a constant satisfies the claim
+
+Shapes 1 and 2 are about the assertion. This one is about the **subject**: an assertion
+can be perfectly written, reached, and independent of the mutation, and still be unable
+to fail — because everything it could distinguish currently has the same value.
+
+**Measured, session 286 (PLAN-0119 Step 3, AC-3).** The acceptance criterion reads: *a
+transport double asserts the `num_predict` on the wire matches the class.* The seam
+ships deliberately with **all five workload classes at the same 1024** — it is a pure
+refactor, and the experiment programme moves budgets one arm at a time afterwards. So
+the natural test —
+
+```python
+assert wire_num_predict == _WORKLOAD_NUM_PREDICT[client.workload]   # vacuous
+```
+
+— is satisfied by a client that ignores the class **completely** and hard-codes 1024,
+because every class's budget *is* 1024. A probe planting exactly that hard-coded cap
+comes back **GREEN**, and the AC closes on a seam that does not exist.
+
+### The tell
+
+The mutation you would use to witness the claim is one you can *predict* will not
+redden it — and the reason is not "the assertion is wrong" but "the inputs do not
+differ". Ask: **which two states is this assertion distinguishing, and are both
+reachable today?**
+
+### The fix
+
+Make the subject non-uniform *inside the test*, then assert the tracking:
+
+```python
+monkeypatch.setitem(_WORKLOAD_NUM_PREDICT, "S", 1234)
+monkeypatch.setitem(_WORKLOAD_NUM_PREDICT, "J", 4321)
+# drive the SAME real call site through a client of each class
+assert (structure.num_predicts, judge.num_predicts) == ([1234], [4321])
+```
+
+With the two budgets distinct, the hard-coded-cap probe is **witnessed RED**. Keep one
+separate, unpatched assertion for the shipped value (*"the refactor moved no budget"*)
+— that is a different claim, and it is the one an experiment arm should later redden on
+purpose.
+
+⚠️ **Why this shape is easy to ship.** Uniform values are common exactly when they are
+most load-bearing: a refactor that must change no behaviour, a feature flagged off
+everywhere, a permission table before the first exception is added. The assertion reads
+correctly, the reviewer agrees, and it is the *absence of variety* — never visible in
+the diff — that removes its power.
+
 ## The practice
 
 1. **While writing an assertion, name the mutation that reddens it.** No answer ⇒ the

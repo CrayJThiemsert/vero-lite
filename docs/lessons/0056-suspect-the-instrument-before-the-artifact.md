@@ -111,6 +111,50 @@ it just collected.**
   the point here is that the *derivation* is usually easy once you stop defending the
   criterion.
 
+## s286 — four more, and a class the seven did not contain
+
+Session 286 hit the same failure **seven** more times across a taxonomy guard, a
+budget-seam migration and four PRs. Five were instances of the classes above. Two were
+not, and both are cheap to miss because the instrument looks *reasonable*:
+
+**A needle that matches your own prose about the thing.** Three instances, one session:
+
+* `git log -1 --format=%B | grep -c "Co-Authored-By"` returned **1** on a commit that
+  has no such trailer — it counted the message's own sentence *"no `Co-Authored-By`
+  trailer per CLAUDE.md §7"*. Anchoring to `^Co-Authored-By:` returns the true **0**.
+* An assertion `"settings.llm_max_output_tokens" not in new_text` failed on a rewrite
+  whose new docstring *explains why that setting is no longer read* — the edit was
+  REQUIRED to contain the string it forbade.
+* An expected count of `SD-1.1` occurrences was written as 2 and measured 4, because
+  the section already discussed it three times.
+
+> **The shape:** whenever the claim is *"X is absent"* and the artifact also **talks
+> about** X, an unanchored search cannot tell a mention from an occurrence. Anchor the
+> pattern (`^`, a delimiter, a word boundary) or count the two populations separately.
+> This is the *self-referential* case of
+> [#0035](0035-negative-measurement-needs-a-positive-control.md)'s negative-measurement
+> rule: the positive control you need is one that finds the mention and rejects it.
+
+**An impossible value is the diagnosis — you need not even open the artifact.** A
+leftover-reference count came out **`-1`**. The subtraction assumed
+`"OllamaAdminClient"` contains `"OllamaClient"` as a substring; it does not
+(`...Admin...` sits between the two halves). No count can be negative, so the
+instrument was provably wrong before the artifact was read at all.
+
+> **The habit this argues for:** a report that prints its numbers gives you this for
+> free. `-1`, a count above the corpus size, a percentage over 100 — each is a
+> *self-evident* instrument failure, and each is invisible in a bare PASS/FAIL. Same
+> reason [#0043](0043-a-probes-red-must-name-what-broke.md) asks a RED to name what
+> broke.
+
+**Also measured, and the reason this section exists at all:** the session's own
+carve-out check ran correctly — `git grep` with a positive and a fabricated control —
+and its result was then **mis-read**. Eight hits for `index.lock` were dismissed as
+"older, different incidents" *without opening the files*; the `git-workflow` skill in
+fact documents the exact recipe the session had just re-derived. **A grep that returns
+hits has not been read. Go to the artifact — that instruction applies to your own
+evidence-gathering, not only to the code under test.**
+
 ## The one-line version
 
 > A red check is a claim about **two** things — the artifact and the instrument. Session
