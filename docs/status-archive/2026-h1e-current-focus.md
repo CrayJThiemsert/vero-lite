@@ -303,3 +303,52 @@ of this file after the append.
 > AC-12 reads begins.
 
 🔴 **THIS (s282) reconcile rotates the session-279 block** — 59 lines, **est. ~4.4 KB** (no shell; the caller owes `wc -c`), i.e. likely **over** the 4,096 B per-block cap as retained — and on the **headroom rule**: STATUS opened at **59,608 B**, only **5,928 B** under R1, and keeping a fourth block would have left ~2 KB. The window lands at **THREE** again (280, 281, 282) — deliberate, the **fourth consecutive** reconcile of this shape; no block was lost. Destination is the OPEN chain file **`2026-h1e-current-focus.md`** (5,968 B, opened at s281), nowhere near R4's 196,608 B split trigger. 🔴 **This ledger's own s279 entry travels with it — PROBE BEFORE APPENDING**: the s281 and s280 reconciles both found their rotating entry ALREADY archived, so probe with a positive control; a false negative appends a duplicate. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
+
+### Rotated at the s287 reconcile — the session-283-284 Current-Focus block [on the R2 headroom rule, not a cap overage: the block is **3,041 B** as carved, well under the 4,096 B per-block cap. The scribe was instructed NOT to rotate — the CF window had a free slot and went 3 → 4, exactly R2's window — so this prune is the **caller's**, forced by bytes alone: STATUS closed the reconcile at **65,146 B**, only **390 B** under R1's 65,536 B ceiling, which would have left the next session unable to add anything at all. The window lands at THREE again (285, 286, 287) — the sixth consecutive reconcile of this shape. 🔴 **This block's own Current-Focus rotation-ledger entry (s284) travels with it and was probed ABSENT** from this archive against a positive control that found known archived content (`Session 282` = 1, `THIS (s282)` = 1) and a fabricated needle that found none — a genuine first append. ⚠️ **One instrument bug caught before it mattered:** the neighbour-bleed probe's regex was over-escaped inside a raw string and read **0** block headers in a slice that starts with one; the instrument was wrong, not the slice, and it was repaired rather than the assertion relaxed. Carved from the live tree for the block (unchanged by this reconcile) and from `git show HEAD:docs/STATUS.md` for the RD row (already removed from the tree by the scribe). ✅ **Caller-measured:** STATUS **65,146 → 61,515 B** on the rotation alone, then **62,270 B** after two Active-TODO figure corrections landed in the same commit — **3,266 B** of headroom, up from the 390 B the reconcile would otherwise have shipped. This archive's own size is measured by the caller after the append and deliberately NOT written here: a self-referential byte figure changes the file it describes.]
+
+> **Session 283–284, 2026-09-06..07 (`22fc98f` → `006ffd0`) — FOUR PRs merged
+> ([#1418](https://github.com/CrayJThiemsert/vero-lite/pull/1418)–[#1421](https://github.com/CrayJThiemsert/vero-lite/pull/1421))
+> plus [#1422](https://github.com/CrayJThiemsert/vero-lite/pull/1422) — **all
+> merged**. What it established: PLAN-0122 went **6/12 → 10/12** on evidence, a
+> stale line in the PLAN itself was refuted **in code**, and **AC-12's 14-day
+> window is running while measuring nothing.****
+>
+> ✅ **s283 (#1418–#1421).** Banked the Step-4 probe battery s282 had run but
+> **never committed** — the artifact, not the memory of it. Fixed a **Check 3
+> false positive**: it demanded a *claimless tool* appear in a denominator **of
+> claims**, which no claimless tool can satisfy. Ticked **AC-8/AC-9/AC-10** with
+> their §11 closeout records. Also landed **Lesson #0061** (an AC is not a spec)
+> and the STATUS TODO for the uninstrumented PreToolUse arm.
+>
+> ✅ **s284 (#1422 — `fff851c` → `55d7ec8`, CI `success`, run 34123293869).**
+> Ticked **AC-1/AC-2/AC-3** on a battery re-run — **8/8 WITNESSED,
+> `PROBE-COVERAGE COMPLETE`, GAPS 0** — and **AC-11** on a clean gate: `ruff` 0 ·
+> `format` 0 · `mypy` 0 · `pytest` 0 with **4948 passed / 8 skipped** ·
+> `check_ac_consistency` clean. That clean reading is trustworthy because the run
+> carried a **positive control**: with the Step-4 battery hidden, the checker
+> printed **exactly the 5 predicted gaps** — an instrument shown able to fail
+> before its pass was believed.
+>
+> 🔴 **A stale Status line in PLAN-0122 contradicted the PLAN's own Step 3.** It
+> claimed the live Stop arm runs the unvalidated **SLIM5** prompt and that
+> reverting was an open Cray decision. **Both false since s281** — verified in
+> code, not recalled: `_sonnet_classifier.py:1009-1010` passes no `event=`, so
+> `:397` resolves to the legacy/FULL builder, pinned by
+> `tests/handoffs/test_sonnet_classifier.py:407`. It had already misread one
+> session's orientation before being caught: a PLAN header line is a **claim**,
+> not context.
+>
+> 🔴 **AC-12's window is collecting nothing to measure — the blocker is DATA, not
+> code.** `.claude/state/stop-classifier-log.jsonl` holds **48 lines over ~19
+> hours**, `"decision":"proceed"` appears **0 times**, and **39 of 48 are
+> transport failures**. AC-12's pass read needs `post=k/n` with `p < 20`, so
+> **n = 0**. Two compounding causes: the MS-S1 transport failing, and the
+> reverted FULL prompt being pause-heavy by nature so `proceed` rarely fires.
+> Structurally the log records only `decision`/`emitted`, so it **cannot** supply
+> AC-12's defective-class judgement (INVERSION / PERMISSION-FRAME /
+> ROLE-CONFUSION) at all — it is §4.3's durability backstop, **not** a substitute
+> input for AC-12, which reads main-session transcripts. So writing
+> `tools/stop_classifier_ledger.py` today would build an instrument with nothing
+> to read. **Cray's call:** extend the window, change the spec, or stop the clock.
+
+🔴 **THIS (s284) reconcile rotates the session-280 block** (caller-measured **3,691 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **63,219 B**, only **2,317 B** under R1's 65,536 B, so a fourth block was unaffordable. The window lands at **THREE** again (281, 282, 283-284) — deliberate; no block was lost. Destination `2026-h1e-current-focus.md` (**11,612 B**; R4's split trigger is 196,608 B). 🔴 **This ledger's own s280 entry travels with the block and was probed NOT YET ARCHIVED** — controlled instrument (positive control found a known entry = 1, fabricated needle = 0) — so it is a **genuine first append**, breaking the run of three reconciles that found theirs already archived. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
