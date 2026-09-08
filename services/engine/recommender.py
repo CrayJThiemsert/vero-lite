@@ -135,6 +135,8 @@ def _build_chat_client() -> ChatClient:
     """
     if settings.llm_backend == "local":
         return OllamaClient(
+            # J Judge: the recommender's Pattern B reasoning + structuring pair.
+            workload="J",
             base_url=settings.ollama_host,
             model=settings.recommender_model,
             timeout=settings.llm_request_timeout_s,

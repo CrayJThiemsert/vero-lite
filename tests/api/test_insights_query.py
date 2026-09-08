@@ -132,7 +132,7 @@ async def test_unconstructible_backend_degrades_and_says_so(
     endpoint, because the endpoint fixture stubs this very seam out.
     """
 
-    def _no_backend() -> object:
+    def _no_backend(_workload: object) -> object:
         raise NotImplementedError("the hosted backend is a seam-only stub")
 
     monkeypatch.setattr(f"{_ROUTER}.nl_query._build_chat_client", _no_backend)
@@ -216,7 +216,7 @@ async def test_untranslatable_question_is_ungrounded_with_no_query(
         async def chat(self, *_args: object, **_kwargs: object) -> object:
             raise OllamaError("MS-S1 unreachable (injected)")
 
-    monkeypatch.setattr(f"{_ROUTER}.nl_query._build_chat_client", lambda: _DeadClient())
+    monkeypatch.setattr(f"{_ROUTER}.nl_query._build_chat_client", lambda _workload: _DeadClient())
     resp = await query_client.http.post("/insights/query", json={"question": "anything"})
     assert resp.status_code == 200
     body = resp.json()

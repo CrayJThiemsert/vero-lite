@@ -130,7 +130,10 @@ async def _main(args: argparse.Namespace) -> None:
             "objects and still print a complete, plausible result table."
         )
     registrar()
-    client = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
+    # S Structure: the constrained NL-query translate call.
+    client = OllamaClient(
+        workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
+    )
     print(f"NL-query feasibility spike: {len(cases)} questions, vertical '{vertical}'")
     print(f"model={args.model} @ {args.ollama_host}\n")
     if args.warm:

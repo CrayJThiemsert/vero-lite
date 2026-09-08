@@ -148,7 +148,7 @@ def _gated_arm_a(fx: ClassifyFixture) -> bool:
 async def test_classify_enrichment_before_after_live() -> None:
     """AC-7 twin metric on the live model — Arm B 11/11 abstain (HARD, every rep) AND Arm A
     gated lift ``after > before`` reaching ``≥ 9/11`` in the worst rep; AT-1b reported."""
-    client = OllamaClient(base_url=_BASE_URL, model=_MODEL)
+    client = OllamaClient(workload="S", base_url=_BASE_URL, model=_MODEL)
     catalog3: list[tuple[str, str, str]] = [
         (t.archetype_id, t.title, t.description) for t in REGISTRY.values()
     ]

@@ -39,7 +39,7 @@ def _use_stub(
     monkeypatch: pytest.MonkeyPatch, query: dict[str, Any], phrase: str = "Grounded answer."
 ) -> None:
     stub = _StubQueryClient(query, phrase)
-    monkeypatch.setattr("services.engine.nl_query._build_chat_client", lambda: stub)
+    monkeypatch.setattr("services.engine.nl_query._build_chat_client", lambda _workload: stub)
 
 
 async def test_query_returns_grounded_answer(
@@ -150,7 +150,7 @@ async def test_query_discloses_which_arm_phrased_the_answer(
     healthy = (await client.post("/query", json={"question": "how many assets?"})).json()
 
     monkeypatch.setattr(
-        "services.engine.nl_query._build_chat_client", lambda: _DegradedPhraseClient(query)
+        "services.engine.nl_query._build_chat_client", lambda _w: _DegradedPhraseClient(query)
     )
     degraded = (await client.post("/query", json={"question": "how many assets?"})).json()
 

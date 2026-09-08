@@ -44,7 +44,10 @@ def _print_case(r: SqlResult) -> None:
 async def _main(args: argparse.Namespace) -> None:
     _vertical, cases = load_gold(args.gold) if args.gold else load_gold()
     conn = build_db()
-    client = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
+    # S Structure: the text-to-SQL translate arm.
+    client = OllamaClient(
+        workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
+    )
     print(f"text-to-SQL arm: {len(cases)} questions  model={args.model} @ {args.ollama_host}\n")
     if args.warm:
         print("warming model ...")

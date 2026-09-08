@@ -553,6 +553,8 @@ def _build_chat_client() -> Any:
     if settings.llm_backend != "local":
         raise LlmSyntheticError(f"llm_backend={settings.llm_backend!r} is not 'local'")
     return OllamaClient(
+        # A Author: the synthetic dataset, the largest output in the system.
+        workload="A",
         base_url=settings.ollama_host,
         model=settings.recommender_model,
         timeout=settings.llm_request_timeout_s,

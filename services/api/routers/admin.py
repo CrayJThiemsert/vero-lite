@@ -26,29 +26,39 @@ from pydantic import BaseModel, Field
 
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
-from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
+from services.engine.llm.client import (
+    OllamaAdminClient,
+    OllamaError,
+    OllamaUnreachableError,
+)
 
 router = APIRouter(tags=["admin"])
 
 
-def _client() -> OllamaClient:
-    """Build an OllamaClient for the configured model + host (monkeypatched in tests)."""
-    return OllamaClient(
+def _client() -> OllamaAdminClient:
+    """Build a housekeeping client for the configured model + host (monkeypatched in tests).
+
+    An :class:`OllamaAdminClient`, not an :class:`OllamaClient`: this client only ever
+    ``warm()``s a model. It generates nothing, so it has no generation demand to declare
+    and no workload class applies (PLAN-0119 Step 3; Cray, typed, s286). It also cannot
+    reach ``chat`` at all, which is the point of carrying the distinction in the type.
+    """
+    return OllamaAdminClient(
         base_url=settings.ollama_host,
         model=settings.recommender_model,
         timeout=settings.llm_request_timeout_s,
     )
 
 
-def _status_client() -> OllamaClient:
-    """Build an OllamaClient for the read-only ``GET /llm/status`` residency probe.
+def _status_client() -> OllamaAdminClient:
+    """Build a housekeeping client for the read-only ``GET /llm/status`` residency probe.
 
     Uses the **short, dedicated** ``llm_status_timeout_s`` (PLAN-0018 AC-5) — not
     the ~120 s generation timeout ``_client()`` carries — so a slow/half-down host
     degrades the poll fast instead of hanging for a generation-length window.
     Monkeypatched in tests.
     """
-    return OllamaClient(
+    return OllamaAdminClient(
         base_url=settings.ollama_host,
         model=settings.recommender_model,
         timeout=settings.llm_status_timeout_s,
@@ -155,7 +165,7 @@ class LlmStatusResponse(BaseModel):
     )
 
 
-async def _ps_safe(client: OllamaClient) -> list[dict[str, Any]]:
+async def _ps_safe(client: OllamaAdminClient) -> list[dict[str, Any]]:
     """Best-effort ``/api/ps`` — never raises (status reporting is non-critical)."""
     try:
         return await client.ps()
@@ -163,7 +173,7 @@ async def _ps_safe(client: OllamaClient) -> list[dict[str, Any]]:
         return []
 
 
-async def _warm_bg(client: OllamaClient) -> None:
+async def _warm_bg(client: OllamaAdminClient) -> None:
     """Background warm for the ``?wait=false`` path — swallow all errors."""
     try:
         await client.warm(keep_alive=settings.ollama_keep_alive)

@@ -65,7 +65,7 @@ _CLEAN = (
 async def test_live_poisoned_narrative_leaks_no_value() -> None:
     """AC-B3/OQ-E evidence: a value-forcing narrative on the real model yields EITHER a
     stub skeleton with the values nowhere, OR an abstain — never a runnable value."""
-    client = OllamaClient(base_url=_BASE_URL, model=_MODEL)
+    client = OllamaClient(workload="S", base_url=_BASE_URL, model=_MODEL)
     outcome = await generate(
         client,
         narrative=_POISON,
@@ -93,7 +93,7 @@ async def test_live_poisoned_narrative_leaks_no_value() -> None:
 async def test_live_clean_narrative_produces_gate_skeleton() -> None:
     """OQ-E evidence: a clean AT-1-family narrative on the real model yields a
     ``load_procedures``-valid draft behind the gate, every governance value a stub."""
-    client = OllamaClient(base_url=_BASE_URL, model=_MODEL)
+    client = OllamaClient(workload="S", base_url=_BASE_URL, model=_MODEL)
     outcome = await generate(client, narrative=_CLEAN, vertical=_VERTICAL, confirm=lambda _m: True)
     print("\n[LIVE clean] outcome:", type(outcome).__name__)
     if isinstance(outcome, Abstained):

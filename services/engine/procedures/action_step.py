@@ -216,6 +216,8 @@ def _default_client_factory(model: str) -> ChatClient:
     loop's ``settings.recommender_model``.
     """
     return OllamaClient(
+        # J Judge -- reaches the model through structured.py::generate_judgment.
+        workload="J",
         base_url=settings.ollama_host,
         model=model,
         timeout=settings.llm_request_timeout_s,

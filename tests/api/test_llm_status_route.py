@@ -27,11 +27,12 @@ from httpx import ASGITransport, AsyncClient
 from services.api.config import settings
 from services.api.main import app
 from services.api.routers import admin
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaAdminClient
 
 
-def _ollama(handler: object) -> OllamaClient:
-    return OllamaClient(
+def _ollama(handler: object) -> OllamaAdminClient:
+    # The residency probe never generates (PLAN-0119 Step 3).
+    return OllamaAdminClient(
         base_url="http://ollama.test",
         model="gpt-oss:20b",
         transport=httpx.MockTransport(handler),  # type: ignore[arg-type]

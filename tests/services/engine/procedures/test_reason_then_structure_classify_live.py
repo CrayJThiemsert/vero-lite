@@ -85,7 +85,7 @@ def _is_gated_arm_a(fx: ClassifyFixture) -> bool:
 async def test_classify_reason_then_structure_ab_live() -> None:
     """AC-6: the 3-arm classify A/B on the live model. HARD-asserts the Arm-B safety brake in
     every arm/rep; measures + prints the per-variant Arm-A lift VERDICT vs baseline (worst rep)."""
-    client = OllamaClient(base_url=_BASE_URL, model=_MODEL)
+    client = OllamaClient(workload="S", base_url=_BASE_URL, model=_MODEL)
     per_arm_a: dict[str, list[int]] = {arm: [] for arm in _ARMS}
     per_arm_b: dict[str, list[int]] = {arm: [] for arm in _ARMS}
 

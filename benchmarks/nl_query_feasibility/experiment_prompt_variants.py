@@ -152,7 +152,10 @@ async def _main(args: argparse.Namespace) -> None:
     by_id = {str(c["id"]): c for c in all_cases}
     cases = [by_id[q] for q in wanted if q in by_id]
     register_energy_adapter()
-    client = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
+    # S Structure: prompt variants over the same translate call.
+    client = OllamaClient(
+        workload="S", base_url=args.ollama_host, model=args.model, timeout=args.timeout
+    )
 
     variant_names = list(VARIANTS) if args.variants == "all" else args.variants.split(",")
     print(f"prompt-variant experiment: model={args.model} @ {args.ollama_host}")

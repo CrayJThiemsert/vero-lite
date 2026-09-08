@@ -16,13 +16,20 @@ from typing import Any
 import httpx
 import pytest
 
-from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
+from services.engine.llm.client import (
+    OllamaAdminClient,
+    OllamaClient,
+    OllamaError,
+    OllamaUnreachableError,
+)
 
 Handler = Callable[[httpx.Request], httpx.Response]
 
 
-def _client(handler: Handler, *, base_url: str = "http://ollama.test") -> OllamaClient:
-    return OllamaClient(
+def _client(handler: Handler, *, base_url: str = "http://ollama.test") -> OllamaAdminClient:
+    # warm/unload/ps only -- the housekeeping client, which declares no workload
+    # because it generates nothing (PLAN-0119 Step 3).
+    return OllamaAdminClient(
         base_url=base_url, model="gpt-oss:20b", transport=httpx.MockTransport(handler)
     )
 
@@ -93,8 +100,16 @@ async def test_unreachable_is_an_ollama_error_on_chat() -> None:
     def handler(_request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("refused")
 
+    # A CHAT call needs the generating client, which declares a class; this module's
+    # `_client` helper builds the housekeeping one (PLAN-0119 Step 3).
+    chat_client = OllamaClient(
+        workload="S",
+        base_url="http://ollama.test",
+        model="gpt-oss:20b",
+        transport=httpx.MockTransport(handler),
+    )
     with pytest.raises(OllamaError):
-        await _client(handler).chat([{"role": "user", "content": "hi"}])
+        await chat_client.chat([{"role": "user", "content": "hi"}])
 
 
 async def test_http_500_raises_base_error_not_unreachable() -> None:

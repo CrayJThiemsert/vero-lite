@@ -1,0 +1,81 @@
+{
+  "claim_sources": ["tests/services/engine/llm/test_workload_budget_seam.py"],
+  "probes": [
+    {
+      "name": "S1-chokepoint-ignores-the-class",
+      "subject": "services/engine/llm/client.py",
+      "old": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[self._workload],",
+      "new": "                \"num_predict\": 1024,",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_wire_carries_the_budget_of_the_class_the_client_declared",
+      "expect_claim": "test_the_wire_carries_the_budget_of_the_class_the_client_declared|(structure.num_predicts, judge.num_predicts) == ([1234], [4321])|#0",
+      "note": "🔴 THE probe for AC-3, and the reason the test patches the budget table. This mutation is the pre-Step-3 world: a hard-coded cap that ignores the declared class entirely. It is invisible to any test that asserts against the SHIPPED values, because every class ships at 1024 today — such a test would report a green seam that does not exist. Only giving two classes different budgets and driving one client of each can tell 'derived from the class' apart from 'a constant that happens to match'."
+    },
+    {
+      "name": "S2-budget-resolved-for-the-wrong-class",
+      "subject": "services/engine/llm/client.py",
+      "old": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[self._workload],",
+      "new": "                \"num_predict\": _WORKLOAD_NUM_PREDICT[\"J\"],",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_every_attempt_of_the_retry_loop_carries_the_class_budget",
+      "expect_claim": "test_every_attempt_of_the_retry_loop_carries_the_class_budget|recorder.num_predicts == [ 777, 777, 777, ]|#0",
+      "note": "🔴 A subtler failure than S1's: the class IS consulted, just not the client's own. A seam that resolved a fixed class would look correct in review, produce plausible numbers, and quietly bill every workload against one budget. Aimed at the RETRY-loop test so the assertion also covers all three attempts — a budget resolved once outside the loop, or rebuilt from a default on retry, would leave attempt 1 correct and attempts 2-3 wrong, which asserting only `[0]` could never see."
+    },
+    {
+      "name": "S3-the-shipped-cap-moved-during-a-refactor",
+      "subject": "services/engine/llm/client.py",
+      "old": "    \"S\": 1024,",
+      "new": "    \"S\": 2048,",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_shipped_default_is_unchanged_by_this_refactor",
+      "expect_claim": "test_the_shipped_default_is_unchanged_by_this_refactor|recorder.num_predicts == [1024]|#0",
+      "note": "🔴 Step 3's own sequencing rule, made mechanical: it is a PURE REFACTOR and must move no budget. Bundling a new default here is the exact confound PLAN-0119's experiment sequencing forbids — a later arm measuring 4096 against a baseline that had silently already moved would be uninterpretable, and nothing afterwards could separate the seam's effect from the budget's. This is the one test in the module that reads the SHIPPED value rather than a patched one, which is why it can catch that."
+    },
+    {
+      "name": "S4-the-housekeeping-client-regains-chat",
+      "subject": "services/engine/llm/client.py",
+      "old": "class OllamaAdminClient:",
+      "new": "class OllamaAdminClient:\n    chat = None",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_housekeeping_client_cannot_reach_chat_at_all",
+      "expect_claim": "test_the_housekeeping_client_cannot_reach_chat_at_all|not hasattr(admin, \"chat\")|#0",
+      "note": "🔴 The (c) split collapsing back into one class — the failure that would silently restore the very problem Cray ruled on: a client that never generates being able to chat, and therefore owing a generation class it has no meaning for. An attribute rather than a method on purpose: `hasattr` is what the guard reads, so the cheapest possible reintroduction is the right thing to test against. The `warm` assertion stays GREEN, so the reddening names the chat capability specifically."
+    },
+    {
+      "name": "S5-the-housekeeping-client-loses-warm",
+      "subject": "services/engine/llm/client.py",
+      "old": "    async def warm(self, *, keep_alive: str | int) -> dict[str, Any]:",
+      "new": "    async def warm_renamed(self, *, keep_alive: str | int) -> dict[str, Any]:",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_housekeeping_client_cannot_reach_chat_at_all",
+      "expect_claim": "test_the_housekeeping_client_cannot_reach_chat_at_all|hasattr(admin, \"warm\")|#0",
+      "note": "🟢 The POSITIVE CONTROL, and without it S4's assertion is close to vacuous: `not hasattr(admin, 'chat')` is satisfied perfectly by an object with no methods at all, including one broken by a bad split. This shows the same object genuinely has the capability it is supposed to have. The chat assertion runs FIRST and stays green here, so the two are separately attributable rather than one reading standing for both."
+    },
+    {
+      "name": "S6-the-generating-client-loses-a-housekeeping-method",
+      "subject": "services/engine/llm/client.py",
+      "old": "    async def ps(self) -> list[dict[str, Any]]:",
+      "new": "    async def ps_renamed(self) -> list[dict[str, Any]]:",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_generating_client_is_still_a_housekeeping_client",
+      "expect_claim": "test_the_generating_client_is_still_a_housekeeping_client|not missing|#0",
+      "note": "🔴 The inheritance is load-bearing, not cosmetic: `benchmarks/*` construct an `OllamaClient` and then `warm()` it, so a split that separated the two classes instead of layering them would break every benchmark's warm step. The failure message names WHICH method vanished (`missing=['ps']`) rather than reporting a bare False, so a real regression is one read to diagnose."
+    },
+    {
+      "name": "S7-the-declared-class-is-not-stored",
+      "subject": "services/engine/llm/client.py",
+      "old": "        self._workload = workload",
+      "new": "        self._workload = \"S\"",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_class_a_client_was_built_for_is_readable",
+      "expect_claim": "test_the_class_a_client_was_built_for_is_readable|_client(\"N\", _WireRecorder()).workload == \"N\"|#0",
+      "note": "🔴 The constructor accepting an argument and discarding it. Everything downstream would still 'work' — a client would be constructible, chat would send a plausible cap, mypy would be satisfied — while every workload silently billed against S. Hard-coding the class the other tests use is deliberate: a mutation to some unrelated value would also break the wire tests and be over-attributed."
+    },
+    {
+      "name": "S8-the-getter-special-cases-a-class",
+      "subject": "services/engine/llm/client.py",
+      "old": "        return self._workload",
+      "new": "        return \"N\" if self._workload == \"A\" else self._workload",
+      "node_id": "tests/services/engine/llm/test_workload_budget_seam.py::test_the_class_a_client_was_built_for_is_readable",
+      "expect_claim": "test_the_class_a_client_was_built_for_is_readable|_client(\"A\", _WireRecorder()).workload == \"A\"|#0",
+      "note": "🟢 The SECOND assertion of the same test, which needs its own probe because a pytest run stops at the first failed assert — S7 reddens the `N` check and could never reach this one. Contrived on purpose: the point is not that anyone would write this, but that the two values are checked independently rather than one standing in for both. The `N` assertion stays GREEN under it, which is what makes the attribution exact."
+    }
+  ],
+  "exemptions": {
+    "test_the_generating_client_is_still_a_housekeeping_client|isinstance(client, OllamaAdminClient)|#0": "🟡 No single-claim mutation exists. Removing the base class (`class OllamaClient(OllamaAdminClient):` -> `class OllamaClient:`) is the only mutation that makes this false, and it immediately breaks construction: `super().__init__(base_url=..., model=...)` resolves to `object.__init__`, which rejects the keywords and raises TypeError. The driver classifies a non-assertion exception as CRASHED, which credits nothing — so the probe would witness nothing while looking like it had. The property is not unguarded: probe S6 shows the generating client genuinely inherits the housekeeping methods, which is the capability the isinstance check exists to protect, measured on the same object.",
+    "_drive_the_real_call_site|pytest.raises(IntakeExtractionError)|#0": "🟡 A PRECONDITION of the driver, not a claim about the budget seam. It records that the canned body is unparseable so the shipped retry loop runs to exhaustion — the condition under which every wire assertion in this module is collected. A mutation making it false (a parseable body, or extraction ceasing to raise) would change how many requests each test observes and redden several claims at once, so it cannot be witnessed alone. It is kept as an assertion rather than a silent try/except precisely so that, if the shipped extraction path stops raising, this module fails loudly instead of quietly measuring a different number of attempts."
+  }
+}

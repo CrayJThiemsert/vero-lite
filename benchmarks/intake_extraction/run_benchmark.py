@@ -55,8 +55,14 @@ from benchmarks.intake_extraction.harness import (
     summarize,
     summarize_injection,
 )
-from services.api.config import settings
-from services.engine.llm.client import ChatResult, OllamaClient, OllamaError, call_metrics
+from services.engine.llm.client import (
+    _WORKLOAD_NUM_PREDICT,
+    ChatResult,
+    OllamaClient,
+    OllamaError,
+    Workload,
+    call_metrics,
+)
 from services.engine.llm.intake import (
     ChatClient,
     ExtractionResult,
@@ -437,38 +443,58 @@ def _print_run(run: BenchmarkRun) -> None:
         print(f"  obeyed_injection: {run.injection} (excluded from fraction: {excluded})")
 
 
+#: The class this benchmark's calls belong to — intake extraction is S Structure
+#: (PLAN-0119 §3, the row for ``intake.py:182``).
+_BENCH_WORKLOAD: Workload = "S"
+
+
 def _apply_num_predict(cap: int | None) -> int:
-    """Point the shipped chokepoint at ``cap`` for this process, and report what moved.
+    """Point the chokepoint at ``cap`` for this process, and report what moved.
 
-    **Why a settings override and not an argument.** ``OllamaClient.chat`` builds
-    ``options.num_predict`` from ``settings.llm_max_output_tokens`` at the chokepoint
-    (``client.py:335``) and takes no per-call budget; the seam that would let a caller
-    ask for one is PLAN-0119 **Step 3**, which has not landed. Until it does, the only
-    way to move the cap without editing the shipped call path is to move what the
-    chokepoint reads. The client reads the attribute per call, so the change takes
-    effect immediately and applies to every call this run makes.
+    ⚠️ **Corrected at Step 3 — the Step 2 version of this function is now WRONG, and
+    the prediction in its docstring was wrong too.** It moved
+    ``settings.llm_max_output_tokens``, which was what the chokepoint read at the time.
+    Step 3's seam derives ``num_predict`` from the constructing client's workload class
+    instead, so that setting is no longer consulted for chat: the flag would have kept
+    printing a confident before/after while changing NOTHING on the wire. That is the
+    inert-flag failure this module's own battery exists to catch, arriving by a
+    different route — a seam moved underneath a caller that still looked correct.
 
-    **What that costs, stated rather than hidden.** This mutates a process-global
-    singleton. It is contained because the benchmark is a standalone CLI process that
-    serves no requests — but it is NOT a pattern to copy into anything long-lived, and
-    it is exactly the wart Step 3 removes. When the seam lands, this function should
-    be deleted in favour of declaring a ``Workload``, not kept as a shortcut.
+    Step 2's docstring predicted this function would be DELETED when the seam landed,
+    "in favour of declaring a ``Workload``". That was wrong on the facts: every class
+    ships at the same 1024 in Step 3 (a pure refactor, deliberately), so declaring a
+    class gives a run no way to ask for 4096. The live arms still need a per-run knob,
+    so the function is REWIRED to the seam rather than removed — it now overrides the
+    class's entry in the budget table the chokepoint actually reads.
+
+    **What it still costs, stated rather than hidden.** This mutates a process-global
+    table. It is contained because the benchmark is a standalone CLI that serves no
+    requests, and it is not a pattern to copy into anything long-lived.
 
     Returns the cap actually in force, so the caller can record it beside the numbers
     it produces: a recorded duration is uninterpretable without the cap that bounded it.
     """
-    before = settings.llm_max_output_tokens
+    before = _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]
     if cap is not None:
-        settings.llm_max_output_tokens = cap
-    after = settings.llm_max_output_tokens
-    print(f"num_predict: before={before} after={after} (override={'none' if cap is None else cap})")
+        _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD] = cap
+    after = _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]
+    print(
+        f"num_predict[{_BENCH_WORKLOAD}]: before={before} after={after} "
+        f"(override={'none' if cap is None else cap})"
+    )
     return after
 
 
 async def _main(args: argparse.Namespace) -> None:
     gold = load_gold() if args.gold is None else load_gold(args.gold)
     applied_cap = _apply_num_predict(args.num_predict)
-    inner = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
+    inner = OllamaClient(
+        # S Structure -- intake extraction (PLAN-0119 §3, row for intake.py:182).
+        workload=_BENCH_WORKLOAD,
+        base_url=args.ollama_host,
+        model=args.model,
+        timeout=args.timeout,
+    )
     client = RecordingChatClient(inner, think_override=args.think)
     print(f"think: {args.think or 'not requested (intake ships no think)'}  cap={applied_cap}")
     n_scored = len(scored_cases(gold))
@@ -515,9 +541,9 @@ def _parse_args() -> argparse.Namespace:
         type=int,
         default=None,
         help=(
-            "Override the server-side generation cap for this run. Default: leave "
-            "settings.llm_max_output_tokens (1024) alone. See _apply_num_predict for "
-            "why this is a settings override and not an argument."
+            "Override the server-side generation cap for this run. Default: leave the "
+            "workload class's own budget (1024) alone. See _apply_num_predict for why "
+            "this overrides the seam's budget table rather than a setting."
         ),
     )
     parser.add_argument(
