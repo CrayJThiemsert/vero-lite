@@ -49,6 +49,40 @@ and silently corrupt the submitted markdown body (Lesson #11).
 *Why:* a chained command denied as a whole creates rework; auto-mode's classifier
 guards direct push to the default branch unconditionally (Lesson #10).
 
+## The head branch must be UP TO DATE with `main` before it can merge
+
+Measured on this repo (s285, `gh api …/branches/main/protection`):
+`strict: true`, `contexts: ["gate"]`, `enforce_admins: **true**`. So a PR whose branch
+is behind `main` **cannot merge** — and being an admin does not exempt you.
+
+Both of GitHub's own escapes are **off** here (`allow_auto_merge: false`,
+`allow_update_branch: false`), so there is no button to press. The route is:
+
+```bash
+gh api --method PUT repos/CrayJThiemsert/vero-lite/pulls/<N>/update-branch
+```
+
+then wait for the gate on the **new** head and merge. If the shared region truly
+conflicts, `update-branch` fails and needs a manual merge.
+
+⚠️ **`gh pr update-branch` does not exist in this `gh` (2.45.0) and fails silently:**
+`gh pr update-branch --help` **exits 0** and prints the generic `gh pr` help, which
+mentions `update-branch` zero times. A wrapper script that trusts that exit code will
+report success having done nothing. Use the `gh api` form above.
+
+*Cost of getting this wrong:* one full CI round — **9–13 minutes** measured on this repo
+(11m51s / 13m5s / 11m31s, s285), not the "~3 min" an older note estimated. Cheaper still
+is to check before the first push:
+
+```bash
+git merge-base --is-ancestor origin/main HEAD && echo UP_TO_DATE || echo BEHIND_MERGE_MAIN_FIRST
+```
+
+*Why this lives here:* it used to live only in the `fan-out-dispatch` skill, which loads
+when you are splitting work across agents — not when you are merging a PR. Three sessions
+lost a CI round to it. `CLAUDE.md` §4: name the rule's consumer, then check the home is in
+that consumer's input.
+
 ## Verify a merge by content, not by ancestry
 
 A `git merge` can report success and still hand you a tree that **dropped the
