@@ -16,7 +16,6 @@ import pytest
 
 from services.api.config import settings
 from services.engine.llm.client import ChatResult
-from services.engine.llm.structured import StructuredOutputError
 from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.orchestrator import ProcedureError, RunContext
 from services.engine.procedures.spec import Agent, AgentAllowed, Autonomy, Step, StepKind
@@ -272,10 +271,17 @@ async def test_retry_budget_comes_from_settings_on_the_governed_path(
     client = _CountingChatClient()
     executor = ActionStepExecutor(client_factory=lambda _m: client)
 
-    with pytest.raises(StructuredOutputError):
-        await executor.execute(
-            _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
-        )
+    # ⚠️ Reconciled at s287 (`superseded by new info`, CLAUDE.md §6). This test used
+    # to wrap the call in ``pytest.raises(StructuredOutputError)`` — not as its claim,
+    # but as the way ``execute`` terminated. PLAN-0119 AC-6 makes the executor DEGRADE
+    # on that error with a disclosed stand-in instead of letting it escape, so the
+    # wrapper now describes a path that no longer exists. The budget assertions below
+    # are unchanged and are what this test has always been about; the exception was
+    # only ever the instrument. ``test_action_step_llm_degrade.py`` owns the new
+    # behaviour.
+    await executor.execute(
+        _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
+    )
 
     assert client.structuring_attempts == 2  # the setting, not the old hardcoded 3
     assert len(client.calls) == 3  # 1 reasoning (outside the loop) + 2 structuring
@@ -290,10 +296,17 @@ async def test_explicit_retry_budget_still_wins_over_settings(
     client = _CountingChatClient()
     executor = ActionStepExecutor(client_factory=lambda _m: client, retry_budget=1)
 
-    with pytest.raises(StructuredOutputError):
-        await executor.execute(
-            _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
-        )
+    # ⚠️ Reconciled at s287 (`superseded by new info`, CLAUDE.md §6). This test used
+    # to wrap the call in ``pytest.raises(StructuredOutputError)`` — not as its claim,
+    # but as the way ``execute`` terminated. PLAN-0119 AC-6 makes the executor DEGRADE
+    # on that error with a disclosed stand-in instead of letting it escape, so the
+    # wrapper now describes a path that no longer exists. The budget assertions below
+    # are unchanged and are what this test has always been about; the exception was
+    # only ever the instrument. ``test_action_step_llm_degrade.py`` owns the new
+    # behaviour.
+    await executor.execute(
+        _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
+    )
 
     assert client.structuring_attempts == 1
     assert len(client.calls) == 2

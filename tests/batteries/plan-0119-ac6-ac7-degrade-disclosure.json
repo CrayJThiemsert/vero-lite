@@ -1,0 +1,159 @@
+{
+  "claim_sources": [
+    "tests/services/engine/procedures/test_action_step_llm_degrade.py",
+    "tests/services/engine/test_scaffold_truncation_disclosure.py"
+  ],
+  "probes": [
+    {
+      "name": "D0-comment-only-GREEN-control",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "\"\"\"Truncation cap for a degrade disclosure, matching ``recommender._DISCLOSURE_CAP``.\"\"\"",
+      "new": "\"\"\"Truncation cap for a degrade disclosure (control mutation), matching ``recommender._DISCLOSURE_CAP``.\"\"\"",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_a_dead_arm_yields_an_action_instead_of_escaping_the_step",
+      "expect": "GREEN",
+      "expect_claim": "test_a_dead_arm_yields_an_action_instead_of_escaping_the_step|len(outcome.output) == 1|#0",
+      "note": "🟢 The battery's own control. Editing a docstring must change nothing, so a RED here would mean every reading below is measuring something other than the mutation it names."
+    },
+    {
+      "name": "D1-degraded-actions-are-skipped-instead-of-recorded",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "            record = ActionRecord(action=action)",
+      "new": "            if degraded:\n                continue\n            record = ActionRecord(action=action)",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_a_dead_arm_yields_an_action_instead_of_escaping_the_step",
+      "expect_claim": "test_a_dead_arm_yields_an_action_instead_of_escaping_the_step|len(outcome.output) == 1|#0",
+      "note": "🔴 AC-6's core claim, probed by DROPPING the degraded action rather than by removing the guard. Removing the guard lets the OllamaError escape, which is a non-assertion exception the driver classifies CRASHED and credits nothing -- the trap that cost the AC-4 battery a probe. 'Skip the degraded ones' is also the realistic defect: it looks like tidiness and silently returns a run to the pre-AC-6 world, where a failed arm leaves nothing for a reviewer."
+    },
+    {
+      "name": "D2-the-disclosure-is-filed-under-another-mode",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "                    \"recommendation_mode\": \"llm-degrade-stand-in\",",
+      "new": "                    \"recommendation_mode\": \"rule-fail-safe\",",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_an_unparseable_arm_degrades_the_same_way",
+      "expect_claim": "test_an_unparseable_arm_degrades_the_same_way|len(_disclosures(_action(outcome))) == 1|#0",
+      "note": "🔴 The mode string is what any consumer filters on. Reusing the recommender's mode would make a degrade indistinguishable from an honest deterministic recommendation -- the PLAN-0093 defect, re-made one layer down. Reached through the SECOND failure AC-6 names (an exhausted retry loop), so this probe also proves that path degrades at all."
+    },
+    {
+      "name": "D3-the-disclosure-does-not-name-the-failure",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "                    \"llm_status\": type(exc).__name__,",
+      "new": "                    \"llm_status\": \"unknown\",",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_the_degraded_action_discloses_that_no_model_judgment_stands_behind_it",
+      "expect_claim": "test_the_degraded_action_discloses_that_no_model_judgment_stands_behind_it|disclosure[\"detail\"][\"llm_status\"] == \"OllamaError\"|#0",
+      "note": "🔴 'Something failed' and 'the host was unreachable' lead to different actions. A disclosure that cannot tell them apart discloses the fact and withholds the diagnosis."
+    },
+    {
+      "name": "D4-the-degraded-action-carries-no-trace-at-all",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "        reasoning_trace=[",
+      "new": "        reasoning_trace=[] if True else [",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_the_degraded_trace_carries_no_model_asserted_narrative",
+      "expect_claim": "test_the_degraded_trace_carries_no_model_asserted_narrative|trace|#0",
+      "note": "🟢 A POSITIVE CONTROL wearing a mutation. The assertion it protects is NEGATIVE -- 'no llm_inference step' -- which an EMPTY trace satisfies perfectly. Without this probe, a degrade that produced no trace whatsoever would read as correct."
+    },
+    {
+      "name": "D5-a-stand-in-is-dressed-as-model-reasoning",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "                kind=\"rule_check\",",
+      "new": "                kind=\"llm_inference\",",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_the_degraded_trace_carries_no_model_asserted_narrative",
+      "expect_claim": "test_the_degraded_trace_carries_no_model_asserted_narrative|\"llm_inference\" not in kinds|#0",
+      "note": "🔴 THE dishonesty this fix must not commit. ``llm_inference`` means MODEL-ASSERTED (ADR-010 D3); a harness-authored stand-in wearing that kind tells a reviewer a model reasoned about their event when none did. D4's claim stays GREEN under this mutation -- the trace is still non-empty -- so the attribution is exact."
+    },
+    {
+      "name": "D6-a-degraded-action-asserts-confidence",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "        confidence=0.0,",
+      "new": "        confidence=0.5,",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_the_degraded_action_asserts_no_confidence",
+      "expect_claim": "test_the_degraded_action_asserts_no_confidence|_action(outcome)[\"confidence\"] == 0.0|#0",
+      "note": "🔴 Advisory or not (ADR-010 IN-3), a number a human reads next to an action they are approving. 0.5 on an action no model produced is a fabricated middle."
+    },
+    {
+      "name": "D7-the-declared-handler-is-lost-in-the-degrade",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "        affected_entities=[_loop_entity_ref(event)],\n        suggested_handler=handler,\n        handler_payload={},",
+      "new": "        affected_entities=[_loop_entity_ref(event)],\n        suggested_handler=\"unknown\",\n        handler_payload={},",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_the_declared_handler_and_entity_survive_the_degrade",
+      "expect_claim": "test_the_declared_handler_and_entity_survive_the_degrade|carried == (_HANDLER, [\"e1\"])|#0",
+      "note": "🔴 The handler is the PROCEDURE AUTHOR's declaration, not the model's guess, so it survives a failed arm by right. Losing it reduces the degraded action to the bare error trace AC-6 exists to replace. Anchored across three lines because ``suggested_handler=handler,`` alone also appears in the healthy composer."
+    },
+    {
+      "name": "D8-a-degraded-action-is-auto-executed",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "            if auto and not degraded:",
+      "new": "            if auto:",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_a_degraded_action_is_never_auto_executed",
+      "expect_claim": "test_a_degraded_action_is_never_auto_executed|_executed == []|#0",
+      "note": "🔴🔴 THE SAFETY PROBE OF THIS PR. Before AC-6 the exception failed the step, so no run has ever auto-executed a handler on a failed LLM arm. This mutation is the fix ACCIDENTALLY BUYING execution rights the old behaviour did not grant -- improving the record while weakening the posture, which would be worse than the defect. The assertion watches the handler SPY rather than a status field, because a status can read correctly after the side effect already happened."
+    },
+    {
+      "name": "D9-a-receipt-is-fabricated-for-an-unexecuted-action",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "                output.append(_entry(record, None))",
+      "new": "                output.append(_entry(record, {\"ok\": False}))",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_a_degraded_action_is_never_auto_executed",
+      "expect_claim": "test_a_degraded_action_is_never_auto_executed|outcome.output[0][\"receipt\"] is None|#0",
+      "note": "🔴 The second assertion of D8's test, and it needs its own mutation: D8's would redden the earlier one and pytest would never reach this. A receipt on an action nothing executed is a record of work that did not happen -- and under this mutation the handler spy stays EMPTY, so D8's claim is green and the attribution is exact."
+    },
+    {
+      "name": "D10-the-executor-stops-executing-anything",
+      "subject": "services/engine/procedures/action_step.py",
+      "old": "            if auto and not degraded:",
+      "new": "            if False:",
+      "node_id": "tests/services/engine/procedures/test_action_step_llm_degrade.py::test_a_healthy_arm_under_auto_still_executes",
+      "expect_claim": "test_a_healthy_arm_under_auto_still_executes|_executed|#0",
+      "note": "🟢 THE POSITIVE CONTROL for D8. 'The handler did not run' is satisfied perfectly by an executor that runs nothing at all, so D8's RED means nothing without this GREEN path being able to fail. Same anchor as D8, opposite direction -- which is exactly why both are needed."
+    },
+    {
+      "name": "D11-a-cut-draft-does-not-say-it-was-cut",
+      "subject": "services/engine/scaffold.py",
+      "old": "        f\"done_reason={metrics.done_reason!r}\",",
+      "new": "        \"done_reason=<omitted>\",",
+      "node_id": "tests/services/engine/test_scaffold_truncation_disclosure.py::test_a_truncated_draft_records_done_reason_length",
+      "expect_claim": "test_a_truncated_draft_records_done_reason_length|\"done_reason='length'\" in text|#0",
+      "note": "🔴 AC-7, and the whole of D-2: without the server's own reason, a cap truncation and a broken model produce the identical log line, and the two most different diagnoses available become indistinguishable on disk."
+    },
+    {
+      "name": "D12-the-count-that-makes-a-cut-legible-is-dropped",
+      "subject": "services/engine/scaffold.py",
+      "old": "        f\"eval_count={metrics.eval_count}\",",
+      "new": "        \"eval_count=?\",",
+      "node_id": "tests/services/engine/test_scaffold_truncation_disclosure.py::test_the_disclosure_carries_the_count_that_makes_a_cut_legible",
+      "expect_claim": "test_the_disclosure_carries_the_count_that_makes_a_cut_legible|not missing|#0",
+      "note": "🔴 ``eval_count`` equal to the configured ``num_predict`` is the signature PLAN-0118 measured on all 45 empty attempts. D11's claim stays GREEN here -- the reason is still reported -- so this witnesses the count claim alone."
+    },
+    {
+      "name": "D13-the-reported-reason-is-a-constant",
+      "subject": "services/engine/scaffold.py",
+      "old": "        f\"done_reason={metrics.done_reason!r}\",",
+      "new": "        \"done_reason='length'\",",
+      "node_id": "tests/services/engine/test_scaffold_truncation_disclosure.py::test_a_finished_but_unparseable_draft_is_not_reported_as_truncated",
+      "expect_claim": "test_a_finished_but_unparseable_draft_is_not_reported_as_truncated|\"done_reason='stop'\" in text|#0",
+      "note": "🔴🔴 THE probe that makes AC-7 mean something. A disclosure hard-coded to 'length' satisfies AC-7's named witness PERFECTLY while telling an operator the same thing about every failure -- which is D-2 wearing a new sentence. Only driving the OTHER case through the same path can tell a measurement from a constant."
+    },
+    {
+      "name": "D14-a-finished-draft-is-also-labelled-truncated",
+      "subject": "services/engine/scaffold.py",
+      "old": "    return \" [\" + \" \".join(parts) + \"]\"",
+      "new": "    return \" [\" + \" \".join(parts) + \" done_reason='length']\"",
+      "node_id": "tests/services/engine/test_scaffold_truncation_disclosure.py::test_a_finished_but_unparseable_draft_is_not_reported_as_truncated",
+      "expect_claim": "test_a_finished_but_unparseable_draft_is_not_reported_as_truncated|\"done_reason='length'\" not in text|#0",
+      "note": "🔴 The subtler half of D13: the true reason IS reported, and a spurious 'length' is appended alongside it. D13's claim stays GREEN -- 'stop' is still present -- so this witnesses the exclusion claim on its own, which a mutation reddening both could not."
+    },
+    {
+      "name": "D15-the-fallback-stops-announcing-itself",
+      "subject": "services/engine/scaffold.py",
+      "old": "        logger.warning(\"LLM synthetic draft unusable; using the deterministic draft: %s\", exc)",
+      "new": "        logger.warning(\"LLM synthetic draft failed: %s\", exc)",
+      "node_id": "tests/services/engine/test_scaffold_truncation_disclosure.py::test_a_double_without_a_full_envelope_still_falls_back",
+      "expect_claim": "test_a_double_without_a_full_envelope_still_falls_back|\"unusable\" in caplog.text|#0",
+      "note": "🔴 The never-raise contract's own witness. This path exists so enrichment never breaks scaffolding; a disclosure helper that swallowed the announcement would leave the fallback silent, which is worse than the bare sentence it set out to improve."
+    }
+  ],
+  "exemptions": {
+    "_action|len(outcome.output) == 1|#0": "🟡 A PRECONDITION of the accessor, not a claim: it records that the step produced exactly one action before any field of it is read. The same claim IS witnessed as a first-class assertion by D1, on its own test. Falsifying it here would redden every test in the module at once, so it cannot be witnessed alone.",
+    "_action|isinstance(action, dict)|#0": "🟡 A type narrowing for mypy on a value that came out of a JSON round-trip, not a behavioural claim. No mutation of the subject can make the serialised action stop being a dict without first breaking the composition that D1-D7 already cover.",
+    "_run|result is None|#0": "🟡 A PRECONDITION shared by all four AC-7 tests: an unusable draft must still fall back rather than raise. A mutation making it false reddens the whole module at once. The property it guards -- the never-raise contract -- is witnessed as a first-class claim by D15, which asserts the fallback ANNOUNCES itself.",
+    "test_a_healthy_arm_under_auto_still_executes|_disclosures(_action(outcome)) == []|#0": "🟡 No single-line mutation of the subject can make a HEALTHY action carry a degrade disclosure: the disclosure step is constructed only inside ``_compose_degraded_action``, which the healthy path never calls, so producing one would require ADDING code rather than changing a line. The property is protected by construction, and its positive half -- that a DEGRADED action does carry exactly one -- is witnessed by D2."
+  }
+}
