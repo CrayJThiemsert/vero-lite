@@ -55,15 +55,33 @@ Measured on this repo (s285, `gh api …/branches/main/protection`):
 `strict: true`, `contexts: ["gate"]`, `enforce_admins: **true**`. So a PR whose branch
 is behind `main` **cannot merge** — and being an admin does not exempt you.
 
-Both of GitHub's own escapes are **off** here (`allow_auto_merge: false`,
-`allow_update_branch: false`), so there is no button to press. The route is:
+✎ **Corrected s285, hours after the paragraph above first landed** — `superseded by new
+info`, not an error: both of GitHub's escapes *were* off, and on Cray's typed go they were
+switched **on** the same session (`allow_auto_merge: true`, `allow_update_branch: true`,
+re-read fresh after the PATCH). What follows is the post-change route; the pre-change text
+is not preserved because it describes settings that no longer exist.
+
+**Bring a stale branch up to date** — the "Update branch" button now exists, and the CLI
+equivalent is:
 
 ```bash
 gh api --method PUT repos/CrayJThiemsert/vero-lite/pulls/<N>/update-branch
 ```
 
-then wait for the gate on the **new** head and merge. If the shared region truly
-conflicts, `update-branch` fails and needs a manual merge.
+then wait for the gate on the **new** head. If the shared region truly conflicts,
+`update-branch` fails and needs a manual merge.
+
+**Avoid the round trip entirely** — with auto-merge enabled you no longer have to come back
+after CI:
+
+```bash
+gh pr merge <N> --auto --merge
+```
+
+queues the merge for when the required checks pass. Two things it does **not** change:
+`strict: true` still applies, so a branch that falls behind while queued stalls until it is
+updated; and `--auto` is still a merge — under this repo's convention Cray decides when a PR
+lands, so do not set it unless told.
 
 ⚠️ **`gh pr update-branch` does not exist in this `gh` (2.45.0) and fails silently:**
 `gh pr update-branch --help` **exits 0** and prints the generic `gh pr` help, which
