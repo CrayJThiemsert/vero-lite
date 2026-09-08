@@ -78,10 +78,17 @@ after CI:
 gh pr merge <N> --auto --merge
 ```
 
-queues the merge for when the required checks pass. Two things it does **not** change:
-`strict: true` still applies, so a branch that falls behind while queued stalls until it is
-updated; and `--auto` is still a merge — under this repo's convention Cray decides when a PR
-lands, so do not set it unless told.
+queues the merge for when the required checks pass, which is what removes the come-back-
+after-CI round trip.
+
+**Who may carry `--auto` (Cray, typed, s285; the binding form is `CLAUDE.md` §7):**
+`docs/*` and `chore/*` PRs may — routine work lands itself. `feat/*` and `fix/*` **wait for
+Cray**, because `--auto` is still a merge and Cray decides when code lands. Report green
+either way.
+
+⚠️ `strict: true` is unchanged by any of this: a queued branch that falls behind `main`
+stalls until someone updates it. Auto-merge removes the waiting, not the requirement — so
+the `merge-base --is-ancestor` preflight below still earns its keep.
 
 ⚠️ **`gh pr update-branch` does not exist in this `gh` (2.45.0) and fails silently:**
 `gh pr update-branch --help` **exits 0** and prints the generic `gh pr` help, which
