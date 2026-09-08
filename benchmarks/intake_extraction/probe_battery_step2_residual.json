@@ -1,5 +1,7 @@
 {
-  "claim_sources": ["tests/benchmark/test_intake_instrument_residual_terms.py"],
+  "claim_sources": [
+    "tests/benchmark/test_intake_instrument_residual_terms.py"
+  ],
   "probes": [
     {
       "name": "R1-load-duration-not-captured",
@@ -142,17 +144,17 @@
       "old": "    if cap is not None:",
       "new": "    if True:",
       "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_num_predict_override_moves_what_the_chokepoint_actually_reads",
-      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(unchanged, settings.llm_max_output_tokens) == (1024, 1024)|#0",
-      "note": "🔴 The default path matters most and is easiest to get wrong: a run WITHOUT `--num-predict` must leave the shipped cap alone, or every baseline silently measures a different cap than production and the PLAN-0118 comparison that Step 10 rests on is void. Under this mutation the None case writes None over the cap, so the guard reddens before any override case is reached."
+      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(unchanged, _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]) == ( 1024, 1024, )|#0",
+      "note": "🔴 The default path matters most and is easiest to get wrong: a run WITHOUT `--num-predict` must leave the shipped cap alone, or every baseline silently measures a different cap than production and the PLAN-0118 comparison that Step 10 rests on is void. Under this mutation the None case writes None over the cap, so the guard reddens before any override case is reached. [Claim key re-pointed at s287: the assertion this probe addresses drifted (AC-1 by a ruff-format reflow; AC-2 when Step 3 part 1 moved the chokepoint off settings.llm_max_output_tokens). The CLAIM is unchanged -- only the text a stable_key is built from. Found by re-running the battery before ticking the AC, not by any guard: check_ac_consistency reported clean throughout, because it does not run batteries.]"
     },
     {
       "name": "R17-num-predict-override-does-nothing",
       "subject": "benchmarks/intake_extraction/run_benchmark.py",
-      "old": "        settings.llm_max_output_tokens = cap",
-      "new": "        pass",
+      "old": "        _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD] = cap",
+      "new": "        pass  # override made inert",
       "node_id": "tests/benchmark/test_intake_instrument_residual_terms.py::test_num_predict_override_moves_what_the_chokepoint_actually_reads",
-      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(applied, settings.llm_max_output_tokens) == ( 4096, 4096, )|#0",
-      "note": "🔴 The other inert-flag failure, and the reason the assertion reads `settings.llm_max_output_tokens` itself rather than a literal 4096: that attribute IS what `OllamaClient.chat` consults at the chokepoint (client.py:335), so a test against a constant would keep passing if the client were later repointed at a different setting. The default-path assertion stays GREEN under this mutation and runs first, so the reddening names the override specifically."
+      "expect_claim": "test_num_predict_override_moves_what_the_chokepoint_actually_reads|(applied, _WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]) == ( 4096, 4096, )|#0",
+      "note": "🔴 The other inert-flag failure: a `--num-predict` that is accepted, printed, and then never reaches the cap the chokepoint reads. R16's default-path assertion stays GREEN under this mutation and runs first, so the reddening names the override specifically. ⚠️ Re-anchored at s287. Both this probe's `old` text AND its claim key pointed at `settings.llm_max_output_tokens`, which PLAN-0119 Step 3 part 1 (#1433) replaced with `_WORKLOAD_NUM_PREDICT[_BENCH_WORKLOAD]`; the TEST was updated with the code and the battery was not, so this probe had been a silent MUTATION-ERROR since #1433. Nothing caught it: batteries do not run in CI, and `check_ac_consistency` reported clean throughout. Found only by re-running every battery before ticking the AC."
     }
   ],
   "exemptions": {
