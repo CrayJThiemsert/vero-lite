@@ -44,7 +44,7 @@ session start, an ADR is the one artifact class that makes a strategic frame
 first-class and session-visible. ADR-005 (the vet→OCT pivot) is the standing
 precedent that strategy of this magnitude is ADR material.
 
-### Where vero-lite stands (grounded 2026-07-16; re-grounded 2026-07-22, 2026-08-03)
+### Where vero-lite stands (grounded 2026-07-16; re-grounded 2026-07-22, 2026-08-03, 2026-09-09)
 
 _[Re-grounded 2026-07-22 (session 160): this subsection is a STATE snapshot,
 not a decision record — it is corrected in place when the world moves; the
@@ -62,6 +62,14 @@ ruling (Cray, typed) that D2's pilot gate is SATISFIED — the fleet design
 partner's Phase-1 flow is a real pilot. Same charter as the 2026-07-22 note:
 state only — the D1–D6 decisions, the pilot gate, the positioning frame, and
 the fit filter are untouched by this pass.]_
+
+_[Re-grounded 2026-09-09 (session 288): this pass supersedes the 2026-08-03
+snapshot, which pre-dated the published multi-vertical demo portal — three
+live per-system published profiles (PLAN-0103) and fleet's own in-app
+case-persistence disclosure (PLAN-0106) — and the local model-serving
+policy (PLAN-0119) with its harness-side companion track (PLAN-0122). Same
+charter: state only — the D1–D6 decisions, the pilot gate, the positioning
+frame, and the fit filter are untouched by this pass.]_
 
 - **Shape 1 is shipped — and the estate is no longer purely synthetic.**
   The governed `monitor→decide→approve→act` engine runs across **six**
@@ -121,6 +129,40 @@ the fit filter are untouched by this pass.]_
   is now **borne out**, not predicted: the fleet pilot reached D2's gate
   on CSV export + human confirm, with no canonicalization layer built
   (PLAN-0096's Lean KPI-first shape).
+- **The demo estate is published — three live systems.** `deploy/published/`
+  holds exactly three per-system published profiles — `oct-energy`,
+  `oct-procurement`, `oct-fleet-maintenance` — all three brought up under
+  PLAN-0103 (the multi-vertical demo portal, vero-lite's side; Complete
+  2026-08-16, session 234, all 11 ACs closed). Fleet was published as
+  system #3 under Cray's own typed CLAUDE.md §8 go; execution record
+  `docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. The two gates
+  its bring-up was blocked on are both discharged: AC-11's RoPA
+  (`docs/compliance/ropa-fleet-cases.md`, adopted 2026-08-15) and AC-10's
+  MS-S1 headroom (measured s221; the three-system reading came in at
+  ≈1.33 GiB against Step 9's ≈0.95 GiB projection — the method modelled
+  containers at boot and under-models steady state by roughly 3–6× per app
+  container, recorded as such in PLAN-0103 AC-10; at 4.3% of available
+  memory it changes no decision). Fleet's own in-app case-persistence
+  disclosure, discharging ADR-0037 D2.4, shipped under PLAN-0106 (Complete
+  2026-08-16, s234, all 7 ACs closed;
+  `services/api/static/assets/app.js:175-200` beside the D6 notice, and
+  `view-case.js:473` at the point of capture).
+- **Local-model serving policy:** PLAN-0119 (the five-class local-model
+  serving policy) is **Accepted** (Cray, typed, 2026-09-08, s286); Steps
+  1–4 are complete and 9 of 11 ACs are ticked (s287). What shipped: a
+  per-call `Workload` class declared at client construction, call-shape
+  derivation at the client chokepoint, a per-model capacity clamp and
+  `num_ctx` (new module `services/engine/llm/capacity.py`), and
+  `action_step` now degrades *disclosed* on an LLM-arm failure — one
+  governed action carrying the failure on its trace, never auto-executed —
+  where it previously failed the step outright. AC-9 and AC-10 stay
+  unticked by design: no live arm has run, and what remains is live arms,
+  each needing its own §8 go, plus one offline remainder (Step 9). The
+  harness's own Stop-hook classifier arm against the same box is a
+  separate track, not the product's inference path — PLAN-0122 (Accepted,
+  Cray, typed, 2026-09-06, s280; AC ledger 10 of 12: its held-out
+  validation, AC-7, failed and the live arm was reverted to the prior FULL
+  prompt; AC-12, the live-traffic ledger, is unticked).
 
 ### Public-repo boundary
 
