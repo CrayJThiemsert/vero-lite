@@ -352,3 +352,84 @@ of this file after the append.
 > to read. **Cray's call:** extend the window, change the spec, or stop the clock.
 
 🔴 **THIS (s284) reconcile rotates the session-280 block** (caller-measured **3,691 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **63,219 B**, only **2,317 B** under R1's 65,536 B, so a fourth block was unaffordable. The window lands at **THREE** again (281, 282, 283-284) — deliberate; no block was lost. Destination `2026-h1e-current-focus.md` (**11,612 B**; R4's split trigger is 196,608 B). 🔴 **This ledger's own s280 entry travels with the block and was probed NOT YET ARCHIVED** — controlled instrument (positive control found a known entry = 1, fabricated needle = 0) — so it is a **genuine first append**, breaking the run of three reconciles that found theirs already archived. ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
+
+### Rotated at the s288 reconcile — the session-285 AND session-286 Current-Focus blocks [on the R2 headroom rule, not a cap overage: **2,810 B** and **2,397 B** as carved, both well under the 4,096 B per-block cap. 🔴 **TWO blocks moved, not one, and the window lands at TWO (287, 288) — a first, forced by bytes alone.** The scribe was told not to rotate, so this prune is the caller's entirely. Rotating only s285 would have closed STATUS at **~64,990 B**, roughly **546 B** under R1's 65,536 B ceiling — and the s287 reconcile's own ledger note warned that shipping that thin “would have left the next session unable to add anything at all”. s288 also adds two PERMANENT Active-TODO rows (the Step-4b `/tmp` rehome and the G2-gated goal-template PLAN) whose only tracked home is STATUS, so the bytes had to come from the Current-Focus window. 🔴 **Both blocks' own Current-Focus rotation-ledger entries travel with them** (s285 **746 B**, s286 **1,149 B**), probed SEPARATELY and found ABSENT from this archive against a positive control that found known archived content (`Session 283–284` = 1) — genuine first appends. ⚠️ **The s286 entry measured 1,149 B, OVER the ~900 B per-entry cap Cray set at s267** — rotating it clears a live cap breach as well as bytes; the breach is recorded here rather than silently carried. ⚠️ **One instrument error caught before it mattered:** a post-write assertion counting `**THIS (s285)` across the whole file read **1** and looked like a failed removal — the *Recent-Decisions* ledger legitimately keeps its own s285 entry and only the *Current-Focus* ledger loses it. The assertion was WRONG-SCOPED, not the slice; it was re-scoped to each ledger line, and it was visible only because the check prints the values it measured rather than a bare PASS/FAIL. All four slices carved from `git show HEAD:docs/STATUS.md`, not from the scribe's return. This archive's own size is measured by the caller after the append and deliberately NOT written here: a self-referential byte figure changes the file it describes.]
+
+> **Session 286, 2026-09-08 (`0cef7ed` → `0bcc2ae`) — SIX PRs
+> ([#1429](https://github.com/CrayJThiemsert/vero-lite/pull/1429)–[#1434](https://github.com/CrayJThiemsert/vero-lite/pull/1434)),
+> all merged, 0 open, tree clean. **PLAN-0119 ratified `Accepted` (Cray,
+> typed); Steps 1–2 complete, Step 3 part 1 landed — and the PLAN's own §3
+> inventory was corrected `was an error` mid-session.**
+>
+> ✅ **Steps 1–2 (#1429, #1430).** The five-class workload taxonomy (G/S/J/N/A),
+> a call-site inventory and a 9-question checklist now live in
+> `docs/conventions/llm-workload-taxonomy.md`; its guard enumerates `.chat(`
+> from the **tree** by AST walk, treating the artifact as the claim. The intake
+> benchmark recorder keeps `load_duration_ns`, `prompt_eval_duration_ns` and
+> the raw `thinking` string — what makes **OQ-1** answerable — plus
+> `--num-predict` / `--think`.
+>
+> 🔴 **#1432 corrected §3's call-site inventory, `was an error`** (by the
+> in-harness `plan-drafter`): it claimed 14 grep-verified `.chat(` sites and an
+> AST re-measurement also found 14 — **but not the same 14**, listing
+> `action_step.py` (**zero** `.chat(`) and omitting `gate_advisory.py:160`
+> (one). ⚠️ **SD-A is Cray's:** §3 now runs to 15 rows under a heading saying 14.
+>
+> ✅ **Step 3 part 1 (#1433) — the per-workload budget seam.** `Workload` is
+> declared **at construction with no default**, the chokepoint derives
+> `num_predict` from it, 8 sites migrated. ✅ **Cray ruled, typed,** a case the
+> PLAN never anticipated: two sites that **never generate** were split into a
+> second client type (`OllamaAdminClient` / `OllamaClient`) rather than a sixth
+> class. ✅ **#1434** rehomed the findings — two instrument-failure shapes to
+> Lesson #0056, a vacuity shape to #0058, a failing battery to Active TODOs.
+>
+> ✅ **Evidence:** three batteries — **36 claims, 32 RED, 4 exempted in writing,
+> GAPS 0 on all three**; suite 4958 → **4974 passed, 8 skipped**, each delta
+> exactly the tests its PR added; Step 3's pre-committed read `pre=8` →
+> `post: missing=0, declared=6, admin_split=2`. **MS-S1 was never contacted.**
+> 🔴 **AC-1/2/3/8/11 have evidence and NOT ONE is ticked** — a tick is a
+> closure claim, so Cray's. 🔴 **Step 3 part 2 is HALF-BLOCKED:** AC-4/AC-5 need
+> `load`/`prefill`/`num_ctx` numbers only Step 4b's LIVE §8-gated run can supply.
+
+> **Session 285, 2026-09-07..08 (`006ffd0` → `0cef7ed`) — TWO PRs
+> ([#1424](https://github.com/CrayJThiemsert/vero-lite/pull/1424),
+> [#1425](https://github.com/CrayJThiemsert/vero-lite/pull/1425)), both merged, 0
+> open, tree clean. **PLAN-0120 is 11 of 11 and ARCHIVED** — but two of the ACs it
+> closed had to be reconciled to the code first, and Step 7 carried a §8 claim
+> that was false when written and nearly fired.**
+>
+> ✅ **AC-9 closed through the REAL seam** — `tests/tools/test_probe_battery_guard.py`
+> plus an eighth battery (`plan-0120-ac9-battery-child.json`): a real parent holds
+> a real advisory lock on real Postgres, `_make_pytest_runner` spawns a real child
+> on a DB-backed node → `outcome=ABORTED credited=False`, control
+> `outcome=WITNESSED`; battery **PASS · 6 claims · 3 witnessed · GAPS 0**.
+> PLAN-0121's `test_probe_battery_contention.py` does **not** cover it — that pins
+> the classifier against **synthetic** shapes and binds no database. ✅ **AC-1's
+> live WSLENV half:** `last_deterministic={"C1": "pass"}`, controlled three ways.
+>
+> 🔴 **Two AC texts were reconciled to the code, not merely ticked — both
+> `superseded by new info`.** AC-9's probes named `tests/db_guard.py`, which holds
+> **zero** `pytest.exit(` sites (control found 3 in `db_support.py:361`, so the
+> zero is real absence); its `{NO-TESTS, GREEN}` read was overtaken when PLAN-0121
+> landed `Outcome.ABORTED`. **AC-10** closed at true CI scope (seven commands, all
+> exit `0`; `4951 passed, 8 skipped`) with its stale `4801 passed` baseline
+> **corrected, not re-frozen** — that count has moved 4801 → 4948 → 4951, so the
+> criterion reconciles on `K`, the skip count (unchanged at **8**), and records `N`.
+>
+> 🔴 **SD-3 ruled `was an error` (Cray, typed) — and it NEARLY FIRED.** Step 7's
+> "(MS-S1 is not involved)" was false **when written**: `git log -S`, against a
+> control needle returning zero commits, dates `_sonnet_classifier` into
+> `stop_continuation.py` at **2026-05-24** and its MS-S1 backend at **2026-06-12**,
+> while the PLAN was drafted **2026-09-03**. Live, `run_goal_gate` returned `None`
+> — *fall through to the classifier* — so Step 7 obeyed verbatim would have hit
+> MS-S1 with no typed §8 go. **A §8 "not a host-state action" claim must name the
+> COMPONENT, never the containing hook.** **MS-S1 was NOT contacted this session.**
+> Two deviations sit on their ACs: `node.exe` over WSL interop, and `run_goal_gate`
+> driven directly rather than `stop_continuation.main`. ⚠️ Archival repathed three
+> tracked references but left `gold_s280.yaml` naming the pre-archive path on
+> purpose — rewriting a path inside a gold-set corpus would silently change what
+> FULL's held-out 29/30 was scored on. Detail: `docs/plans/done/0120-*.md`.
+
+🔴 **THIS (s286) reconcile rotates the session-282 block** (caller-measured **3,733 B** as carved, 54 lines, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **61,320 B**, only **4,216 B** under R1's 65,536 B, so a fourth block was unaffordable. The window lands at **THREE** again (283-284, 285, 286) — deliberate, the **fifth consecutive** reconcile of this shape; no block was lost. Destination `2026-h1e-current-focus.md` (**23,531 B**; R4's split trigger is 196,608 B). 🔴 **This ledger's own s282 entry travelled with the block; probed SEPARATELY from the RD ledger's s282 entry and found NOT yet archived — a genuine first append.** ✅ **Caller-measured:** STATUS **61,320 → 60,720 B**; `2026-h1e-current-focus.md` **23,531 → 28,733 B** (+5,202). 🔴 **The first probe's positive control read 0 and condemned the instrument** — it named the s285 block, which is still in STATUS's live window, not the archive; controls were re-derived FROM the archive (`Session 281` ×2, `THIS (s281)` ×1) before any zero was trusted. Present-in-archive (1) and absence-from-STATUS (0) checked SEPARATELY.
+
+🔴 **THIS (s285) reconcile rotates the session-281 block** (caller-measured **3,130 B**, under the 4,096 B cap) on the **headroom rule**, not a cap overage: STATUS opened at **62,509 B**, only **3,027 B** under R1's 65,536 B, so a fourth block would have left ~27 B. The window lands at **THREE** again (282, 283-284, 285) — deliberate; no block was lost. Destination `2026-h1e-current-focus.md` (R4's split trigger is 196,608 B). 🔴 **This ledger's own s281 entry travels with the block — probe it with a positive control and SEPARATELY from the RD ledger's s281 entry** (s281 measured that the two ledgers' entries do not share a fate). ⚠️ **No byte delta measured — no shell; the caller owes `wc -c` + append + verify-by-DELTA.**
