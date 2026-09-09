@@ -1,5 +1,7 @@
 ---
 name: goal-evaluator
+# model — adversarial judgement (refute, never bless) — same reason as plan-drafter.
+model: inherit
 description: |
   Critic subagent for the Axis-B verification loop (ADR-0018 / PLAN-0021).
   Spawned by the main Code agent when the Stop-hook goal gate dispatches:
@@ -24,7 +26,6 @@ disallowedTools:
   - Bash
   - WebFetch
   - Agent
-model: inherit
 maxTurns: 30
 hooks:
   PreToolUse:

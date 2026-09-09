@@ -1,5 +1,9 @@
 ---
 name: status-scribe
+# model — mechanical: consumes a fact-pack, writes STATUS in house style. Execution
+# work, which the s156 model-economy policy puts on Opus — and pinning stops a
+# Fable session burning quota on it.
+model: opus
 description: |
   Writer subagent for docs/STATUS.md reconciliation. Receives a self-contained
   git fact-pack for a just-merged PR (HEAD SHA, recent commit SHAs, PR number +
@@ -23,7 +27,6 @@ disallowedTools:
   - Bash
   - WebFetch
   - Agent
-model: inherit
 maxTurns: 30
 hooks:
   PreToolUse:

@@ -178,3 +178,23 @@ def test_unparseable_json_is_found_and_does_not_raise(tmp_path: Path) -> None:
     report = lint_battery_file(path, tmp_path)
     assert len(report.findings) == 1
     assert "unreadable" in report.findings[0].detail
+
+
+def test_an_invalid_expect_value_is_found_and_does_not_raise(tmp_path: Path) -> None:
+    """🔴 Found by dogfooding, and it took the whole run down.
+
+    ``Outcome`` values are UPPERCASE. A battery written with ``"expect": "witnessed"``
+    reaches ``Outcome(...)``, which raises a **bare** ``ValueError`` —
+    ``BatteryDefinitionError`` subclasses ValueError, so catching only the subclass let
+    the bare one escape. One malformed battery aborted the lint over all 22 others with
+    a traceback instead of being reported as one broken battery.
+
+    A lint that crashes on the input it exists to inspect is not a lint: the 22 healthy
+    batteries learn nothing, and the one bad battery is reported as a tool failure
+    rather than as a battery failure.
+    """
+    _tree(tmp_path)
+    report = lint_battery_file(_battery(tmp_path, probe={"expect": "witnessed"}), tmp_path)
+    assert len(report.findings) == 1
+    assert "schema" in report.findings[0].detail
+    assert "witnessed" in report.findings[0].detail

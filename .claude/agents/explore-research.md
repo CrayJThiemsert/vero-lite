@@ -1,5 +1,15 @@
 ---
 name: explore-research
+# model — RULED sonnet (Cray's criterion, typed s288: "opus if it does this better,
+# otherwise keep sonnet"). The answer is sonnet because that is where the evidence
+# is. Measured s288: three Explore agents on sonnet ground-truthed ~20 candidates
+# against the code, returned correct file:line citations, and one CORRECTED a
+# handoff's overstatement ("no test coverage at all" -> "no test pins either drop")
+# — it judged, it did not merely find. No comparison against opus was run, so there
+# is no evidence opus is better; under Cray's second clause that means sonnet stays.
+# What would change this: a real A/B over several grounding tasks, which is a
+# benchmark and should be priced as one, not a hunch.
+model: sonnet
 description: |
   Read-only codebase + web-research subagent. Use for fact-pack gathering,
   codebase archaeology ("where is X defined / what references Y"), and
@@ -16,7 +26,6 @@ disallowedTools:
   - Edit
   - Bash
   - Agent
-model: inherit
 maxTurns: 50
 ---
 

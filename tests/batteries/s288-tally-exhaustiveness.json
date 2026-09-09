@@ -1,0 +1,191 @@
+{
+  "claim_sources": [
+    "tests/tools/test_tally.py"
+  ],
+  "probes": [
+    {
+      "name": "T1-the-record-counter-stops-counting",
+      "subject": "tools/tally.py",
+      "old": "            records += 1",
+      "new": "            records += 0",
+      "node_id": "tests/tools/test_tally.py::test_a_complete_breakdown_is_exhaustive_and_counts_correctly",
+      "expect_claim": "test_a_complete_breakdown_is_exhaustive_and_counts_correctly|(result.records, result.counted, result.unparseable, result.missing_field) == ( 3, 3, 0, 0, )|#0",
+      "note": "The denominator is the whole point: `records` is what every exclusion is measured against. A denominator that undercounts makes an incomplete breakdown look exhaustive, which is the s288 failure in its purest form."
+    },
+    {
+      "name": "T2-counting-by-substring-instead-of-field",
+      "subject": "tools/tally.py",
+      "old": "            counts[str(record[field])] += 1",
+      "new": "            counts[str(record)] += 1",
+      "node_id": "tests/tools/test_tally.py::test_a_complete_breakdown_is_exhaustive_and_counts_correctly",
+      "expect_claim": "test_a_complete_breakdown_is_exhaustive_and_counts_correctly|result.counts == {\"timeout\": 2, \"ok\": 1}|#0",
+      "note": "Bucketing by the whole record rather than the field: every record becomes its own bucket, so the sum still equals the record count and only the VALUES are wrong. A sum check alone cannot see this."
+    },
+    {
+      "name": "T3-exhaustive-is-always-true",
+      "subject": "tools/tally.py",
+      "old": "        return self.counted == self.records",
+      "new": "        return True",
+      "node_id": "tests/tools/test_tally.py::test_a_record_missing_the_field_is_counted_not_skipped",
+      "expect_claim": "test_a_record_missing_the_field_is_counted_not_skipped|not result.exhaustive|#0",
+      "note": "🔴 The verdict that everything else feeds. Aimed at a case that MUST refuse, so a blanket-true reddens here rather than at the happy path, where it would be indistinguishable from correct."
+    },
+    {
+      "name": "T4-exhaustive-is-always-false",
+      "subject": "tools/tally.py",
+      "old": "        return self.counted == self.records",
+      "new": "        return False",
+      "node_id": "tests/tools/test_tally.py::test_a_complete_breakdown_is_exhaustive_and_counts_correctly",
+      "expect_claim": "test_a_complete_breakdown_is_exhaustive_and_counts_correctly|result.exhaustive|#0",
+      "note": "The OVER-REFUSAL direction of the same verdict. A tool that refuses every breakdown passes every 'does it catch X?' probe here; only a healthy case can tell strict from broken."
+    },
+    {
+      "name": "T5-a-record-with-no-such-field-is-silently-skipped",
+      "subject": "tools/tally.py",
+      "old": "                missing += 1\n                continue",
+      "new": "                continue",
+      "node_id": "tests/tools/test_tally.py::test_a_record_missing_the_field_is_counted_not_skipped",
+      "expect_claim": "test_a_record_missing_the_field_is_counted_not_skipped|(result.records, result.counted, result.missing_field) == (2, 1, 1)|#0",
+      "note": "🔴 THE defect class this tool exists for: a skipped record does not vanish loudly, it vanishes tidily. `records` still counts it, so the sum check catches it — but only because the counter is kept. Dropping the counter is how a breakdown starts lying while still adding up in the author's head."
+    },
+    {
+      "name": "T6-an-unparseable-line-is-silently-skipped",
+      "subject": "tools/tally.py",
+      "old": "                unparseable += 1\n                continue",
+      "new": "                continue",
+      "node_id": "tests/tools/test_tally.py::test_an_unparseable_line_is_counted_not_skipped",
+      "expect_claim": "test_an_unparseable_line_is_counted_not_skipped|(result.records, result.counted, result.unparseable) == (2, 1, 1)|#0",
+      "note": "The same failure from the other side — a line that never became a record. Kept as a separate probe from T5 because the two exclusions have different causes and a reader needs to know which one fired."
+    },
+    {
+      "name": "T7-unparseable-does-not-reach-the-verdict",
+      "subject": "tools/tally.py",
+      "old": "        return self.counted == self.records",
+      "new": "        return True",
+      "node_id": "tests/tools/test_tally.py::test_an_unparseable_line_is_counted_not_skipped",
+      "expect_claim": "test_an_unparseable_line_is_counted_not_skipped|not result.exhaustive|#0",
+      "note": "Same mutation as T3, aimed at the OTHER refusing case. 🔴 Its first version dropped the `unparseable == 0` conjunct and went GREEN — which is how the battery proved that conjunct could never fire, and got it deleted from the subject. A probe that cannot redden is a finding about the code, not a broken probe."
+    },
+    {
+      "name": "T9-the-substring-defect-restored",
+      "subject": "tools/tally.py",
+      "old": "            counts[str(record[field])] += 1",
+      "new": "            counts[field if field in json.dumps(record) else str(record[field])] += 1",
+      "node_id": "tests/tools/test_tally.py::test_a_value_appearing_inside_another_field_is_not_counted",
+      "expect_claim": "test_a_value_appearing_inside_another_field_is_not_counted|result.counts == {\"timeout\": 1, \"ok\": 1}|#0",
+      "note": "🔴 THE regression pin: the s288 defect, restored as code. It buckets on a SUBSTRING of the serialised record rather than on the field, which is exactly what `grep -c -i timeout` did to the classifier log — counting the word wherever it appeared, including inside a `reason` string."
+    },
+    {
+      "name": "T12-the-field-counted-case-is-refused-anyway",
+      "subject": "tools/tally.py",
+      "old": "        return self.counted == self.records",
+      "new": "        return False",
+      "node_id": "tests/tools/test_tally.py::test_a_value_appearing_inside_another_field_is_not_counted",
+      "expect_claim": "test_a_value_appearing_inside_another_field_is_not_counted|result.exhaustive|#0",
+      "note": "Same mutation as T4, aimed at a DIFFERENT claim — one probe per assertion, and this is the second place a blanket refusal has to be visible. It must be the verdict that is mutated and not the counting: any mutation that dropped records would redden the counts assertion ABOVE this one first, the run would stop there, and this claim would go uncredited. Choosing the mutation so the earlier assertion stays green is what makes the red attributable."
+    },
+    {
+      "name": "T13-the-refusal-verdict-is-not-returned",
+      "subject": "tools/tally.py",
+      "old": "    ok = tally.exhaustive",
+      "new": "    ok = True",
+      "node_id": "tests/tools/test_tally.py::test_the_report_prints_the_values_it_measured",
+      "expect_claim": "test_the_report_prints_the_values_it_measured|not ok|#0",
+      "note": "The report and the verdict travel together; a report that describes an incomplete breakdown while returning OK is worse than no report, because the prose invites trust the exit code has already withdrawn."
+    },
+    {
+      "name": "T14-the-sum-line-stops-printing-the-values",
+      "subject": "tools/tally.py",
+      "old": "        f\"  sum {tally.counted} {verdict} records {tally.records}\"",
+      "new": "        \"  sum check failed\"",
+      "node_id": "tests/tools/test_tally.py::test_the_report_prints_the_values_it_measured",
+      "expect_claim": "test_the_report_prints_the_values_it_measured|\"sum 1 != records 2\" in report|#0",
+      "note": "🔴 §8's rule made testable: a verification report prints the values it measured, never a bare verdict. 'sum check failed' is true, useless, and exactly what a reader cannot act on."
+    },
+    {
+      "name": "T15-the-exclusion-counts-stop-printing",
+      "subject": "tools/tally.py",
+      "old": "        f\"   (unparseable {tally.unparseable}, missing key {tally.missing_field})\"",
+      "new": "        \"\"",
+      "node_id": "tests/tools/test_tally.py::test_the_report_prints_the_values_it_measured",
+      "expect_claim": "test_the_report_prints_the_values_it_measured|\"missing key 1\" in report|#0",
+      "note": "Sibling of T14 for the half that says WHICH records went unaccounted for. Under this mutation the sum line still prints, so T14's claim stays green — that green is what attributes this red to the exclusion counts alone."
+    },
+    {
+      "name": "T16-a-matching-value-set-is-refused-anyway",
+      "subject": "tools/tally.py",
+      "old": "        if unexpected or absent:",
+      "new": "        if True:",
+      "node_id": "tests/tools/test_tally.py::test_an_expected_value_set_that_matches_is_accepted",
+      "expect_claim": "test_an_expected_value_set_that_matches_is_accepted|ok|#0",
+      "note": "The over-refusal direction of --expect. A falsifier that fires on a correct expectation trains its user to stop passing --expect, which removes the only mechanism that catches a value nobody enumerated."
+    },
+    {
+      "name": "T17-an-unenumerated-value-does-not-refuse",
+      "subject": "tools/tally.py",
+      "old": "        unexpected = sorted(actual - expect)",
+      "new": "        unexpected = []",
+      "node_id": "tests/tools/test_tally.py::test_a_value_the_author_did_not_enumerate_is_refused",
+      "expect_claim": "test_a_value_the_author_did_not_enumerate_is_refused|not ok|#0",
+      "note": "🔴 The s288 miss made mechanical: `retry` existed in the classifier log and appeared in no hand-written bucket. This is the direction that catches a value the author did not know about."
+    },
+    {
+      "name": "T18-the-unexpected-value-is-not-named",
+      "subject": "tools/tally.py",
+      "old": "                f\"🔴 VALUE SET DIFFERS — unexpected: {unexpected}   absent: {absent}. \"",
+      "new": "                \"🔴 VALUE SET DIFFERS. \"",
+      "node_id": "tests/tools/test_tally.py::test_a_value_the_author_did_not_enumerate_is_refused",
+      "expect_claim": "test_a_value_the_author_did_not_enumerate_is_refused|\"unexpected: ['retry']\" in report|#0",
+      "note": "A refusal that will not say WHICH value surprised it cannot be acted on. Under this mutation the refusal still fires, so T17's claim stays green."
+    },
+    {
+      "name": "T19-a-vanished-expected-value-does-not-refuse",
+      "subject": "tools/tally.py",
+      "old": "        absent = sorted(expect - actual)",
+      "new": "        absent = []",
+      "node_id": "tests/tools/test_tally.py::test_an_expected_value_that_has_vanished_is_refused",
+      "expect_claim": "test_an_expected_value_that_has_vanished_is_refused|not ok|#0",
+      "note": "The other direction of the falsifier: the population moved since the author last looked. Silently accepting it is how a re-measure of a STATUS row keeps agreeing with a world that no longer exists."
+    },
+    {
+      "name": "T20-the-absent-value-is-not-named",
+      "subject": "tools/tally.py",
+      "old": "                f\"🔴 VALUE SET DIFFERS — unexpected: {unexpected}   absent: {absent}. \"",
+      "new": "                f\"🔴 VALUE SET DIFFERS — unexpected: {unexpected}. \"",
+      "node_id": "tests/tools/test_tally.py::test_an_expected_value_that_has_vanished_is_refused",
+      "expect_claim": "test_an_expected_value_that_has_vanished_is_refused|\"absent: ['timeout']\" in report|#0",
+      "note": "The absent half of the falsifier's message. Dropping only `absent` leaves the refusal firing and `unexpected` still named, so T19's claim stays green and this red is attributable to the missing half rather than to the refusal itself. ⚠️ My first draft of this probe mutated the `expected values:` line instead — which does not carry the asserted text at all, so it would have gone GREEN and read as a coverage GAP rather than as the addressing mistake it was."
+    },
+    {
+      "name": "T21-the-cli-returns-success-for-an-incomplete-breakdown",
+      "subject": "tools/tally.py",
+      "old": "    return 0 if ok else 1",
+      "new": "    return 0",
+      "node_id": "tests/tools/test_tally.py::test_the_cli_exits_non_zero_on_a_breakdown_that_cannot_be_quoted",
+      "expect_claim": "test_the_cli_exits_non_zero_on_a_breakdown_that_cannot_be_quoted|main([str(path), \"--field\", \"transport\"]) == 1|#0",
+      "note": "The exit code is the only part a calling script reads. A tool whose prose refuses while its status says success is quoted as evidence by every automation that wraps it."
+    },
+    {
+      "name": "T22-the-cli-refuses-a-complete-breakdown",
+      "subject": "tools/tally.py",
+      "old": "    return 0 if ok else 1",
+      "new": "    return 1",
+      "node_id": "tests/tools/test_tally.py::test_the_cli_exits_zero_on_a_complete_breakdown",
+      "expect_claim": "test_the_cli_exits_zero_on_a_complete_breakdown|main([str(path), \"--field\", \"transport\"]) == 0|#0",
+      "note": "The over-refusal direction of T21, and the reason both exist: an exit code that is always 1 passes T21 and is useless."
+    },
+    {
+      "name": "T23-a-missing-file-reads-as-an-empty-exhaustive-tally",
+      "subject": "tools/tally.py",
+      "old": "        print(f\"tally: no such file: {args.path}\", file=sys.stderr)\n        return 2",
+      "new": "        print(f\"tally: no such file: {args.path}\", file=sys.stderr)\n        return 0",
+      "node_id": "tests/tools/test_tally.py::test_a_missing_file_is_a_usage_error_not_an_empty_tally",
+      "expect_claim": "test_a_missing_file_is_a_usage_error_not_an_empty_tally|main([str(tmp_path / \"nope.jsonl\"), \"--field\", \"transport\"]) == 2|#0",
+      "note": "Zero records trivially satisfies every arithmetic check in this tool, so an unreadable file must never reach the verdict. This is the vacuity floor: the same shape as a glob that stops matching."
+    }
+  ],
+  "exemptions": {
+    "test_a_complete_breakdown_is_exhaustive_and_counts_correctly|len(result.counts) > 1|#0": "A non-vacuity assertion about the FIXTURE, not about the subject. The exact-counts assertion above it pins the distribution completely, so any mutation that could change the bucket count reddens that one first and this claim is unreachable by construction. It exists so a future edit to the fixture cannot quietly make the happy-path test describe a single-value population, which would satisfy every arithmetic check while proving nothing.",
+    "test_a_complete_breakdown_is_exhaustive_and_counts_correctly|max(result.counts.values()) < result.records|#0": "Same fixture-non-vacuity role as the line above, for the other half: no single bucket may hold the whole population. Same reason it is unreachable from a mutation of the subject."
+  }
+}
