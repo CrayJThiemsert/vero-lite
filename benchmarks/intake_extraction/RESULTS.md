@@ -417,3 +417,119 @@ three arms and both runs.
   between these three models.
 - **Still registered inexpressible:** everything in the baseline's register above.
   Per-case latency has now **left** that register — it is measured here.
+
+---
+
+## Addendum — Step 4b: `load` and `prefill` stop being unmeasured terms (2026-09-09, sessions 288–289)
+
+**Run provenance.** PLAN-0119 Step 4b, under Cray's **typed CLAUDE.md §8 go** (s288).
+One chained sweep, three models × three `num_predict` caps = **nine arms**, launched
+s288 and collected s289. `--timeout 300` on every arm (deliberately above the shipped
+120 s, so a slow arm produces a *measurement* rather than a timeout). Between models
+the chain unloads with `keep_alive 0`, so **one model is resident at a time** (SD-5).
+Per-arm artifacts were written to `/tmp/s288_step4b/` — **gitignored and volatile**;
+the numbers below are the durable record.
+
+**Instrument.** `benchmarks/intake_extraction/extract_terms.py`, **rehomed s289** from
+an untracked `/tmp` script. It counts every attempt (an attempt missing any of the four
+duration fields is counted *separately*, never dropped — dropping it shrinks the
+denominator with it), prints raw per-case values before any aggregate, and applies the
+pre-committed floor (≥ 6 of 11 cases, else INSUFFICIENT-EVIDENCE). Planted-defect tests:
+`tests/benchmarks/test_extract_terms.py` — 11 tests, and the two load-bearing
+assertions were each **witnessed RED** by their own single mutation with the paired
+positive control staying green.
+
+**Control.** The derived decode rate re-predicts PLAN-0118's published gpt-oss@4096
+figure (~85 s) **three times independently: 89.7 / 90.3 / 86.4 s.** An instrument that
+can re-derive a number already on the record has earned the right to produce new ones.
+
+### The nine arms — eight collected, one still running
+
+| arm | cases | att | missing | usable | p50 | p95 | max | load μ | load max | prefill μ | tok/s | trunc |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `gpt-oss:20b` @1024 | 11 | 21 | 1 | 20 | 21.30 | 28.51 | 29.42 | 0.004 | 0.009 | 0.260 | 45.7 | 10 |
+| `gpt-oss:20b` @2048 | 11 | 13 | 0 | 13 | 28.17 | 39.46 | 42.78 | 0.004 | 0.005 | 0.274 | 45.4 | 1 |
+| `gpt-oss:20b` @4096 | 11 | 11 | 1 | 10 | 31.40 | 57.29 | 57.29 | 5.066 | **32.332** | 0.466 | 47.4 | 0 |
+| `qwen3.8:27b-…-q4_K_M` @1024 | 11 | 23 | 0 | 23 | 53.24 | 66.54 | 67.29 | 0.006 | 0.010 | 1.231 | 19.8 | 17 |
+| `qwen3.8:27b-…-q4_K_M` @2048 | 11 | 11 | 0 | 11 | 80.12 | **126.08** | 126.08 | 0.006 | 0.010 | 1.252 | 19.0 | 0 |
+| `qwen3.8:27b-…-q4_K_M` @4096 | 11 | 11 | 0 | 11 | 82.05 | **125.24** | 125.24 | 1.964 | 7.410 | 2.118 | 19.1 | 0 |
+| `qwen3.8:27b-mtp-q8_0` @1024 | 11 | 28 | 0 | 28 | 54.37 | 65.23 | 69.28 | 0.006 | 0.010 | 0.964 | 19.0 | 24 |
+| `qwen3.8:27b-mtp-q8_0` @2048 | 11 | 13 | 0 | 13 | 98.05 | **124.47** | **142.42** | 0.007 | 0.011 | 1.610 | 18.4 | 1 |
+| `qwen3.8:27b-mtp-q8_0` @4096 | — | — | — | — | — | — | — | — | — | — | — | — |
+
+All eight collected arms are **USABLE** (11/11 cases, except gpt-oss@4096 at 10/11).
+Seconds throughout; `att` = attempts, `trunc` = attempts that hit the cap. 🔴 **The
+ninth arm (`q8` @4096) was still running when this was written** — it is the only cell
+outstanding, and it is not inferred from its neighbours.
+
+### Finding 1 — the two unmeasured terms are small, and the pessimistic stand-ins were far off
+
+`Term[T]` in `services/engine/llm/capacity.py` carries deliberately pessimistic
+placeholders for `load` and `prefill` because nothing had measured them. Measured:
+
+- **warm `load` ≈ 0.004–0.007 s** on every arm of both models — three orders of
+  magnitude below the stand-in;
+- **`prefill` ≈ 0.26–0.47 s** (gpt-oss), **0.96–2.12 s** (qwen).
+
+Both terms are effectively noise against AC-4's rule
+`cap / decode_rate + load + prefill < timeout`. **The decode term dominates.**
+
+### Finding 2 — 🔴 cold load is 32.3 s, and it eats the whole 120 s margin
+
+`gpt-oss@4096` recorded a **32.332 s** load max against a 0.004 s mean — caught by
+accident, because the chain warms only the first cap of each model and the 4096 arm
+followed an unload. So a **cold** gpt-oss call at cap 4096 costs
+`32.3 + 0.5 + 86.4 ≈ 119 s` against the shipped **120 s** timeout: **one second of
+margin.** SD-4 asked whether 120 s is itself wrong; the measured answer is *"not for a
+warm call, and almost exactly wrong for a cold one at the cap Step 6 wants to adopt."*
+`qwen-q4@4096` shows the same shape at 7.410 s.
+
+### Finding 3 — 🔴 qwen decodes at ~19 tok/s, gpt-oss at ~46 — and qwen's p95 is already over the shipped timeout
+
+The rate gap is **2.4×** and is flat across caps (18.4–19.8 vs 45.4–47.4), so it is a
+property of the model, not of the cap. The consequence is direct: at 2048 and 4096,
+**every qwen arm's p95 lands at 124–126 s and `q8@2048`'s max at 142.4 s — above the
+shipped 120 s timeout.** These arms completed only because Step 4b ran at 300 s. A
+serving policy that adopts a 2048+ cap for qwen under the shipped timeout would be
+losing calls, and the loss would present as a transport failure rather than as a
+capacity decision.
+
+### Finding 4 — truncation is driven by the cap, not the timeout
+
+| model | @1024 | @2048 | @4096 |
+|---|---|---|---|
+| `gpt-oss:20b` | 10/20 | 1/13 | 0/10 |
+| `qwen…q4_K_M` | 17/23 | 0/11 | 0/11 |
+| `qwen…q8_0` | 24/28 | 1/13 | pending |
+
+1024 truncates roughly half of gpt-oss's attempts and **most** of qwen's; 2048 nearly
+clears it for both. This reproduces the baseline addendum's `empty ⇔ length ⇔ 1024`
+finding on two further models. Decode rate is stable across caps, which is what Cray's
+choice of **three** cap points (not two) bought: linearity was **verified**, not assumed.
+
+### Instrument note — the control was mis-scoped on its first rehomed run
+
+The rehomed extractor initially applied PLAN-0118's gpt-oss band to **every** arm. All
+three gpt-oss arms read OK; **all four qwen arms read OUT OF BAND.** Nothing was wrong
+with the arithmetic or with the qwen artifacts — qwen's ~19 tok/s legitimately predicts
+~215 s for 4096 tokens. **The control's applicability was wrong**, and the repair was to
+*derive the correct expectation* (scope the band per model tag, read from the artifact)
+rather than widen the band that had just failed. A model with no published figure now
+gets the prediction printed and **no verdict**, said in as many words: a control
+asserted against a model it does not describe is not a control — it is either ignored,
+which teaches the reader to ignore controls, or read as a defect that does not exist.
+
+### What this addendum does NOT settle
+
+- **The ninth arm.** `q8@4096` is unmeasured here; no cell is inferred from a neighbour.
+- **Any accuracy or ranking claim.** Step 4b measures **latency terms only**. Nothing
+  here says qwen is better or worse than gpt-oss at the task — that is the baseline
+  lane's question and it was not re-run.
+- **Cold-load frequency.** 32.3 s was observed **once**, on one arm, as a side effect of
+  the chain's warm-once design. How often a production call is cold is unmeasured, and
+  Finding 2's 119 s is a worst case, not a rate.
+- **Whether 120 s should change.** The measurement is input to SD-4; the ruling is
+  Cray's.
+- **Registered inexpressible:** per-attempt queueing/network time is not separable from
+  `total_duration` in the Ollama response, so any gap between `total` and
+  `load + prefill + decode` is attributed, not decomposed.
