@@ -14,6 +14,13 @@ Plus the two rules only this corpus has: ``operation='list'`` is rejected under
 LOCKED SD-8 (a), and ``agent_id`` / ``trigger`` are absent from the v1 descriptor
 per SD-9 (a2).
 
+The THIRD run-corpus rule — ``_validate_aggregate_dimensions``, which refuses the
+aggregate paths' two silent drops (disposition (a), RULED s288) — has its own
+module, ``test_run_query_aggregate_refusal.py``, so a probe battery can own its
+claims against a denominator it can cover. What stays HERE are the two SCENARIO
+tests that demonstrate the harm on the real seeded corpus, beside their ``count``
+sibling and the fixture all three need.
+
 Skips gracefully when Postgres is unreachable.
 """
 
@@ -209,33 +216,6 @@ def test_the_week_branch_is_guarded_not_filtering() -> None:
     )
 
 
-def test_the_week_guard_is_scoped_to_count_and_does_not_speak_for_the_aggregate_path() -> None:
-    """Pins the guard's operation scope — and RECORDS the adjacent defect it excludes.
-
-    ``execute_run_query`` routes only ``count`` to ``_count``, and the refusal message
-    explains itself in terms of ``week_rollup``, which no other operation touches. So
-    an aggregate carrying the same filter shape is NOT refused here.
-
-    🔴 This is a scope assertion, **not** an endorsement of the aggregate path's
-    behaviour. ``_aggregate_duration`` / ``_aggregate_benefit`` ignore a
-    ``started_week`` filter entirely — they filter on procedure/status only — so an
-    aggregate carrying one silently answers across ALL weeks. That is the same defect
-    class as the one this guard closes and strictly larger, at a different site, and
-    outside what was ruled. If a future change repairs or refuses it, this test SHOULD
-    fail: read this docstring, then move the boundary deliberately.
-    """
-    aggregate = StructuredQuery(
-        object_type=rq.RUN_CORPUS_TYPE,
-        operation="avg",
-        aggregate_property="duration_ms_total",
-        filters=[
-            QueryFilter(property="started_week", op="eq", value="2026-W01"),
-            QueryFilter(property="procedure_id", op="eq", value="p1"),
-        ],
-    )
-    assert rq._validate_week_dimension(aggregate) == []
-
-
 def test_an_empty_week_value_still_reaches_the_branch_and_so_must_still_be_refused() -> None:
     """The guard tests ``is not None``, not truthiness — and the difference is a hole.
 
@@ -421,6 +401,102 @@ async def test_the_refused_weekly_combination_would_have_answered_the_whole_week
     executed = await rq._count(seeded.session, dangerous)
     assert executed.count == week_total
     assert executed.count != procedure_total
+
+
+async def test_the_refused_aggregate_week_filter_would_have_answered_across_every_week(
+    seeded: _Seeded,
+) -> None:
+    """Scenario for drop (1): the harm the s288 refusal prevents, on the real corpus.
+
+    Drives the real ``run_duration_totals`` SQL over seeded Postgres into the real
+    ``_aggregate_duration``, nothing stubbed. Two halves:
+
+    1. ``validate_run_query`` REFUSES an average carrying a ``started_week`` filter.
+    2. Executed anyway — bypassing the validator exactly as a future edit deleting
+       the guard would — the filter is ignored and the whole-corpus average comes
+       back, grounded-looking and silent.
+
+    ⚠️ **The week is chosen to make the harm visible, and that choice is the whole
+    test.** The corpus seeds every run into ONE ISO week, so filtering on *that*
+    week returns the same figure either way and would be vacuous. Filtering on a
+    week with NO runs is the sharp case: the honest answer is the
+    no-matching-records path (``matched == 0``, no value), and what actually comes
+    back is the average over all 120 runs.
+    """
+    empty_week = "2020-W01"
+    assert empty_week not in seeded.corpus.week_counts, (
+        "corpus makes this test vacuous: the chosen week has runs, so a dropped "
+        "filter would be indistinguishable from an honoured one"
+    )
+
+    dangerous = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="avg",
+        aggregate_property="duration_ms_total",
+        filters=[QueryFilter(property="started_week", op="eq", value=empty_week)],
+    )
+    assert rq.validate_run_query(
+        dangerous
+    ), "the aggregate week-filter combination must be refused before execution"
+
+    # The teeth. Positive control first: the unfiltered aggregate is a real figure,
+    # so "the filtered one equals it" cannot pass by both being empty.
+    unfiltered = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="avg",
+        aggregate_property="duration_ms_total",
+    )
+    baseline = await rq.execute_run_query(seeded.session, unfiltered)
+    assert baseline.matched == seeded.corpus.run_count
+    assert baseline.aggregate is not None
+    assert baseline.aggregate.value is not None
+
+    executed = await rq._aggregate_duration(seeded.session, dangerous)
+    assert (
+        executed.matched == seeded.corpus.run_count
+    ), "the week filter was ignored: every run matched, not the zero runs in that week"
+    assert executed.aggregate is not None
+    assert executed.aggregate.value == baseline.aggregate.value
+
+
+async def test_the_refused_aggregate_group_by_would_have_returned_one_ungrouped_number(
+    seeded: _Seeded,
+) -> None:
+    """Scenario for drop (2), with the positive control a negative assertion needs.
+
+    ``groups == {}`` is satisfied by a corpus that cannot group at all, so asserting
+    it alone would be vacuous. The control is the ``count`` path on the SAME session
+    and the SAME dimension: it returns real multi-bucket groups, which proves the
+    corpus can express the grouping and that the empty dict is the aggregate path's
+    doing, not the data's.
+    """
+    grouped_count = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE, operation="count", group_by="status"
+    )
+    control = await rq.execute_run_query(seeded.session, grouped_count)
+    assert control.aggregate is not None
+    assert len(control.aggregate.groups) > 1, (
+        "positive control failed: the corpus cannot express a status grouping, so the "
+        "empty-groups assertion below would prove nothing"
+    )
+
+    dangerous = StructuredQuery(
+        object_type=rq.RUN_CORPUS_TYPE,
+        operation="avg",
+        aggregate_property="duration_ms_total",
+        group_by="status",
+    )
+    assert rq.validate_run_query(
+        dangerous
+    ), "an aggregate carrying group_by must be refused before execution"
+
+    executed = await rq._aggregate_duration(seeded.session, dangerous)
+    assert executed.aggregate is not None
+    assert executed.aggregate.groups == {}, (
+        "the grouping was silently dropped: one ungrouped figure would have been "
+        "presented as if it answered the per-status question"
+    )
+    assert executed.matched == seeded.corpus.run_count
 
 
 # --- property (3): empty result short-circuits honestly ----------------------

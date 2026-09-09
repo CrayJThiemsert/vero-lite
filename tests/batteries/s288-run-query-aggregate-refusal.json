@@ -1,0 +1,97 @@
+{
+  "claim_sources": [
+    "tests/services/engine/test_run_query_aggregate_refusal.py"
+  ],
+  "probes": [
+    {
+      "name": "W1-count-scope-removed-from-the-week-guard",
+      "subject": "services/engine/run_query.py",
+      "old": "    if query.operation != \"count\":\n        return []",
+      "new": "    if False:\n        return []",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate",
+      "expect_claim": "test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate|rq._validate_week_dimension(aggregate) == []|#0",
+      "note": "The count guard's operation scope IS the boundary this test names. Drop it and the week guard starts speaking for aggregates too — the query here carries started_week + procedure_id, so week_branch fires and the blind-dimension list is non-empty. This is the mutation the s288 repair deliberately did NOT make: widening this guard would refuse aggregate queries while explaining itself in terms of week_rollup, which no aggregate operation reaches."
+    },
+    {
+      "name": "W2-sibling-guard-disabled-entirely",
+      "subject": "services/engine/run_query.py",
+      "old": "    if query.operation not in _AGGREGATE_OPS:\n        return []",
+      "new": "    if True:\n        return []",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate",
+      "expect_claim": "test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate|errors|#0",
+      "note": "🔴 THE probe for the whole ruling: the pre-s288 world, where an aggregate carrying a week filter validated clean and answered across every week. Aimed at the boundary test on purpose — under this mutation the FIRST assertion (the week guard stays silent) still passes, so the red is attributable to the caller-visible behaviour and not to collateral damage. That green half is what rules out 'something unrelated broke'."
+    },
+    {
+      "name": "W3-week-refusal-stops-naming-the-dimension",
+      "subject": "services/engine/run_query.py",
+      "old": "            \"an aggregate over the run corpus cannot also filter on 'started_week': the \"",
+      "new": "            \"an aggregate over the run corpus cannot also filter on that dimension: the \"",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate",
+      "expect_claim": "test_the_week_guard_is_scoped_to_count_while_the_sibling_guard_refuses_the_aggregate|any(\"started_week\" in e for e in errors)|#0",
+      "note": "A refusal that does not name what it refused cannot feed the validate-and-retry loop — the model gets told 'no' with nothing to change. Under this mutation the refusal still FIRES, so `assert errors` above stays green and only the naming claim reddens."
+    },
+    {
+      "name": "W4-week-filter-branch-never-fires",
+      "subject": "services/engine/run_query.py",
+      "old": "    if _wanted(query.filters, \"started_week\") is not None:",
+      "new": "    if False:",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_aggregate_carrying_a_week_filter_is_refused[net_benefit_thb-avg]",
+      "expect_claim": "test_an_aggregate_carrying_a_week_filter_is_refused|errors|#0",
+      "note": "Drop (1) restored, probed through the _aggregate_benefit route specifically (net_benefit_thb). The two aggregate sites' docstrings require them to be fixed together, so the battery witnesses the benefit route rather than letting the duration route stand in for both."
+    },
+    {
+      "name": "W5-week-refusal-unnamed-on-the-duration-route",
+      "subject": "services/engine/run_query.py",
+      "old": "            \"an aggregate over the run corpus cannot also filter on 'started_week': the \"",
+      "new": "            \"an aggregate over the run corpus cannot also filter on a week: the \"",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_aggregate_carrying_a_week_filter_is_refused[duration_ms_total-sum]",
+      "expect_claim": "test_an_aggregate_carrying_a_week_filter_is_refused|\"started_week\" in joined|#0",
+      "note": "Same class as W3 but a different claim on a different route, so each is witnessed once rather than one probe being credited twice. `assert errors` stays green under it."
+    },
+    {
+      "name": "W6-week-refusal-stops-being-corrective",
+      "subject": "services/engine/run_query.py",
+      "old": "            \"get the figure across ALL weeks. Ask for either the aggregate WITHOUT the \"",
+      "new": "            \"get the figure across ALL weeks. Ask for either the aggregate minus the \"",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_aggregate_carrying_a_week_filter_is_refused[duration_ms_total-avg]",
+      "expect_claim": "test_an_aggregate_carrying_a_week_filter_is_refused|\"without\" in joined.lower()|#0",
+      "note": "The corrective-message property, matching the standard the `list` and week-dimension refusals already hold. A refusal that says only 'no' strands the retry loop. The dimension is still named under this mutation, so the two claims above stay green and only this one reddens."
+    },
+    {
+      "name": "W7-group-by-branch-never-fires",
+      "subject": "services/engine/run_query.py",
+      "old": "    if query.group_by is not None:",
+      "new": "    if False:",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_aggregate_carrying_group_by_is_refused_for_every_dimension[status]",
+      "expect_claim": "test_an_aggregate_carrying_group_by_is_refused_for_every_dimension|errors|#0",
+      "note": "Drop (2) restored: 'average duration per status' validates, executes, and returns ONE ungrouped number. Note the branch tests `is not None` rather than truthiness for symmetry with the week check — group_by carries no empty-string case today, but a guard whose two halves disagree on that is how the s228 hole was written in the first place."
+    },
+    {
+      "name": "W8-group-by-refusal-stops-naming-the-dimension",
+      "subject": "services/engine/run_query.py",
+      "old": "            f\"an aggregate over the run corpus cannot be grouped by {query.group_by!r}: \"",
+      "new": "            \"an aggregate over the run corpus cannot be grouped by that dimension: \"",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_aggregate_carrying_group_by_is_refused_for_every_dimension[procedure_id]",
+      "expect_claim": "test_an_aggregate_carrying_group_by_is_refused_for_every_dimension|any(f\"grouped by {group_by!r}\" in h for h in heads)|#0",
+      "note": "🔴 Aimed at [procedure_id] DELIBERATELY, and it took TWO instrument corrections to make this claim real — the artifact was right both times. The refusal ends with a suggestion, \"...or for a 'count' grouped by 'procedure_id'/'status'\". (1) The original assertion `group_by in e` passed under this mutation: the suggestion alone satisfied it. (2) The tightened `f\"grouped by {group_by!r}\" in e` ALSO passed — the suggestion contains that exact substring for procedure_id — and this battery caught it as a GAP on the first run. Only POSITION separates 'the refusal named what you asked for' from 'the suggestion happened to mention it', so the assertion now splits on the first colon and matches the refusal clause alone. The probe stays on the dimension that was vacuous, not on [started_week], which would have reddened all along and told me nothing."
+    },
+    {
+      "name": "W9-truthiness-instead-of-is-not-None",
+      "subject": "services/engine/run_query.py",
+      "old": "    if _wanted(query.filters, \"started_week\") is not None:",
+      "new": "    if _wanted(query.filters, \"started_week\"):",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_an_empty_week_value_on_an_aggregate_is_still_refused",
+      "expect_claim": "test_an_empty_week_value_on_an_aggregate_is_still_refused|rq.validate_run_query(query)|#0",
+      "note": "🔴 The hole the count guard documents, re-made on the aggregate side. `_wanted` returns \"\" for an empty filter value: falsy, NOT None. The fold ignores that filter exactly as it ignores a populated one, so a truthiness guard stays silent on a query that still reaches the drop. Invisible to every probe and test that uses a realistic week string — which is the whole reason this claim exists separately from W4."
+    },
+    {
+      "name": "W10-guard-leaks-into-count",
+      "subject": "services/engine/run_query.py",
+      "old": "    if query.operation not in _AGGREGATE_OPS:\n        return []",
+      "new": "    if query.operation == \"nonesuch\":\n        return []",
+      "node_id": "tests/services/engine/test_run_query_aggregate_refusal.py::test_the_aggregate_guard_does_not_over_refuse[count-None-started_week-filters6]",
+      "expect_claim": "test_the_aggregate_guard_does_not_over_refuse|rq.validate_run_query(query) == []|#0",
+      "note": "Non-vacuity in the expensive direction. A guard that refuses everything passes every other probe here, so the over-refusal case needs its own witness. Aimed at count + group_by='started_week' — the shape PLAN-0104's AC-5 requires to answer with real per-week buckets — because that is the one this guard would break first if its operation scope were dropped."
+    }
+  ]
+}

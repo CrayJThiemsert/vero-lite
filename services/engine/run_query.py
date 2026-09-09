@@ -45,6 +45,7 @@ from services.db import run_analytics
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
 from services.engine.nl_query import (
+    _AGGREGATE_OPS,
     DISCLOSURE_CAP,
     PHRASED_BY_DETERMINISTIC,
     AggregateResult,
@@ -117,11 +118,13 @@ class RunQueryResult:
 
 
 def validate_run_query(query: StructuredQuery) -> list[str]:
-    """Semantic validation, reusing ``nl_query``'s own checker plus two run-corpus rules.
+    """Semantic validation, reusing ``nl_query``'s own checker plus three run-corpus rules.
 
     Reuse is the point: a second copy of the property/aggregate checks would
     drift from the original, and AC-8's parity claim would quietly stop being
-    true. The two additional rules are the ones only this corpus has.
+    true. The three additional rules are the ones only this corpus has:
+    ``list`` is unavailable, ``_validate_week_dimension`` (``count``), and
+    ``_validate_aggregate_dimensions`` (the aggregate ops).
     """
     errors = _validate_query(query, run_corpus_meta())
     if errors:
@@ -133,6 +136,7 @@ def validate_run_query(query: StructuredQuery) -> list[str]:
             "(max/min/avg/sum) over duration_ms_total or net_benefit_thb."
         )
     errors.extend(_validate_week_dimension(query))
+    errors.extend(_validate_aggregate_dimensions(query))
     for index, flt in enumerate(query.filters):
         if flt.op != "eq":
             errors.append(
@@ -187,15 +191,19 @@ def _validate_week_dimension(query: StructuredQuery) -> list[str]:
     ``avg`` + week alone answered silently, and the refusal would have explained
     itself in terms of a rollup that operation never touches.
 
-    🔴 ADJACENT, UNREPAIRED, and outside this ruling — recorded so the scope above
-    is read as deliberate rather than as an oversight: the aggregate paths
-    (``_aggregate_duration`` / ``_aggregate_benefit``) ignore a ``started_week``
-    filter ENTIRELY — they filter on procedure/status only — so an aggregate
-    carrying one silently answers across ALL weeks. ``started_week`` is in
+    ✅ ADJACENT, NOW REPAIRED (s288) — kept here because the scope above is still
+    deliberate and a reader needs to know why there are two guards, not one. The
+    aggregate paths (``_aggregate_duration`` / ``_aggregate_benefit``) ignored a
+    ``started_week`` filter ENTIRELY — they filter on procedure/status only — so an
+    aggregate carrying one silently answered across ALL weeks. ``started_week`` is in
     ``DIMENSIONS`` and in the published descriptor, so the model can and will emit
-    it there. That is the same defect CLASS as this one and strictly larger (the
-    week filter itself vanishes), but it is a different site and was not what was
-    ruled on; widening this guard to cover it silently would be scope creep.
+    it there. That was the same defect CLASS as this one and strictly larger (the
+    week filter itself vanishes). It is refused by the SIBLING guard
+    ``_validate_aggregate_dimensions`` — disposition (a), RULED (Cray, typed,
+    s288) — and not by widening this one, exactly as the note here predicted:
+    this message explains itself in terms of ``week_rollup``, which no aggregate
+    operation touches, so a widened guard would refuse a query while describing a
+    rollup that query never reaches.
 
     Disposition (a), RULED (Cray, typed, s228): refuse here rather than give the
     rollup the missing dimension. The message is corrective because it feeds the
@@ -225,6 +233,72 @@ def _validate_week_dimension(query: StructuredQuery) -> list[str]:
         "figures without the week dimension (drop 'started_week' from group_by and "
         "filters)."
     ]
+
+
+def _validate_aggregate_dimensions(query: StructuredQuery) -> list[str]:
+    """Refuse the two shapes the aggregate paths would answer by silently dropping.
+
+    Disposition (a), RULED (Cray, typed, s288): refuse, rather than make the
+    aggregate paths carry the week dimension and emit groups. A silently wrong
+    number is strictly worse than a refusal — the same reasoning that ruled the
+    ``count`` case at s228.
+
+    A SIBLING of ``_validate_week_dimension``, deliberately, not a widening of
+    it. Both aggregate docstrings say so in terms — that guard is scoped to
+    ``count`` and explains itself in terms of ``week_rollup``, which no
+    aggregate operation touches — so widening it would have produced a refusal
+    whose message described a rollup the refused query never reaches.
+
+    The two shapes, which are two different mechanisms and so carry two messages:
+
+    1. **A ``started_week`` FILTER.** ``_keep`` reads ``procedure_id`` and
+       ``status`` only, so the week filter never reaches the fold and the
+       aggregate answers across EVERY week. What vanishes is the filter itself,
+       which makes this strictly larger than the ``count`` case.
+    2. **Any ``group_by``.** ``_validate_query`` permits ``group_by`` on
+       aggregate ops and the schema binds the enum to ``DIMENSIONS``, so the
+       model does emit it — but both aggregate paths construct
+       ``AggregateResult(...)`` with no ``groups``, so *"average duration per
+       procedure"* would validate, execute, and return ONE ungrouped number.
+       The refusal is not per-dimension: NO dimension survives, because the
+       argument is never passed at either site.
+
+    Covers BOTH aggregate routes — ``_aggregate_duration`` and
+    ``_aggregate_benefit`` — because it keys on the operation, which is what
+    ``execute_run_query`` routes on, rather than on ``aggregate_property``.
+    Their docstrings require it: *"both sites must be fixed together or not at
+    all."*
+
+    ⚠️ ``is not None``, never truthiness — the same hole the ``count`` guard
+    documents. An empty filter value makes ``_wanted`` return ``""``: falsy, but
+    NOT None, and it still reaches a fold that ignores it. A truthiness test
+    would stay silent on exactly that shape, and no test using a realistic week
+    string would ever notice.
+
+    Deliberately NOT refused: an aggregate with a ``procedure_id`` / ``status``
+    filter and no ``group_by``. ``_keep`` reads both, so that shape is served
+    correctly and must keep validating clean.
+    """
+    if query.operation not in _AGGREGATE_OPS:
+        return []
+    errors: list[str] = []
+    if _wanted(query.filters, "started_week") is not None:
+        errors.append(
+            "an aggregate over the run corpus cannot also filter on 'started_week': the "
+            "aggregate is folded from rollups bucketed by procedure and status only, so "
+            "that filter could not be applied and would be silently ignored — you would "
+            "get the figure across ALL weeks. Ask for either the aggregate WITHOUT the "
+            "week filter, or a weekly 'count'."
+        )
+    if query.group_by is not None:
+        errors.append(
+            f"an aggregate over the run corpus cannot be grouped by {query.group_by!r}: "
+            "the run substrate publishes no per-group aggregate, so the answer would be "
+            "a single ungrouped figure presented as if it were grouped. Ask for the "
+            "aggregate WITHOUT group_by, or for a 'count' grouped by "
+            "'procedure_id'/'status', which the corpus does serve."
+        )
+    return errors
 
 
 def _keep(filters: list[QueryFilter], procedure_id: str, status: str) -> bool:
@@ -307,29 +381,36 @@ async def _aggregate_duration(session: Any, query: StructuredQuery) -> RunQueryR
     and saying so is better than returning the smallest *group average* dressed
     up as the smallest run.
 
-    🔴 TWO SILENT DROPS LIVE HERE, both UNRULED. Recorded at the site because a
-    reader editing this function is exactly who needs them, and because
-    ``docs/STATUS.md`` — their only prior home — rotates.
+    ✅ TWO SILENT DROPS USED TO LIVE HERE. Both are now REFUSED before execution
+    by ``_validate_aggregate_dimensions`` — **disposition (a), RULED (Cray,
+    typed, s288)**. The description stays at the site, because a reader editing
+    this function is exactly who needs to know why the fold below may assume
+    neither shape ever arrives.
 
     1. **The ``started_week`` FILTER is ignored entirely.** ``_keep`` reads
        ``procedure_id`` and ``status`` only, so an aggregate carrying a week
-       filter silently answers across EVERY week. Same defect class as the
-       ``count`` case ``_week_rollup_conflict`` refuses, and strictly larger:
-       what vanishes is the filter itself. Found s228.
+       filter silently answered across EVERY week. Same defect class as the
+       ``count`` case ``_validate_week_dimension`` refuses, and strictly larger:
+       what vanishes is the filter itself. Found s228, refused s288.
     2. **``group_by`` never reaches the result.** ``_validate_query`` PERMITS
        ``group_by`` on aggregate ops (``nl_query.py`` — its guard exempts
        ``_AGGREGATE_OPS``) and the schema binds the enum to ``DIMENSIONS``, so
        the model does emit it. But the ``AggregateResult(...)`` constructed below
        passes no ``groups`` argument and ``groups`` defaults to ``{}``. Effect:
-       *"average duration per procedure"* validates, executes, and silently
-       returns ONE ungrouped number. Found s232.
+       *"average duration per procedure"* validated, executed, and silently
+       returned ONE ungrouped number. Found s232, refused s288.
 
     ⚠️ **The count path at ``_count_result`` DOES pass ``groups=groups``** — so
-    (2) is a two-site gap in an otherwise-correct design, not a missing feature.
-    **No test covers either**, which is why both survived PLAN-0104's whole build.
-    Same two dispositions for each, NEITHER ruled: **(a) refuse it, or (b) make
-    it work.** Do not widen ``_week_rollup_conflict`` to cover them — that guard
-    is deliberately scoped to ``count`` (see its docstring).
+    (2) was a two-site gap in an otherwise-correct design, not a missing feature.
+    Refusing does not close that gap; it makes it *visible*. Option (b) — make
+    the aggregate paths carry the week dimension and emit real groups — remains
+    the honest sequel if a partner needs grouped aggregates, and it is a
+    substrate change, not a validator one.
+
+    🔴 **No test covered either drop**, which is why both survived PLAN-0104's
+    whole build. That is now the guard's own test surface, not this comment's.
+    Do not widen ``_validate_week_dimension`` to cover them — that guard is
+    deliberately scoped to ``count`` (see its docstring).
     """
     rows = [
         r
@@ -362,11 +443,15 @@ async def _aggregate_benefit(session: Any, query: StructuredQuery) -> RunQueryRe
     rather than converted or silently added: the substrate never produces a
     cross-currency figure and neither may this compiler.
 
-    🔴 **The same two unruled silent drops that afflict ``_aggregate_duration``
-    live here too** — the ``started_week`` filter is never read, and the
-    ``AggregateResult(...)`` below passes no ``groups``. Read that function's
-    docstring for the full statement rather than a second divergent copy; both
-    sites must be fixed together or not at all.
+    ✅ **The same two silent drops that afflicted ``_aggregate_duration`` lived
+    here too** — the ``started_week`` filter is never read, and the
+    ``AggregateResult(...)`` below passes no ``groups``. Both are now refused
+    before execution by ``_validate_aggregate_dimensions`` (disposition (a),
+    RULED Cray, typed, s288), which keys on the OPERATION and so covers this
+    route and the duration route together — honouring the requirement this
+    docstring carried: both sites must be fixed together or not at all. Read
+    ``_aggregate_duration``'s docstring for the full statement rather than a
+    second divergent copy.
     """
     buckets = [
         b
