@@ -253,8 +253,11 @@ def _log_decision(
 
     `transport` separates a pause the MODEL decided from one manufactured
     after a failure — see the `TRANSPORT_*` constants in `_sonnet_classifier`,
-    which also record two deviations from §4.3's enum. Scoring those
-    together would make AC-12's defect rate a measurement of the network.
+    which record the one remaining deviation from §4.3's enum (`not_attempted`).
+    Scoring those together would make AC-12's defect rate a measurement of the
+    network. The second deviation — an HTTP error labelled `timeout` — was
+    retired at s290 by the §4.3 amendment that gave it `http_error`; this
+    function copies the field opaquely, so the new value needed no change here.
 
     Never raises: an observability write must not be able to break the Stop
     path it observes.
