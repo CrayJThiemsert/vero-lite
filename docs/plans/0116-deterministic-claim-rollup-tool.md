@@ -366,9 +366,13 @@ gate-evidence discipline.
 evidence its arithmetic matches the ruled cases; the suite without the tool
 drives nothing. Steps 1–3 are one deliverable.
 
-## Surfaced decisions
+## Surfaced decisions — ✅ ALL THREE RULED (Cray, typed, 2026-09-09, s289)
 
-- **SD-1 — the mixed case: some unsettled load-bearing claims carry runnable
+All three matched the recommendation: **SD-1 = (a)** · **SD-2 = (b)** · **SD-3 = (b)**. The options not taken are kept verbatim below.
+
+🔴 **Ruling the SDs unblocks this PLAN; it does not schedule it.** PLAN-0116 is `Draft` at 0 of 8 ACs and now competes for execution time with PLAN-0123, whose five SDs were ruled in the same decision. Cray's stated intent at s289 was to unblock and leave parked — recorded here so a later session does not read “SDs ruled” as “start now”.
+
+- **SD-1 — ✅ RULED (Cray, typed, 2026-09-09, s289) — (a), the ∃-reading: NEEDS-EXECUTION dominates. *Consequence:* an option with any runnable probe spec on an unsettled load-bearing claim stays BLOCKED until the probe runs — the free hedge the run-2 repair closed does not reopen.** the mixed case: some unsettled load-bearing claims carry runnable
   probe specs, others provably cannot be probed from the tree.** The ruled
   four-line arithmetic does not specify it (see §Rollup). Options:
   - **(a) [recommended]** ∃-reading — **NEEDS-EXECUTION dominates
@@ -390,7 +394,7 @@ drives nothing. Steps 1–3 are one deliverable.
   - *Why Cray:* this hard-codes forever what Cray's typed four-line rule
     means in the one case its wording leaves open — an interpretation of a
     typed ruling is Cray's to fix, not the drafter's.
-- **SD-2 — should this PLAN also measure whether the labelling itself is
+- **SD-2 — ✅ RULED (Cray, typed, 2026-09-09, s289) — (b), exclude. The tool ships first; label-stability across runs becomes its own experiment, and stays expressly open in §Residual so it cannot silently become an assumed property.** should this PLAN also measure whether the labelling itself is
   stable across runs?** (Mandated surfaced, not decided.) The tool removes
   variance from the arithmetic only; whether an LLM emits the same
   `load_bearing` flags on repeated identical dispatches is unmeasured.
@@ -410,7 +414,7 @@ drives nothing. Steps 1–3 are one deliverable.
   - *Why Cray:* it sets the scope boundary between a build PLAN and a
     measurement experiment — the same boundary Cray has ruled on twice this
     week (tool-first; record-then-escalate).
-- **SD-3 — does the exit code encode the verdict?** Options:
+- **SD-3 — ✅ RULED (Cray, typed, 2026-09-09, s289) — (b), distinct codes per verdict. *Reason ruled:* under (a) a consumer writing `cmd && next` proceeds on a DEAD verdict — **fail-open by default**. (b) makes `&&` fail-closed by construction, matching the NEEDS-EXECUTION-means-BLOCKED posture.** does the exit code encode the verdict?** Options:
   - **(a)** exit 0 for any successfully computed verdict; the verdict lives
     in the token / `--json` only. *Consequence:* clean logs (an honest DEAD
     is not a process "error"), but a lazy consumer checking only `rc` treats
