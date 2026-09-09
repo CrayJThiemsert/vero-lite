@@ -88,7 +88,9 @@ Each class declares: needs reasoning · structured or not · output size · late
 | **N Narrate** | free prose phrasing; the gate-advisory narrative | no | **no** | small (1–2 sentences) | latency-dominated, user-facing | **already degrades well** — deterministic fallback + an explicit empty-content branch |
 | **A Author** | `scaffold.py` synthetic dataset — the largest output in the system | no | yes | **largest in the system** (unmeasured) | **none — CLI batch** | falls back to the deterministic draft, **with no truncation disclosure — see D-2** |
 
-### Call-site inventory (measured — 14 in-client sites, plus one outside)
+### Call-site inventory — 16 rows: 14 `.chat(` sites in `services/`, one taxonomy-only row, one site outside `services/`
+
+> ✅ **SD-A RULED (Cray, typed, 2026-09-09, s289) — CLOSED, heading corrected, no row changed.** The carried STATUS item read *“§3 heading says 14, has 15 rows”*. Measured s289: the table holds **16 data rows** — 15 numbered plus the `—` row for the site outside `services/`. Both readings were right about different things: **14 is the true count of `.chat(` sites**, and the extra numbered row is **row 13**, which the s286 `was an error` block below already explains is *not* a `.chat(` site and is retained on taxonomy grounds. Nothing was wrong except a heading that named one of the two counts without saying so. The heading now states all three numbers; the s286 correction block stands unedited.
 
 Verified by grepping `\.chat\(` under `services/`. This table is itself an AC deliverable (AC-1) because no such inventory exists today.
 
