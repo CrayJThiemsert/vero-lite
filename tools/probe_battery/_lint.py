@@ -203,7 +203,13 @@ def lint_battery_file(path: Path, project_root: Path) -> BatteryLintReport:
 
     try:
         battery = Battery.from_json(data, base=project_root)
-    except BatteryDefinitionError as exc:
+    except ValueError as exc:
+        # ValueError, not BatteryDefinitionError: the latter subclasses it, but an
+        # invalid `expect` value reaches `Outcome(...)` and raises a BARE ValueError.
+        # Found by dogfooding — a battery written in this same session with a
+        # lower-case outcome name took the whole 22-battery run down with a
+        # traceback instead of being reported as one broken battery. A lint that
+        # crashes on the input it exists to inspect is not a lint.
         return BatteryLintReport(path, 0, 0, (Finding(path, "", f"schema: {exc}"),))
 
     n_probes = len(battery.probes)

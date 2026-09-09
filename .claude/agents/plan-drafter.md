@@ -1,5 +1,11 @@
 ---
 name: plan-drafter
+# model — governance AUTHORING, and this pin PRE-DATES s288: it was already fable,
+# implementing the s156 model-economy policy at the agent level rather than asking
+# every caller to remember an override. UNCHANGED here; s288 only added this note
+# after briefly reverting it by accident. Leave it pinned: a drafter that inherited
+# would silently drop to whatever the session happens to be on.
+model: fable
 description: |
   Writer subagent for ADR/PLAN drafting. Receives a self-contained
   drafting task + scoped context; produces a PR-ready uncommitted draft
@@ -18,7 +24,6 @@ disallowedTools:
   - Bash
   - WebFetch
   - Agent
-model: fable
 effort: xhigh
 maxTurns: 30
 hooks:

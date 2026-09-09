@@ -125,6 +125,33 @@
       "note": "A broken battery must be a FINDING, not a crash that takes the whole 21-battery run down with it. The count half."
     },
     {
+      "name": "P15-an-invalid-enum-reports-more-than-once",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"schema: {exc}\"),))",
+      "new": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"schema: {exc}\"),) * 2)",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_invalid_expect_value_is_found_and_does_not_raise",
+      "expect_claim": "test_an_invalid_expect_value_is_found_and_does_not_raise|len(report.findings) == 1|#0",
+      "note": "A battery that cannot even be constructed is reported ONCE — every later check would derive from an object that does not exist. The count half."
+    },
+    {
+      "name": "P16-a-schema-failure-is-not-named-as-such",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"schema: {exc}\"),))",
+      "new": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"bad battery: {exc}\"),))",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_invalid_expect_value_is_found_and_does_not_raise",
+      "expect_claim": "test_an_invalid_expect_value_is_found_and_does_not_raise|\"schema\" in report.findings[0].detail|#0",
+      "note": "The class half: a finding must say WHICH kind of rot it is, because the repair differs — a schema failure is fixed in the battery file, an anchor failure usually in the code the battery points at."
+    },
+    {
+      "name": "P17-the-underlying-exception-text-is-dropped",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"schema: {exc}\"),))",
+      "new": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", \"schema: rejected\"),))",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_invalid_expect_value_is_found_and_does_not_raise",
+      "expect_claim": "test_an_invalid_expect_value_is_found_and_does_not_raise|\"witnessed\" in report.findings[0].detail|#0",
+      "note": "🔴 §8's rule again: the report prints the value it measured. 'schema: rejected' is true and unactionable — the author cannot see that the offending value was `witnessed` rather than a missing field, and the two have nothing in common as repairs. Under this mutation the two claims above stay green, so the red is attributable to the dropped detail alone."
+    },
+    {
       "name": "P14-unreadable-json-is-not-named-as-such",
       "subject": "tools/probe_battery/_lint.py",
       "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"unreadable: {exc}\"),))",
