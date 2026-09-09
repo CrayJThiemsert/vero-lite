@@ -455,12 +455,12 @@ can re-derive a number already on the record has earned the right to produce new
 | `qwen3.8:27b-…-q4_K_M` @4096 | 11 | 11 | 0 | 11 | 82.05 | **125.24** | 125.24 | 1.964 | 7.410 | 2.118 | 19.1 | 0 |
 | `qwen3.8:27b-mtp-q8_0` @1024 | 11 | 28 | 0 | 28 | 54.37 | 65.23 | 69.28 | 0.006 | 0.010 | 0.964 | 19.0 | 24 |
 | `qwen3.8:27b-mtp-q8_0` @2048 | 11 | 13 | 0 | 13 | 98.05 | **124.47** | **142.42** | 0.007 | 0.011 | 1.610 | 18.4 | 1 |
-| `qwen3.8:27b-mtp-q8_0` @4096 | — | — | — | — | — | — | — | — | — | — | — | — |
+| `qwen3.8:27b-mtp-q8_0` @4096 | 11 | 11 | 0 | 11 | 88.76 | **124.04** | 124.04 | 3.716 | 19.622 | 2.027 | 18.7 | 0 |
 
-All eight collected arms are **USABLE** (11/11 cases, except gpt-oss@4096 at 10/11).
-Seconds throughout; `att` = attempts, `trunc` = attempts that hit the cap. 🔴 **The
-ninth arm (`q8` @4096) was still running when this was written** — it is the only cell
-outstanding, and it is not inferred from its neighbours.
+**The chain is COMPLETE** — `STEP4B-CHAIN: COMPLETE (19:16:03)`, all nine arms
+collected, the last model unloaded with `keep_alive 0`. All nine are **USABLE**
+(11/11 cases, except gpt-oss@4096 at 10/11). Seconds throughout; `att` = attempts,
+`trunc` = attempts that hit the cap.
 
 ### Finding 1 — the two unmeasured terms are small, and the pessimistic stand-ins were far off
 
@@ -474,15 +474,41 @@ placeholders for `load` and `prefill` because nothing had measured them. Measure
 Both terms are effectively noise against AC-4's rule
 `cap / decode_rate + load + prefill < timeout`. **The decode term dominates.**
 
-### Finding 2 — 🔴 cold load is 32.3 s, and it eats the whole 120 s margin
+### Finding 2 — 🔴 cap 4096 reloads the model MID-ARM, repeatedly, on every model
 
-`gpt-oss@4096` recorded a **32.332 s** load max against a 0.004 s mean — caught by
-accident, because the chain warms only the first cap of each model and the 4096 arm
-followed an unload. So a **cold** gpt-oss call at cap 4096 costs
-`32.3 + 0.5 + 86.4 ≈ 119 s` against the shipped **120 s** timeout: **one second of
-margin.** SD-4 asked whether 120 s is itself wrong; the measured answer is *"not for a
-warm call, and almost exactly wrong for a cold one at the cap Step 6 wants to adopt."*
-`qwen-q4@4096` shows the same shape at 7.410 s.
+_[Corrected s289 once the ninth arm landed, `was an error`. This finding first read
+*"cold load is 32.3 s … caught by accident, because the chain warms only the first cap
+of each model and the 4096 arm followed an unload"*, and the "does not settle" section
+called it **observed once**. Both were wrong, and the ninth arm is what exposed it: the
+event **recurs within a single arm**, and the chain's unloads happen **between models**,
+not between caps — so the chain's warm-once design is not the cause. The stale reading
+is corrected rather than restated, because it understated a systematic effect as a
+one-off.]_
+
+Counting every attempt whose `load` exceeded 0.5 s:
+
+| model | @1024 | @2048 | @4096 |
+|---|---|---|---|
+| `gpt-oss:20b` | 0 | 0 | **4 of 10** — 6.04 · **32.33** · 6.00 · 6.28 s |
+| `qwen…q4_K_M` | 0 | 0 | **3 of 11** — 7.41 · 7.11 · 7.04 s |
+| `qwen…q8_0` | 0 | 0 | **3 of 11** — **19.62** · 11.06 · 10.15 s |
+
+**Zero events across all six arms at 1024 and 2048; three or four in every arm at
+4096.** Every case ran exactly one attempt (the `#` column is `1` throughout), so these
+are not retries. The affected cases are largely the same ones across models — `bs-01`,
+`rm-01`, `rm-02` recur in all three 4096 arms — which points at case content rather
+than at chance.
+
+The consequence for AC-4 stands and is now worse than a cold-start caveat: a gpt-oss
+call at cap 4096 that hits one of these costs `32.3 + 0.5 + 86.4 ≈ 119 s` against the
+shipped **120 s** timeout — **one second of margin, on roughly a third of calls rather
+than on the first one after a restart.** SD-4 asked whether 120 s is itself wrong; the
+measured answer is *"not for a warm call, and almost exactly wrong at the cap Step 6
+wants to adopt."*
+
+🔴 **The mechanism is NOT measured.** Context-size reallocation, eviction under memory
+pressure on the 128 GB box, and something else entirely are all still live. What is
+measured is the association with the cap, and that it is not the chain's unloads.
 
 ### Finding 3 — 🔴 qwen decodes at ~19 tok/s, gpt-oss at ~46 — and qwen's p95 is already over the shipped timeout
 
@@ -500,7 +526,7 @@ capacity decision.
 |---|---|---|---|
 | `gpt-oss:20b` | 10/20 | 1/13 | 0/10 |
 | `qwen…q4_K_M` | 17/23 | 0/11 | 0/11 |
-| `qwen…q8_0` | 24/28 | 1/13 | pending |
+| `qwen…q8_0` | 24/28 | 1/13 | 0/11 |
 
 1024 truncates roughly half of gpt-oss's attempts and **most** of qwen's; 2048 nearly
 clears it for both. This reproduces the baseline addendum's `empty ⇔ length ⇔ 1024`
@@ -521,13 +547,15 @@ which teaches the reader to ignore controls, or read as a defect that does not e
 
 ### What this addendum does NOT settle
 
-- **The ninth arm.** `q8@4096` is unmeasured here; no cell is inferred from a neighbour.
 - **Any accuracy or ranking claim.** Step 4b measures **latency terms only**. Nothing
   here says qwen is better or worse than gpt-oss at the task — that is the baseline
   lane's question and it was not re-run.
-- **Cold-load frequency.** 32.3 s was observed **once**, on one arm, as a side effect of
-  the chain's warm-once design. How often a production call is cold is unmeasured, and
-  Finding 2's 119 s is a worst case, not a rate.
+- **Why cap 4096 reloads.** Finding 2 measures the association, not the cause. The
+  ~1-in-3 rate is a rate *within this corpus of 11 cases under this chain*, and the
+  cases affected repeat across models — so it is not safe to read it as a production
+  probability until the mechanism is known.
+- **Whether 1024/2048 are truly reload-free.** Six arms showed zero events, which is a
+  strong negative — but a negative measured on 11 cases per arm, not a proof.
 - **Whether 120 s should change.** The measurement is input to SD-4; the ruling is
   Cray's.
 - **Registered inexpressible:** per-attempt queueing/network time is not separable from
