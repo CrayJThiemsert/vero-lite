@@ -238,26 +238,49 @@ def _model() -> str:
 #: partly a measurement of the network. Measured 2026-09-06: MS-S1 returned 500
 #: on 286 of 1,756 ``/api/chat`` calls, so this is not a hypothetical.
 #:
-#: ⚠️ TWO deviations from §4.3's enum, both recorded rather than papered over
+#: ⚠️ ONE deviation from §4.3's enum, recorded rather than papered over
 #: (CLAUDE.md §8 — a case the system cannot express is registered in writing):
+#: ``not_attempted`` is a value the spec does not list. Two `_pause` sites fire
+#: before any request leaves the box (an absent registry, an unimportable
+#: helper). Labelling those ``timeout`` or ``malformed`` would assert a network
+#: event that never happened. Additive, so a consumer that only knows the
+#: listed values can ignore it.
 #:
-#: 1. ``not_attempted`` is a FIFTH value the spec does not list. Two `_pause`
-#:    sites fire before any request leaves the box (an absent registry, an
-#:    unimportable helper). Labelling those ``timeout`` or ``malformed`` would
-#:    assert a network event that never happened. Additive, so a consumer that
-#:    only knows the four can ignore it.
-#: 2. An HTTP error response — including the 500s measured above — arrives as
-#:    ``urllib.error.HTTPError``, a subclass of ``URLError``, and so lands in
-#:    ``timeout``. That conflates "the server refused" with "the server never
-#:    answered", which we have MEASURED to be different causes. No information
-#:    is lost: ``reason`` carries the distinguishing text ("HTTP Error 500"
-#:    vs "timed out"), so AC-12 can separate them. Widening the enum is a
-#:    §4.3 amendment and therefore Cray's, not a code decision.
+#: The SECOND deviation is GONE as of s290, and why it had to go is the point:
+#: an HTTP error arrives as ``urllib.error.HTTPError``, a subclass of
+#: ``URLError``, so a 500 used to land in ``timeout``. The old note here argued
+#: no information was lost, because ``reason`` carried the distinguishing text.
+#: That was true and it was not enough. Session 289 tallied the log BY THIS
+#: FIELD, read ``timeout 50.0%``, and concluded the blocker was elapsed time;
+#: s290's split of the same records by ``reason`` found 62 HTTP 500s, 27 real
+#: timeouts and 2 genuine network failures. A category that merges "the server
+#: refused" with "the server never answered" does not merely lose detail — the
+#: aggregate over it manufactures a cause, and a caveat written at the
+#: definition site does not travel with the percentage. ``http_error`` is now
+#: its own value (§4.3 amendment, s290).
 TRANSPORT_OK = "ok"
+TRANSPORT_HTTP_ERROR = "http_error"
 TRANSPORT_TIMEOUT = "timeout"
 TRANSPORT_MALFORMED = "malformed"
 TRANSPORT_RETRY = "retry"
 TRANSPORT_NOT_ATTEMPTED = "not_attempted"
+
+#: Total attempts per classify exchange — Cray's typed call, session 290.
+#:
+#: Was effectively 1 for a transport failure: the shipped `_run_with_retry`
+#: retried only an UNPARSEABLE body, and returned `_pause` on the first
+#: `URLError`. Measured over 187 Stop records (2026-09-06 .. 09-09): 11.8% ok,
+#: and the two dominant failures — 62 HTTP 500s and 74 empty-`content` 200s —
+#: are the SAME stochastic server-side fault, so the one thing that was never
+#: tried is asking again.
+#:
+#: Root cause (s290, from MS-S1's own server.log): `gpt-oss:20b` emits harmony
+#: tool calls for tools the request never declares (`python` x58,
+#: `repo_browser.open_file` x21, `container.exec` x6, ...); Ollama's harmony
+#: parser has no reverse mapping and the request then fails ~half as a 500 and
+#: ~half as a 200 with empty `content`. 90 such warnings split 45/45 across the
+#: two outcomes. This constant does not fix that fault — it survives it.
+CLASSIFIER_MAX_ATTEMPTS = 3
 
 
 def _pause(
@@ -911,51 +934,103 @@ def _call_ollama(system_prompt: str, user_message: str) -> str:
     return content
 
 
-def _run_with_retry(transport: Any) -> dict[str, Any]:
-    """Drive one classify exchange through ``transport(strict: bool) -> str``:
-    attempt → parse → retry once with the stricter prompt → fail-closed pause.
-    Backend-independent — both ``_call_api`` and ``_call_ollama`` raise the
-    same exception families (``URLError``/``TimeoutError``/``ValueError``).
-    """
-    # First attempt — normal prompt.
-    try:
-        text = str(transport(strict=False))
-    except (urllib.error.URLError, TimeoutError) as exc:
-        # NB: `HTTPError` subclasses `URLError`, so a 500 lands here too — see
-        # deviation (2) beside the TRANSPORT_* constants. `reason` keeps the
-        # distinguishing text.
-        return _pause(f"API unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
-    except ValueError as exc:
-        return _pause(f"API response malformed: {exc}", transport=TRANSPORT_MALFORMED)
-    except Exception as exc:  # defensive: never raise into the hook flow
-        return _pause(f"classifier transport error: {exc}", transport=TRANSPORT_TIMEOUT)
+def _http_error_detail(exc: BaseException) -> str:
+    """Render a transport exception, keeping an ``HTTPError``'s response BODY.
 
+    ``str(HTTPError)`` is only ``"HTTP Error 500: Internal Server Error"`` — the
+    server's actual explanation sits in the body and the shipped code dropped
+    it. Measured s290: 62 logged 500s were all bare, and naming the cause needed
+    an SSH session against MS-S1's own ``server.log``. One bounded read here
+    makes the next 500 diagnosable from the log alone.
+
+    Never raises: the body is gone once the connection is closed, and a probe
+    that dies while describing a failure would convert a pause into a crash.
+    """
+    if not isinstance(exc, urllib.error.HTTPError):
+        return str(exc)
     try:
-        parsed = _parse_response(text)
-    except ValueError:
-        pass  # fall through to retry
-    else:
-        parsed["transport"] = TRANSPORT_OK
+        body = exc.read().decode("utf-8", "replace").strip()
+    except Exception:  # body already consumed / never present (fp=None)
+        body = ""
+    return f"{exc} :: {body[:300]}" if body else str(exc)
+
+
+def _run_with_retry(transport: Any) -> dict[str, Any]:
+    """Drive one classify exchange through ``transport(strict: bool) -> str``,
+    retrying a failed attempt up to ``CLASSIFIER_MAX_ATTEMPTS`` times, then
+    failing closed to a pause carrying the LAST failure's reason + transport.
+
+    Backend-independent — both ``_call_api`` and ``_call_ollama`` raise the same
+    exception families (``URLError``/``TimeoutError``/``ValueError``).
+
+    Every failure mode is retried, not just an unparseable body: s290 measured
+    that the 500s and the empty-``content`` 200s are one stochastic server-side
+    fault (see ``CLASSIFIER_MAX_ATTEMPTS``), so a transport failure is exactly
+    as worth re-asking as a parse failure. Attempts after the first use the
+    stricter prompt, which is what the original single retry did.
+
+    ``transport`` on a success stays ``ok`` only for a first-attempt answer;
+    any later one is ``retry`` — §4.3's distinction, unchanged.
+    """
+    last: dict[str, Any] | None = None
+
+    for attempt in range(1, CLASSIFIER_MAX_ATTEMPTS + 1):
+        # The first attempt uses the normal prompt; every retry uses the
+        # stricter one.
+        try:
+            text = str(transport(strict=attempt > 1))
+        except urllib.error.HTTPError as exc:
+            # MUST precede the URLError arm: `HTTPError` subclasses `URLError`,
+            # and that inheritance is exactly what merged "the server refused"
+            # into "the server never answered" until s290. The server ANSWERED;
+            # it answered with an error.
+            last = _pause(
+                f"API HTTP error: {_http_error_detail(exc)}",
+                transport=TRANSPORT_HTTP_ERROR,
+            )
+            continue
+        except (urllib.error.URLError, TimeoutError) as exc:
+            # Now genuinely "never answered": a socket timeout or an unreachable
+            # host. Measured s290: 27 real timeouts and 2 network failures out of
+            # 187 — the residue once the 62 HTTP errors move to their own value.
+            last = _pause(f"API unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
+            continue
+        except ValueError as exc:
+            # `_call_ollama` raises this for an envelope whose `message.content`
+            # is missing or empty — 74 of 187 records, and retryable.
+            last = _pause(f"API response malformed: {exc}", transport=TRANSPORT_MALFORMED)
+            continue
+        except Exception as exc:  # defensive: never raise into the hook flow
+            # ⚠️ Known residue of the same category error §4.3's amendment fixed:
+            # an unexpected exception type does not establish that the server
+            # never answered, yet this labels it `timeout`. Left as-is because
+            # it took 0 of 187 measured records — 62 http_error + 27 timed-out +
+            # 2 unreachable account for every timeout-labelled record — so
+            # widening the enum a second time would add a value with no
+            # population. Registered rather than papered over (CLAUDE.md §8).
+            last = _pause(f"classifier transport error: {exc}", transport=TRANSPORT_TIMEOUT)
+            continue
+
+        try:
+            parsed = _parse_response(text)
+        except ValueError as exc:
+            last = _pause(
+                f"classifier response unparseable after attempt {attempt}: {exc}",
+                transport=TRANSPORT_MALFORMED,
+            )
+            continue
+
+        # The model answered. First time is `ok`; any later attempt is `retry`.
+        parsed["transport"] = TRANSPORT_OK if attempt == 1 else TRANSPORT_RETRY
         return parsed
 
-    # Retry once with stricter prompt.
-    try:
-        text2 = str(transport(strict=True))
-    except (urllib.error.URLError, TimeoutError) as exc:
-        return _pause(f"retry unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
-    except Exception as exc:
-        return _pause(f"retry transport error: {exc}", transport=TRANSPORT_TIMEOUT)
-
-    try:
-        parsed = _parse_response(text2)
-    except ValueError as exc:
-        return _pause(
-            f"classifier response unparseable after retry: {exc}",
-            transport=TRANSPORT_MALFORMED,
-        )
-    # The model answered, but only on the second attempt — `retry`, not `ok`.
-    parsed["transport"] = TRANSPORT_RETRY
-    return parsed
+    # Unreachable with CLASSIFIER_MAX_ATTEMPTS >= 1, but a bad constant must not
+    # return None into the hook flow.
+    return (
+        last
+        if last is not None
+        else _pause("classifier made no attempt", transport=TRANSPORT_NOT_ATTEMPTED)
+    )
 
 
 def classify(payload: dict[str, Any]) -> dict[str, Any]:
