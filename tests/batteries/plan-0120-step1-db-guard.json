@@ -64,7 +64,7 @@
       "old": "    if guard.acquire() == db_guard.CONTENDED:\n        pytest.exit(guard.contention_reason(), returncode=db_guard.CONTENDED_EXIT)",
       "new": "    if guard.acquire() == db_guard.CONTENDED:\n        pytest.skip(guard.contention_reason())",
       "node_id": "tests/services/db/test_db_guard_second_arriver.py::test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code",
-      "expect_claim": "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|proc.returncode == db_guard.CONTENDED_EXIT|#0",
+      "expect_claim": "test_a_second_session_on_the_same_name_exits_contended_naming_the_holder|proc.returncode == db_guard.CONTENDED_EXIT|#0",
       "note": "🔴 The exact regression PLAN-0120 §2 forbids: a contended session that SKIPS reads as a pass on the summary line. The child exits 0 instead of 75. Its token still prints outcome=CONTENDED and the holder pid, so those two siblings stay green and only the return code reddens."
     }
   ],
@@ -81,7 +81,7 @@
     "test_the_childs_token_shows_it_acquired_its_own_database|len(reported) == 1|#0": "A parsing precondition — exactly one TEST-DB-GUARD line in the child's stdout — that exists so the assertions below read a token rather than a substring found anywhere. Under P6 it stays green (the child still prints one token), which is what makes P6's reddening attributable to the NAME rather than to missing output.",
     "test_the_childs_token_shows_it_acquired_its_own_database|child_db.endswith(f\"_{child_role}\")|#0": "Co-falsified with `child_db != parent_db` by P6 and unreachable after it: pytest stops at the first failing assert, so this line's state under P6 is NOT-REACHED, never green. Recorded rather than claimed. Its independent content is the suffix SHAPE, which the unit module asserts directly (tests/tools/test_db_guard.py::test_a_role_suffixes_the_database_name_and_nothing_else).",
     "test_the_childs_token_shows_it_acquired_its_own_database|f\"outcome={db_guard.ACQUIRED}\" in reported[0]|#0": "Same not-reached position as the line above under P6. Its content — that a child with its own database ACQUIRES rather than contends — is witnessed by P5, where exactly that failure turns the child's return code non-zero.",
-    "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|f\"outcome={db_guard.CONTENDED}\" in proc.stdout|#0": "Stays GREEN under P7 by design — that is what makes P7 credit the return code alone. It is the sibling whose green rules out 'something unrelated broke', so probing it would remove the evidence that P7 is specific.",
-    "test_a_second_session_on_the_same_name_is_refused_with_the_reserved_code|f\"holder_pid={parent_guard.holder_pid}\" in proc.stdout|#0": "Same sibling-green role as the line above under P7. The naming half of the contention report is witnessed on the other side by P3, which drops the same field from the token."
+    "test_a_second_session_on_the_same_name_exits_contended_naming_the_holder|holder_named|#0": "Same sibling-green role as the line above under P7. The naming half of the contention report is witnessed on the other side by P3, which drops the same field from the token.",
+    "test_a_second_session_on_the_same_name_exits_contended_naming_the_holder|fields[\"outcome\"] == db_guard.CONTENDED|#0": "Stays GREEN under P7 by design — that is what makes P7 credit the return code alone. It is the sibling whose green rules out 'something unrelated broke', so probing it would remove the evidence that P7 is specific."
   }
 }

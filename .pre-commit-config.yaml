@@ -178,3 +178,24 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # A probe battery can be silently DEAD
+      # (tools/check_battery_definitions.py). Measured s287: two of PLAN-0119's
+      # six aborted on a DEFINITION error rather than a red probe, and had done
+      # so for a session — one had its asserted literal reflowed by `ruff format`
+      # (stable_key is built from those bytes), the other had its claim key and a
+      # probe's anchor still naming a setting #1433 replaced. The tests were
+      # updated with the code; the batteries were not. Batteries do not run in
+      # CI — they mutate the tree and spawn one pytest per probe — and
+      # check_ac_consistency reports clean because it does not run them either,
+      # so nothing caught either death. This lifts out the DEFINITIONAL half,
+      # which needs no mutation and no pytest and is exactly the half that rots.
+      # always_run because both deaths were authored by editing the code a
+      # battery points AT, never the battery file: a hook scoped to
+      # tests/batteries/*.json would have stayed silent through both.
+      - id: battery-definition-lint
+        name: probe batteries can still address what they declare (s288)
+        entry: uv run --no-sync python tools/check_battery_definitions.py
+        language: system
+        always_run: true
+        pass_filenames: false

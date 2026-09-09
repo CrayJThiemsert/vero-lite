@@ -1,0 +1,137 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_battery_definitions.py"
+  ],
+  "exemptions": {
+    "test_a_new_text_already_present_elsewhere_is_not_a_finding|text.count(' return \"reasoning\"') == 1|#0": "A precondition assertion about the test's OWN fixture, not about the subject. No mutation of `_lint.py` can redden it, and mutating the fixture to break its own premise would be circular — the premise exists precisely so the case cannot pass while silently testing nothing. It earned its keep on the first run: the fixture had the two branches at different indents, so the regression pin was not exercising the shape it names, and this assertion is what said so.",
+    "test_a_new_text_already_present_elsewhere_is_not_a_finding|text.count(' return \"plain\"') == 1|#0": "Same fixture-premise role as the line above; same reason it is unreachable from a mutation of the subject."
+  },
+  "probes": [
+    {
+      "name": "P1-the-lint-accuses-a-healthy-battery",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        if hits != 1:",
+      "new": "        if hits != 2:",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_healthy_battery_produces_no_findings",
+      "expect_claim": "test_a_healthy_battery_produces_no_findings|report.findings == ()|#0",
+      "note": "🔴 The OVER-REFUSAL direction, which is the one that actually bit at s288. A healthy anchor resolves exactly once, so inverting the expected count makes the lint accuse every correct battery in the repo. A guard that refuses everything passes every 'does it catch X?' probe below; only this one can tell strict from broken."
+    },
+    {
+      "name": "P2-probe-count-is-not-measured",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "    n_probes = len(battery.probes)",
+      "new": "    n_probes = 0",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_healthy_battery_produces_no_findings",
+      "expect_claim": "test_a_healthy_battery_produces_no_findings|report.probes == 1|#0",
+      "note": "The report prints counts so a disagreement is one step to diagnose (§8: never a bare PASS/FAIL). A count that is always zero would make every report unreadable while the verdict stayed correct — invisible to any test that checks only findings."
+    },
+    {
+      "name": "P3-claim-source-count-is-not-measured",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "    n_sources = len(battery.claim_sources)",
+      "new": "    n_sources = 0",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_healthy_battery_produces_no_findings",
+      "expect_claim": "test_a_healthy_battery_produces_no_findings|report.claim_sources == 1|#0",
+      "note": "Sibling of P2 for the other printed count."
+    },
+    {
+      "name": "P4-THE-REGRESSION-the-s288-over-refusal-restored",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        if probe.old == probe.new:",
+      "new": "        if probe.new in text:",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_new_text_already_present_elsewhere_is_not_a_finding",
+      "expect_claim": "test_a_new_text_already_present_elsewhere_is_not_a_finding|report.findings == ()|#0",
+      "note": "🔴 THE probe of this battery: it restores the exact bug the first draft shipped — treating a `new` text that appears anywhere in the subject as proof the mutation is a no-op. It reported 8 of 21 batteries dead when the true number was 2, accusing six healthy ones. The fixture's two branches sit at the SAME indent so this mutation genuinely fires; if that ever drifts, the premise assertions this battery exempts are what will say so."
+    },
+    {
+      "name": "P5-a-vanished-anchor-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        if hits != 1:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_anchor_that_no_longer_resolves_is_found",
+      "expect_claim": "test_an_anchor_that_no_longer_resolves_is_found|\"occurs 0 times\" in details|#0",
+      "note": "The s287 R17 death, restored: the code moved, the battery did not, and nothing said so. Distinct from P1 in direction — P1 over-refuses, this under-refuses — and the same anchor carries both because the branch is the single decision point."
+    },
+    {
+      "name": "P6-a-repeated-anchor-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        hits = text.count(probe.old)",
+      "new": "        hits = 1",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_anchor_matching_twice_is_found",
+      "expect_claim": "test_an_anchor_matching_twice_is_found|\"occurs 2 times\" in details|#0",
+      "note": "The other half of 'exactly once': an anchor whose blast radius is larger than the probe declared. Pinning `hits` to 1 rather than disabling the branch keeps P5's claim green under this mutation, so the red is attributable to the counting and not to the reporting."
+    },
+    {
+      "name": "P7-a-byte-identical-mutation-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        if probe.old == probe.new:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_byte_identical_mutation_is_found",
+      "expect_claim": "test_a_byte_identical_mutation_is_found|\"byte-identical\" in details|#0",
+      "note": "The only offline-decidable no-op. Aimed at the same branch P4 aims at, from the opposite direction: P4 makes it fire too often, this makes it never fire."
+    },
+    {
+      "name": "P8-an-unaddressable-claim-key-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        _validate(battery, index)",
+      "new": "        pass",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_claim_key_that_addresses_nothing_is_found",
+      "expect_claim": "test_a_claim_key_that_addresses_nothing_is_found|\"does not exist in the claim sources\" in details|#0",
+      "note": "The s287 AC-1 / AC-2 death: `ruff format` reflowed an asserted literal and stable_key is built from those bytes, so the declared key addressed nothing. The driver already refuses this — the defect was that it only refuses when somebody RUNS the battery."
+    },
+    {
+      "name": "P9-an-orphan-exemption-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        orphan = sorted(set(battery.exemptions) - set(index))",
+      "new": "        orphan = []",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_an_exemption_naming_a_vanished_claim_is_found",
+      "expect_claim": "test_an_exemption_naming_a_vanished_claim_is_found|\"no longer exists\" in details|#0",
+      "note": "The third address that rots, and the one the driver reports only mid-run as 'stale ids'. An exemption is a written promise that a claim is unreachable; when the claim disappears the promise still reads as deliberate coverage while covering nothing. Found live at s288 in plan-0120-step1-db-guard."
+    },
+    {
+      "name": "P10-a-missing-node-module-is-not-reported",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        if not node_file.is_file():",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_node_id_naming_a_missing_module_is_found",
+      "expect_claim": "test_a_node_id_naming_a_missing_module_is_found|\"node_id names a module that does not exist\" in details|#0",
+      "note": "A probe pointing at a test module that moved. Only the FILE is checked — resolving the test itself needs collection, which this lint deliberately does not do."
+    },
+    {
+      "name": "P11-a-missing-claim-source-reports-more-than-once",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "            (Finding(path, \"\", f\"claim_sources missing from disk: {named}\"),),",
+      "new": "            (Finding(path, \"\", f\"claim_sources missing from disk: {named}\"),) * 2,",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_missing_claim_source_is_found",
+      "expect_claim": "test_a_missing_claim_source_is_found|len(report.findings) == 1|#0",
+      "note": "The 'reported ALONE' half. Every later check derives from an index that cannot be built, so a missing source that also emitted a cascade of derived complaints would bury the one finding that matters. Duplicating it is the cheapest way to redden the count without touching the message P12 owns."
+    },
+    {
+      "name": "P12-a-missing-claim-source-is-not-named-as-such",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "            (Finding(path, \"\", f\"claim_sources missing from disk: {named}\"),),",
+      "new": "            (Finding(path, \"\", f\"sources absent: {named}\"),),",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_a_missing_claim_source_is_found",
+      "expect_claim": "test_a_missing_claim_source_is_found|\"claim_sources missing from disk\" in report.findings[0].detail|#0",
+      "note": "The message half. Under this mutation the COUNT stays 1, so P11's claim stays green — that green is what attributes this red to the wording rather than to a cascade."
+    },
+    {
+      "name": "P13-unreadable-json-reports-more-than-once",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"unreadable: {exc}\"),))",
+      "new": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"unreadable: {exc}\"),) * 2)",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_unparseable_json_is_found_and_does_not_raise",
+      "expect_claim": "test_unparseable_json_is_found_and_does_not_raise|len(report.findings) == 1|#0",
+      "note": "A broken battery must be a FINDING, not a crash that takes the whole 21-battery run down with it. The count half."
+    },
+    {
+      "name": "P14-unreadable-json-is-not-named-as-such",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"unreadable: {exc}\"),))",
+      "new": "        return BatteryLintReport(path, 0, 0, (Finding(path, \"\", f\"cannot parse: {exc}\"),))",
+      "node_id": "tests/tools/test_check_battery_definitions.py::test_unparseable_json_is_found_and_does_not_raise",
+      "expect_claim": "test_unparseable_json_is_found_and_does_not_raise|\"unreadable\" in report.findings[0].detail|#0",
+      "note": "The message half. The word `unreadable` also appears in the subject-unreadable finding further down, so this anchor is the whole return line rather than the word — an anchor that matched twice would edit a site the probe never declared."
+    }
+  ]
+}
