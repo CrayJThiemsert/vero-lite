@@ -14,30 +14,56 @@ The compose project is named **`oct-fleet-maintenance`** — the same string as 
 directory, the convention every profile follows and
 `tests/deploy/test_published_profiles.py` enforces.
 
-## 🔴 Bring-up is gated. Authoring is not.
+## ✅ Bring-up happened. Both gates were discharged first.
 
-**Authoring this profile is ungated** — ADR-0037 is Accepted, which is what makes
+**This system went live as published system #3 on 2026-08-16 (session 234)**, under
+Cray's own typed CLAUDE.md §8 go. Execution record:
+`docs/logs/2026-08-16-plan0103-step10-fleet-bring-up.md`. PLAN-0103 closed
+**Complete, all 11 ACs**, the same day — AC-10 and AC-11 were its last two open
+criteria and this bring-up is what discharged them.
+
+_[Corrected s288 (2026-09-09): this section read "🔴 **Bring-up is gated. Authoring
+is not.**" and described both gates in the **present tense** for three weeks after
+they were discharged. `superseded by new info` — it was accurate when written
+(2026-08-15) and stopped being accurate the next day. The two gates are **kept
+below, not deleted**: they are the record of what this bring-up had to pass, and
+they are why this system is shaped the way it is. The staleness had a measured cost
+— a session planning from this file treated a live system as unbuilt.]_
+
+**Authoring this profile was ungated** — ADR-0037 is Accepted, which is what makes
 the per-system database posture legitimate.
 
-**Bringing it up is gated, on two separate things:**
+**Bringing it up was gated, on two separate things — both now discharged:**
 
-1. **AC-11 — the RoPA must cover this system's posture BEFORE it is reachable**
+1. ✅ **AC-11 — the RoPA must cover this system's posture BEFORE it is reachable**
    (ADR-0037 D2.1). Tab I is visitor-writable and its free text persists to the
    Postgres below. The published demo's existing RoPA describes a **DB-less**
    system whose entire personal-data story is the prompt log, and whose erasure
    path is a content search over that log — which never reaches a case row. The
-   RoPA is **Cray's artifact, in Cray's controller voice**; this PLAN gates on it
-   and supplies the change statement, and authors none of the text. A bring-up
-   without it is a **stop condition, not a warning**.
-2. **Order and headroom.** SD-2 ruled bring-up order **procurement, then fleet**,
+   RoPA is **Cray's artifact, in Cray's controller voice**; this PLAN gated on it
+   and supplied the change statement, and authored none of the text. A bring-up
+   without it would have been a **stop condition, not a warning**.
+   **DISCHARGED:** `docs/compliance/ropa-fleet-cases.md` — a sibling per-dataset
+   instance, Cray's structuring call — adopted **2026-08-15**, the day *before* the
+   go. The ordering this AC exists to enforce held in the direction it was written
+   for.
+2. ✅ **Order and headroom.** SD-2 ruled bring-up order **procurement, then fleet**,
    and AC-10 requires MS-S1 headroom to be **measured and recorded** (Step 9)
    before any second system is stood up. Every bring-up has its own explicit
    Cray go (CLAUDE.md §8).
+   **DISCHARGED:** procurement went live first (s222); headroom was measured and
+   recorded at s221, before any second system existed. ⚠️ One honest qualifier
+   carried over from PLAN-0103 AC-10: the three-system reading came in at
+   **≈1.33 GiB** against Step 9's **≈0.95 GiB** projection — not because of the
+   third system, but because Step 9 modelled containers **at boot**, under-modelling
+   by roughly 3–6× per app container. At 4.3% of available memory it changed no
+   decision, but **a fourth system must be projected against steady-state figures.**
 
-One sharp edge to hand Cray with the RoPA update: a case that drives a governed run
-enters the **tamper-evident audit chain** — the structure whose erasure the demo
-RoPA itself says cannot be promised. So the case-text DSR answer is structurally
-different from the prompt log's, and only Cray can set it.
+The sharp edge this section handed Cray with the RoPA update — a case that drives a
+governed run enters the **tamper-evident audit chain**, the structure whose erasure
+the demo RoPA itself says cannot be promised, so the case-text DSR answer is
+structurally different from the prompt log's — **was answered by Cray in
+`ropa-fleet-cases.md` before the go**, not left open.
 
 ## What this deployment serves
 
@@ -252,12 +278,19 @@ docker run --rm -v "$(pwd)/deploy/published/oct-fleet-maintenance/cloudflared":/
   README prescribes. Parameterizing it (vs copying per profile) is a real
   deferred decision, but it falls due at this system's **first redeploy**, not at
   its bring-up.
-- 🔴 **A fleet-specific in-app disclosure (ADR-0037 D2.4)** — that typed case text
-  is persisted, and for how long. **RULED (Cray, typed, 2026-08-14): fleet gets
-  its own**, not a widening of the shared D6 prompt-log banner. Binding **before
-  this system is reachable** (D2 obligations bind before reachability), and owned
-  by its own PLAN. ⚠️ The existing published banner is **not** it: ADR-0037 D3
-  refuses to widen D6, the two 90-day numbers are an independent coincidence the
-  test suite actively guards against conflating, and that banner's *"read only by
-  the operator"* clause is **false for case text on this profile** — Tab H shows
-  visitor-opened cases to other visitors.
+- ~~🔴 **A fleet-specific in-app disclosure (ADR-0037 D2.4)** — owned by its own
+  PLAN, binding before this system is reachable.~~ **SHIPPED s234 — PLAN-0106
+  (`docs/plans/done/0106-fleet-case-persistence-disclosure.md`) is Complete, all 7
+  ACs closed, 2026-08-16.** The disclosure is live in
+  `services/api/static/assets/app.js` — a `case-persist-notice` element sitting
+  **beside** the D6 prompt-log notice, not inside it — and in `view-case.js`, at
+  the point of capture. AC-7's ordering clause — disclosure before reachability —
+  was discharged **before** the bring-up go, not after.
+  _[Corrected s288: this bullet still read 🔴 and "owned by its own PLAN" three
+  weeks after that PLAN closed. `superseded by new info`.]_
+  **RULED (Cray, typed, 2026-08-14): fleet gets its own**, not a widening of the
+  shared D6 prompt-log banner — and the reasoning stays on record because it is why
+  the shipped banner is a *separate* one: ADR-0037 D3 refuses to widen D6, the two
+  90-day numbers are an independent coincidence the test suite actively guards
+  against conflating, and D6's *"read only by the operator"* clause is **false for
+  case text on this profile** — Tab H shows visitor-opened cases to other visitors.

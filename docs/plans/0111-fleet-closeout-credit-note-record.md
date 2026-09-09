@@ -586,8 +586,19 @@ opened.
 
 AC-9's STATUS TODO; PLAN moves to `docs/plans/done/` only after all ACs are checked
 (the rulings themselves are recorded — 2026-08-19, this file; keep `Status: Draft`
-until closeout — an "Accepted" PLAN G1-gates its own closeout, and Cray ratifies the
-PLAN at PR merge).
+until closeout, and Cray ratifies the PLAN at PR merge).
+
+⚠️ **`was an error`, corrected s288.** This step read *"an 'Accepted' PLAN G1-gates
+its own closeout"*. **Measured false against the gate code** — G1
+(`.claude/hooks/pretooluse_governance_gate_deny.py:184-192`) matches
+`docs/adr/NNNN-*.md` with `Status: Accepted` and **nothing under `docs/plans/`**;
+G2 (`:171-175`) fires only on a Write **creating** an artifact that does not yet
+exist. So flipping this PLAN to `Accepted` would **not** gate its own closeout, and
+no gate stops Code from editing it. The `Status: Draft`-until-closeout convention
+stands on its own merits (ratification happens at PR merge) — it simply is not
+enforced by G1. Correcting rather than deleting: the wrong mechanism claim would
+mislead an executor about what it is *permitted* to do, which is the costly
+direction of this error.
 
 ## Verification
 
