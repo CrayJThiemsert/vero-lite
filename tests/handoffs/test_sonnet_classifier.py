@@ -1558,24 +1558,43 @@ def test_an_unreachable_server_is_timeout(monkeypatch: pytest.MonkeyPatch) -> No
     assert result["transport"] == "timeout"
 
 
-def test_an_http_500_lands_in_timeout_and_says_so_in_the_reason(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Deviation (2), pinned so it cannot drift unnoticed.
+def test_an_http_500_is_http_error_not_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The §4.3 amendment (s290). This test previously pinned the OPPOSITE.
 
-    `HTTPError` subclasses `URLError`, so a 500 reads as `timeout` — the enum
-    §4.3 fixes has no value for "the server refused". MEASURED to matter: 286
-    of 1,756 /api/chat calls on MS-S1 were 500s, not timeouts. No information
-    is lost because `reason` carries the distinguishing text, and this test is
-    what guarantees that stays true.
+    It asserted `transport == "timeout"` and its docstring argued no information
+    was lost, because `reason` carried the distinguishing text. Both were true.
+    Neither helped: s289 tallied the log BY THIS FIELD, read `timeout 50.0%`, and
+    concluded the blocker was elapsed time. The 62 500s were the largest single
+    cause and were invisible in that aggregate. The name is changed with the
+    assertion on purpose — a test called `..._lands_in_timeout` that asserts
+    `http_error` is the same lossy label one level up.
     """
     exc = urllib.error.HTTPError(
         url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
     )
     result = _drive(monkeypatch, *[exc] * sc.CLASSIFIER_MAX_ATTEMPTS)
     print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
-    assert result["transport"] == "timeout"
+    assert result["transport"] == "http_error"
     assert "500" in result["reason"]
+
+
+def test_an_http_error_and_a_socket_timeout_do_not_share_a_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The whole point of the amendment, asserted as a DIFFERENCE.
+
+    Checking each label alone would pass under a mutation that made both values
+    identical; only comparing them can redden that. `HTTPError` subclasses
+    `URLError`, so the two arms are one `except` away from re-merging.
+    """
+    http = urllib.error.HTTPError(
+        url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
+    )
+    refused = _drive(monkeypatch, *[http] * sc.CLASSIFIER_MAX_ATTEMPTS)
+    silent = _drive(monkeypatch, *[urllib.error.URLError("timed out")] * sc.CLASSIFIER_MAX_ATTEMPTS)
+    print(f"answered-with-error={refused['transport']!r}  never-answered={silent['transport']!r}")
+    assert refused["transport"] != silent["transport"]
+    assert {refused["transport"], silent["transport"]} == {"http_error", "timeout"}
 
 
 def test_an_unparseable_body_is_malformed_after_the_retry(
@@ -1623,6 +1642,17 @@ def test_a_transport_failure_is_retried_not_surrendered(
     assert result["decision"] == "pause"  # from _GOOD_BODY, not manufactured
     assert result["transport"] == "retry"
     assert result["reason"] == "needs Cray"  # the MODEL's reason, not a failure string
+
+
+def test_a_socket_timeout_is_also_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The third arm. After s290 split HTTP errors out of `timeout`, the
+    URLError arm is a separate `except` with its own `continue`, so its retry
+    can be lost independently of the HTTP one and needs its own witness.
+    """
+    exc = urllib.error.URLError("timed out")
+    result = _drive(monkeypatch, exc, exc, _GOOD_BODY)
+    print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
+    assert result["transport"] == "retry"
 
 
 def test_an_empty_ollama_envelope_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:

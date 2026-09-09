@@ -4,13 +4,22 @@
   ],
   "probes": [
     {
-      "name": "P1-transport-failure-surrenders-again",
+      "name": "P1-http-arm-surrenders-again",
       "subject": ".claude/hooks/_sonnet_classifier.py",
-      "old": "                transport=TRANSPORT_TIMEOUT,\n            )\n            continue",
-      "new": "                transport=TRANSPORT_TIMEOUT,\n            )\n            return last",
+      "old": "                transport=TRANSPORT_HTTP_ERROR,\n            )\n            continue",
+      "new": "                transport=TRANSPORT_HTTP_ERROR,\n            )\n            return last",
       "node_id": "tests/handoffs/test_sonnet_classifier.py::test_a_transport_failure_is_retried_not_surrendered",
       "expect_claim": "test_a_transport_failure_is_retried_not_surrendered|result[\"transport\"] == \"retry\"|#0",
-      "note": "Reverts exactly the s290 fix on the URLError/HTTPError arm: the first 500 returns a manufactured pause instead of re-asking. The test's FIRST assertion (decision == 'pause') stays GREEN, because a manufactured pause is also a pause - which is the whole reason `transport` has to exist. The ValueError arm is untouched, so P2's test stays green too: that green is what rules out 'something unrelated broke'."
+      "note": "Reverts the s290 fix on the HTTP-error arm: the first 500 returns a manufactured pause instead of re-asking. The test's FIRST assertion (decision == 'pause') stays GREEN, because a manufactured pause is also a pause - which is the whole reason `transport` has to exist. The URLError and ValueError arms are untouched, so P9's and P2's tests stay green: that green is what rules out 'something unrelated broke'."
+    },
+    {
+      "name": "P9-socket-timeout-arm-surrenders-again",
+      "subject": ".claude/hooks/_sonnet_classifier.py",
+      "old": "            last = _pause(f\"API unreachable: {exc}\", transport=TRANSPORT_TIMEOUT)\n            continue",
+      "new": "            last = _pause(f\"API unreachable: {exc}\", transport=TRANSPORT_TIMEOUT)\n            return last",
+      "node_id": "tests/handoffs/test_sonnet_classifier.py::test_a_socket_timeout_is_also_retried",
+      "expect_claim": "test_a_socket_timeout_is_also_retried|result[\"transport\"] == \"retry\"|#0",
+      "note": "Splitting HTTP errors out of `timeout` gave the URLError path its own `except` with its own `continue`, so its retry can now be lost INDEPENDENTLY of the HTTP one. Before the split one probe covered both paths; after it, a single probe covering both would be a coverage gap wearing a green tick."
     },
     {
       "name": "P2-empty-envelope-surrenders-again",
@@ -19,7 +28,25 @@
       "new": "            last = _pause(f\"API response malformed: {exc}\", transport=TRANSPORT_MALFORMED)\n            return last",
       "node_id": "tests/handoffs/test_sonnet_classifier.py::test_an_empty_ollama_envelope_is_retried",
       "expect_claim": "test_an_empty_ollama_envelope_is_retried|result[\"transport\"] == \"retry\"|#0",
-      "note": "The other half, and it needs its own probe: an empty `message.content` raises ValueError and takes a DIFFERENT except arm from the 500. 74 of 187 measured records land here. Under this mutation the URLError arm still retries, so P1's test stays GREEN - one mutation, one assertion."
+      "note": "The third arm, and it needs its own probe: an empty `message.content` raises ValueError, not a URL error at all. 74 of 187 measured records land here. Under this mutation both the HTTP and socket arms still retry, so P1's and P9's tests stay GREEN - one mutation, one assertion."
+    },
+    {
+      "name": "P7-http-error-relabelled-as-timeout",
+      "subject": ".claude/hooks/_sonnet_classifier.py",
+      "old": "                transport=TRANSPORT_HTTP_ERROR,",
+      "new": "                transport=TRANSPORT_TIMEOUT,",
+      "node_id": "tests/handoffs/test_sonnet_classifier.py::test_an_http_500_is_http_error_not_timeout",
+      "expect_claim": "test_an_http_500_is_http_error_not_timeout|result[\"transport\"] == \"http_error\"|#0",
+      "note": "Restores exactly the pre-s290 label. This is the regression that matters historically: the record still carries '500' in `reason`, so the sibling assertion ('500' in reason) stays GREEN under this mutation - which is precisely how the mislabel survived a whole session's review. The green sibling is the point here, not an accident."
+    },
+    {
+      "name": "P8-the-two-values-collapse-into-one",
+      "subject": ".claude/hooks/_sonnet_classifier.py",
+      "old": "TRANSPORT_HTTP_ERROR = \"http_error\"",
+      "new": "TRANSPORT_HTTP_ERROR = \"timeout\"",
+      "node_id": "tests/handoffs/test_sonnet_classifier.py::test_an_http_error_and_a_socket_timeout_do_not_share_a_value",
+      "expect_claim": "test_an_http_error_and_a_socket_timeout_do_not_share_a_value|refused[\"transport\"] != silent[\"transport\"]|#0",
+      "note": "Distinct from P7: P7 sends the HTTP arm to the wrong constant, this makes the two CONSTANTS equal. Either way the aggregate re-merges, and only an assertion that COMPARES the two values can see it - checking each label alone still passes. Reaches the difference assertion first, so the set-equality assertion below it is never evaluated."
     },
     {
       "name": "P3-budget-constant-drifts",
@@ -29,6 +56,15 @@
       "node_id": "tests/handoffs/test_sonnet_classifier.py::test_the_attempt_budget_is_exactly_three",
       "expect_claim": "test_the_attempt_budget_is_exactly_three|sc.CLASSIFIER_MAX_ATTEMPTS == 3|#0",
       "note": "The budget is Cray's typed call (s290), not a tuning knob: it sets how long a Stop hook can block his turn (3 x up to 75s worst case). This witnesses the CONSTANT's value only - the behavioural claim that the loop actually runs three times is P6's, because a constant can read 3 while the loop ignores it."
+    },
+    {
+      "name": "P6-loop-runs-one-attempt-short",
+      "subject": ".claude/hooks/_sonnet_classifier.py",
+      "old": "    for attempt in range(1, CLASSIFIER_MAX_ATTEMPTS + 1):",
+      "new": "    for attempt in range(1, CLASSIFIER_MAX_ATTEMPTS):",
+      "node_id": "tests/handoffs/test_sonnet_classifier.py::test_the_attempt_budget_is_exactly_three",
+      "expect_claim": "test_the_attempt_budget_is_exactly_three|calls[\"n\"] == 3|#0",
+      "note": "The off-by-one the loop rewrite invites. Deliberately leaves the constant at 3 so the test's FIRST assertion stays GREEN and this one - the count of calls the transport actually received - reddens alone. Without this probe P3 would witness only that a number is written down, never that it is obeyed."
     },
     {
       "name": "P4-retries-stop-using-the-strict-prompt",
@@ -47,15 +83,6 @@
       "node_id": "tests/handoffs/test_sonnet_classifier.py::test_an_http_error_body_is_kept_in_the_reason",
       "expect_claim": "test_an_http_error_body_is_kept_in_the_reason|\"harmony parser\" in detail|#0",
       "note": "Restores the shipped behaviour that made 62 logged 500s undiagnosable without an SSH session against MS-S1's server.log. The sibling assertion ('500' in detail) stays GREEN under this mutation - str(exc) still carries the code - so the body claim is witnessed alone, and that green is the positive control proving the reader still runs."
-    },
-    {
-      "name": "P6-loop-runs-one-attempt-short",
-      "subject": ".claude/hooks/_sonnet_classifier.py",
-      "old": "    for attempt in range(1, CLASSIFIER_MAX_ATTEMPTS + 1):",
-      "new": "    for attempt in range(1, CLASSIFIER_MAX_ATTEMPTS):",
-      "node_id": "tests/handoffs/test_sonnet_classifier.py::test_the_attempt_budget_is_exactly_three",
-      "expect_claim": "test_the_attempt_budget_is_exactly_three|calls[\"n\"] == 3|#0",
-      "note": "The off-by-one the loop rewrite invites. Deliberately leaves the constant at 3 so the test's FIRST assertion stays GREEN and this one - the count of calls the transport actually received - reddens alone. Without this probe P3 would witness only that a number is written down, never that it is obeyed."
     }
   ],
   "exemptions": {
@@ -254,8 +281,8 @@
     "test_an_answer_that_needed_the_retry_is_retry_not_ok|result[\"decision\"] == \"pause\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
     "test_an_answer_that_needed_the_retry_is_retry_not_ok|result[\"transport\"] == \"retry\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
     "test_an_unreachable_server_is_timeout|result[\"transport\"] == \"timeout\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
-    "test_an_http_500_lands_in_timeout_and_says_so_in_the_reason|result[\"transport\"] == \"timeout\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
-    "test_an_http_500_lands_in_timeout_and_says_so_in_the_reason|\"500\" in result[\"reason\"]|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
+    "test_an_http_500_is_http_error_not_timeout|\"500\" in result[\"reason\"]|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
+    "test_an_http_error_and_a_socket_timeout_do_not_share_a_value|{refused[\"transport\"], silent[\"transport\"]} == {\"http_error\", \"timeout\"}|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
     "test_an_unparseable_body_is_malformed_after_the_retry|result[\"transport\"] == \"malformed\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
     "test_a_pause_built_before_any_request_is_not_attempted|result[\"transport\"] == \"not_attempted\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",
     "test_a_transport_failure_is_retried_not_surrendered|result[\"decision\"] == \"pause\"|#0": "Pre-existing claim about the classifier's prompt construction, auth chain, response parsing, dispatch validation or transcript rendering. The s290 repair changes only the ATTEMPT LOOP in _run_with_retry and adds _http_error_detail; this claim is carried unchanged and is out of this battery's scope. Its own witnessing belongs to the battery that introduced it.",

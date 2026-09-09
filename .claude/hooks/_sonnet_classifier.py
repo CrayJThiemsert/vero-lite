@@ -238,22 +238,28 @@ def _model() -> str:
 #: partly a measurement of the network. Measured 2026-09-06: MS-S1 returned 500
 #: on 286 of 1,756 ``/api/chat`` calls, so this is not a hypothetical.
 #:
-#: ⚠️ TWO deviations from §4.3's enum, both recorded rather than papered over
+#: ⚠️ ONE deviation from §4.3's enum, recorded rather than papered over
 #: (CLAUDE.md §8 — a case the system cannot express is registered in writing):
+#: ``not_attempted`` is a value the spec does not list. Two `_pause` sites fire
+#: before any request leaves the box (an absent registry, an unimportable
+#: helper). Labelling those ``timeout`` or ``malformed`` would assert a network
+#: event that never happened. Additive, so a consumer that only knows the
+#: listed values can ignore it.
 #:
-#: 1. ``not_attempted`` is a FIFTH value the spec does not list. Two `_pause`
-#:    sites fire before any request leaves the box (an absent registry, an
-#:    unimportable helper). Labelling those ``timeout`` or ``malformed`` would
-#:    assert a network event that never happened. Additive, so a consumer that
-#:    only knows the four can ignore it.
-#: 2. An HTTP error response — including the 500s measured above — arrives as
-#:    ``urllib.error.HTTPError``, a subclass of ``URLError``, and so lands in
-#:    ``timeout``. That conflates "the server refused" with "the server never
-#:    answered", which we have MEASURED to be different causes. No information
-#:    is lost: ``reason`` carries the distinguishing text ("HTTP Error 500"
-#:    vs "timed out"), so AC-12 can separate them. Widening the enum is a
-#:    §4.3 amendment and therefore Cray's, not a code decision.
+#: The SECOND deviation is GONE as of s290, and why it had to go is the point:
+#: an HTTP error arrives as ``urllib.error.HTTPError``, a subclass of
+#: ``URLError``, so a 500 used to land in ``timeout``. The old note here argued
+#: no information was lost, because ``reason`` carried the distinguishing text.
+#: That was true and it was not enough. Session 289 tallied the log BY THIS
+#: FIELD, read ``timeout 50.0%``, and concluded the blocker was elapsed time;
+#: s290's split of the same records by ``reason`` found 62 HTTP 500s, 27 real
+#: timeouts and 2 genuine network failures. A category that merges "the server
+#: refused" with "the server never answered" does not merely lose detail — the
+#: aggregate over it manufactures a cause, and a caveat written at the
+#: definition site does not travel with the percentage. ``http_error`` is now
+#: its own value (§4.3 amendment, s290).
 TRANSPORT_OK = "ok"
+TRANSPORT_HTTP_ERROR = "http_error"
 TRANSPORT_TIMEOUT = "timeout"
 TRANSPORT_MALFORMED = "malformed"
 TRANSPORT_RETRY = "retry"
@@ -973,14 +979,21 @@ def _run_with_retry(transport: Any) -> dict[str, Any]:
         # stricter one.
         try:
             text = str(transport(strict=attempt > 1))
-        except (urllib.error.URLError, TimeoutError) as exc:
-            # NB: `HTTPError` subclasses `URLError`, so a 500 lands here too —
-            # see deviation (2) beside the TRANSPORT_* constants. `reason` keeps
-            # the distinguishing text; widening the enum is a §4.3 amendment.
+        except urllib.error.HTTPError as exc:
+            # MUST precede the URLError arm: `HTTPError` subclasses `URLError`,
+            # and that inheritance is exactly what merged "the server refused"
+            # into "the server never answered" until s290. The server ANSWERED;
+            # it answered with an error.
             last = _pause(
-                f"API unreachable: {_http_error_detail(exc)}",
-                transport=TRANSPORT_TIMEOUT,
+                f"API HTTP error: {_http_error_detail(exc)}",
+                transport=TRANSPORT_HTTP_ERROR,
             )
+            continue
+        except (urllib.error.URLError, TimeoutError) as exc:
+            # Now genuinely "never answered": a socket timeout or an unreachable
+            # host. Measured s290: 27 real timeouts and 2 network failures out of
+            # 187 — the residue once the 62 HTTP errors move to their own value.
+            last = _pause(f"API unreachable: {exc}", transport=TRANSPORT_TIMEOUT)
             continue
         except ValueError as exc:
             # `_call_ollama` raises this for an envelope whose `message.content`
@@ -988,6 +1001,13 @@ def _run_with_retry(transport: Any) -> dict[str, Any]:
             last = _pause(f"API response malformed: {exc}", transport=TRANSPORT_MALFORMED)
             continue
         except Exception as exc:  # defensive: never raise into the hook flow
+            # ⚠️ Known residue of the same category error §4.3's amendment fixed:
+            # an unexpected exception type does not establish that the server
+            # never answered, yet this labels it `timeout`. Left as-is because
+            # it took 0 of 187 measured records — 62 http_error + 27 timed-out +
+            # 2 unreachable account for every timeout-labelled record — so
+            # widening the enum a second time would add a value with no
+            # population. Registered rather than papered over (CLAUDE.md §8).
             last = _pause(f"classifier transport error: {exc}", transport=TRANSPORT_TIMEOUT)
             continue
 
