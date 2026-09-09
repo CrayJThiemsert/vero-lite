@@ -1544,35 +1544,63 @@ def test_an_answer_that_needed_the_retry_is_retry_not_ok(
 
 
 def test_an_unreachable_server_is_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    result = _drive(monkeypatch, urllib.error.URLError("timed out"))
+    """Every attempt fails, so the verdict is the LAST failure's label.
+
+    Scripted CLASSIFIER_MAX_ATTEMPTS deep: since s290 a transport failure is
+    retried, so a one-deep script would exhaust the list rather than exercise
+    the fail-closed path.
+    """
+    result = _drive(
+        monkeypatch,
+        *[urllib.error.URLError("timed out")] * sc.CLASSIFIER_MAX_ATTEMPTS,
+    )
     print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
     assert result["transport"] == "timeout"
 
 
-def test_an_http_500_lands_in_timeout_and_says_so_in_the_reason(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Deviation (2), pinned so it cannot drift unnoticed.
+def test_an_http_500_is_http_error_not_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The §4.3 amendment (s290). This test previously pinned the OPPOSITE.
 
-    `HTTPError` subclasses `URLError`, so a 500 reads as `timeout` — the enum
-    §4.3 fixes has no value for "the server refused". MEASURED to matter: 286
-    of 1,756 /api/chat calls on MS-S1 were 500s, not timeouts. No information
-    is lost because `reason` carries the distinguishing text, and this test is
-    what guarantees that stays true.
+    It asserted `transport == "timeout"` and its docstring argued no information
+    was lost, because `reason` carried the distinguishing text. Both were true.
+    Neither helped: s289 tallied the log BY THIS FIELD, read `timeout 50.0%`, and
+    concluded the blocker was elapsed time. The 62 500s were the largest single
+    cause and were invisible in that aggregate. The name is changed with the
+    assertion on purpose — a test called `..._lands_in_timeout` that asserts
+    `http_error` is the same lossy label one level up.
     """
     exc = urllib.error.HTTPError(
         url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
     )
-    result = _drive(monkeypatch, exc)
+    result = _drive(monkeypatch, *[exc] * sc.CLASSIFIER_MAX_ATTEMPTS)
     print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
-    assert result["transport"] == "timeout"
+    assert result["transport"] == "http_error"
     assert "500" in result["reason"]
+
+
+def test_an_http_error_and_a_socket_timeout_do_not_share_a_value(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The whole point of the amendment, asserted as a DIFFERENCE.
+
+    Checking each label alone would pass under a mutation that made both values
+    identical; only comparing them can redden that. `HTTPError` subclasses
+    `URLError`, so the two arms are one `except` away from re-merging.
+    """
+    http = urllib.error.HTTPError(
+        url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
+    )
+    refused = _drive(monkeypatch, *[http] * sc.CLASSIFIER_MAX_ATTEMPTS)
+    silent = _drive(monkeypatch, *[urllib.error.URLError("timed out")] * sc.CLASSIFIER_MAX_ATTEMPTS)
+    print(f"answered-with-error={refused['transport']!r}  never-answered={silent['transport']!r}")
+    assert refused["transport"] != silent["transport"]
+    assert {refused["transport"], silent["transport"]} == {"http_error", "timeout"}
 
 
 def test_an_unparseable_body_is_malformed_after_the_retry(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    result = _drive(monkeypatch, "junk", "still junk")
+    result = _drive(monkeypatch, *["junk"] * sc.CLASSIFIER_MAX_ATTEMPTS)
     print(f"transport={result.get('transport')}")
     assert result["transport"] == "malformed"
 
@@ -1586,3 +1614,119 @@ def test_a_pause_built_before_any_request_is_not_attempted() -> None:
     result = sc._pause("autonomy registry missing or empty")
     print(f"transport={result.get('transport')}")
     assert result["transport"] == "not_attempted"
+
+
+# ---------------------------------------------------------------------------
+# s290 — the transport repair. The shipped code retried an UNPARSEABLE body but
+# surrendered on the first `URLError`, so 62 HTTP 500s and 74 empty-`content`
+# 200s each cost a Stop verdict on one try. Root cause is server-side and
+# stochastic (gpt-oss emits harmony tool calls for undeclared tools; Ollama's
+# parser then fails ~half as 500 and ~half as an empty 200), so re-asking is
+# the repair. Budget = 3 attempts, Cray's typed call.
+# ---------------------------------------------------------------------------
+
+
+def test_a_transport_failure_is_retried_not_surrendered(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """THE s290 regression test: two 500s then an answer must still answer.
+
+    Under the shipped code this reddens — the first `URLError` returned a pause
+    immediately and the good third body was never requested.
+    """
+    exc = urllib.error.HTTPError(
+        url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
+    )
+    result = _drive(monkeypatch, exc, exc, _GOOD_BODY)
+    print(f"transport={result.get('transport')} decision={result.get('decision')}")
+    assert result["decision"] == "pause"  # from _GOOD_BODY, not manufactured
+    assert result["transport"] == "retry"
+    assert result["reason"] == "needs Cray"  # the MODEL's reason, not a failure string
+
+
+def test_a_socket_timeout_is_also_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The third arm. After s290 split HTTP errors out of `timeout`, the
+    URLError arm is a separate `except` with its own `continue`, so its retry
+    can be lost independently of the HTTP one and needs its own witness.
+    """
+    exc = urllib.error.URLError("timed out")
+    result = _drive(monkeypatch, exc, exc, _GOOD_BODY)
+    print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
+    assert result["transport"] == "retry"
+
+
+def test_an_empty_ollama_envelope_is_retried(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The 74-record bucket: `_call_ollama` raises ValueError on empty content.
+
+    Separate probe from the 500 case above because the two take different
+    `except` arms, and one mutation can only witness one of them.
+    """
+    empty = ValueError("Ollama envelope missing message.content")
+    result = _drive(monkeypatch, empty, empty, _GOOD_BODY)
+    print(f"transport={result.get('transport')} reason={result.get('reason')!r}")
+    assert result["transport"] == "retry"
+    assert result["reason"] == "needs Cray"
+
+
+def test_the_attempt_budget_is_exactly_three() -> None:
+    """Pin the count itself — a silent drift to 2 or 10 changes how long a Stop
+    hook blocks Cray's turn, which is the thing he actually chose.
+    """
+    calls = {"n": 0}
+
+    def _transport(*, strict: bool) -> str:
+        calls["n"] += 1
+        raise urllib.error.URLError("timed out")
+
+    result = sc._run_with_retry(_transport)
+    print(f"attempts={calls['n']} transport={result.get('transport')}")
+    assert sc.CLASSIFIER_MAX_ATTEMPTS == 3
+    assert calls["n"] == 3
+    assert result["transport"] == "timeout"
+
+
+def test_only_the_first_attempt_uses_the_normal_prompt() -> None:
+    """Retries must use the STRICT prompt — the original single retry did, and
+    that behaviour is why a retry can succeed where the first attempt failed.
+    """
+    seen: list[bool] = []
+
+    def _transport(*, strict: bool) -> str:
+        seen.append(strict)
+        if len(seen) < 3:
+            raise urllib.error.URLError("timed out")
+        return _GOOD_BODY
+
+    sc._run_with_retry(_transport)
+    print(f"strict flags per attempt = {seen}")
+    assert seen == [False, True, True]
+
+
+def test_an_http_error_body_is_kept_in_the_reason() -> None:
+    """`str(HTTPError)` drops the body, which is where Ollama says what broke.
+
+    Positive control: the same reader is fed a body it MUST surface, so a later
+    regression that silently stops reading cannot pass as "no body present".
+    """
+    import io
+
+    body = b'{"error":"harmony parser: no reverse mapping for python"}'
+    exc = urllib.error.HTTPError(
+        url="http://x/api/chat",
+        code=500,
+        msg="Internal Server Error",
+        hdrs=None,  # type: ignore[arg-type]
+        fp=io.BytesIO(body),
+    )
+    detail = sc._http_error_detail(exc)
+    print(f"detail={detail!r}")
+    assert "500" in detail
+    assert "harmony parser" in detail
+
+    # and the no-body case must degrade to the bare string, not crash
+    bare = urllib.error.HTTPError(
+        url="http://x/api/chat", code=500, msg="Internal Server Error", hdrs=None, fp=None
+    )
+    detail_bare = sc._http_error_detail(bare)
+    print(f"detail_bare={detail_bare!r}")
+    assert "500" in detail_bare
