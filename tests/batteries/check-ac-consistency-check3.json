@@ -6,8 +6,8 @@
     {
       "name": "C3-blind",
       "subject": "tools/check_ac_consistency.py",
-      "old": "if module not in sources:",
-      "new": "if False:",
+      "old": "            if module in sources:\n                continue",
+      "new": "            if True:\n                continue",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_a_ticked_ac_whose_artifact_is_in_no_battery_is_found",
       "expect_claim": "test_a_ticked_ac_whose_artifact_is_in_no_battery_is_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(1, True)]|#0",
       "note": "🔴 The check stops seeing the gap at all — the s278 defect, reintroduced."
@@ -15,8 +15,8 @@
     {
       "name": "C3-overfire",
       "subject": "tools/check_ac_consistency.py",
-      "old": "module = token.split(\"/\")[-1].split(\"::\")[0]",
-      "new": "module = token.split(\"::\")[0]",
+      "old": "        modules = [t.split(\"/\")[-1].split(\"::\")[0] for t in _ARTIFACT_NODE.findall(seg.group(1))]",
+      "new": "        modules = [t.split(\"::\")[0] for t in _ARTIFACT_NODE.findall(seg.group(1))]",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_a_ticked_ac_whose_artifact_is_covered_is_clean",
       "expect_claim": "test_a_ticked_ac_whose_artifact_is_covered_is_clean|guard.find_battery_gaps(tmp_path) == []|#0",
       "note": "🔴 Drops the artifact-side basename normalisation, so a full-path artifact stops matching a basename source and a CORRECT tree is accused. This is the false positive measured on PLAN-0120 before the fix."
@@ -51,8 +51,8 @@
     {
       "name": "C3-noart",
       "subject": "tools/check_ac_consistency.py",
-      "old": "            if seg is None:\n                continue  # an AC with no test artifact (a command-run AC) is not a gap",
-      "new": "            if seg is None:\n                out.append(BatteryGap(plan=plan.name, ac=int(num), reason=\"no artifact\"))\n                continue",
+      "old": "        if seg is None:\n            continue  # an AC with no test artifact (a command-run AC) is not a gap",
+      "new": "        if seg is None:\n            out.append(BatteryGap(plan=plan_name, ac=int(num), reason=\"no artifact\"))\n            continue",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_an_ac_with_no_test_artifact_is_not_a_gap",
       "expect_claim": "test_an_ac_with_no_test_artifact_is_not_a_gap|guard.find_battery_gaps(tmp_path) == []|#0",
       "note": "🔴 Accuses an AC that legitimately names no test module — PLAN-0120's AC-10 runs commands."
