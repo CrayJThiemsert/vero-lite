@@ -136,7 +136,7 @@ class Reading:
         return self.control_hits >= 1
 
 
-def _exit_status(reading: Reading) -> int:
+def _exit_status(reading: Reading, *, expect_present: bool = False) -> int:
     """The single value both the verdict token and the process exit derive from.
 
     Precedence is deliberate and matches AC-4: a failed control outranks the
@@ -157,6 +157,13 @@ def _exit_status(reading: Reading) -> int:
     """
     if not reading.control_held:
         return EXIT_CONTROL_FAILED
+    if expect_present:
+        # CONTROL MODE. The question is no longer "is it absent?" but "could this
+        # instrument have found it at all?" — pointed at something known to be
+        # there. Expressed as a mode rather than a shell `!` around the call
+        # (clause R3), because an external inversion flips the exit and leaves the
+        # printed verdict saying the opposite: error #13 by construction.
+        return EXIT_PASS if reading.matched >= 1 else EXIT_FAIL
     return EXIT_ABSENT if reading.matched == 0 else EXIT_PRESENT
 
 
@@ -295,9 +302,9 @@ def scan_processes(
     )
 
 
-def render(reading: Reading) -> tuple[str, int]:
+def render(reading: Reading, *, expect_present: bool = False) -> tuple[str, int]:
     """The report, and the exit status. Both derive from ``_exit_status``."""
-    status = _exit_status(reading)
+    status = _exit_status(reading, expect_present=expect_present)
     lines = [
         f"subject: {reading.subject}",
         f"pattern: {reading.pattern!r}   control: {reading.control!r}",
@@ -385,6 +392,17 @@ def main(argv: list[str] | None = None) -> int:
         help="write the evidence file here (clause R2) as well as to stdout",
     )
     parser.add_argument("--gid", default="", help="goal id stamped into the report header (R7)")
+    parser.add_argument(
+        "--expect-present",
+        action="store_true",
+        help=(
+            "CONTROL MODE: pass only if the pattern IS found. Point it at something you "
+            "know is there to show the instrument can find anything at all before you "
+            "believe a zero from it. PLAN-0123 clause R3 requires the control be an "
+            "instrument mode rather than a shell `!` inversion, which flips the exit "
+            "while leaving the printed verdict saying the opposite (error #13)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     # Compile both patterns before touching the subject. A bad regex must refuse
@@ -414,7 +432,7 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_CONTROL_FAILED
         reading = scan_file(args.file, args.pattern, args.control)
 
-    report, status = render(reading)
+    report, status = render(reading, expect_present=args.expect_present)
     print(report)
     if args.report_to is not None:
         write_report(report, args.report_to, args.gid)

@@ -123,8 +123,19 @@ def tally_jsonl(path: Path, field: str) -> Tally:
     return Tally(path, field, counts, records, unparseable, missing)
 
 
-def render(tally: Tally, expect: set[str] | None) -> tuple[str, bool]:
-    """The report, and whether it may be quoted as evidence."""
+def render(
+    tally: Tally, expect: set[str] | None, *, expect_refusal: bool = False
+) -> tuple[str, bool]:
+    """The report, and whether the run PASSED.
+
+    Those are the same thing in the normal case and opposites under
+    ``expect_refusal`` — the control mode, where the run is asking *"can this
+    falsifier fail at all?"* rather than *"what does the file say?"*. The
+    returned bool is the verdict either way, so callers keep reading one value
+    (clause R3 / §4.6): the alternative, a shell ``!`` around the invocation,
+    inverts the exit while leaving the printed verdict untouched, which is
+    error #13 by construction.
+    """
     lines = [
         f"file: {tally.path}",
         f"records: {tally.records}   unparseable: {tally.unparseable}   "
@@ -169,12 +180,31 @@ def render(tally: Tally, expect: set[str] | None) -> tuple[str, bool]:
         f"TALLY: {'EXHAUSTIVE' if ok else 'REFUSED'} "
         f"({tally.records} records, {len(tally.counts)} values)"
     )
-    # Both this line and ``main``'s return value are rendered from ``ok`` — the
+
+    # `ok` is the READING; `passed` is the VERDICT. They differ only in control
+    # mode, and separating them is what keeps the control from needing a shell
+    # inversion outside the process.
+    passed = (not ok) if expect_refusal else ok
+    if expect_refusal:
+        lines.append(
+            "CONTROL MODE (--expect-refusal): this run passes only if the breakdown was "
+            "REFUSED. "
+            + (
+                "It was — the falsifier can fail, so a reading from this instrument "
+                "means something."
+                if not ok
+                else "🔴 It was NOT. The --expect you supplied as a deliberate error was "
+                "accepted, so this falsifier could not have failed and no reading taken "
+                "with it is evidence of anything."
+            )
+        )
+
+    # Both this line and ``main``'s return value are rendered from `passed` — the
     # single value PLAN-0123 §4.6 requires. The ``TALLY:`` summary above is a
-    # second RENDERING of the same variable, not a second computation of the
-    # verdict; error #13 was two computations, not two sentences.
-    lines.append(verdict_line(EXIT_PASS if ok else EXIT_FAIL))
-    return "\n".join(lines), ok
+    # second RENDERING of the reading, not a second computation of the verdict;
+    # error #13 was two computations, not two sentences.
+    lines.append(verdict_line(EXIT_PASS if passed else EXIT_FAIL))
+    return "\n".join(lines), passed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -204,6 +234,18 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument("--gid", default="", help="goal id stamped into the report header (R7)")
+    parser.add_argument(
+        "--expect-refusal",
+        action="store_true",
+        help=(
+            "CONTROL MODE: pass only if this breakdown is REFUSED. Point it at an "
+            "--expect you know is wrong; if it still reports EXHAUSTIVE, the falsifier "
+            "could not have failed and no reading from this instrument means anything. "
+            "PLAN-0123 clause R3 requires the control be an instrument mode rather than a "
+            "shell `!` inversion, which by construction makes the printed verdict and the "
+            "exit status disagree (error #13)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     if not args.path.is_file():
@@ -212,7 +254,9 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_REFUSED
 
     expect = {v.strip() for v in args.expect.split(",") if v.strip()} if args.expect else None
-    report, ok = render(tally_jsonl(args.path, args.field), expect)
+    report, ok = render(
+        tally_jsonl(args.path, args.field), expect, expect_refusal=args.expect_refusal
+    )
     print(report)
     if args.report_to is not None:
         write_evidence(

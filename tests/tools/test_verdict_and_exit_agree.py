@@ -20,9 +20,11 @@ both halves. The table below records each instrument's form explicitly rather
 than assuming a common one — assuming one is how a fourth instrument gets added
 whose line nobody actually checks.
 
-⚠️ **Not yet complete.** AC-5 names four instruments; the renderer
-(``tools/goal_template.py``) is built in the second half of Step 2 and its row
-lands with it. Three of four are covered here.
+All four of AC-5's instruments are covered: ``tally``, ``absent``, the
+probe-battery driver, and the renderer's refusal path. The renderer's row is the
+one that matters most — it is the place the whole contract is supposed to be
+enforced, and a renderer that refused a goal while printing ``PASS`` would be
+error #13 sitting at the enforcement point itself.
 """
 
 from __future__ import annotations
@@ -184,6 +186,42 @@ _CASES = [
             str(_fixture_battery(p, probe_fires=True)),
         ],
         _read_battery_line,
+    ),
+    Case(
+        "goal_template",
+        True,
+        lambda p: [
+            "-m",
+            "tools.goal_template",
+            "T-COUNT",
+            "--file",
+            str(_jsonl(p, exhaustive=True)),
+            "--field",
+            "transport",
+            "--expect",
+            "ok,timeout",
+            "--dry-run",
+        ],
+        _read_verdict_line,
+    ),
+    Case(
+        "goal_template",
+        False,
+        # A `$` in a caller parameter — clause R6's refusal, the renderer's own
+        # control path. It must exit non-zero AND say so in the same breath.
+        lambda p: [
+            "-m",
+            "tools.goal_template",
+            "T-ABSENT",
+            "--file",
+            str(_jsonl(p, exhaustive=True)),
+            "--pattern",
+            "a$b",
+            "--control",
+            "transport",
+            "--dry-run",
+        ],
+        _read_verdict_line,
     ),
     Case(
         "probe_battery",
