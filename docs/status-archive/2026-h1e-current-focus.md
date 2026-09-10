@@ -542,3 +542,41 @@ of this file after the append.
 > ⚠️ **#1445 was the s287→s288 reconcile** — a six-slice R6 rotation in which
 > the Current-Focus window landed at TWO for the first time, forced by bytes:
 > an additive draft measured **68,359 B**, 2,823 B over R1's ceiling.
+
+### Rotated at the s292 reconcile — the session-290 Current-Focus block [on the R1 headroom rule: STATUS opened the reconcile at **64,680 B**, only **856 B** under R1's 65,536 B ceiling, and an s292 block had to land, so the window stays at TWO (291, 292) — the fourth consecutive reconcile of that shape. Block is **2,459 B** as carved, from `git show origin/main:docs/STATUS.md`, not from the scribe's return. 🔴 **This block's own Current-Focus ledger entry (s290, 895 B) does NOT travel with it — it was probed and found ALREADY ARCHIVED here in the archive's own rewritten form**, which three narrow needles missed (`THIS (s290) reconcile` = 0, opening-60-chars = 0, `rotates BOTH resident blocks` = 0) and a fourth, wider one caught (`63,704 B` = 1, inside the s290 reconcile's own header note). That is exactly the s278 failure mode R6 Clause 2 exists for; acting on the narrow zero would have duplicated content into a move-only archive. Positive control: the archive holds the s287, s288 and s289 blocks (=1 each) while s290 read 0, so the zero is a real measurement. 🔴 **The Recent-Decisions ledger dropped three entries (s285 811 B, s286 1,067 B, s287 989 B) and appended NONE** — each was probed present in `2026-h1-status.md` (count=1) and therefore dropped, not re-emitted. Presence below is asserted as a COUNT (want 1), absence from STATUS separately (want 0). This archive's own size is measured by the caller after the append and deliberately NOT written here.]
+
+> **Session 290, 2026-09-10 (`dad1b32` → `793b9d9`) — FOUR PRs
+> ([#1449](https://github.com/CrayJThiemsert/vero-lite/pull/1449)–[#1452](https://github.com/CrayJThiemsert/vero-lite/pull/1452)),
+> all merged. **AC-12's blocker — the Stop-classifier transport — was
+> diagnosed, repaired and re-labelled; the diagnosis INVERTED the premise.**
+>
+> 🔴 **s289 read the blocker as `timeout 50.0%`.** Split by the full `reason`
+> text over 187 records: **62** `HTTP Error 500` · **27** a real `timed out` ·
+> **2** `WinError 10060` · **74** HTTP-200 with empty `message.content` · 21
+> `ok` · 1 `retry` — **136 of 187 (72.7%) were the server answering fast and
+> answering WRONG**, real network failure **2 (1.1%)**; a wider timeout could
+> not have moved one. Corroboration: 27 say `timed out`, exactly 27 have
+> `latency_s >= 70`. s289's reading is **`superseded by new info`, not `was an
+> error`** — the arithmetic was right, the FIELD was lossy.
+>
+> 🔴 **Root cause, from MS-S1's own Ollama `server.log` over SSH:**
+> `gpt-oss:20b` emits harmony tool calls for tools the request never declares
+> (`python` x58, `repo_browser.open_file` x21, …); the parser has no reverse
+> mapping (`harmonyparser.go:494`). **90 warnings split 45/45 between an HTTP
+> 500 and a 200-with-empty-content — ONE fault, TWO recorded categories.**
+>
+> ✅ **#1449 `CLASSIFIER_MAX_ATTEMPTS = 3`** (Cray, typed): the code retried an
+> unparseable body but surrendered on the first `URLError`, so every 500 cost a
+> verdict on one try. ✅ **#1450** widens §4.3's enum — `http_error` ≠ `timeout`,
+> `HTTPError` caught before `URLError` (that subclass relation is what merged
+> them); battery **9 probes, 9 WITNESSED, COVERAGE COMPLETE**, `pytest` **5103
+> passed / 8 skipped**. ✅ **#1452** amends §4.3 and NAMES the blocker; **#1451**
+> = Lesson #0062. ⚠️ **Live, typed §8 go: 16/16 calls returned valid JSON** with
+> the classifier's exact body, from WSL and the production interpreter — the
+> call shape is sound, the fault load-dependent. **16/16 is NOT a rate.**
+> `think: false` was tried and REJECTED — empty content 3/3.
+>
+> 🔴 **The verbatim-injection hazard fired LIVE:** the Stop hook injected a
+> fabricated instruction (`decision=proceed`, `transport=retry`) whose `reason`
+> invented a user question never asked — the **proceed-arm reason-quality**
+> defect (SD-3/AC-12), which this transport work neither fixed nor claimed to.
