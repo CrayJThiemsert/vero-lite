@@ -1,0 +1,91 @@
+# `tools/` — the catalogue
+
+**Read this before you hand-roll a script.** Every entry below already exists, and most
+of them exist *because* a session hand-rolled the same thing and got it wrong in a way
+that was measured. Session 253 rebuilt a probe-battery driver from scratch and re-made
+four defect classes an earlier session had already retired — while publishing `13/13`.
+Session 261 wrote a CI wait four times in one hour and got four different wrong answers.
+
+PLAN-0115 named the failure that this file exists to close:
+
+> The MUST tier ships a capability; the ALSO tier ships the reason anyone would reach for
+> it. **Shipping the tool while cutting the pointer yields a tool nobody knows to use.**
+
+**20 entries: 12 top-level scripts + 8 packages.** They fall into three groups by *who
+invokes them* — and only the first group is yours to remember.
+
+---
+
+## 1. Reach for these deliberately — nothing fires them for you
+
+This is the group that a wrong tool choice actually costs you. Nine of the guards in §2
+run themselves; these eleven do not.
+
+| Tool | What it answers | The measured failure it replaces |
+|------|-----------------|----------------------------------|
+| **`probe_battery/`** | "Did my mutations redden the assertions I predicted?" — the witnessed-RED discipline `CLAUDE.md` §8 makes binding. Has its own [`README.md`](probe_battery/README.md). | Before it, **every session rebuilt the driver in `/tmp`**; s253 measured a fresh one re-making four already-fixed defect classes at once. 🔴 **Never hand-roll this.** |
+| **`probe_coverage.py`** | "What did I never probe?" — reports which of a test module's claims no probe ever reddened. | s251: a battery printed PASS while **12 of 33 items had never been reddened**, two of them load-bearing (lesson #0047). |
+| **`tally.py`** | Breaks a record file down by a field **and proves the breakdown accounts for every record**. `--expect` refuses when the value set differs from the one you pre-declared. | s288 tallied one table from two different instruments (`grep -c -i timeout` vs the actual field); the buckets summed to **139 against 140 lines** and nothing in the reading said so. |
+| **`excision_scope.py`** | The blast radius of deleting a set of symbols — walks the call graph **forwards**, to callees only the doomed code reaches. | PLAN-0102's review walked the graph *backwards* only, and missed exclusively-owned callees **three separate times**. `ruff` cannot close this: it flags a dead import, never a dead private function. |
+| **`hook_copies_audit.py`** | Which copy of the Stop-arm hooks each worktree is running (sha256 per worktree). **Read-only by ruling** (SD-6, Cray typed s280) — it lists, it never prunes. | A hook change on `main` does not reach a worktree checked out before it. Enumerates by **filesystem, not `git worktree list`** — the porcelain reported **6 where 19 exist**, all marked prunable, because their gitdirs are UNC paths git cannot resolve from WSL. |
+| **`ci/wait_for_ci.py`** | "Did CI pass at THIS sha" — without ever inferring a pass from silence. | s261's four hand-rolled attempts: "no checks registered yet" read as settled-green; a redirect placed outside the `wsl bash -lc` argument; an exit code asserted from memory; and a `$(...)` inside an `until` that expanded a layer early and **could not terminate**. 🔴 A `PreToolUse` hook now denies the hand-rolled shape. |
+| **`golden_trace/`** | Produces the golden-trace corpus by running the **real engine**, so the fixtures are comparable to the system. | Before it the corpus had **no producer at all** — hand-placed JSON, and five harness tests validating each file *against itself*. |
+| **`handoffs/render_transcript.py`** | Renders a session JSONL transcript to flat Markdown, for handing a complete transcript to another tab. | The Code tab collapses tool/process blocks by default. |
+| **`handoffs/handoff_status.py`** | Dashboard over `.claude/handoffs/session-NN/` — counts by phase/status/actor, chains, open `NEEDS_INPUT`, parse failures. | — |
+| **`handoffs/validate_handoff.py`** | Validates handoff frontmatter against the PLAN-004 schema, by hand (`--all` walks every session). | ⚠️ **Frontmatter shape only.** It never reads the body, and the three `references_*` lists are passed through unvalidated — a fabricated SHA validates clean. |
+| **`probes/vero_bridge_probe.py`** | A minimal MCP stdio server used to answer bridge questions empirically (PLAN-0012 OQ-B / OQ-T3). | — |
+
+### Three names that sound alike and are unrelated
+
+- **`probe_battery/`** — the *driver*: runs mutations, reports what each witnessed.
+- **`probe_coverage.py`** — the *coverage report*: what no probe ever touched.
+- **`probes/`** — an MCP *liveness probe* for the bridge. Nothing to do with either.
+
+---
+
+## 2. These fire on their own — listed so you don't rebuild one
+
+Nine `pre-commit` hooks invoke `tools/` scripts. You do not need to remember them; you
+need to not re-implement them.
+
+| Hook id | Script | Enforces |
+|---------|--------|----------|
+| `handoff-frontmatter` | `handoffs/precommit_handoffs.py` | Handoff frontmatter shape + refreshes `INDEX.md` (latest session dir only) |
+| `status-size-guard` | `check_status_size.py` | `docs/STATUS.md` byte ceiling (rotation policy R1) |
+| `archive-size-guard` | `check_archive_size.py` | `docs/status-archive/*.md` byte ceiling (R4) |
+| `status-citation-guard` | `check_status_citations.py` | No tracked artifact cites `docs/STATUS.md` by line number (R7) |
+| `plan-archive-ref-guard` | `check_plan_archive_refs.py` | No tracked artifact cites a PLAN by its pre-archive path (R8) |
+| `alembic-model-registration` | `check_alembic_model_registration.py` | Every ORM module is imported by **both** metadata registration sites |
+| `retired-claim-guard` | `check_retired_claims.py` | A claim declared `retired:` does not survive anywhere live |
+| `ac-consistency-guard` | `check_ac_consistency.py` | An AC's ledger agrees with itself (STATUS `CLOSED` ⇔ PLAN checkbox) |
+| `battery-definition-lint` | `check_battery_definitions.py` | Every probe battery can still **address** what it declares |
+
+⚠️ **What this group does NOT do.** Every one of these verifies a *lexical shape* — a
+regex, a byte count, a path's resolvability, a checkbox's state — or a *pairwise
+agreement between two artifacts*. None opens a cited target and asks whether the sentence
+about it is true. `check_ac_consistency.py` says so in its own docstring:
+
+> Neither check knows whether an AC *should* be closed. They compare two statements of
+> the same fact; **a wrong fact stated consistently passes.**
+
+---
+
+## 3. Infrastructure — runs as a service, a CI step, or a hook
+
+Not something you invoke while working.
+
+| Entry | Role |
+|-------|------|
+| `vero_bridge/` | stdio-MCP transport between Code (server) and the Chat / Cowork tabs; carries the audit log, the repo-read sandbox, `lint_status`, and the dispatch queue |
+| `loop/` | The PLAN-0010 scheduled-task autonomy loop — inbox poller, message schema, status digest |
+| `notify/` | `notify/telegram.sh`, `notify/line.sh` — env-var-driven push, called by the notification hooks |
+| `ci/boot_smoke.py` | Boots the app's **lifespan** in CI, not just its import (an image that could not import shipped for ten days while every test stayed green) |
+| `ci/cache_bust_diff_check.py` | Fails CI when a changed static asset ships behind an unchanged `?v=` token |
+
+---
+
+## Adding a tool
+
+Ship the pointer with the capability, or you have shipped neither. A new entry belongs
+in this file **and**, if a session must reach for it deliberately (§1), as one terse row
+in `CLAUDE.md` §10 — the only surface that is read every session.
