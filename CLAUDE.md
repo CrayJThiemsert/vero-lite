@@ -254,8 +254,17 @@ Read in this order at session start:
 | `docs/runbooks/` | Operational guides |
 | `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
-| `tools/handoffs/` | Handoff tooling — transcript rendering, frontmatter validation (+ `handoff-frontmatter` pre-commit hook, PLAN-004 Phase B), dashboard reader (`--watch` live view, `--index` per-session `INDEX.md`) |
-| `.claude/skills/` | On-demand procedure skills for Code (`git-workflow`, `code-operational-policy`); auto-loaded by relevance so detailed how-to stays out of always-on context. **Tier 2.6** in the memory model — formalized by ADR-0017 (see §4 + the memory-architecture runbook for placement, the knowledge-placement decision rule, and authoring conventions) |
+| **[`tools/README.md`](tools/README.md)** | 🔴 **The tool catalogue — read it BEFORE hand-rolling any script.** 20 entries (12 scripts + 8 packages) split by who invokes them; 9 are pre-commit guards that fire on their own. The rows below are only the ones **nothing fires for you** — the set a wrong tool choice actually costs you |
+| `tools/probe_battery/` | Probe batteries: run mutations, report what each one witnessed. **Never hand-roll this** (§8; s253 measured a fresh driver re-making four retired defect classes) |
+| `tools/probe_coverage.py` | Which claims no probe ever reddened — the question a battery is structurally silent about |
+| `tools/tally.py` | Break a record file down by a field **and prove the buckets account for every record**; `--expect` refuses a changed value set |
+| `tools/excision_scope.py` | Blast radius before deleting symbols — the forwards half of the call graph, which `ruff` cannot see |
+| `tools/hook_copies_audit.py` | Which hook bytes each worktree is running (read-only by ruling; enumerates by filesystem, not `git worktree list`) |
+| `tools/ci/wait_for_ci.py` | "Did CI pass at THIS sha" — never hand-roll the wait; a `PreToolUse` hook denies that shape |
+| `tools/golden_trace/` | Produce golden traces from the real engine, instead of fixtures that validate against themselves |
+| `tools/handoffs/` | Transcript rendering, frontmatter validation (+ `handoff-frontmatter` pre-commit hook), dashboard reader (`--watch`, `--index` per-session `INDEX.md`) |
+| `tools/probes/` | MCP liveness probe for the bridge — **unrelated** to `probe_battery` / `probe_coverage` despite the name |
+| `.claude/skills/` | On-demand procedure skills for Code — **10 of them**; see `.claude/skills/` for the current set. Auto-loaded by relevance so detailed how-to stays out of always-on context. **Tier 2.6** in the memory model — formalized by ADR-0017 (see §4 + the memory-architecture runbook for placement, the knowledge-placement decision rule, and authoring conventions) |
 
 ## 11. Tier 2 (Code) Operational Policy
 
@@ -279,4 +288,4 @@ The **verify-loop hygiene rule** — a re-checked, evidence-backed prior is logg
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-09-08 (session 285). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
+*Last updated: 2026-09-10 (session 291). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
