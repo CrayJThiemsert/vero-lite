@@ -84,6 +84,53 @@ Not something you invoke while working.
 
 ---
 
+## Type-checking this directory
+
+`tools/` is a **PEP 420 namespace package** — no `__init__.py`, and neither have
+`tools/handoffs/` nor `tools/ci/`. So the obvious command does not work:
+
+```bash
+mypy --strict tools/          # ✗ Source file found twice under different module names
+```
+
+With no package base to anchor to, mypy maps the same file to two module names and
+refuses to check anything. Check `tools/` like this instead:
+
+```bash
+MYPYPATH=. mypy --strict --explicit-package-bases tools/
+```
+
+⚠️ **CI type-checks neither `tools/` nor `tests/`.** A green gate says nothing about this
+directory — run the command by hand, and quote the numbers.
+
+### Import a sibling by its absolute package path, never by bare name
+
+A module that does `sys.path.insert(0, <its own directory>)` and then `from _schema import
+...` runs fine and is invisible to `ruff`, but is **unresolvable to mypy**: three
+`_schema.py` files exist (`handoffs/`, `loop/`, `vero_bridge/`) and a top-level `_schema`
+maps onto none of them.
+
+The cost is larger than the one error it prints. An unresolved import makes the whole
+module `Any`, so every value it returns raises a **second, misleading error at the call
+site** — a `no-any-return` against a return type that was correct all along. Fixing the
+import cleared both; loosening the return type would have buried the real cause (§8:
+suspect the instrument, and repair by *deriving* the right expectation).
+
+Use the bootstrap idiom from `absent.py` / `tally.py` / `handoffs/validate_handoff.py`:
+
+```python
+if __package__ in (None, ""):   # path-script invocation, not `-m`
+    sys.path.insert(0, str(Path(__file__).resolve().parents[N]))   # N = depth to repo root
+
+from tools.<pkg>.<mod> import ...
+```
+
+The `__package__` guard is what keeps **both** invocation forms working — and both are
+load-bearing: `python tools/handoffs/validate_handoff.py` is the form the
+`handoff-frontmatter` pre-commit hook uses, while `python -m tools.handoffs.validate_handoff`
+is the form a test or another tool uses. A fix that only serves one of them breaks the other
+silently.
+
 ## Adding a tool
 
 Ship the pointer with the capability, or you have shipped neither. A new entry belongs
