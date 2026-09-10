@@ -6,7 +6,7 @@
     {
       "name": "P5a-tally",
       "subject": "tools/tally.py",
-      "old": "    lines.append(verdict_line(EXIT_PASS if ok else EXIT_FAIL))",
+      "old": "    lines.append(verdict_line(EXIT_PASS if passed else EXIT_FAIL))",
       "new": "    lines.append(verdict_line(EXIT_PASS))",
       "node_id": "tests/tools/test_verdict_and_exit_agree.py::test_the_printed_verdict_and_the_exit_status_are_one_value[tally.py-fail]",
       "expect_claim": "test_the_printed_verdict_and_the_exit_status_are_one_value|agree|#0",
