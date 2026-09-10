@@ -169,8 +169,8 @@ A green is not evidence: no AC box is ticked before its probe reports WITNESSED.
 - [ ] **AC-6 [check] — the probe-battery driver writes its own provenance-stamped report.** *Artifacts:* `tools/probe_battery/__main__.py` (`run --report-to FILE`), `tests/tools/test_probe_battery_report_to.py`. *Pass read:* running a two-probe fixture battery with `--report-to` produces a file whose body after the header is byte-equal to stdout and whose header carries `run_id=<id> head=<sha> battery_sha256=<hex>`; prints `stdout_bytes=N file_body_bytes=N header_keys=[run_id, head, battery_sha256]`; (A1) body equality; (A2) all three header keys present and non-empty; (A3) `head` equals `git rev-parse HEAD` read by the test. *Probes:* P6a — drop `head` from the header → A2 reddens. P6b — write a hard-coded sha → A3 reddens, A2 green. P6c — write the report before the final `PROBE-BATTERY:` line → A1 reddens.
 - [ ] **AC-7 [check] — the renderer emits only goals that satisfy R1–R8 and refuses each violation by name.** *Artifacts:* `tools/goal_template.py`, `tests/tools/test_goal_template.py`. *Pass read:* each of the three templates rendered with sample parameters `--dry-run` parses through `Goal.from_json`; prints per template `checks=<n> judges=<m> sum_timeout=<s> has_dollar=<b> has_head_pin=<b> control=<id> evidence_dir=<path> falsifier=<bool> declared_head=<sha>`; (A1) `n ≥ 1 and m ≥ 1`; (A2) `s ≤ 100`; (A3) no `$`/backtick/`$(` in any `cmd`, every check has `timeout_s`; (A4) no `git show <rev>:`; (A5) `C0` present and the judge `desc` carries `FALSIFIER:` and `BASIS:` lines and names the evidence file; (A6) refusal cases — blank falsifier, zero checks, zero judges, `$` in a parameter, a `git show` in a parameter, sum > 100 s — each exits non-zero with the clause name printed (`refused=R4`). *Probes:* P7a–P7f — disable one refusal at a time in a test-local copy of the validator → exactly that clause's A6 case reddens, the other five stay green. P7g — render with the evidence dir omitted → A5 reddens.
 - [ ] **AC-8 [check] — append-vs-replace is a record, never a silent overwrite (R8).** *Artifact:* `tests/tools/test_goal_template_lifecycle.py`. *Pass read:* with an `active` unpassed goal on disk, rendering appends criteria with a `T1-` prefix and leaves the original ids; `--replace` writes the old goal to `goal-history/<gid>.json` with `"disposition": "replaced-unpassed"`; with a `passed` goal on disk, rendering archives it with `"disposition": "passed"` and writes fresh; prints `pre_ids=[…] post_ids=[…] archived=<path|none> disposition=<d>`; (A1) append preserves every prior id; (A2) `--replace` archives with the unpassed disposition; (A3) a passed goal archives with `passed`. *Probes:* P8a — overwrite instead of append → A1 reddens. P8b — skip the archive on `--replace` → A2 reddens, A1 green. P8c — label the passed archive `replaced-unpassed` → A3 reddens.
-- [ ] **AC-9 [check-replay] — the nudge's detector meets the kill criterion fixed in §4.5, offline, before any hook is touched.** *Artifacts:* `tools/reading_shape_replay.py` (the detector as a pure function over a transcript corpus, with the classification rubric from §4.5 in its docstring), `tests/tools/test_reading_shape_replay.py`, the replay report under `.claude/benchmark-results/`. *Pass read:* prints `corpus_calls=N raw_matches=M (p %) deduped_fires=F valid=V misfire=X reachable=k/3`; pass iff `k == 3` AND `p < 5` AND `X ≤ V`. *Controls (before the first real reading is trusted):* the three s288 commands (#1, #8, #10) planted in a fixture transcript fire (`reachable=3/3`); a fixture of 20 benign commands (`git status`, `ls`, `pytest -q`, …) fires 0; a planted `wc -l` fires exactly once across two occurrences in one session (dedup). *Probes:* P9a — widen the predicate to any `grep` → the benign fixture reddens. P9b — drop dedup → the two-occurrence fixture reddens. **Failing the read is a finding, not a reason to edit the read:** AC-10 is then struck with this AC cited.
-- [ ] **AC-10 [check] — *contingent on AC-9 and SD-1* — the advisory fires once per session per shape, only with no active goal, and carries a pre-filled renderer command.** *Artifacts:* `posttooluse_progress_observer.py` (`_reading_shape_advisory`), `tests/handoffs/test_reading_shape_advisory.py`. *Pass read:* the real `_handle_bash` fed a `grep -c` payload with no goal file prints one JSON object whose `reason` contains `Reading-shape advisory` and `tools/goal_template.py T-COUNT --file <the file from the command>`; the same payload with an `active` goal on disk prints nothing; a second `grep -c` in the same session prints nothing; a `wc -l` in the same session prints one; prints `fires=[…] goal_active=<b> session=<id>`; (A1) fire on first; (A2) silent under an active goal; (A3) silent on the same shape again; (A4) fires on a new shape; (A5) the shell-hygiene advisory still fires on its shapes (positive control that the sibling was not displaced). *Probes:* P10a — ignore `load_goal()` → A2 reddens. P10b — key dedup on the command text rather than the shape → A3 reddens, A4 green. P10c — replace the advisories list rather than extend it → A5 reddens.
+- [ ] 🔴 **MEASURED s293 — FAILED on clause 2: `p=27.1 %` against the 5 % ceiling. Full record: §11.1.** **AC-9 [check-replay] — the nudge's detector meets the kill criterion fixed in §4.5, offline, before any hook is touched.** *Artifacts:* `tools/reading_shape_replay.py` (the detector as a pure function over a transcript corpus, with the classification rubric from §4.5 in its docstring), `tests/tools/test_reading_shape_replay.py`, the replay report under `.claude/benchmark-results/`. *Pass read:* prints `corpus_calls=N raw_matches=M (p %) deduped_fires=F valid=V misfire=X reachable=k/3`; pass iff `k == 3` AND `p < 5` AND `X ≤ V`. *Controls (before the first real reading is trusted):* the three s288 commands (#1, #8, #10) planted in a fixture transcript fire (`reachable=3/3`); a fixture of 20 benign commands (`git status`, `ls`, `pytest -q`, …) fires 0; a planted `wc -l` fires exactly once across two occurrences in one session (dedup). *Probes:* P9a — widen the predicate to any `grep` → the benign fixture reddens. P9b — drop dedup → the two-occurrence fixture reddens. **Failing the read is a finding, not a reason to edit the read:** AC-10 is then struck with this AC cited.
+- [ ] 🔴 **STRUCK s293 — its precondition AC-9 failed. DO NOT add `_reading_shape_advisory` to `_handle_bash`; the advisory does not ship, and §4.5's read is not to be re-tuned to make it. Full record: §11.1.** **AC-10 [check] — *contingent on AC-9 and SD-1* — the advisory fires once per session per shape, only with no active goal, and carries a pre-filled renderer command.** *Artifacts:* `posttooluse_progress_observer.py` (`_reading_shape_advisory`), `tests/handoffs/test_reading_shape_advisory.py`. *Pass read:* the real `_handle_bash` fed a `grep -c` payload with no goal file prints one JSON object whose `reason` contains `Reading-shape advisory` and `tools/goal_template.py T-COUNT --file <the file from the command>`; the same payload with an `active` goal on disk prints nothing; a second `grep -c` in the same session prints nothing; a `wc -l` in the same session prints one; prints `fires=[…] goal_active=<b> session=<id>`; (A1) fire on first; (A2) silent under an active goal; (A3) silent on the same shape again; (A4) fires on a new shape; (A5) the shell-hygiene advisory still fires on its shapes (positive control that the sibling was not displaced). *Probes:* P10a — ignore `load_goal()` → A2 reddens. P10b — key dedup on the command text rather than the shape → A3 reddens, A4 green. P10c — replace the advisories list rather than extend it → A5 reddens.
 - [ ] **AC-11 [live-ledger] — the advisory holds on real traffic.** ≥ 14 days after AC-10 ships, `tools/reading_shape_replay.py` over the main-session transcripts since the ship commit prints the same three numbers with the same rubric; pass iff `p < 5` AND `X ≤ V`; a breach is recorded in STATUS and the advisory is demoted to Telegram-only (PLAN-0092). A small `n` is reported as small, never rounded into a pass.
 - [ ] **AC-12 [live-ledger, judgment] — the templates are reached for, and at least once they refused something real.** Over the first five sessions after Step 2 ships, `goal-history/` holds ≥ 3 template-rendered goals with `disposition: passed`, and ≥ 1 evidence file across them records a control refusal or a check failure that Code's closeout narrative classifies as a real finding (not a provenance failure). Cray reads the narrative; the counts are read from the directory, not from memory. Printed: `template_goals=<n> passed=<p> replaced_unpassed=<r> real_findings=<f>`.
 - [ ] **AC-13 [check] — offline gate green at CI scope in the main tree, plus the AC-ledger guard.** `uv run --no-sync ruff check .` · `ruff format --check .` · `mypy --strict services/ verticals/` · `pytest -q` — each `2>&1` to a file, real exit code echoed immediately after its own command; prints `ruff=0 format=0 mypy=0 pytest=0 (passed=N skipped=S)` and `check_ac_consistency: gaps=0` with the machine-form batteries header matching ≥ 1 file. `tests/tools/test_guards_hold_on_the_real_tree.py` is part of the run and is what makes any new `tools/check_*.py` here prove it accepts the healthy tree.
@@ -277,3 +277,68 @@ is not scheduled here.
 ## 11. Verification
 
 AC-1 … AC-8 and AC-10 by the named tests, batteries under `tests/batteries/plan-0123-*.json`, each probe reddening exactly its declared assertion with the siblings green, restore verified by content because Step 1's battery mutates a live hook. AC-9 by the replay report against the three numbers in §4.5, controls first. AC-11 and AC-12 by ledgers read from disk fourteen days and five sessions on, never from memory. AC-13 by the CI-scope gate in the main tree, one exit code echoed after its own command. Every printed line carries the values it measured. A number that fails its pre-committed read is a finding recorded in STATUS, never an edit to the read.
+
+## 11.1 AC-9 — the replay was run and the criterion FAILED (session 293, 2026-09-11)
+
+**Verdict: `VERDICT: FAIL exit=1`.** Step 3 stops at 3.1 and AC-10 is struck. The hook
+was never opened; `.claude/hooks/posttooluse_progress_observer.py` is byte-unchanged.
+
+```
+corpus_calls=597 raw_matches=162 (27.1 %) deduped_fires=18 valid=9 misfire=9 reachable=3/3
+  pass clause 1: reachable=3/3 (in-sample; credits nothing)
+  FAIL clause 2: p=27.1 % >= 5 % (162 of 597 Bash calls)
+  pass clause 3: misfire=9 <= valid=9
+```
+
+*Corpus, identified by content rather than by id* — a CCD session id does **not** map to a
+transcript filename (tested against a live session's own id, which had no such file):
+s287 `7a358369…` (215 calls) · s288 `4f48b22d…` (242) · s289 `57aeb183…` (140). Each was
+confirmed as the transcript that *wrote* that session's close handoff — a `Write` tool_use
+with the handoff's path, not a substring hit, because a filename search returns the writer
+plus every later reader. The three time spans are disjoint and consecutive, which is the
+second, independent check on the identification.
+
+*Artifacts.* `tools/reading_shape_replay.py`, `tests/tools/test_reading_shape_replay.py`
+(21 tests), and — banked in the gitignored `.claude/benchmark-results/`, so quoted by
+sha256 rather than committed — `s293-ac9-reading-shape-replay.md`
+(`3ea53ef8e936d667b309f42fdab3d0422f4d5a7fa1eec91487d52cc7ccb58598`) and
+`s293-ac9-reading-shape-classification.json`
+(`da64ebedae0f372580d76036a6e6ad3a89d9a7566aabf05f33d36cfb95f1f549`).
+
+*Controls, run before the first real reading was trusted.* `reachable=3/3`; a fixture of
+twenty benign commands fired **zero**; a shape occurring twice in one session fired **once**
+while both occurrences still counted toward the raw rate. That benign fixture carries a bare
+`grep -n` deliberately, so probe P9a has something to redden — without it P9a would witness
+nothing. The matched commands were then read by eye, shape by shape, against a negative
+sample, before the number was believed.
+
+*What the failure says.* The two dominant shapes are `grep -c` (66 raw) and `wc -l` (59) —
+125 of the 162. In measurement-heavy sessions **taking a reading is not a rare event**; it is
+better than a quarter of all Bash calls, which is the noise the 5 % ceiling exists to prevent.
+The measured 27.1 % sits close to the shell-hygiene advisory's own 30.8 % precedent (G9) that
+§4.5 chose as its comparison — a different predicate over the same population of commands.
+The fires themselves are **not** the problem: 9 of 18 were valid, among them the moment s288
+caught census error #10 (`pgrep` matching its own cmdline) and the turn where it corrected
+census error #8. The advisory is well aimed and far too talkative.
+
+⚠️ **Clause 3 passed on a knife edge and must not be quoted as robust.** `X = V = 9` exactly;
+four of the eighteen classifications are borderline and flipping any single one gives
+`X=10 > V=8`. Each call and its reason is recorded per fire in the classification file. The
+verdict does not rest on it: clause 2 fails independently by 5.4×.
+
+⚠️ **Two limits on the positive control, stated so it is not read as stronger than it is.**
+Census errors **#8 and #10 are not `Bash` tool_use calls anywhere in the s287–s289 corpus**
+(0 occurrences, measured in all three); only #1 was recovered verbatim. §4.5 anticipates this
+— its control is *planted in a fixture* — but it means two thirds of `reachable` prove the
+regexes match the PLAN's prose, not that they match what ran. And `reachable` is in-sample by
+construction, which §4.5 already says credits nothing.
+
+*Owed.* §11 directs a failed pre-committed read to `docs/STATUS.md`. That entry is **not
+written here**, for a reason of sequencing rather than of scope: a parallel session's
+reconcile (PR #1465, CI-green at the time of writing) rotates STATUS from 64,680 B to
+63,062 B against the 65,536 B ceiling that `tools/check_status_size.py` enforces as a
+**pre-commit hook**, so an addition made before that lands could not commit at all, and one
+made on top of it would collide with an open PR against the same file. Once #1465 merges the
+headroom is ~2,474 B and this entry is writable. The finding is recorded here in the
+meantime, on a tracked surface — including its do-not-act instruction, at AC-10, which is
+where it binds.
