@@ -103,6 +103,18 @@ MYPYPATH=. mypy --strict --explicit-package-bases tools/
 ⚠️ **CI type-checks neither `tools/` nor `tests/`.** A green gate says nothing about this
 directory — run the command by hand, and quote the numbers.
 
+**Where the collision actually comes from**, per the error mypy prints — `Source file found
+twice under different module names: "golden_trace.producer" and "tools.golden_trace.producer"`
+— is the subpackages that **do** have an `__init__.py` (`golden_trace/`, `loop/`,
+`probe_battery/`, `vero_bridge/`) sitting inside a parent that does **not**. mypy can anchor
+those two ways and refuses to pick.
+
+So naming individual files (`mypy --strict tools/handoffs/validate_handoff.py …`) *does*
+succeed without the flag — measured, exit 0 — simply because no colliding pair enters that
+build. Convenient for a spot check, but it is **not** the gate: it silently checks a subset,
+and the subset is chosen by whichever files you happened to name. Use the directory form
+above for anything you intend to quote.
+
 ### Import a sibling by its absolute package path, never by bare name
 
 A module that does `sys.path.insert(0, <its own directory>)` and then `from _schema import
@@ -124,6 +136,10 @@ if __package__ in (None, ""):   # path-script invocation, not `-m`
 
 from tools.<pkg>.<mod> import ...
 ```
+
+Do **not** add `# noqa: E402` to the import below the guard. `ruff` does not raise E402
+there, and `RUF100` then flags the unused suppression — so the noqa costs a lint cycle and
+buys nothing.
 
 The `__package__` guard is what keeps **both** invocation forms working — and both are
 load-bearing: `python tools/handoffs/validate_handoff.py` is the form the
