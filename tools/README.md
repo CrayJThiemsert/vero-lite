@@ -103,17 +103,43 @@ MYPYPATH=. mypy --strict --explicit-package-bases tools/
 ⚠️ **CI type-checks neither `tools/` nor `tests/`.** A green gate says nothing about this
 directory — run the command by hand, and quote the numbers.
 
-**Where the collision actually comes from**, per the error mypy prints — `Source file found
-twice under different module names: "golden_trace.producer" and "tools.golden_trace.producer"`
-— is the subpackages that **do** have an `__init__.py` (`golden_trace/`, `loop/`,
-`probe_battery/`, `vero_bridge/`) sitting inside a parent that does **not**. mypy can anchor
-those two ways and refuses to pick.
+### What actually triggers it
 
-So naming individual files (`mypy --strict tools/handoffs/validate_handoff.py …`) *does*
-succeed without the flag — measured, exit 0 — simply because no colliding pair enters that
-build. Convenient for a spot check, but it is **not** the gate: it silently checks a subset,
-and the subset is chosen by whichever files you happened to name. Use the directory form
-above for anything you intend to quote.
+One rule, and it is neither "you named too many files" nor "some subpackage has an
+`__init__.py`": **the same file enters one build under two different module names.** Two
+ingredients have to meet.
+
+1. For a file named on the command line, mypy derives a module name by walking **up** while
+   `__init__.py` exists. `tools/handoffs/_schema.py` → `_schema` (its directory has none);
+   `tools/vero_bridge/_handoff_validate.py` → `vero_bridge._handoff_validate` (its directory
+   has one, `tools/` does not).
+2. Any absolute `tools.…` import **anywhere in that build** pulls the same file in again
+   under its `tools.`-rooted name.
+
+Meet both and mypy refuses to pick. `__init__.py` only decides *which* root step 1 lands on;
+the number of files you name is irrelevant. Measured on this tree:
+
+| Invocation | rc | reported pair |
+|---|---|---|
+| `tools/handoffs/_schema.py` | 0 | — nothing imports it into this build |
+| `tools/handoffs/validate_handoff.py tools/handoffs/handoff_status.py` | 0 | — neither is imported by the other |
+| `tools/vero_bridge/_handoff_validate.py` **alone** | 2 | `"vero_bridge"` vs `"tools.vero_bridge"` |
+| `tools/golden_trace/producer.py` **alone** | 2 | `"golden_trace.producer"` vs `"tools.golden_trace.producer"` |
+| `tools/handoffs/validate_handoff.py tools/handoffs/_schema.py` | 2 | `"_schema"` vs `"tools.handoffs._schema"` |
+| `tools/` | 2 | `"golden_trace.producer"` vs `"tools.golden_trace.producer"` |
+
+Rows 3 and 4 are **single files named alone** — which is why "it takes two files" is wrong.
+
+⚠️ **So an explicit-file run is not a gate, in both directions.** It can be green while
+checking one file out of a tree that cannot be checked whole (rows 1–2), and it can be red
+for a reason that has nothing to do with the code you are working on (rows 3–4). Only the
+`--explicit-package-bases` directory form above answers a question about `tools/`.
+
+Row 5 is worth knowing because **this PR created it**: now that `validate_handoff.py` imports
+`tools.handoffs._schema`, naming both files together collides where before it exited 0 —
+measured against the pre-fix tree. Nothing regressed (the gate is the directory form, and it
+is green), but if you spot-check those two files together, that rc=2 is the import fix
+working, not a fault.
 
 ### Import a sibling by its absolute package path, never by bare name
 
