@@ -137,24 +137,32 @@ not the file you named** (rows 3 and 6 report `vero_bridge` and `golden_trace.pr
 the module under test). §8's "a verification report prints the values it measured" applies to
 reading someone else's report too.
 
-### Which files can be spot-checked alone
+### Which files can be spot-checked alone — run it, don't predict it
 
-That makes the rule predictive without running mypy. Naming a file inside `tools/<pkg>/` drags
-`<pkg>/__init__.py` into the build under its bare name; if that `__init__.py` (or anything it
-pulls in) then imports `tools.<pkg>…` **absolutely**, the same file arrives under a second name
-and the build dies. So the predicate is one `grep` over the package's `__init__.py`:
+There is no cheap predicate, and the failed attempt to build one is worth keeping. Keying it on
+the **package** — grep `tools/<pkg>/__init__.py` for absolute self-imports, `0` means safe — is
+false, and false in the dangerous direction: it answers *safe* for files that collide. One
+package contains both kinds:
 
-| `tools/<pkg>/` | `__init__.py` self-imports | file under it, named alone |
+| named alone | `tools.loop` imports in **that file** | rc |
 |---|---|---|
-| `probe_battery/` | 5 | ✗ rc=2 |
-| `golden_trace/` | 1 | ✗ rc=2 |
-| `vero_bridge/` | 1 | ✗ rc=2 |
-| `loop/` | **0** | ✓ rc=0 |
-| `handoffs/`, `ci/` | *(no `__init__.py`)* | ✓ rc=0 |
+| `tools/loop/_schema.py` | 0 | 0 |
+| `tools/loop/__init__.py` | 0 | 0 |
+| `tools/loop/dispatcher.py` | 2 | **2** — `"loop"` / `"tools.loop"` |
+| `tools/loop/_status_digest.py` | 1 | **2** — `"loop"` / `"tools.loop"` |
 
-`loop/` is the counterexample worth keeping: "anything under an `__init__.py` package collides"
-is **not** true — it collides only when something reaches that package absolutely, and `loop/`
-happens not to. Delete `loop/__init__.py`'s zero and the row flips.
+`loop/__init__.py` has zero absolute self-imports — the exact input the predicate keyed on — and
+`dispatcher.py` under it still collides, because it reaches `tools.loop` through **its own**
+import graph. Spot-checkability is a property of the named file's transitive imports, not of the
+package it sits in; evaluating that cheaply is most of what mypy already does. So run the
+directory command and read its answer rather than predicting one.
+
+The general rule above is unchanged and still holds — the same file under two names. What broke
+was narrowing *"any absolute `tools.…` import **anywhere in that build**"* to *"an import in the
+package's `__init__.py`"*, because that was greppable. Four shortcuts have now been tried on this
+paragraph — "it takes two files", "it's the `__init__.py` subpackages", "it needs another named
+file's import", and "grep the package's `__init__.py`". Every one was cheaper than the general
+rule, and every one was wrong.
 
 Importing **into** a package is harmless — `tools/check_battery_definitions.py` alone is
 **rc=0** despite importing `tools.probe_battery._lint`, because the subpackage enters under one
