@@ -84,6 +84,133 @@ Not something you invoke while working.
 
 ---
 
+## Type-checking this directory
+
+`tools/` is a **PEP 420 namespace package** — no `__init__.py`, and neither have
+`tools/handoffs/` nor `tools/ci/`. So the obvious command does not work:
+
+```bash
+mypy --strict tools/          # ✗ Source file found twice under different module names
+```
+
+With no package base to anchor to, mypy maps the same file to two module names and
+refuses to check anything. Check `tools/` like this instead:
+
+```bash
+MYPYPATH=. mypy --strict --explicit-package-bases tools/
+```
+
+⚠️ **CI type-checks neither `tools/` nor `tests/`.** A green gate says nothing about this
+directory — run the command by hand, and quote the numbers.
+
+### What actually triggers it
+
+One rule, and it is neither "you named too many files" nor "some subpackage has an
+`__init__.py`": **the same file enters one build under two different module names.** Two
+ingredients have to meet.
+
+1. For a file named on the command line, mypy derives a module name by walking **up** while
+   `__init__.py` exists. `tools/handoffs/_schema.py` → `_schema` (its directory has none);
+   `tools/vero_bridge/_handoff_validate.py` → `vero_bridge._handoff_validate` (its directory
+   has one, `tools/` does not).
+2. Any absolute `tools.…` import **anywhere in that build** pulls the same file in again
+   under its `tools.`-rooted name.
+
+Meet both and mypy refuses to pick. `__init__.py` only decides *which* root step 1 lands on;
+the number of files you name is irrelevant. Measured on this tree:
+
+| Invocation | rc | reported pair |
+|---|---|---|
+| `tools/handoffs/_schema.py` | 0 | — nothing imports it into this build |
+| `tools/handoffs/validate_handoff.py tools/handoffs/handoff_status.py` | 0 | — neither is imported by the other |
+| `tools/vero_bridge/_handoff_validate.py` **alone** | 2 | `"vero_bridge"` vs `"tools.vero_bridge"` |
+| `tools/golden_trace/producer.py` **alone** | 2 | `"golden_trace.producer"` vs `"tools.golden_trace.producer"` |
+| `tools/handoffs/validate_handoff.py tools/handoffs/_schema.py` | 2 | `"_schema"` vs `"tools.handoffs._schema"` |
+| `tools/` | 2 | `"golden_trace.producer"` vs `"tools.golden_trace.producer"` |
+
+Rows 3 and 4 are **single files named alone** — which is why "it takes two files" is wrong.
+
+**Read the reported pair, not the exit code.** Three passes over this paragraph argued from
+`rc` while the error text was printing the discriminating value the whole time — the pair is
+what tells you *which* file is doubled, and it is frequently **the package's `__init__.py`,
+not the file you named** (rows 3 and 6 report `vero_bridge` and `golden_trace.producer`, not
+the module under test). §8's "a verification report prints the values it measured" applies to
+reading someone else's report too.
+
+### Which files can be spot-checked alone — run it, don't predict it
+
+There is no cheap predicate, and the failed attempt to build one is worth keeping. Keying it on
+the **package** — grep `tools/<pkg>/__init__.py` for absolute self-imports, `0` means safe — is
+false, and false in the dangerous direction: it answers *safe* for files that collide. One
+package contains both kinds:
+
+| named alone | `tools.loop` imports in **that file** | rc |
+|---|---|---|
+| `tools/loop/_schema.py` | 0 | 0 |
+| `tools/loop/__init__.py` | 0 | 0 |
+| `tools/loop/dispatcher.py` | 2 | **2** — `"loop"` / `"tools.loop"` |
+| `tools/loop/_status_digest.py` | 1 | **2** — `"loop"` / `"tools.loop"` |
+
+`loop/__init__.py` has zero absolute self-imports — the exact input the predicate keyed on — and
+`dispatcher.py` under it still collides, because it reaches `tools.loop` through **its own**
+import graph. Spot-checkability is a property of the named file's transitive imports, not of the
+package it sits in; evaluating that cheaply is most of what mypy already does. So run the
+directory command and read its answer rather than predicting one.
+
+The general rule above is unchanged and still holds — the same file under two names. What broke
+was narrowing *"any absolute `tools.…` import **anywhere in that build**"* to *"an import in the
+package's `__init__.py`"*, because that was greppable. Four shortcuts have now been tried on this
+paragraph — "it takes two files", "it's the `__init__.py` subpackages", "it needs another named
+file's import", and "grep the package's `__init__.py`". Every one was cheaper than the general
+rule, and every one was wrong.
+
+Importing **into** a package is harmless — `tools/check_battery_definitions.py` alone is
+**rc=0** despite importing `tools.probe_battery._lint`, because the subpackage enters under one
+name only. The hazard is being named **from inside** a package, not importing one.
+
+⚠️ **So an explicit-file run is not a gate, in both directions.** It can be green while
+checking one file out of a tree that cannot be checked whole (rows 1–2), and it can be red
+for a reason that has nothing to do with the code you are working on (rows 3–4). Only the
+`--explicit-package-bases` directory form above answers a question about `tools/`.
+
+Row 5 is worth knowing because **this PR created it**: now that `validate_handoff.py` imports
+`tools.handoffs._schema`, naming both files together collides where before it exited 0 —
+measured against the pre-fix tree. Nothing regressed (the gate is the directory form, and it
+is green), but if you spot-check those two files together, that rc=2 is the import fix
+working, not a fault.
+
+### Import a sibling by its absolute package path, never by bare name
+
+A module that does `sys.path.insert(0, <its own directory>)` and then `from _schema import
+...` runs fine and is invisible to `ruff`, but is **unresolvable to mypy**: three
+`_schema.py` files exist (`handoffs/`, `loop/`, `vero_bridge/`) and a top-level `_schema`
+maps onto none of them.
+
+The cost is larger than the one error it prints. An unresolved import makes the whole
+module `Any`, so every value it returns raises a **second, misleading error at the call
+site** — a `no-any-return` against a return type that was correct all along. Fixing the
+import cleared both; loosening the return type would have buried the real cause (§8:
+suspect the instrument, and repair by *deriving* the right expectation).
+
+Use the bootstrap idiom from `absent.py` / `tally.py` / `handoffs/validate_handoff.py`:
+
+```python
+if __package__ in (None, ""):   # path-script invocation, not `-m`
+    sys.path.insert(0, str(Path(__file__).resolve().parents[N]))   # N = depth to repo root
+
+from tools.<pkg>.<mod> import ...
+```
+
+Do **not** add `# noqa: E402` to the import below the guard. `ruff` does not raise E402
+there, and `RUF100` then flags the unused suppression — so the noqa costs a lint cycle and
+buys nothing.
+
+The `__package__` guard is what keeps **both** invocation forms working — and both are
+load-bearing: `python tools/handoffs/validate_handoff.py` is the form the
+`handoff-frontmatter` pre-commit hook uses, while `python -m tools.handoffs.validate_handoff`
+is the form a test or another tool uses. A fix that only serves one of them breaks the other
+silently.
+
 ## Adding a tool
 
 Ship the pointer with the capability, or you have shipped neither. A new entry belongs

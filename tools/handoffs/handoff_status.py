@@ -29,9 +29,17 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import TextIO
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+if __package__ in (None, ""):  # pragma: no cover - path-script invocation, not `-m`
+    # Both invocation forms have to work: this module is run as a path
+    # script (including from the `handoff-frontmatter` pre-commit hook) and
+    # as `python -m tools.handoffs.<mod>`. Put the REPO ROOT on the path so
+    # the absolute import below resolves; importing the sibling by bare name
+    # works at runtime but is unresolvable to mypy, which cannot map a
+    # top-level `_schema` onto any package base (there are three of them:
+    # tools/handoffs, tools/loop, tools/vero_bridge).
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from _schema import (
+from tools.handoffs._schema import (
     SessionSummary,
     session_md_files,
     summarize_paths,
