@@ -278,6 +278,13 @@ class BatteryResult:
     passed: bool
     overlaps: tuple[str, ...]
     credited: Mapping[str, str]
+    #: PLAN-0123 AC-6 / clause R7. The run's identity and the tree it ran against,
+    #: carried out to the caller so a banked report can be stamped with them. They
+    #: were already known inside ``run_battery`` (the manifest holds both) and
+    #: recomputing them at the write site is how a report ends up claiming a
+    #: different HEAD than the one its probes actually ran on.
+    run_id: str = ""
+    head_sha: str = ""
 
 
 #: A runner turns a probe into a :class:`~tools.probe_battery._outcome.RunRecord` — the
@@ -612,7 +619,14 @@ def run_battery(
                     f"battery {store.manifest.run_id} finished — tree restored, gate live "
                     f"again. It stood down for {deferred} Stop event(s).",
                 )
-            result = _finalize(battery, index, tuple(results), store.manifest.run_id, echo)
+            result = _finalize(
+                battery,
+                index,
+                tuple(results),
+                store.manifest.run_id,
+                echo,
+                store.manifest.head_sha,
+            )
         return result
 
 
@@ -622,6 +636,7 @@ def _finalize(
     results: tuple[ProbeResult, ...],
     run_id: str,
     echo: bool,
+    head_sha: str = "",
 ) -> BatteryResult:
     credited = {r.probe.expect_claim: r.probe.name for r in results if r.credited is not None}
     overlaps = _overlaps(battery)
@@ -638,7 +653,13 @@ def _finalize(
         # always runs is what makes "a battery cannot end without a report" true.
         print(report)
     return BatteryResult(
-        results=results, report=report, passed=passed, overlaps=overlaps, credited=credited
+        results=results,
+        report=report,
+        passed=passed,
+        overlaps=overlaps,
+        credited=credited,
+        run_id=run_id,
+        head_sha=head_sha,
     )
 
 

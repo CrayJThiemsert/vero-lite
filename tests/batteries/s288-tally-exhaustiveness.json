@@ -159,8 +159,8 @@
     {
       "name": "T21-the-cli-returns-success-for-an-incomplete-breakdown",
       "subject": "tools/tally.py",
-      "old": "    return 0 if ok else 1",
-      "new": "    return 0",
+      "old": "    return EXIT_PASS if ok else EXIT_FAIL",
+      "new": "    return EXIT_PASS",
       "node_id": "tests/tools/test_tally.py::test_the_cli_exits_non_zero_on_a_breakdown_that_cannot_be_quoted",
       "expect_claim": "test_the_cli_exits_non_zero_on_a_breakdown_that_cannot_be_quoted|main([str(path), \"--field\", \"transport\"]) == 1|#0",
       "note": "The exit code is the only part a calling script reads. A tool whose prose refuses while its status says success is quoted as evidence by every automation that wraps it."
@@ -168,8 +168,8 @@
     {
       "name": "T22-the-cli-refuses-a-complete-breakdown",
       "subject": "tools/tally.py",
-      "old": "    return 0 if ok else 1",
-      "new": "    return 1",
+      "old": "    return EXIT_PASS if ok else EXIT_FAIL",
+      "new": "    return EXIT_FAIL",
       "node_id": "tests/tools/test_tally.py::test_the_cli_exits_zero_on_a_complete_breakdown",
       "expect_claim": "test_the_cli_exits_zero_on_a_complete_breakdown|main([str(path), \"--field\", \"transport\"]) == 0|#0",
       "note": "The over-refusal direction of T21, and the reason both exist: an exit code that is always 1 passes T21 and is useless."
@@ -177,8 +177,8 @@
     {
       "name": "T23-a-missing-file-reads-as-an-empty-exhaustive-tally",
       "subject": "tools/tally.py",
-      "old": "        print(f\"tally: no such file: {args.path}\", file=sys.stderr)\n        return 2",
-      "new": "        print(f\"tally: no such file: {args.path}\", file=sys.stderr)\n        return 0",
+      "old": "        print(verdict_line(EXIT_REFUSED))\n        return EXIT_REFUSED",
+      "new": "        print(verdict_line(EXIT_REFUSED))\n        return EXIT_PASS",
       "node_id": "tests/tools/test_tally.py::test_a_missing_file_is_a_usage_error_not_an_empty_tally",
       "expect_claim": "test_a_missing_file_is_a_usage_error_not_an_empty_tally|main([str(tmp_path / \"nope.jsonl\"), \"--field\", \"transport\"]) == 2|#0",
       "note": "Zero records trivially satisfies every arithmetic check in this tool, so an unreadable file must never reach the verdict. This is the vacuity floor: the same shape as a glob that stops matching."

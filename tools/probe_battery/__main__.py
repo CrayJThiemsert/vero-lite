@@ -9,10 +9,12 @@ the next battery snapshotting a mutated file as pristine.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from pathlib import Path
 
+from tools._evidence import write_evidence
 from tools.probe_battery._battery import (
     Battery,
     BatteryDefinitionError,
@@ -57,6 +59,22 @@ def _cmd_run(args: argparse.Namespace) -> int:
         # so, so nobody hand-restores over a clean tree.
         print(f"\n{exc} — the tree was restored before exiting.", file=sys.stderr)
         return 130
+    if args.report_to is not None:
+        # PLAN-0123 AC-6 / clause R7. `run_battery` printed the report; a battery
+        # whose verdict only ever existed in a terminal is a witness nobody can
+        # cite later, and a T-ORACLE goal's judge reads this file rather than a
+        # remembered PASS. The body is the report verbatim — the file and the
+        # terminal telling two stories is the failure this is guarding against.
+        write_evidence(
+            result.report,
+            Path(args.report_to),
+            {
+                "run_id": result.run_id,
+                "head": result.head_sha,
+                "battery_sha256": hashlib.sha256(battery_path.read_bytes()).hexdigest(),
+                "battery": str(battery_path),
+            },
+        )
     # `run_battery` already echoed the report (AC-6); printing it again here would
     # double every battery's output.
     return 0 if result.passed else 1
@@ -130,6 +148,14 @@ def main(argv: list[str] | None = None) -> int:
     run_parser.add_argument("--battery", required=True, help="path to the battery JSON file")
     run_parser.add_argument(
         "--timeout", type=int, default=600, help="per-probe pytest timeout in seconds"
+    )
+    run_parser.add_argument(
+        "--report-to",
+        default=None,
+        help=(
+            "bank the report here, stamped with run_id / head / battery_sha256 "
+            "(PLAN-0123 AC-6). The body is byte-identical to what was printed."
+        ),
     )
     run_parser.set_defaults(func=_cmd_run)
 

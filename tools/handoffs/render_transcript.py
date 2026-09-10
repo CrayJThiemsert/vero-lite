@@ -277,6 +277,46 @@ def _render_record(
     return "\n\n".join([header, *body])
 
 
+def summarize_goal_dispositions(state_dir: Path | None = None) -> str:
+    """One line: how the goals of this session ended (PLAN-0123 Step 2.3 / OQ-7).
+
+    A goal that is abandoned mid-session leaves no trace in the transcript — the
+    gate simply stops being mentioned — so a handoff can read as if verification
+    had been in place throughout. R8 makes the abandonment a record in
+    ``goal-history/``; this surfaces the record where the next session will
+    actually look.
+
+    Counted by disposition rather than summarised in prose: ``unpassed=1`` is a
+    fact the reader can act on, ``goals were declared`` is not. Best-effort by
+    design — a missing state dir prints ``none`` rather than failing a render.
+    """
+    root = (
+        state_dir
+        if state_dir is not None
+        else Path(__file__).resolve().parents[2] / (".claude/state")
+    )
+    counts: Counter[str] = Counter()
+    live = root / "goal.json"
+    if live.is_file():
+        try:
+            status = json.loads(live.read_text(encoding="utf-8")).get("status")
+        except (OSError, json.JSONDecodeError):
+            status = "unreadable"
+        counts["passed" if status == "passed" else "unpassed"] += 1
+    history = root / "goal-history"
+    if history.is_dir():
+        for entry in sorted(history.glob("*.json")):
+            try:
+                counts[
+                    str(json.loads(entry.read_text(encoding="utf-8")).get("disposition", "unknown"))
+                ] += 1
+            except (OSError, json.JSONDecodeError):
+                counts["unreadable"] += 1
+    if not counts:
+        return "none declared"
+    return ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+
+
 def render_transcript(
     jsonl_path: Path,
     opts: RenderOptions,
@@ -305,6 +345,7 @@ def render_transcript(
             f"- Generated (UTC): {generated}",
             f"- Records: {len(records)} ({counts})",
             f"- Rendered turns: {len(rendered)}",
+            f"- Goals: {summarize_goal_dispositions()}",
             "- Filters: "
             + ", ".join(
                 [

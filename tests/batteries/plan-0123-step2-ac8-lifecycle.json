@@ -1,0 +1,84 @@
+{
+  "claim_sources": [
+    "tests/tools/test_goal_template_lifecycle.py"
+  ],
+  "probes": [
+    {
+      "name": "P8a",
+      "subject": "tools/goal_template.py",
+      "old": "        existing.criteria.extend(draft.criteria)",
+      "new": "        existing.criteria = list(draft.criteria)",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_declaring_over_an_unpassed_goal_appends_and_keeps_every_prior_id",
+      "expect_claim": "test_declaring_over_an_unpassed_goal_appends_and_keeps_every_prior_id|set(pre) <= set(post)|#0",
+      "note": "🔴 AC-8 A1. Overwrite instead of append — the abandonment loophole in its purest form. The prefix is still applied, so the `T1-` assertion below stays GREEN and the RED is precisely 'the prior ids are gone', not 'the prefix broke'."
+    },
+    {
+      "name": "P8d",
+      "subject": "tools/goal_template.py",
+      "old": "        prefix = _next_prefix(existing)",
+      "new": "        prefix = \"\"",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_declaring_over_an_unpassed_goal_appends_and_keeps_every_prior_id",
+      "expect_claim": "test_declaring_over_an_unpassed_goal_appends_and_keeps_every_prior_id|any(i.startswith(\"T1-\") for i in post)|#0",
+      "note": "The other half of A1, and the reason it is two assertions. Drop the prefix and the append still preserves every prior id (first assertion green) while the two rounds become indistinguishable — C0 from round one and C0 from round two collide in the same list with nothing saying which is which."
+    },
+    {
+      "name": "P8b",
+      "subject": "tools/goal_template.py",
+      "old": "        archived = _archive(existing, disposition, history_root)",
+      "new": "        archived = None",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_replacing_an_unpassed_goal_archives_it_as_abandoned",
+      "expect_claim": "test_replacing_an_unpassed_goal_archives_it_as_abandoned|archived.is_file()|#0",
+      "note": "🔴 AC-8 A2. Skip the archive on --replace: the goal disappears rather than being abandoned on the record. AC-8 predicts A1 stays green and it does — the append path is untouched."
+    },
+    {
+      "name": "P8c",
+      "subject": "tools/goal_template.py",
+      "old": "        disposition = \"passed\" if existing.status == STATUS_PASSED else \"replaced-unpassed\"",
+      "new": "        disposition = \"replaced-unpassed\"",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_replacing_a_passed_goal_archives_it_as_passed",
+      "expect_claim": "test_replacing_a_passed_goal_archives_it_as_passed|payload.get(\"disposition\") == \"passed\"|#0",
+      "note": "🔴 AC-8 A3. Label every archive as abandoned, including the goals that were actually met. The file still exists and is still stamped, so `archived.is_file()` stays green — this RED is exactly 'the archive can no longer answer the question it exists for'."
+    },
+    {
+      "name": "P8e",
+      "subject": "tools/goal_template.py",
+      "old": "        disposition = \"passed\" if existing.status == STATUS_PASSED else \"replaced-unpassed\"",
+      "new": "        disposition = \"passed\"",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_replacing_an_unpassed_goal_archives_it_as_abandoned",
+      "expect_claim": "test_replacing_an_unpassed_goal_archives_it_as_abandoned|payload.get(\"disposition\") == \"replaced-unpassed\"|#0",
+      "note": "P8c's mirror: label every archive as passed. This is the direction that actually flatters — an abandoned goal filed as met. Running both directions is what shows the disposition is derived from the goal's status rather than being a constant that happens to match one case."
+    },
+    {
+      "name": "P8f",
+      "subject": "tools/goal_template.py",
+      "old": "    payload = existing.to_json()\n    payload[\"disposition\"] = disposition",
+      "new": "    payload = {\"goal\": existing.goal}\n    payload[\"disposition\"] = disposition",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_replacing_an_unpassed_goal_archives_it_as_abandoned",
+      "expect_claim": "test_replacing_an_unpassed_goal_archives_it_as_abandoned|len(payload.get(\"criteria\", [])) == 3|#0",
+      "note": "Archive the goal's TEXT but not its criteria. The file exists, the disposition is right, and the record is hollow — you can see that a goal was abandoned but not what it was going to check. Both assertions above stay green, which is why the criteria count is asserted separately."
+    },
+    {
+      "name": "P8g",
+      "subject": "tools/goal_template.py",
+      "old": "    existing = load_goal(goal_file)\n    pre_ids = [c.id for c in existing.criteria] if existing else []",
+      "new": "    existing = None\n    pre_ids = []",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_replacing_an_unpassed_goal_archives_it_as_abandoned",
+      "expect_claim": "test_replacing_an_unpassed_goal_archives_it_as_abandoned|archived.is_file()|#0",
+      "note": "Never see the existing goal at all — every declaration looks like a first one. This is the failure mode where R8 is not violated so much as never reached, and it is the one a `--goal-file` override could silently introduce by pointing at the wrong path."
+    },
+    {
+      "name": "P8h",
+      "subject": "tools/goal_template.py",
+      "old": "    archived: Path | None = None\n    disposition = \"none\"",
+      "new": "    archived: Path | None = Path(\"/dev/null\")\n    disposition = \"none\"",
+      "node_id": "tests/tools/test_goal_template_lifecycle.py::test_a_first_declaration_archives_nothing",
+      "expect_claim": "test_a_first_declaration_archives_nothing|values[\"archived\"] == \"none\"|#0",
+      "note": "The non-vacuity control made reddenable: claim an archive on a FIRST declaration, when there was nothing to archive. Without this assertion a renderer that reported an archive on every run would satisfy A2 and A3 perfectly while making the archive meaningless."
+    }
+  ],
+  "exemptions": {
+    "test_the_lifecycle_parser_passes_its_own_control|(values[\"disposition\"], _ids(values[\"post_ids\"])) == ( \"appended\", [\"C0\", \"C1\", \"T1-C0\"], )|#0": "Instrument control (Lesson #0056): `_lifecycle` + `_ids` are the parsers every id list and disposition below is read through. Breaking them deliberately reddens every probe in this battery at once rather than isolating one claim — a control is asserted green, not probed.",
+    "test_replacing_a_passed_goal_archives_it_as_passed|archived.is_file()|#0": "Duplicate of the same tool-side property already witnessed by P8b on the `replaced-unpassed` path — `_archive` is one function and one call site, so a probe here would redden the same code a second time rather than reach a new claim. The disposition half of this test, which IS distinct, is probed by P8c.",
+    "test_a_first_declaration_archives_nothing|_ids(values[\"pre_ids\"]) == []|#0": "Fixture control: it pins that the base case really started with no goal on disk, so the `archived == none` assertion above is a response to an empty tree rather than to a lookup that silently failed. The tool-side mutation for that failure mode is P8g, on the case where a goal DOES exist."
+  }
+}

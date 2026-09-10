@@ -1,0 +1,120 @@
+{
+  "claim_sources": [
+    "tests/tools/test_absent.py"
+  ],
+  "probes": [
+    {
+      "name": "P4a",
+      "subject": "tools/absent.py",
+      "old": "        for line in handle:\n            consumed += 1",
+      "new": "        for line in list(handle)[:20]:\n            consumed += 1",
+      "node_id": "tests/tools/test_absent.py::test_the_reading_consumes_every_line_of_its_subject",
+      "expect_claim": "test_the_reading_consumes_every_line_of_its_subject|values[\"consumed\"] == values[\"lines\"]|#0",
+      "note": "🔴 AC-4 A1. Bound the scan to the first 20 lines — error #10 verbatim, a value read through a window and then quoted about the whole population. `lines` comes from pass 1 and is untouched (40); `consumed` from the truncated pass 2 (20). The non-vacuity assertion above it stays green, which is what proves the RED is the equality and not the fixture."
+    },
+    {
+      "name": "P4b",
+      "subject": "tools/absent.py",
+      "old": "    if not reading.control_held:\n        return EXIT_CONTROL_FAILED",
+      "new": "    if not reading.control_held:\n        return EXIT_ABSENT",
+      "node_id": "tests/tools/test_absent.py::test_a_control_that_finds_nothing_refuses_rather_than_reporting_absence",
+      "expect_claim": "test_a_control_that_finds_nothing_refuses_rather_than_reporting_absence|code == 2|#0",
+      "note": "🔴 AC-4 A3. Report a dead control as an absence — the exact defect the tool exists to prevent, and the one that reads identically to a real absence. AC-4 predicts A2 stays green, and it must: every case in the A2 test carries a live control, so this mutation cannot reach it."
+    },
+    {
+      "name": "P4c",
+      "subject": "tools/absent.py",
+      "old": "        if pid == own_pid or _SELF_MARKER in cmdline:",
+      "new": "        if pid == own_pid:",
+      "node_id": "tests/tools/test_absent.py::test_the_instrument_excludes_its_own_command_line",
+      "expect_claim": "test_the_instrument_excludes_its_own_command_line|values[\"self_excluded\"] == 1|#0",
+      "note": "🔴 AC-4 A4. Drop the cmdline filter and the instrument sees its own argv — a pgrep reporting a process running when nothing but the check was. self_excluded falls to 0 and reddens first."
+    },
+    {
+      "name": "P4d",
+      "subject": "tools/absent.py",
+      "old": "            self_excluded += 1\n            continue",
+      "new": "            self_excluded += 1",
+      "node_id": "tests/tools/test_absent.py::test_the_instrument_excludes_its_own_command_line",
+      "expect_claim": "test_the_instrument_excludes_its_own_command_line|values[\"matched\"] == 1|#0",
+      "note": "The subtler half of P4c: COUNT the self-match but scan it anyway. self_excluded still reads 1 (so the first assertion stays green and the accounting still looks honest) while `matched` climbs to 2. A counter that reports an exclusion it did not perform is worse than no counter."
+    },
+    {
+      "name": "P4k",
+      "subject": "tools/absent.py",
+      "old": "    for pid, cmdline in entries:\n        consumed += 1",
+      "new": "    for pid, cmdline in entries[:2]:\n        consumed += 1",
+      "node_id": "tests/tools/test_absent.py::test_the_instrument_excludes_its_own_command_line",
+      "expect_claim": "test_the_instrument_excludes_its_own_command_line|(values[\"lines\"], values[\"consumed\"]) == (3, 3)|#0",
+      "note": "P4a's shape on the process-table path, which has its own loop. A windowed process-table read is how 'not running' gets reported about a machine whose table was truncated. self_excluded stays 1 (the self entry is row one), so the completeness pair is what reddens."
+    },
+    {
+      "name": "P4h",
+      "subject": "tools/absent.py",
+      "old": "    return EXIT_ABSENT if reading.matched == 0 else EXIT_PRESENT",
+      "new": "    return EXIT_ABSENT",
+      "node_id": "tests/tools/test_absent.py::test_an_absent_pattern_under_a_live_control_is_the_only_route_to_exit_zero",
+      "expect_claim": "test_an_absent_pattern_under_a_live_control_is_the_only_route_to_exit_zero|(present_values[\"matched\"], present_values[\"control_hits\"], present_code) == (1, 1, 1)|#0",
+      "note": "🔴 AC-4 A2, the half that matters: always answer 'absent'. The absent case is asserted FIRST and stays green under this mutation, which is the positive control ruling out 'something unrelated broke' — the present case is the only RED."
+    },
+    {
+      "name": "P4i",
+      "subject": "tools/absent.py",
+      "old": "    return EXIT_ABSENT if reading.matched == 0 else EXIT_PRESENT",
+      "new": "    return EXIT_PRESENT",
+      "node_id": "tests/tools/test_absent.py::test_an_absent_pattern_under_a_live_control_is_the_only_route_to_exit_zero",
+      "expect_claim": "test_an_absent_pattern_under_a_live_control_is_the_only_route_to_exit_zero|(absent_values[\"matched\"], absent_values[\"control_hits\"], absent_code) == (0, 1, 0)|#0",
+      "note": "The mirror of P4h — always answer 'present'. Same line, opposite direction, because one mutation witnesses one assertion: an instrument that only ever says PRESENT would pass P4h's assertion and fail this one, and only running both distinguishes a live derivation from a constant."
+    },
+    {
+      "name": "P4g",
+      "subject": "tools/absent.py",
+      "old": "            print(f\"absent: no such file: {args.file}\", file=sys.stderr)\n            return EXIT_CONTROL_FAILED",
+      "new": "            print(f\"absent: no such file: {args.file}\", file=sys.stderr)\n            return EXIT_ABSENT",
+      "node_id": "tests/tools/test_absent.py::test_a_missing_file_refuses_instead_of_reporting_zero",
+      "expect_claim": "test_a_missing_file_refuses_instead_of_reporting_zero|code == 2|#0",
+      "note": "An unreadable subject answered as an absence. Note the diagnostic still prints — this is the shape where the message says 'no such file' and the exit status says PASS, and only the exit status reaches the gate."
+    },
+    {
+      "name": "P4l",
+      "subject": "tools/absent.py",
+      "old": "                print(f\"absent: no such process table: {args.proc_source}\", file=sys.stderr)\n                return EXIT_CONTROL_FAILED",
+      "new": "                print(f\"absent: no such process table: {args.proc_source}\", file=sys.stderr)\n                return EXIT_ABSENT",
+      "node_id": "tests/tools/test_absent.py::test_a_missing_process_table_refuses_instead_of_reporting_zero",
+      "expect_claim": "test_a_missing_process_table_refuses_instead_of_reporting_zero|code == 2|#0",
+      "note": "P4g on the process-table path — the branch that guards the real hazard read_process_table() documents: no /proc means an empty table, and an empty table makes every process absent."
+    },
+    {
+      "name": "P4j",
+      "subject": "tools/absent.py",
+      "old": "            \"gid\": gid or \"unset\",",
+      "new": "            \"goal\": gid or \"unset\",",
+      "node_id": "tests/tools/test_absent.py::test_the_report_is_written_to_the_evidence_file_with_its_provenance_header",
+      "expect_claim": "test_the_report_is_written_to_the_evidence_file_with_its_provenance_header|\"gid=s292test\" in header|#0",
+      "note": "Clause R7's goal id, renamed. An evidence file that cannot be tied back to the goal that ordered it is a measurement without provenance — which is the whole class PLAN-0125 exists for."
+    },
+    {
+      "name": "P4f",
+      "subject": "tools/absent.py",
+      "old": "            \"head\": head_sha(),",
+      "new": "            \"sha\": head_sha(),",
+      "node_id": "tests/tools/test_absent.py::test_the_report_is_written_to_the_evidence_file_with_its_provenance_header",
+      "expect_claim": "test_the_report_is_written_to_the_evidence_file_with_its_provenance_header|re.search(r\"head=([0-9a-f]{40}|unknown)\", header) is not None|#0",
+      "note": "Clause R7's HEAD stamp, renamed. The gid assertion above stays green, so the RED names the stamp and not the header wholesale. This is what the judge compares against the goal's declared_head; without it a report from a different tree is indistinguishable from a fresh one."
+    },
+    {
+      "name": "P4e",
+      "subject": "tools/absent.py",
+      "old": "    write_evidence(\n        report,",
+      "new": "    write_evidence(\n        \"\",",
+      "node_id": "tests/tools/test_absent.py::test_the_report_is_written_to_the_evidence_file_with_its_provenance_header",
+      "expect_claim": "test_the_report_is_written_to_the_evidence_file_with_its_provenance_header|body.strip() == out.strip()|#0",
+      "note": "🔴 Clause R2. Write a well-formed, correctly stamped header and NO measurement — the file exists, its provenance checks out, and it says nothing. Both stamp assertions stay green, so this RED is precisely 'the evidence file and the terminal tell different stories'."
+    }
+  ],
+  "exemptions": {
+    "test_the_values_parser_passes_its_own_control|_values(_PARSER_FIXTURE) == _PARSER_EXPECT|#0": "Instrument control (Lesson #0056): `_values` is the parser every number below is read through, and it must read a known line correctly before its first real reading is trusted. Reddening it deliberately would mean breaking the parser, which would then redden every other probe in this battery indiscriminately — a control is asserted green, not probed.",
+    "test_the_reading_consumes_every_line_of_its_subject|values[\"lines\"] == 40|#0": "Fixture non-vacuity control for A1. It pins that `_planted` really produced 40 lines, so that `consumed == lines` below is a statement about a subject with content rather than the vacuous `0 == 0`. Reaching it requires mutating the TEST's own fixture, which proves nothing about `absent.py` — the tool-side mutation that matters is P4a, and it is present.",
+    "test_a_control_that_finds_nothing_refuses_rather_than_reporting_absence|values[\"control_hits\"] == 0|#0": "Fixture non-vacuity control for A3. It pins that the control token really was removed, so the `code == 2` below is a response to a dead control and not to some other refusal path. Same reasoning as the A1 control: reaching it means mutating the fixture, while the tool-side mutation is P4b."
+  }
+}
