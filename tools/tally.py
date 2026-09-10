@@ -48,6 +48,20 @@ from collections import Counter
 from dataclasses import dataclass
 from pathlib import Path
 
+if __package__ in (None, ""):  # pragma: no cover - `python tools/tally.py`, not `-m`
+    # Both invocation forms have to work; see the same bootstrap in
+    # ``tools/absent.py`` for why.
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from tools._evidence import (
+    EXIT_FAIL,
+    EXIT_PASS,
+    EXIT_REFUSED,
+    head_sha,
+    verdict_line,
+    write_evidence,
+)
+
 
 @dataclass(frozen=True)
 class Tally:
@@ -155,6 +169,11 @@ def render(tally: Tally, expect: set[str] | None) -> tuple[str, bool]:
         f"TALLY: {'EXHAUSTIVE' if ok else 'REFUSED'} "
         f"({tally.records} records, {len(tally.counts)} values)"
     )
+    # Both this line and ``main``'s return value are rendered from ``ok`` — the
+    # single value PLAN-0123 §4.6 requires. The ``TALLY:`` summary above is a
+    # second RENDERING of the same variable, not a second computation of the
+    # verdict; error #13 was two computations, not two sentences.
+    lines.append(verdict_line(EXIT_PASS if ok else EXIT_FAIL))
     return "\n".join(lines), ok
 
 
@@ -173,16 +192,39 @@ def main(argv: list[str] | None = None) -> int:
             "BEFORE the reading. Refuses when reality differs."
         ),
     )
+    parser.add_argument(
+        "--report-to",
+        type=Path,
+        default=None,
+        help=(
+            "write the evidence file here (PLAN-0123 clause R2) as well as to stdout. "
+            "A check's stdout never reaches the goal-evaluator — only its exit code "
+            "becomes a state — so a number that existed only in a captured stdout is a "
+            "number nobody took."
+        ),
+    )
+    parser.add_argument("--gid", default="", help="goal id stamped into the report header (R7)")
     args = parser.parse_args(argv)
 
     if not args.path.is_file():
         print(f"tally: no such file: {args.path}", file=sys.stderr)
-        return 2
+        print(verdict_line(EXIT_REFUSED))
+        return EXIT_REFUSED
 
     expect = {v.strip() for v in args.expect.split(",") if v.strip()} if args.expect else None
     report, ok = render(tally_jsonl(args.path, args.field), expect)
     print(report)
-    return 0 if ok else 1
+    if args.report_to is not None:
+        write_evidence(
+            report,
+            args.report_to,
+            {
+                "gid": args.gid or "unset",
+                "head": head_sha(),
+                "instrument": "tally.py",
+            },
+        )
+    return EXIT_PASS if ok else EXIT_FAIL
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
