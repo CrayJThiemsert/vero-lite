@@ -1,0 +1,65 @@
+{
+  "claim_sources": [
+    "tests/tools/test_probe_battery_report_to.py"
+  ],
+  "probes": [
+    {
+      "name": "P6a",
+      "subject": "tools/probe_battery/__main__.py",
+      "old": "                \"head\": result.head_sha,",
+      "new": "                \"tree\": result.head_sha,",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_header_carries_the_three_provenance_keys",
+      "expect_claim": "test_the_header_carries_the_three_provenance_keys|sorted(k for k in (\"run_id\", \"head\", \"battery_sha256\") if header.get(k)) == [ \"battery_sha256\", \"head\", \"run_id\", ]|#0",
+      "note": "🔴 AC-6 A2. Drop `head` from the header. The report is still banked, still stamped with run_id and a battery digest, and is now unmoored from the tree it describes — which is the shape a stale report has when it is quoted to justify a fix that landed later."
+    },
+    {
+      "name": "P6b",
+      "subject": "tools/probe_battery/__main__.py",
+      "old": "                \"head\": result.head_sha,",
+      "new": "                \"head\": \"0000000000000000000000000000000000000000\",",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_stamped_head_is_the_tree_the_probes_actually_ran_on",
+      "expect_claim": "test_the_stamped_head_is_the_tree_the_probes_actually_ran_on|header.get(\"head\") == head|#0",
+      "note": "🔴 AC-6 A3, and AC-6 predicts A2 stays GREEN — it does, because a hard-coded sha is present and non-empty and satisfies every key check. That green is the whole point: it is what proves A3 is checking provenance rather than the presence of a header line. The `len(head) == 40` assertion above stays green too, since it reads the fixture repo's own HEAD."
+    },
+    {
+      "name": "P6c",
+      "subject": "tools/probe_battery/__main__.py",
+      "old": "            result.report,\n            Path(args.report_to),",
+      "new": "            result.report.rsplit(\"\\n\", 1)[0],\n            Path(args.report_to),",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_banked_report_is_byte_identical_to_what_was_printed",
+      "expect_claim": "test_the_banked_report_is_byte_identical_to_what_was_printed|body == stdout|#0",
+      "note": "🔴 AC-6 A1, phrased as the AC does: bank the report WITHOUT its final `PROBE-BATTERY:` line. Everything a skimming reader looks at is present — the probe outcomes, the coverage block — and the verdict is gone. `\"PROBE-BATTERY:\" in stdout` above stays green because the terminal still printed it; only the FILE lost it."
+    },
+    {
+      "name": "P6d",
+      "subject": "tools/probe_battery/__main__.py",
+      "old": "                \"battery_sha256\": hashlib.sha256(battery_path.read_bytes()).hexdigest(),",
+      "new": "                \"battery_sha256\": hashlib.sha256(b\"\").hexdigest(),",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_battery_digest_is_the_digest_of_the_battery_file",
+      "expect_claim": "test_the_battery_digest_is_the_digest_of_the_battery_file|header.get(\"battery_sha256\") == expected|#0",
+      "note": "P6b's shape applied to the third stamp: a well-formed digest of the wrong bytes. It is non-empty, so A2 stays green; it is a valid sha256, so nothing about its shape betrays it. Only recomputing it from the file catches this, which is why the test digests the battery itself instead of reading the stamp twice."
+    },
+    {
+      "name": "P6e",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "        run_id=run_id,\n        head_sha=head_sha,",
+      "new": "        run_id=run_id,\n        head_sha=\"\",",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_header_carries_the_three_provenance_keys",
+      "expect_claim": "test_the_header_carries_the_three_provenance_keys|sorted(k for k in (\"run_id\", \"head\", \"battery_sha256\") if header.get(k)) == [ \"battery_sha256\", \"head\", \"run_id\", ]|#0",
+      "note": "The empty-stamp case, distinct from P6a's missing key. `head=` is written, the line is there, and it says nothing — the shape that passes a naive `\"head\" in header` check. This is why the assertion filters on `header.get(k)` being truthy rather than on key presence, and this probe is what proves that distinction is live."
+    },
+    {
+      "name": "P6f",
+      "subject": "tools/probe_battery/__main__.py",
+      "old": "                \"run_id\": result.run_id,",
+      "new": "                \"run\": result.run_id,",
+      "node_id": "tests/tools/test_probe_battery_report_to.py::test_the_header_carries_the_three_provenance_keys",
+      "expect_claim": "test_the_header_carries_the_three_provenance_keys|sorted(k for k in (\"run_id\", \"head\", \"battery_sha256\") if header.get(k)) == [ \"battery_sha256\", \"head\", \"run_id\", ]|#0",
+      "note": "The third key, renamed. `run_id` is what ties a banked report to the snapshot manifest proving the tree was restored; a report that cannot be joined to its manifest is a verdict with no evidence that the run was clean."
+    }
+  ],
+  "exemptions": {
+    "test_the_banked_report_is_byte_identical_to_what_was_printed|\"PROBE-BATTERY:\" in stdout|#0": "Non-vacuity control for A1. It pins that the run actually produced a verdict on stdout, so `body == stdout` below is an equality between two real reports rather than between two empty strings. Reaching it means preventing the driver from printing at all, which is PLAN-0115 AC-6's territory (`tests/tools/test_probe_battery.py` already covers 'a battery cannot end without a report'), not this AC's.",
+    "test_the_stamped_head_is_the_tree_the_probes_actually_ran_on|len(head) == 40|#0": "Fixture control for A3. It pins that the fixture project really is a git repository with a commit — without it, a fixture that failed to `git init` would leave both the stamp and the observed value as empty strings and A3 would pass by agreeing that nothing equals nothing. Reaching it means mutating the test's own fixture; the tool-side mutations are P6b and P6e."
+  }
+}

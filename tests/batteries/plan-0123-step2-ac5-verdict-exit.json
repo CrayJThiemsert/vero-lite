@@ -1,0 +1,47 @@
+{
+  "claim_sources": [
+    "tests/tools/test_verdict_and_exit_agree.py"
+  ],
+  "probes": [
+    {
+      "name": "P5a-tally",
+      "subject": "tools/tally.py",
+      "old": "    lines.append(verdict_line(EXIT_PASS if ok else EXIT_FAIL))",
+      "new": "    lines.append(verdict_line(EXIT_PASS))",
+      "node_id": "tests/tools/test_verdict_and_exit_agree.py::test_the_printed_verdict_and_the_exit_status_are_one_value[tally.py-fail]",
+      "expect_claim": "test_the_printed_verdict_and_the_exit_status_are_one_value|agree|#0",
+      "note": "🔴 AC-5 P5a for `tally`. Print PASS on the failing path while `main` still returns 1 — error #13 exactly: the report says one thing, the gate reads the other, and nothing fails. The `should_pass` assertion above it stays green (the process really did exit 1), so the RED is the disagreement and not a broken fixture."
+    },
+    {
+      "name": "P5a-absent",
+      "subject": "tools/absent.py",
+      "old": "    lines.append(verdict_line(status))",
+      "new": "    lines.append(verdict_line(EXIT_PASS))",
+      "node_id": "tests/tools/test_verdict_and_exit_agree.py::test_the_printed_verdict_and_the_exit_status_are_one_value[absent.py-fail]",
+      "expect_claim": "test_the_printed_verdict_and_the_exit_status_are_one_value|agree|#0",
+      "note": "P5a for `absent`. AC-5 predicts each instrument's row reddens on its own mutation while the others stay green; running the same defect at each site one at a time is what shows the guard is per-instrument rather than one shared assertion that happens to fire."
+    },
+    {
+      "name": "P5b-tally-exit",
+      "subject": "tools/tally.py",
+      "old": "    return EXIT_PASS if ok else EXIT_FAIL",
+      "new": "    return EXIT_PASS",
+      "node_id": "tests/tools/test_verdict_and_exit_agree.py::test_the_printed_verdict_and_the_exit_status_are_one_value[tally.py-fail]",
+      "expect_claim": "test_the_printed_verdict_and_the_exit_status_are_one_value|(proc.returncode == 0) is case.should_pass|#0",
+      "note": "The other half of #13, and the reason the fixture-forcing assertion exists at all: break the EXIT rather than the printed line. Without this assertion an instrument that always exited 0 and always printed PASS would satisfy 'the two agree' perfectly — the guard would be vacuous in exactly the direction it is meant to catch."
+    },
+    {
+      "name": "P5c-driver-verdict",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    lines.append(VERDICT_PASS if passed else VERDICT_FAIL)",
+      "new": "    lines.append(VERDICT_PASS)",
+      "node_id": "tests/tools/test_verdict_and_exit_agree.py::test_the_printed_verdict_and_the_exit_status_are_one_value[probe_battery-fail]",
+      "expect_claim": "test_the_printed_verdict_and_the_exit_status_are_one_value|agree|#0",
+      "note": "P5a for the driver, whose token is `PROBE-BATTERY: PASS|FAIL` rather than the shared `VERDICT:` line. A battery that always prints PASS while exiting 1 is the highest-consequence instance of #13 in this repo: the battery report is the evidence every witnessed RED rests on."
+    }
+  ],
+  "exemptions": {
+    "test_the_verdict_extractors_pass_their_own_controls|_read_verdict_line(_VERDICT_CONTROL[0]) == _VERDICT_CONTROL[1]|#0": "Instrument control (Lesson #0056): `_read_verdict_line` is the parser every agreement reading passes through. Breaking it deliberately would redden every probe in this battery at once rather than isolating one claim — a control is asserted green, not probed.",
+    "test_the_verdict_extractors_pass_their_own_controls|_read_battery_line(_BATTERY_CONTROL[0]) == _BATTERY_CONTROL[1]|#0": "Instrument control, the driver-token half. Same reasoning: it is the reading instrument, not the subject, and P5c is the tool-side mutation that exercises what it reads."
+  }
+}
