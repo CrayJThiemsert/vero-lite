@@ -130,6 +130,36 @@ the number of files you name is irrelevant. Measured on this tree:
 
 Rows 3 and 4 are **single files named alone** — which is why "it takes two files" is wrong.
 
+**Read the reported pair, not the exit code.** Three passes over this paragraph argued from
+`rc` while the error text was printing the discriminating value the whole time — the pair is
+what tells you *which* file is doubled, and it is frequently **the package's `__init__.py`,
+not the file you named** (rows 3 and 6 report `vero_bridge` and `golden_trace.producer`, not
+the module under test). §8's "a verification report prints the values it measured" applies to
+reading someone else's report too.
+
+### Which files can be spot-checked alone
+
+That makes the rule predictive without running mypy. Naming a file inside `tools/<pkg>/` drags
+`<pkg>/__init__.py` into the build under its bare name; if that `__init__.py` (or anything it
+pulls in) then imports `tools.<pkg>…` **absolutely**, the same file arrives under a second name
+and the build dies. So the predicate is one `grep` over the package's `__init__.py`:
+
+| `tools/<pkg>/` | `__init__.py` self-imports | file under it, named alone |
+|---|---|---|
+| `probe_battery/` | 5 | ✗ rc=2 |
+| `golden_trace/` | 1 | ✗ rc=2 |
+| `vero_bridge/` | 1 | ✗ rc=2 |
+| `loop/` | **0** | ✓ rc=0 |
+| `handoffs/`, `ci/` | *(no `__init__.py`)* | ✓ rc=0 |
+
+`loop/` is the counterexample worth keeping: "anything under an `__init__.py` package collides"
+is **not** true — it collides only when something reaches that package absolutely, and `loop/`
+happens not to. Delete `loop/__init__.py`'s zero and the row flips.
+
+Importing **into** a package is harmless — `tools/check_battery_definitions.py` alone is
+**rc=0** despite importing `tools.probe_battery._lint`, because the subpackage enters under one
+name only. The hazard is being named **from inside** a package, not importing one.
+
 ⚠️ **So an explicit-file run is not a gate, in both directions.** It can be green while
 checking one file out of a tree that cannot be checked whole (rows 1–2), and it can be red
 for a reason that has nothing to do with the code you are working on (rows 3–4). Only the
