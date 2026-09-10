@@ -1,0 +1,113 @@
+{
+  "claim_sources": [
+    "tests/tools/test_goal_template.py"
+  ],
+  "probes": [
+    {
+      "name": "P7a",
+      "subject": "tools/goal_template.py",
+      "old": "    _clause_r6,\n)",
+      "new": ")",
+      "node_id": "tests/tools/test_goal_template.py::test_a_caller_supplied_violation_is_refused_by_clause_name[dollar_in_parameter-extra0-R6]",
+      "expect_claim": "test_a_caller_supplied_violation_is_refused_by_clause_name|code != 0|#0",
+      "note": "🔴 AC-7 A6. Drop R6 from the clause tuple entirely and a `$` in a caller parameter is emitted into a goal. This is the transport hazard CLAUDE.md §8 exists for reaching the gate through a renderer that advertised it would refuse."
+    },
+    {
+      "name": "P7b",
+      "subject": "tools/goal_template.py",
+      "old": "        return f\"refused={self.clause}  {self.detail}\"",
+      "new": "        return f\"refused  {self.detail}\"",
+      "node_id": "tests/tools/test_goal_template.py::test_a_caller_supplied_violation_is_refused_by_clause_name[head_pin_in_parameter-extra2-R5]",
+      "expect_claim": "test_a_caller_supplied_violation_is_refused_by_clause_name|clause in named|#0",
+      "note": "AC-7 A6's other half: still refuse, but stop NAMING the clause. `code != 0` stays green, so this RED is precisely 'the caller is told no without being told which rule'. A bare refusal starts a hunt — the same argument §8 makes about printing measured values instead of a verdict."
+    },
+    {
+      "name": "P7c",
+      "subject": "tools/goal_template.py",
+      "old": "def _clause_r1(draft: Draft) -> list[Refusal]:\n    out: list[Refusal] = []",
+      "new": "def _clause_r1(draft: Draft) -> list[Refusal]:\n    return [Refusal(\"R1\", \"always\")]\n    out: list[Refusal] = []",
+      "node_id": "tests/tools/test_goal_template.py::test_every_template_renders_a_goal_the_gate_itself_accepts[T-COUNT]",
+      "expect_claim": "test_every_template_renders_a_goal_the_gate_itself_accepts|code == 0|#0",
+      "note": "🔴 AC-7 A1, the direction nobody watches: a validator that refuses everything satisfies every refusal case perfectly. Without this assertion the whole A6 battery could pass against a renderer that never emits a goal at all."
+    },
+    {
+      "name": "P7d",
+      "subject": "tools/goal_template.py",
+      "old": "        status=STATUS_ACTIVE,\n        source=source,",
+      "new": "        status=\"in-progress\",\n        source=source,",
+      "node_id": "tests/tools/test_goal_template.py::test_every_template_renders_a_goal_the_gate_itself_accepts[T-ABSENT]",
+      "expect_claim": "test_every_template_renders_a_goal_the_gate_itself_accepts|goal is not None|#0",
+      "note": "🔴 The claim that makes this suite worth more than a schema of its own: emit a status the GATE rejects. Every clause still passes, the renderer still exits 0 (`code == 0` green), the JSON still looks like a goal — and `Goal.from_json` returns None, so the Stop hook would read `no active goal` and the whole declaration would be silently inert."
+    },
+    {
+      "name": "P7e",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"checks={len(checks)} judges={len(draft.judges())} \"",
+      "new": "        f\"checks=0 judges={len(draft.judges())} \"",
+      "node_id": "tests/tools/test_goal_template.py::test_every_template_renders_a_goal_the_gate_itself_accepts[T-ORACLE]",
+      "expect_claim": "test_every_template_renders_a_goal_the_gate_itself_accepts|int(values[\"checks\"]) >= 1|#0",
+      "note": "The summary line lying about what it rendered. The goal is fine; the REPORT is wrong — which is precisely the provenance class PLAN-0125 exists for, and the reason a summary is asserted rather than trusted."
+    },
+    {
+      "name": "P7f",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"checks={len(checks)} judges={len(draft.judges())} \"",
+      "new": "        f\"checks={len(checks)} judges=0 \"",
+      "node_id": "tests/tools/test_goal_template.py::test_every_template_renders_a_goal_the_gate_itself_accepts[T-COUNT]",
+      "expect_claim": "test_every_template_renders_a_goal_the_gate_itself_accepts|int(values[\"judges\"]) >= 1|#0",
+      "note": "P7e's sibling on the other counter. Two probes rather than one because the run stops at the first failed assert: a single mutation zeroing both would witness only whichever is asserted first, and the other would ride on an untested green."
+    },
+    {
+      "name": "P7g",
+      "subject": "tools/goal_template.py",
+      "old": "            cmd=_cmd_for(gid, CONTROL_ID),\n            timeout_s=30,\n        ),\n        Criterion(\n            id=\"C1\",\n            kind=KIND_CHECK,\n            desc=(\n                f\"BASIS: tree. The breakdown of {args.file} by '{args.field}' is \"",
+      "new": "            cmd=_cmd_for(gid, CONTROL_ID),\n            timeout_s=300,\n        ),\n        Criterion(\n            id=\"C1\",\n            kind=KIND_CHECK,\n            desc=(\n                f\"BASIS: tree. The breakdown of {args.file} by '{args.field}' is \"",
+      "node_id": "tests/tools/test_goal_template.py::test_the_checks_fit_inside_the_gates_deterministic_budget[T-COUNT]",
+      "expect_claim": "test_the_checks_fit_inside_the_gates_deterministic_budget|0 < int(values[\"sum_timeout\"]) <= 100|#0",
+      "note": "🔴 AC-7 A2. Push one criterion's timeout to 300 s. The gate's own deterministic budget is 120 s, so a goal like this cannot finish — and an unfinished check reads as a FAILURE at Stop, not as 'still running'. This is the s289 prose drift (600 s stated against a 120 s constant) reaching the goal file instead of the docs."
+    },
+    {
+      "name": "P7h",
+      "subject": "tools/goal_template.py",
+      "old": "    return f\"wsl.exe --exec bash {SCRIPT_ROOT / gid / (criterion_id + '.sh')}\"",
+      "new": "    return f\"wsl.exe --exec bash ${SCRIPT_ROOT / gid / (criterion_id + '.sh')}\"",
+      "node_id": "tests/tools/test_goal_template.py::test_no_rendered_command_carries_a_shell_metacharacter[T-COUNT]",
+      "expect_claim": "test_no_rendered_command_carries_a_shell_metacharacter|values[\"has_dollar\"] == \"False\"|#0",
+      "note": "🔴 AC-7 A3. Put a `$` into the rendered cmd itself — the argv that crosses the Windows -> WSL boundary, which is exactly where a metacharacter expands one shell layer early and the check runs against something nobody chose."
+    },
+    {
+      "name": "P7i",
+      "subject": "tools/goal_template.py",
+      "old": "        \"the reading itself\",\n        f\"python -m tools.tally {args.file} --field {args.field} --expect {expect} \"",
+      "new": "        \"the reading itself\",\n        f\"git show HEAD:{args.file} --field {args.field} --expect {expect} \"",
+      "node_id": "tests/tools/test_goal_template.py::test_no_template_ever_pins_the_basis_to_a_commit[T-COUNT]",
+      "expect_claim": "test_no_template_ever_pins_the_basis_to_a_commit|values[\"has_head_pin\"] == \"False\"|#0",
+      "note": "🔴 AC-7 A4 / clause R5. Emit a basis pinned to a commit. Measured in s289: such a check failed at four consecutive Stops after its PR merged, and under enforce:false the agent's context received none of them — a gate that reliably fails after success teaches that the gate is noise."
+    },
+    {
+      "name": "P7j",
+      "subject": "tools/goal_template.py",
+      "old": "CONTROL_ID = \"C0\"",
+      "new": "CONTROL_ID = \"CTRL\"",
+      "node_id": "tests/tools/test_goal_template.py::test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir[T-ABSENT]",
+      "expect_claim": "test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir|values[\"control\"] == \"C0\"|#0",
+      "note": "AC-7 A5. Rename the control criterion. R3 still passes (it looks the id up through the same constant), the goal still renders — but a judge, a human and a probe now disagree about which criterion IS the control. The fixed id is what lets all three point at the same thing."
+    },
+    {
+      "name": "P7k",
+      "subject": "tools/goal_template.py",
+      "old": "                f\"FALSIFIER: the value set is exactly [{expect}] -- written before the \"\n                \"reading; any other value present, or any of these absent, refutes it.\\n\"",
+      "new": "                \"FALSIFIER:\\n\"",
+      "node_id": "tests/tools/test_goal_template.py::test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir[T-COUNT]",
+      "expect_claim": "test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir|values[\"falsifier\"] == \"True\"|#0",
+      "note": "🔴 AC-7 A5 / clause R4. A FALSIFIER line that is present and EMPTY — the shape that passes a `\"FALSIFIER:\" in desc` check and says nothing. A falsifier nobody wrote down before the reading is a confirmation of what the author already believed, which is the one thing a goal cannot detect about itself."
+    }
+  ],
+  "exemptions": {
+    "_body|isinstance(obj, dict)|#0": "Type narrowing, not a claim about the renderer. `raw_decode` is typed as returning Any, so mypy --strict needs this to accept the `dict[str, object]` return; it asserts a property of the JSON parser, not of the goal being rendered. Reddening it would require the stdlib to return a non-dict for a document that starts with `{`. Kept as an assert rather than a cast because a cast would silently paper over a genuinely non-dict body.",
+    "test_the_summary_parser_passes_its_own_control|_summary(_PARSER_FIXTURE)[\"control\"] == \"C0\"|#0": "Instrument control (Lesson #0056): `_summary` is the parser every value in this module is read through. Breaking it deliberately reddens every probe in this battery at once rather than isolating one claim — a control is asserted green, not probed.",
+    "test_no_rendered_command_carries_a_shell_metacharacter|all(c.get(\"timeout_s\") for c in checks)|#0": "Unreachable in isolation BY CONSTRUCTION, not by omission: any mutation that removes a check's timeout_s is refused by clause R6 before a goal is emitted, so the dry-run prints no JSON and this assertion is never evaluated — the probe would crash in the parser and credit nothing. The property it reads is the same one R6 enforces, and R6's timeout half is exercised through P7g's budget case.",
+    "test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir|all(values[\"evidence_dir\"] in j[\"desc\"] for j in judges)|#0": "Structurally unreachable in isolation, and the reason is the design rather than an omission: clause R2 refuses a goal whose judge does not name its evidence file, and a refusal prints the summary line but NO goal body — so this assertion, which reads the body, is never evaluated under any mutation that would falsify it. The probe was written, run, and observed to redden the wrong thing (a parse failure, not this claim). The property is enforced upstream by R2, whose firing is witnessed by P7a's sibling refusal cases.",
+    "test_every_goal_carries_a_control_a_falsifier_and_an_evidence_dir|all(\"BASIS:\" in c[\"desc\"] for c in checks)|#0": "Same structural reason as the evidence-dir claim above: clause R5 refuses a check with no BASIS line, so no goal body is printed and this assertion cannot be reached by the mutation that would falsify it. Measured, not assumed — the probe ran and crashed in the parser rather than reddening here."
+  }
+}

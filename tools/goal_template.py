@@ -95,7 +95,12 @@ from _goal_state import (  # noqa: E402 — after the sys.path bootstrap above
     save_goal,
 )
 
-from tools._evidence import head_sha  # noqa: E402 — same reason
+from tools._evidence import (  # noqa: E402 — same reason
+    EXIT_PASS,
+    EXIT_REFUSED,
+    head_sha,
+    verdict_line,
+)
 
 STATE_DIR = REPO_ROOT / ".claude" / "state"
 EVIDENCE_ROOT = STATE_DIR / "goal-evidence"
@@ -740,6 +745,12 @@ def main(argv: list[str] | None = None) -> int:
     common.add_argument("--session", type=int, default=0)
     common.add_argument("--source", default="")
     common.add_argument("--goal-file", type=Path, default=None, help="override for tests")
+    common.add_argument(
+        "--history-root",
+        type=Path,
+        default=None,
+        help="override the goal-history/ archive dir (tests; R8's record must be isolatable)",
+    )
 
     count = sub.add_parser("T-COUNT", parents=[common])
     count.add_argument("--file", required=True)
@@ -769,10 +780,15 @@ def main(argv: list[str] | None = None) -> int:
         for refusal in refusals:
             print(str(refusal), file=sys.stderr)
         print(
-            f"\nREFUSED — {len(refusals)} clause violation(s). Nothing was written.",
+            f"\nREFUSED - {len(refusals)} clause violation(s). Nothing was written.",
             file=sys.stderr,
         )
-        return 2
+        # §4.6: the printed verdict and the exit status come from one value, here
+        # as in every other instrument a goal can call. A renderer that refused
+        # while printing PASS would be error #13 at the one place the whole
+        # contract is supposed to be enforced.
+        print(verdict_line(EXIT_REFUSED))
+        return EXIT_REFUSED
 
     if args.dry_run:
         goal = build_goal(
@@ -783,7 +799,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"\n--- {criterion_id}.sh ---\n{body}")
         print(f"gid={draft.gid}")
         print("DRY RUN - nothing written.")
-        return 0
+        print(verdict_line(EXIT_PASS))
+        return EXIT_PASS
 
     goal_file = args.goal_file if args.goal_file is not None else STATE_DIR / "goal.json"
     write_scripts(draft, SCRIPT_ROOT)
@@ -791,7 +808,7 @@ def main(argv: list[str] | None = None) -> int:
     archived, disposition, pre_ids, post_ids = apply_lifecycle(
         draft,
         goal_file=goal_file,
-        history_root=HISTORY_ROOT,
+        history_root=args.history_root if args.history_root is not None else HISTORY_ROOT,
         replace=args.replace,
         declared_head=declared_head,
         session=args.session,
@@ -801,7 +818,8 @@ def main(argv: list[str] | None = None) -> int:
         f"pre_ids={pre_ids} post_ids={post_ids} "
         f"archived={archived or 'none'} disposition={disposition}"
     )
-    return 0
+    print(verdict_line(EXIT_PASS))
+    return EXIT_PASS
 
 
 if __name__ == "__main__":  # pragma: no cover - CLI entry
