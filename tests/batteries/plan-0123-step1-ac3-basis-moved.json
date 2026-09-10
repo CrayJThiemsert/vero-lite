@@ -1,0 +1,39 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_gate_basis_moved.py"
+  ],
+  "probes": [
+    {
+      "name": "P3a",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "    return \":\" in spec and not spec.startswith(\":\")",
+      "new": "    return False",
+      "node_id": "tests/handoffs/test_goal_gate_basis_moved.py::test_a1_a_head_pinned_check_after_head_moved_reads_basis_moved",
+      "expect_claim": "test_a1_a_head_pinned_check_after_head_moved_reads_basis_moved|states.get(\"C1\") == BASIS_MOVED|#0",
+      "note": "🔴 AC-3 A1. Drop the `git show <rev>:` shape rule and no check is ever HEAD-pinned: the pinned check stays `fail` after HEAD moved — the s289 sequence, four false defects in an append-only trail. A2 stays green (the tree check is still `fail`), so this reddens exactly the declarative-detection claim."
+    },
+    {
+      "name": "P3b",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "            and _is_head_pinned(criterion.cmd)\n        ):",
+      "new": "            and True\n        ):",
+      "node_id": "tests/handoffs/test_goal_gate_basis_moved.py::test_a2_a_tree_basis_check_is_not_reclassified",
+      "expect_claim": "test_a2_a_tree_basis_check_is_not_reclassified|states.get(\"C2\") == \"fail\"|#0",
+      "note": "🔴 AC-3 A2 — the one that keeps A1 honest. Reclassify EVERY failing check once HEAD moved and the tree-basis check reads `basis-moved` too: a real regression after a merge is now invisible. A1 stays green under this mutation (C1 is still basis-moved), which is why it is a separate probe — a gate that satisfied A1 by reclassifying everything would pass P3a and fail here."
+    },
+    {
+      "name": "P3c",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "        if others_green:\n            return None",
+      "new": "        if others_green and False:\n            return None",
+      "node_id": "tests/handoffs/test_goal_gate_basis_moved.py::test_a3_basis_moved_alone_never_advances_the_enforce_ladder",
+      "expect_claim": "test_a3_basis_moved_alone_never_advances_the_enforce_ladder|ladder_rung == 0|#0",
+      "note": "AC-3 A3. Stop returning when every other check is green and basis-moved falls through to `checks_all_pass` (False) and then `_failing_consequence` — under enforce that is a ladder rung for a check that measured nothing about the work. Reddens the ladder claim only; the annotation and ping still happen."
+    }
+  ],
+  "exemptions": {
+    "_reload|loaded is not None|#0": "Fixture helper: the goal file the test just wrote must load. Reddening it would mean save_goal/load_goal broke, which every test in the module would show.",
+    "test_a3_basis_moved_alone_never_advances_the_enforce_ladder|goal.status == STATUS_ACTIVE|#0": "AC-3 A3 sibling. Under P3c the goal falls to _failing_consequence under enforce and reddens `ladder_rung == 0` first; status stays active at rung 1 (the park is rung 2), so this claim is not reachable by a single-mutation probe without also reddening the ladder claim. Documented.",
+    "test_a3_basis_moved_alone_never_advances_the_enforce_ladder|returned is None|#0": "AC-3 A3 sibling. A rung-1 enforce block would return a directive, reddening this together with `ladder_rung == 0` under P3c; no mutation reddens it alone."
+  }
+}

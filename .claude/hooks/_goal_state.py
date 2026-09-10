@@ -328,6 +328,12 @@ class Goal:
     created: str = ""
     schema_version: int = SCHEMA_VERSION
     enforce: bool = False
+    #: PLAN-0123 AC-3 (SD-2 = c). The HEAD sha the goal was declared against — what a
+    #: ``git show <rev>:`` check's basis is compared to. First-class on purpose (the
+    #: ``enforce`` precedent, G12): ``save_goal`` rewrites from ``to_json``, so an
+    #: unknown key would be stripped on the first Stop. Empty = never declared, and
+    #: basis-moved detection stays OFF — a failure then reads ``fail``, never a mask.
+    declared_head: str = ""
     criteria: list[Criterion] = field(default_factory=list)
     evaluations: list[Evaluation] = field(default_factory=list)
     amendments: list[Amendment] = field(default_factory=list)
@@ -346,6 +352,8 @@ class Goal:
         }
         if self.source:
             out["source"] = self.source
+        if self.declared_head:
+            out["declared_head"] = self.declared_head
         return out
 
     @classmethod
@@ -368,6 +376,8 @@ class Goal:
             session = session_raw
         enforce_raw = data.get("enforce")
         enforce = enforce_raw if isinstance(enforce_raw, bool) else False
+        head_raw = data.get("declared_head")
+        declared_head = head_raw.strip() if isinstance(head_raw, str) else ""
         return cls(
             goal=goal_text,
             status=status,
@@ -376,6 +386,7 @@ class Goal:
             created=str(data.get("created", "")),
             schema_version=int(data.get("schema_version", SCHEMA_VERSION)),
             enforce=enforce,
+            declared_head=declared_head,
             criteria=_parse_criteria(data.get("criteria")),
             evaluations=_parse_evaluations(data.get("evaluations")),
             amendments=_parse_amendments(data.get("amendments")),
@@ -444,6 +455,7 @@ def new_goal(
     source: str = "",
     session: int = 0,
     enforce: bool = False,
+    declared_head: str = "",
 ) -> Goal:
     return Goal(
         goal=goal_text,
@@ -452,6 +464,7 @@ def new_goal(
         session=session,
         created=_now_iso(),
         enforce=enforce,
+        declared_head=declared_head,
         criteria=criteria,
     )
 

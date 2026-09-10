@@ -150,6 +150,12 @@ GATE_BLOCKED_MARKER = "_goal_gate:blocked_pending_human"
 # accompanies, so one grep finds both signals of the same event. UNLIKE every other
 # marker here this one records no DECISION — see _last_decision_evaluation.
 GATE_WARN_MARKER = "_goal_gate:warn"
+# PLAN-0123 §4.3.1 (AC-1): a goal with no checks and no judges is a configuration
+# error, not a pass. Recorded once per fingerprint like a warn (no DECISION).
+GATE_INVALID_GOAL_MARKER = "_goal_gate:invalid_goal"
+# PLAN-0123 §4.4 (AC-3, SD-2 = c): a `git show <rev>:` check whose declared basis has
+# moved. Like a warn: an annotation, deduped per fingerprint, never a decision.
+GATE_BASIS_MOVED_MARKER = "_goal_gate:basis_moved"
 EVALUATOR_NAME = "goal-evaluator"
 
 PASS_VERDICT = "PASS"  # noqa: S105 — verdict label, not a credential
@@ -168,6 +174,15 @@ CHECK_ERROR = "error"
 #: contended check says something about the host, not about the work, and the six states
 #: above all route into the trail. Kept distinct so the stand-down has something to test.
 CHECK_CONTENDED = "contended"
+#: 🔴 The EIGHTH state (PLAN-0123 §4.4 / SD-2 = c, Cray typed s289). A check whose
+#: ``cmd`` is ``git show <rev>:…`` and whose goal's ``declared_head`` differs from the
+#: current HEAD: the object it pins may simply no longer exist. Like ``contended`` it is
+#: about the basis, not the work — never a defect in the trail, never a ladder rung. The
+#: assignment is DECLARATIVE (command shape + a declared sha), never inferred from
+#: "it failed after a commit": a tree-basis check that fails after HEAD moved is a real
+#: failure and stays ``fail``. That asymmetry is what keeps this from masking a
+#: regression, and it is the assertion AC-3's probe P3b exists to redden.
+CHECK_BASIS_MOVED = "basis-moved"
 
 #: The exit code a pytest session uses to say "another process holds the test database I
 #: was about to drop schemas in". ``EX_TEMPFAIL`` from ``sysexits.h``; pytest reserves
@@ -332,6 +347,45 @@ def work_fingerprint() -> str:
     return digest.hexdigest()[:16]
 
 
+def _current_head() -> str:
+    """The full HEAD sha, or ``""`` on any git failure (PLAN-0123 §4.4).
+
+    Read separately from :func:`work_fingerprint` because that value is an opaque
+    digest of HEAD *and* the porcelain status — it can say "something changed" but
+    never *which* sha the tree is at, and the basis-moved rule compares shas. ``""``
+    switches detection OFF: a failing HEAD-pinned check then stays ``fail`` — the
+    direction that can never mask a regression.
+    """
+    try:
+        proc = subprocess.run(  # noqa: S603 — fixed git argv, no shell
+            ["git", "rev-parse", "HEAD"],  # noqa: S607 — PATH-resolved git intended
+            cwd=str(REPO_ROOT),
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=10,
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return ""
+    if proc.returncode != 0:
+        return ""
+    return proc.stdout.strip()
+
+
+def _is_head_pinned(cmd: str) -> bool:
+    """True iff ``cmd`` has the DECLARED shape ``git show <rev>:<path>``.
+
+    Shape only — never a guess about what a command *means*. A tree-basis command
+    (``pytest …``, ``python -c …``, even ``git diff``) is not this shape and is never
+    reclassified, which is the asymmetry AC-3 A2 pins.
+    """
+    parts = cmd.strip().split(None, 2)
+    if len(parts) < 3 or parts[0] != "git" or parts[1] != "show":
+        return False
+    spec = parts[2].split(None, 1)[0]
+    return ":" in spec and not spec.startswith(":")
+
+
 def _check_env() -> dict[str, str]:
     """The environment every ``check`` subprocess gets — carrying the isolation marker.
 
@@ -404,9 +458,24 @@ def _run_checks(goal: Goal) -> tuple[dict[str, str], dict[str, str]]:
     tails: dict[str, str] = {}
     budget = float(_check_budget_s())
     started = time.monotonic()
+    # PLAN-0123 §4.4 (SD-2 = c): the basis is read ONCE per gate run, and only when the
+    # goal declared one. "" (no declaration, or git failed) switches detection OFF — a
+    # failing HEAD-pinned check then stays `fail`, the fail-safe direction.
+    current_head = _current_head() if goal.declared_head else ""
     for criterion in goal.check_criteria():
         remaining = budget - (time.monotonic() - started)
-        results[criterion.id], tails[criterion.id] = _run_one_check(criterion, remaining)
+        state, tail = _run_one_check(criterion, remaining)
+        if (
+            state == CHECK_FAIL
+            and current_head
+            and current_head != goal.declared_head
+            and _is_head_pinned(criterion.cmd)
+        ):
+            # Declarative: command SHAPE + a DECLARED sha that moved. Only a `fail` is
+            # reclassified; pass / timeout / skipped / invalid / error / contended are
+            # untouched, and a tree-basis `fail` is never touched (AC-3 A2).
+            state = CHECK_BASIS_MOVED
+        results[criterion.id], tails[criterion.id] = state, tail
     return results, tails
 
 
@@ -657,7 +726,13 @@ def _park_blocked_pending_human(
     )
 
 
-def _record_warn(goal: Goal, fingerprint: str, deterministic: dict[str, str], detail: str) -> None:
+def _record_warn(
+    goal: Goal,
+    fingerprint: str,
+    deterministic: dict[str, str],
+    detail: str,
+    marker: str = GATE_WARN_MARKER,
+) -> bool:
     """Annotate the trail with a warn-tier observation (PLAN-0097).
 
     **Deduped per failing state** (SD-3, Cray-ratified s195): a repeat warn at the
@@ -670,15 +745,21 @@ def _record_warn(goal: Goal, fingerprint: str, deterministic: dict[str, str], de
     Reads the RAW last entry rather than :func:`_last_decision_evaluation` — this is
     the one place warn entries are legitimately visible, because dedup is about the
     annotations themselves and not about any decision.
+
+    ``marker`` (PLAN-0123 Step 1): the same at-most-once-per-fingerprint mechanism
+    now serves the two other non-decision annotations — ``GATE_INVALID_GOAL_MARKER``
+    and ``GATE_BASIS_MOVED_MARKER``. Dedup is keyed on the SAME marker, so a warn
+    followed by a basis-moved at one fingerprint records both (they are different
+    observations), while a repeat of either is skipped.
     """
     last = goal.last_evaluation()
     if (
         last is not None
-        and last.evaluator == GATE_WARN_MARKER
+        and last.evaluator == marker
         and fingerprint
         and last.fingerprint == fingerprint
     ):
-        return
+        return False
     record_evaluation(
         goal,
         Evaluation(
@@ -686,11 +767,12 @@ def _record_warn(goal: Goal, fingerprint: str, deterministic: dict[str, str], de
             fingerprint=fingerprint,
             deterministic=deterministic,
             amendments_seen=len(goal.amendments),
-            evaluator=GATE_WARN_MARKER,
+            evaluator=marker,
             detail=detail,
         ),
     )
     save_goal(goal)
+    return True
 
 
 def _failing_consequence(
@@ -761,6 +843,27 @@ def run_goal_gate(  # noqa: C901 — the D4 dispatcher is a FLAT sequence of nam
             f"then `restore`. run_id={lock.get('run_id', '?')} pid={lock.get('pid', '?')}",
         )
 
+    # PLAN-0123 §4.3.1 (AC-1) — a goal with no checks AND no judges. Before this branch
+    # the gate read `all([]) is True` for the checks and "no judges -> True" for the
+    # judges, and a hollow goal reached `passed` at its first Stop with a Telegram body
+    # reading "(no check criteria)". The docstring's step 3 said "or none exist" about the
+    # judges and never named the both-empty case — the spec was wrong, the code did what
+    # it said. A hollow goal is a configuration error: never a pass. Under `enforce:
+    # false` it is annotated once per fingerprint (the warn mechanism) and the stop falls
+    # through with status unchanged; under `enforce: true` it parks at once — only a
+    # human can fix a hollow enforce goal, and V2-D4 says evidence-missing is never a
+    # silent pass. Lives here, after the stand-downs and before `_run_checks`, so it
+    # costs nothing when a goal is well-formed and runs no check when it is not.
+    if not goal.check_criteria() and not goal.judge_criteria():
+        fingerprint = work_fingerprint()
+        detail = "goal declares NO criteria (no check, no judge) — invalid, never a pass"
+        if goal.enforce:
+            _park_blocked_pending_human(goal, fingerprint, {}, detail)
+            return None
+        if _record_warn(goal, fingerprint, {}, detail, marker=GATE_INVALID_GOAL_MARKER):
+            _ping_telegram("invalid_goal", goal.goal, detail)
+        return None
+
     deterministic, check_tails = _run_checks(goal)
 
     # PLAN-0120 / ADR-0018 D8.4 — a check found the test database held by ANOTHER
@@ -773,6 +876,31 @@ def run_goal_gate(  # noqa: C901 — the D4 dispatcher is a FLAT sequence of nam
     # record, and the re-arm is simply the next Stop.
     if _stood_down_on_contention(goal, deterministic, check_tails):
         return None
+
+    # PLAN-0123 §4.4 (AC-3, SD-2 = c) — a HEAD-pinned check whose declared basis moved.
+    # Handled like `contended` for the ladder and the trail — never a defect, never a
+    # rung — but NOT by standing the whole gate down: a literal copy of the contention
+    # branch would swallow a real `fail` sitting beside it (the mixed case §4.4 leaves
+    # open), which is precisely the masking the declarative rule exists to forbid. So:
+    # annotate once per fingerprint, ping once naming the moved basis, then — if every
+    # OTHER check passed — return with status unchanged (the goal stays `active` for the
+    # agent to clear or re-declare); if any other check really failed, fall through so
+    # the real failure's consequence runs, with `basis-moved` visible in its table.
+    moved = sorted(cid for cid, state in deterministic.items() if state == CHECK_BASIS_MOVED)
+    if moved:
+        fingerprint = work_fingerprint()
+        detail = (
+            f"basis moved: declared_head={goal.declared_head[:12]} is not HEAD; "
+            f"HEAD-pinned check(s) {', '.join(moved)} read basis-moved, not fail — "
+            "clear or re-declare the goal against the new basis"
+        )
+        if _record_warn(goal, fingerprint, deterministic, detail, marker=GATE_BASIS_MOVED_MARKER):
+            _ping_telegram("basis_moved", goal.goal, detail)
+        others_green = all(
+            state == CHECK_PASS for cid, state in deterministic.items() if cid not in moved
+        )
+        if others_green:
+            return None
 
     checks_all_pass = all(v == CHECK_PASS for v in deterministic.values())
     judges_all_pass = _judges_all_pass(goal)
