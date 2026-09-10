@@ -1,0 +1,29 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_command_prose_pins_the_budget.py"
+  ],
+  "probes": [
+    {
+      "name": "P2a",
+      "subject": ".claude/commands/goal.md",
+      "old": "the total deterministic budget at Stop is 120 s",
+      "new": "the total deterministic budget at Stop is 600 s",
+      "node_id": "tests/handoffs/test_goal_command_prose_pins_the_budget.py::test_the_prose_budget_is_pinned_to_the_constant",
+      "expect_claim": "test_the_prose_budget_is_pinned_to_the_constant|prose == constant|#0",
+      "note": "🔴 AC-2 A1. Put the prose back to the number it carried for sixteen sessions. The sentence is still present (A2 green), its number disagrees with `DEFAULT_CHECK_BUDGET_S` (A1 reddens). This is the exact drift the test was born to catch, replayed."
+    },
+    {
+      "name": "P2b",
+      "subject": ".claude/commands/goal.md",
+      "old": "the total deterministic budget at Stop is 120 s",
+      "new": "the deterministic budget at Stop is bounded",
+      "node_id": "tests/handoffs/test_goal_command_prose_pins_the_budget.py::test_the_prose_budget_is_pinned_to_the_constant",
+      "expect_claim": "test_the_prose_budget_is_pinned_to_the_constant|sentence_found|#0",
+      "note": "AC-2 A2. Reword the sentence so the parser finds nothing. A2 reddens FIRST and A1 is never reached — the assertion order is deliberate, so a prose file that stopped stating a budget reads INSUFFICIENT, never as a vacuous agreement with the constant."
+    }
+  ],
+  "exemptions": {
+    "test_the_parser_passes_its_own_control|got == _CONTROL_EXPECT|#0": "Instrument control (Lesson #0056): the parser must read a known fixture before its first real reading is trusted. Reddening it means the regex is broken, which P2a and P2b would then also show. A control is asserted green, not probed.",
+    "test_the_parser_passes_its_own_control|parse_budget_sentence(\"no such sentence here\") is None|#0": "Instrument control, negative half — the parser must NOT find a number where the sentence is absent. Same reasoning as the positive half."
+  }
+}

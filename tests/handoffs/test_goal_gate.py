@@ -720,3 +720,48 @@ class TestWarnEntriesAreInvisibleToDecisions:
         reloaded = _reload(gate_env)
         assert reloaded.status == STATUS_BLOCKED_PENDING_HUMAN
         assert reloaded.evaluations[-1].evaluator == GATE_BLOCKED_MARKER
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0123 AC-1 — a goal with no criteria never passes. Module-level on purpose, so
+# the battery addresses it by the node id the AC names (no class in the path).
+#
+# 🔴 The defect, witnessed RED-first: with ``criteria: []`` the gate reads
+# ``all([]) is True`` for the checks and ``not judges -> True`` for the judges, and
+# a hollow goal reaches ``status=passed`` at its first Stop with the Telegram body
+# saying "(no check criteria)". The module docstring's step 3 says "or none exist"
+# about the JUDGES and never names the both-empty case — the spec was wrong, the
+# code did what it said (§4.3.1). The marker string is written literally rather
+# than imported: today no such constant exists, and an ImportError would be the
+# WRONG red — the assertion that must redden first is A1, reading
+# ``status_post=passed``.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("enforce", [False, True])
+def test_a_goal_with_no_criteria_never_passes(gate_env: dict[str, Any], enforce: bool) -> None:
+    goal = new_goal("hollow", [], enforce=enforce)
+    _seed(goal, gate_env)
+    status_pre = goal.status
+
+    returned = run_goal_gate({})
+
+    reloaded = _reload(gate_env)
+    status_post = reloaded.status
+    trail_marker = reloaded.evaluations[-1].evaluator if reloaded.evaluations else None
+    print(
+        f"criteria=0 enforce={enforce} status_pre={status_pre} status_post={status_post} "
+        f"trail_marker={trail_marker} returned={returned!r}"
+    )
+
+    # A1 — never a pass, under either tier.
+    assert status_post != STATUS_PASSED, f"status_post={status_post}"
+    if not enforce:
+        # A2 — warn tier: unchanged, annotated, and the stop falls through.
+        assert status_post == STATUS_ACTIVE, f"status_post={status_post}"
+        assert trail_marker == "_goal_gate:invalid_goal", f"trail_marker={trail_marker}"
+        assert returned is None, f"returned={returned!r}"
+    else:
+        # A3 — enforce tier: a hollow enforce goal is a configuration error only a
+        # human can fix; evidence-missing is never a silent pass (V2-D4) — park.
+        assert status_post == STATUS_BLOCKED_PENDING_HUMAN, f"status_post={status_post}"

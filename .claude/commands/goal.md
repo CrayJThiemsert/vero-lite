@@ -34,10 +34,38 @@ load it and confirm its final `status` to the user before deleting). Confirm:
    `timeout_s`); *only judgment residue* (template shape, "resolves every
    OQ", prose quality) *goes to `kind: "judge"`* (with `desc`). Scope each
    `check` `cmd` yourself — e.g. `pytest tests/handoffs -q`, not the world —
-   the total deterministic budget at Stop is 600 s
-   (`CLAUDE_GOAL_CHECK_BUDGET_S`); a timeout/skip is unresolved, never a pass
-   (VX-2). Commands run **argv-without-shell** from the repo root: no `&&`,
-   no pipes — one command per criterion.
+   the total deterministic budget at Stop is 120 s
+   (`CLAUDE_GOAL_CHECK_BUDGET_S`; the constant is `DEFAULT_CHECK_BUDGET_S` in
+   `_goal_gate.py`, and `tests/handoffs/test_goal_command_prose_pins_the_budget.py`
+   pins this sentence to it — PLAN-0123 AC-2, after the prose sat at 600 s for
+   sixteen sessions while the gate enforced 120); a timeout/skip is unresolved,
+   never a pass (VX-2). Commands run **argv-without-shell** from the repo root:
+   no `&&`, no pipes — one command per criterion.
+
+   **R2 — evidence goes to a file, not to stdout.** A `check`'s stdout never
+   reaches the `goal-evaluator`: only the exit code becomes a state. If a
+   `judge` criterion must read a measurement, the `check` that produces it writes
+   the artifact to disk (name the path in the judge's `desc`) — a number that
+   only ever existed in a captured stdout is a number nobody took.
+
+   **R5 — name the basis; HEAD-pinning is pre-merge only.** A `check` of the
+   form `git show <sha>:<path>` pins a basis that a merge can move out from
+   under it. Declare it only for a goal that closes before its PR merges, and
+   record `declared_head` (the sha you declared against) in the goal file. After
+   HEAD moves from `declared_head`, such a check reads **`basis-moved`** — not
+   `fail`: no ladder rung, no defect in the trail, one Telegram naming the moved
+   basis, and the goal stays `active` for you to clear or re-declare (PLAN-0123
+   §4.4, SD-2 = c). A tree-basis check (`pytest …`, `python -c …`) is never
+   reclassified — a real failure after a merge is still a failure.
+
+   **R8 — one goal file, no silent replacement.** An `active` goal that has not
+   passed is **appended to** (new criteria ids prefixed `T<n>-`), never
+   overwritten by a fresh declaration: overwriting erases the trail that says
+   what the earlier goal found. To replace it on purpose, archive the old file to
+   `.claude/state/goal-history/` first, so the abandonment is a record and not a
+   disappearance (PLAN-0123 R8 / AC-8; the renderer's `--replace` does this for
+   you once Step 2 lands — until then, do it by hand). A `passed` goal may be
+   replaced freely.
 
 3. **Write the file** (`Write` to `.claude/state/goal.json`, honoring a
    `CLAUDE_GOAL_PATH` override if set):
