@@ -97,11 +97,24 @@ With no package base to anchor to, mypy maps the same file to two module names a
 refuses to check anything. Check `tools/` like this instead:
 
 ```bash
-MYPYPATH=. mypy --strict --explicit-package-bases tools/
+MYPYPATH=.:.claude/hooks mypy --strict --explicit-package-bases tools/
 ```
+
+On a clean tracked tree that is `Success: no issues found in 47 source files`.
+
+**`.claude/hooks` is on that path deliberately, not defensively.** `tools/goal_template.py`
+imports the Stop gate's own schema (`_goal_state`) from there on purpose — so a rendered goal
+is parsed by exactly the code that will read it — and bootstraps the directory onto
+`sys.path` itself. Drop it from `MYPYPATH` and you get `Cannot find implementation or library
+stub for module named "_goal_state"`: **a red on a tree that is clean.** Anything else under
+`tools/` that reaches into `.claude/hooks/` will land in the same place.
 
 ⚠️ **CI type-checks neither `tools/` nor `tests/`.** A green gate says nothing about this
 directory — run the command by hand, and quote the numbers.
+
+⚠️ If you see an error in `tools/probes/`, check `git check-ignore` before fixing it —
+`.gitignore` excludes that directory, so it appears only in checkouts where someone left a
+copy lying around, and it is not part of the tracked tree.
 
 ### What actually triggers it
 
@@ -201,9 +214,16 @@ if __package__ in (None, ""):   # path-script invocation, not `-m`
 from tools.<pkg>.<mod> import ...
 ```
 
-Do **not** add `# noqa: E402` to the import below the guard. `ruff` does not raise E402
-there, and `RUF100` then flags the unused suppression — so the noqa costs a lint cycle and
-buys nothing.
+Do **not** add `# noqa: E402` to the import below the guard **in this shape**. `ruff` does
+not raise E402 when every `sys.path` mutation sits *inside* the `if`, so `RUF100` flags the
+suppression as unused and the noqa costs a lint cycle while buying nothing.
+
+**The shape is what decides, so check yours rather than copying either answer.** Add one
+*unconditional* top-level statement before the imports and E402 does fire, and then the noqa
+is required — `tools/goal_template.py` is exactly that case: its guard is followed by a bare
+`sys.path.insert(...)` at module level, it carries `# noqa: E402` on both imports, and
+removing them reddens lines 87 and 98. Two files in this directory, opposite answers, same
+linter.
 
 The `__package__` guard is what keeps **both** invocation forms working — and both are
 load-bearing: `python tools/handoffs/validate_handoff.py` is the form the
