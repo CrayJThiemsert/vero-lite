@@ -508,3 +508,37 @@ of this file after the append.
 🔴 **THIS (s288) reconcile rotates the session-285 AND session-286 blocks** (caller-measured **2,810 B** and **2,397 B**, both under the 4,096 B cap) on the **headroom rule**, not a cap overage: the scribe's additive draft took STATUS to **68,359 B**, **2,823 B OVER** R1's 65,536 B ceiling. Rotating one block alone would have closed at ~**64,990 B** — ~546 B of headroom, the exact thinness the s287 entry warned starves the next session — so **the window lands at TWO (287, 288), a first**. Both blocks' own entries travelled with them; ⚠️ the s286 entry was **1,149 B, over the ~900 B per-entry cap** (Cray, s267), so rotating it cleared a live breach too. Destination `2026-h1e-current-focus.md`. ✅ **Caller-measured, append VERIFIED by content in both directions:** STATUS **68,359 → 59,642 B** on the six-slice rotation; that archive **34,421 → 43,616 B** (+9,195).
 
 🔴 **THIS (s287) reconcile rotates the session-283-284 block** (caller-measured **3,041 B**, well under the 4,096 B cap) on the **headroom rule** — and uniquely, the prune is the **caller's, not the scribe's**: the scribe was told not to rotate because the window had a free slot (3 → 4, exactly R2's window), and it did not. Bytes forced it afterwards. STATUS opened at **60,720 B** and closed the scribe's edit at **65,146 B**, only **390 B** under R1's 65,536 B — enough to pass the guard and not enough for the next session to write a line. The window lands at **THREE** again (285, 286, 287), the sixth consecutive reconcile of this shape. 🔴 **This ledger's own s284 entry travelled with the block, probed ABSENT against a working positive control** (`Session 282` = 1, `THIS (s282)` = 1; fabricated needle = 0) — a genuine first append. Destination `2026-h1e-current-focus.md`; the RD row (s275) went to `2026-h1-status.md` on the count rule alone.
+
+### Rotated at the s291 reconcile — the session-289 Current-Focus block [on the R1 headroom rule: STATUS opened the reconcile at 58,401 B and a ~4 KB s291 block had to land, so the window stays at TWO (290, 291) — the same shape as the s289 and s290 reconciles. Block is **1,967 B** as carved, from `git show HEAD:docs/STATUS.md`, not from the scribe's return. The Current-Focus ledger carries no s289 entry of its own (measured: only `THIS (s290)` was present), so nothing travels with the block. Presence below is asserted as a COUNT (want 1), absence from STATUS separately (want 0). This archive's own size is measured by the caller after the append and deliberately NOT written here.]
+
+> **Session 289, 2026-09-09 (`8bdae71` → `dad1b32`) — FOUR PRs
+> ([#1445](https://github.com/CrayJThiemsert/vero-lite/pull/1445)–[#1448](https://github.com/CrayJThiemsert/vero-lite/pull/1448)),
+> all merged. **Every carried Cray call was RULED, Step 4b came home out of
+> `/tmp`, and PLAN-0123 was drafted — a slate session, not a build one.**
+>
+> ✅ **#1446 rehomed PLAN-0119 Step 4b out of volatile `/tmp`:**
+> `benchmarks/intake_extraction/extract_terms.py` (tracked, `mypy --strict`
+> clean) + `tests/benchmarks/test_extract_terms.py` (11 planted-defect tests) +
+> a `RESULTS.md` addendum carrying all nine arms. The Step 4b chain COMPLETED
+> **9/9**; MS-S1 was left free.
+>
+> 🔴 **Step 4b's headline is a TIMEOUT finding, not a load one.** Warm `load`
+> 0.004–0.007 s and `prefill` 0.26–2.12 s are both noise against AC-4's rule —
+> but **qwen decodes ~19 tok/s against gpt-oss's ~46 (2.4×)**, and its p95 at
+> 2048/4096 is **124–126 s, max 142.4 s — already ABOVE the shipped 120 s
+> timeout**. Those arms completed only because Step 4b ran at 300 s.
+>
+> ✅ **#1447 PLAN-0123** (drafted by `plan-drafter`): the goal-declaration
+> trigger, an R1–R8 rendering contract and three templates — 13 ACs, 5 SDs.
+> ✅ **#1448 recorded the ruling slate:** PLAN-0123 ×5 SDs, PLAN-0116 ×3,
+> SD-A closed, AC-12's clock stopped.
+>
+> 🔴 **Six instrument errors made and caught — the two-session census reached
+> sixteen.** The sharpest: **a `check` pinned to `git show HEAD:` is only valid
+> PRE-merge.** It passed, its own PR merged, HEAD advanced past the rotation,
+> and it then failed four Stops with the work correct and already shipped. Now
+> ruled **PLAN-0123 SD-2 = (c)**, the `basis-moved` state.
+>
+> ⚠️ **#1445 was the s287→s288 reconcile** — a six-slice R6 rotation in which
+> the Current-Focus window landed at TWO for the first time, forced by bytes:
+> an additive draft measured **68,359 B**, 2,823 B over R1's ceiling.
