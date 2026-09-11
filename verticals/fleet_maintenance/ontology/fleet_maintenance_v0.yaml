@@ -386,6 +386,150 @@ object_types:
         target: OperationalEvent
         required: true
 
+  # --- governance / transaction types (PLAN-0109 Step 1; SD-B RULED, Cray typed 2026-08-18) ---
+  # The demo-play spine: the case a visitor opens on Tab B, the quotes typed against it, and
+  # the quote the repair was agreed at. Declared so `GET /meta` advertises them and the
+  # NL-query translator can name them — this YAML is the ONLY source of that vocabulary
+  # (PLAN-0109 F4). The rows live in HAND-WRITTEN tables under `services/db/`, not in
+  # generated code (F8). Which table backs each type, and every column deliberately left
+  # undeclared (`photos`, `note`, `attachment`, `seq`, `tenant_id`) with its reason, is in
+  # `verticals/fleet_maintenance/data_adapter/db_projection.py`, because this schema cannot
+  # carry a mapping key (F12). Until the adapter serves these rows (PLAN-0109 Step 3), a
+  # question about them gets the honest no-records answer, never an invented one.
+  # Synonyms: object-level ones are advertised on `/meta`; only PROPERTY synonyms reach the
+  # translate prompt (`nl_query._describe_ontology`), and each costs prompt bytes on every
+  # call, so a property carries one only where the partner's own word is on record.
+  RepairCase:
+    primary_key: case_id
+    title_key: case_id
+    description: >-
+      One human-opened repair case for one truck (`services/db/repair_case.py`). Opened by a
+      person pressing a button on Tab B; there is no auto-detection path (Q1, LOCKED).
+    synonyms:
+      th: [เคสซ่อม, ใบแจ้งซ่อม]
+      en: [repair case, breakdown case]
+    properties:
+      case_id:
+        type: string
+        required: true
+      truck_id:
+        type: ref
+        target: Truck
+        required: true
+      opened_by:
+        type: string
+        required: true
+        description: >-
+          A demo persona's principal id, resolved server-side from the bearer key: it records
+          which of three shared personas was clicked, not who clicked it
+          (`docs/compliance/ropa-change-statement-fleet.md` §3.2.1).
+      opened_at:
+        type: timestamp
+        required: true
+      description:
+        type: string
+        description: >-
+          Visitor-typed free text describing the fault; optional by design so a roadside case
+          can be opened one-handed. SD-D RULED IN.
+      status:
+        type: enum
+        values: [open, closed]
+        required: true
+        description: >-
+          Equal to `CASE_STATUSES` in `services/db/repair_case.py`; held equal by
+          `tests/api/test_meta_fleet_governance_types.py`.
+      work_type:
+        type: enum
+        values: [breakdown, pm, accident]
+        required: true
+        description: >-
+          Equal to `WORK_TYPES` in `services/db/repair_case.py`, which the case route validates
+          against; held equal by the same test. The Thai name is the partner's own column
+          heading from his Express export (round-2 A2).
+        synonyms:
+          th: [ประเภทงาน]
+          en: [work type]
+
+  RepairCaseQuote:
+    primary_key: quote_id
+    title_key: vendor
+    description: >-
+      A repair quote the operator typed against a case (`services/db/repair_case_evidence.py`);
+      it carries the ฿ the governed decision routes on. Append-only.
+    synonyms:
+      th: [ใบเสนอราคา]
+      en: [repair quote, quote]
+    properties:
+      quote_id:
+        type: string
+        required: true
+      case_id:
+        type: ref
+        target: RepairCase
+        required: true
+      vendor:
+        type: string
+        required: true
+        description: >-
+          The garage as typed from the paper: free text, deliberately NOT a ref to Vendor (see
+          Vendor's description for how the two reconcile). SD-D RULED IN.
+      amount_thb:
+        type: float
+        required: true
+      entered_by:
+        type: string
+        required: true
+      entered_at:
+        type: timestamp
+        required: true
+
+  RepairCaseAcceptedQuote:
+    primary_key: accepted_id
+    title_key: accepted_id
+    description: >-
+      ใบที่ตกลง: which quote the repair was actually agreed at
+      (`services/db/repair_case_evidence.py`). Append-only; the latest row wins.
+    synonyms:
+      th: [ใบที่ตกลง]
+      en: [accepted quote, agreed quote]
+    properties:
+      accepted_id:
+        type: string
+        required: true
+      case_id:
+        type: ref
+        target: RepairCase
+        required: true
+      quote_id:
+        type: ref
+        target: RepairCaseQuote
+        required: true
+      reason:
+        type: string
+        description: >-
+          Why this quote and not the cheapest on file. Absent is meaningful: the cheapest was
+          chosen, and the write path enforces that reading. Visitor-typed; SD-D RULED IN.
+      accepted_by:
+        type: string
+        required: true
+      accepted_at:
+        type: timestamp
+        required: true
+      lowest_amount_at_acceptance_thb:
+        type: float
+        required: true
+        description: >-
+          The cheapest quote on file at the instant of acceptance: stored, not re-derived
+          (PLAN-0099 D1).
+      lowest_at_acceptance_basis:
+        type: enum
+        values: [recorded, reconstructed]
+        required: true
+        description: >-
+          Whether the figure above was recorded at acceptance or reconstructed by migration
+          0023; the table's CHECK constraint `ck_repair_case_accepted_quote_basis` holds the
+          same two values.
+
 link_types:
   truck_at_depot:
     from: Truck
