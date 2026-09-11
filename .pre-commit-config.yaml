@@ -164,6 +164,19 @@ repos:
         always_run: true
         pass_filenames: false
 
+      # PLAN-0109 AC-3 (SD-C, Code-adopted): fleet's ontology YAML declares types whose
+      # rows live in HAND-WRITTEN tables under services/db/, and no codegen ties the two
+      # (F8). check-jsonschema compares the YAML to its schema, never to a table (F9).
+      # always_run for the same reason as the registration guard above: the violation is
+      # authored by editing a DIFFERENT file than the one that trips — a column added in
+      # services/db/ reddens against the YAML.
+      - id: ontology-orm-lockstep
+        name: ontology<->ORM lockstep guard (fleet DB-backed types)
+        entry: uv run --no-sync python tools/check_ontology_orm_lockstep.py
+        language: system
+        always_run: true
+        pass_filenames: false
+
       # A claim declared RETIRED must not survive anywhere live
       # (docs/conventions/retired-claims.md). This repo records corrections well
       # and PROPAGATES them badly: measured s241, `warm.sh:11` kept asserting a

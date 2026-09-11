@@ -34,7 +34,11 @@ import pytest
 from services.engine.nl_query import QueryFilter, StructuredQuery, _validate_query
 from services.engine.ontology_meta import load_ontology_meta
 
-_VERTICALS = ("energy", "supply_chain")
+#: ``fleet_maintenance`` joined at PLAN-0109 Step 1 (s294): it is the first vertical whose
+#: ontology declares types backed by hand-written tables, and every one of those tables
+#: carries ``tenant_id`` through ``TenantKeyMixin`` — so it is the vertical where declaring
+#: the key "to match the columns" is most likely to happen by accident.
+_VERTICALS = ("energy", "supply_chain", "fleet_maintenance")
 
 
 def _type_index(vertical: str) -> dict[str, object]:

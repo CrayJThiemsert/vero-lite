@@ -194,9 +194,19 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   `photos`, `note` and `attachment` each exist on ONE of the three tables — a column-only
   entry would be stale for the other two by this very rule);
   (iv) a declared YAML property whose type is incompatible with the column's SQL type
-  (per the small SQLA→ontology type map: `Text→string`, `Numeric→float`,
-  `DateTime→timestamp`, `JSONB→json`, `BigInteger→int`);
+  (per the small SQLA→ontology type map: `Text→string | enum | ref`, `Numeric→float`,
+  `DateTime→timestamp`, `JSONB→json`, `BigInteger→int`; a column type outside the map
+  is refused as `unmapped-sql-type`, never guessed);
   and exits 0 on the lockstep fixture.
+  ✎ **s294 Step 2, `was an error`:** the map read `Text→string`, while AC-1 requires
+  `truck_id` / `case_id` — both `Text` columns — to be `ref` properties, so a guard built
+  to that letter reddens on AC-1's own declaration. Built as `Text→string | enum | ref`.
+  Also built and fixture-tested beyond (i)–(iv): `excluded-and-declared` (an exclusion the
+  YAML contradicts — the projection follows the YAML, so the exclusion would read as
+  protection while the column reached the model), `undeclared-type` (a mapped type the
+  YAML does not declare, which would otherwise be compared against nothing), and a
+  REFUSAL, exit 2, when either input is missing. The mapping module is loaded by path, so
+  `ONTOLOGY_GUARD_ROOT` fixture trees supply their own tables.
 - [ ] **AC-4 — the guard is non-vacuous on the LIVE tree (witnessed RED, both directions).**
   Development-time probes, evidence captured in the PR body: (a) add a scratch column to
   `services/db/repair_case.py` (backup to the scratchpad first, restore from that copy —
@@ -204,6 +214,18 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   naming the scratch column; (b) add a scratch property to the fleet YAML, same command
   → exit 1 naming the scratch property. Pass read: both outputs show exit 1 + the
   offender's name; the restored tree then exits 0.
+  ✎ **s294 Step 2 — run through the shipped driver, not a hand-rolled backup** (CLAUDE.md §8:
+  probe batteries run through `tools/probe_battery/`). Probes `AC4-a` / `AC4-b` in
+  `tests/batteries/plan-0109-phase1-declare-and-guard.json` apply exactly these two
+  mutations and run `test_this_repository_passes_its_own_guard`, whose
+  `result.returncode == 0` must redden — both `WITNESSED`. The driver snapshots each
+  subject before writing and restores it byte- and mode-identically; the run's own
+  pre/post sha256 and `git status --porcelain` agreed. The driver keeps each run's outcome,
+  not the stderr that named the offender, so the NAME half is asserted separately: on the
+  REAL inputs by `test_ac4_a_a_scratch_column_on_the_real_model_is_named` and
+  `test_ac4_b_a_scratch_property_on_the_real_yaml_is_named` (the real YAML and real models,
+  the scratch column or property added to an in-memory copy — no tracked file touched), each
+  witnessed by its own probe; and on the fixture trees, one probe per named assertion.
 - [ ] **AC-5 — the scaffolder golden oracle stays green via a written exemption, not a weakened assertion.**
   Artifact: `tests/services/engine/scaffolder/test_golden_e2e.py` —
   `_DONOR_EXTENSION_OBJECTS` extended per Step 1 (recommended: derive the exemption for
@@ -428,6 +450,11 @@ ruamel from disk and the column set via the imported model's `__table__.columns`
 both real artifacts, both directions, plus the stale-exclusion and type-compat checks
 (AC-3 i–iv). Wire the pre-commit hook (`always_run: true`) and the CI step (PLAN-0107
 AC-6 pattern). Tool tests build lockstep + four broken fixture trees.
+✎ *s294:* built as lockstep + six broken trees + the refusal + AC-10 (a)/(b) + the real
+tree with its counts pinned (`types=3 declared=21 columns=28 excluded=7 offenders=0`) +
+AC-4's two name tests on the real inputs. All 34 assertions — these 26 and AC-2's 8 — are
+witnessed by `tests/batteries/plan-0109-phase1-declare-and-guard.json` (35 probes,
+`GAPS: 0`, 0 exemptions).
 **Non-vacuity probe / changing output:** the AC-4 live-tree probes — the guard's exit
 code and stderr change from `0`/silent to `1`/offender-named on the scratch column and
 scratch property; both witnessed and captured before restore (restore from the

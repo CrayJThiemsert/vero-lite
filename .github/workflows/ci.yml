@@ -115,6 +115,12 @@ jobs:
       - name: Ontology schema check (pre-commit check-jsonschema)
         run: uv run --no-sync pre-commit run check-jsonschema --all-files
 
+      # PLAN-0109 AC-3: the ontology<->ORM lockstep, run the same way as the two hooks
+      # above so a `--no-verify` commit or an unhooked clone cannot land a YAML/table
+      # drift. Offline — it imports the models and parses the YAML; no database.
+      - name: Ontology <-> ORM lockstep (pre-commit ontology-orm-lockstep)
+        run: uv run --no-sync pre-commit run ontology-orm-lockstep --all-files
+
       - name: Migrations on a fresh DB (AC-9)
         env:
           DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret

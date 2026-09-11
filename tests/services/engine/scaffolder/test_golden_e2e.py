@@ -73,6 +73,7 @@ from services.engine.scaffolder.ontology import emit_ontology, run_floor, write_
 from services.engine.scaffolder.package import class_prefix, emit_package, write_package
 from services.engine.scaffolder.spine import emit_procedures
 from services.engine.scaffolder.wire import write_wires
+from verticals.fleet_maintenance.data_adapter.db_projection import DB_BACKED_TYPES
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -212,6 +213,13 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         #   it, and a generated guess would hand a new vertical a boot-time seed that either
         #   raises or, worse, parks a run nobody meant.
         "operate_seed.py",
+        # * `data_adapter/db_projection.py` — PLAN-0109 Step 1, session 294. Which of THIS
+        #   vertical's ontology types are served from which hand-written table, and which
+        #   columns never are — one of them by Cray's typed ruling (SD-D). A scaffolded
+        #   vertical has no such tables and no such ruling, so an emitted default would be a
+        #   mapping to nothing and an exclusion list nobody decided. Same reason as
+        #   `sourcing.py`: the shape could be generic, the content is one partner's.
+        "data_adapter/db_projection.py",
     }
 )
 
@@ -322,6 +330,14 @@ _DONOR_EXTENSION_OBJECTS = {
     # could not host it: Depot is a PLACE that Truck.site_id requires, and two of its
     # three types are not commercial parties at all.
     "Vendor",
+    # PLAN-0109 Step 1 (s294): the three governance types SD-B ruled into the ontology —
+    # RepairCase, RepairCaseQuote, RepairCaseAcceptedQuote — so Tab C can answer about the
+    # cases demo play creates. IMPORTED from the module that maps them to their tables
+    # rather than retyped here, so declaring a DB-backed type and exempting it is one act.
+    # ⚠️ This takes the set to FOUR and crosses the "couple of entries" line above,
+    # knowingly: PLAN-0109 records the scaffolder extension slot as its own PLAN (Out of
+    # Scope), not as work to fold into this one.
+    *DB_BACKED_TYPES,
 }
 
 
