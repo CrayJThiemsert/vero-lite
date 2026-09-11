@@ -220,6 +220,12 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         #   mapping to nothing and an exclusion list nobody decided. Same reason as
         #   `sourcing.py`: the shape could be generic, the content is one partner's.
         "data_adapter/db_projection.py",
+        # * `data_adapter/db_objects.py` — PLAN-0109 Step 3, session 294. The DB-backed
+        #   branch of THIS vertical's adapter (SD-A ruled (b)): which hand-written tables it
+        #   reads and how rows leave them. A scaffolded vertical has no such tables, so the
+        #   emitted package shape stays the synthetic adapter — see the registrar
+        #   substitution row 4 names below.
+        "data_adapter/db_objects.py",
     }
 )
 
@@ -264,6 +270,30 @@ def _skeleton(source: str, namespace: str) -> str:
     return ast.dump(tree)
 
 
+#: PLAN-0109 Step 3 (s294): the ONLY two lines by which the donor's adapter package differs
+#: from the scaffold. SD-A ruled (b) — the fleet adapter reads its DB-backed governance types
+#: through a session it owns — and that branch lives in ``data_adapter/db_objects.py`` as a
+#: SUBCLASS, so the registrar instantiates the subclass instead of the scaffolded class.
+#: Everything else — the class, every method and its parameter list, the rest of the
+#: registrar — stays under row 4's structural equality.
+#:
+#: Each entry must match the donor EXACTLY ONCE: a substitution that no longer matches is a
+#: stale narrowing and reddens here, instead of quietly comparing a different file. The
+#: subclass relationship this rests on is pinned in
+#: ``tests/verticals/fleet_maintenance/test_adapter_db_objects.py``.
+_DONOR_REGISTRAR_SUBSTITUTIONS: tuple[tuple[str, str], ...] = (
+    (
+        "    from verticals.fleet_maintenance.data_adapter.db_objects"
+        " import FleetMaintenanceAdapter\n",
+        "",
+    ),
+    (
+        "    adapter = FleetMaintenanceAdapter()\n",
+        "    adapter = FleetMaintenanceSyntheticAdapter()\n",
+    ),
+)
+
+
 def test_row_4_adapter_is_structurally_equal_to_the_donor(regenerated: Path) -> None:
     """AC-7 row 4: the one row the ledger claims equality for.
 
@@ -276,6 +306,10 @@ def test_row_4_adapter_is_structurally_equal_to_the_donor(regenerated: Path) -> 
         encoding="utf-8"
     )
     donor = (DONOR / "data_adapter" / "__init__.py").read_text(encoding="utf-8")
+    for old, new in _DONOR_REGISTRAR_SUBSTITUTIONS:
+        matches = donor.count(old)
+        assert matches == 1, f"stale registrar substitution (matches {matches}x): {old!r}"
+        donor = donor.replace(old, new)
     assert _skeleton(regen, "fleet_regen") == _skeleton(donor, "fleet_maintenance")
 
 

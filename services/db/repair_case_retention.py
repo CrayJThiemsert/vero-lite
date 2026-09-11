@@ -5,12 +5,17 @@ deletes prompt-log day *files*; this one deletes case *rows*, their FK children,
 and the case's upload directory on disk.
 
 **Why a separate 90 rather than the prompt log's.** ADR-0035 D6's retention
-regime is defined per request to a published LLM route and **does not reach case
-text** (`docs/compliance/ropa-change-statement-fleet.md` §4(a)). PLAN-0105
-LOCKED-1: this is an independent decision that happens to choose the same
+regime is defined per request to a published LLM route and
+**does not reach case text** (`docs/compliance/ropa-change-statement-fleet.md` §4(a)).
+PLAN-0105 LOCKED-1: this is an independent decision that happens to choose the same
 number. A future D6 change changes nothing here, and vice versa — which is why
 this module deliberately imports nothing from ``prompt_log`` and AC-9 guards
 that absence rather than trusting it.
+
+**What that sentence is about: the prompt LOG, not the model.**
+PLAN-0109: Tab C phrase requests carry case description, vendor and reason to the on-prem model.
+The log still records the visitor's question and never a row, so D6 stops short of case rows;
+the rows stay bounded by this module's 90 days (the RoPA change statement, §3.4).
 
 **Why the age anchor is ``opened_at``.** The row analogue of ``_file_date``
 reading the day from the file NAME rather than its mtime: ``opened_at`` is

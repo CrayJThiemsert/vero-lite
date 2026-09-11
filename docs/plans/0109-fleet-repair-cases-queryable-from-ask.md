@@ -262,8 +262,17 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   Pass read: every pre-existing test green with zero modifications to their assertions;
   `health_check()` still reports the seven synthetic object counts (it may *add* a DB
   status field; it may not change existing keys).
+  ✎ **s294, `was an error`:** measured, the base adapter's `object_counts` holds **four**
+  types — `Depot`, `OperationalEvent`, `Truck`, `Vendor` — not seven (`Alert`,
+  `RecommendedAction` and `AlertEventLink` are declared but not served by it). Built as:
+  every existing key keeps its value and exactly one key is added, `db_backed_types`
+  (listed, not pinged); the synthetic types are compared against the unchanged base
+  adapter in `tests/verticals/fleet_maintenance/test_adapter_db_objects.py`.
 - [ ] **AC-8 — the scenario test (CLAUDE.md §8, binding): real producer into real consumer.**
   Artifact: `tests/verticals/fleet_maintenance/test_ask_repair_case_scenario.py`.
+  ✎ *s294:* built at `tests/api/test_ask_repair_case_scenario.py` — `client_with_db` and
+  `api_db_maker` live in `tests/api/conftest.py`, and a copy would be a second definition
+  of how a test binds to the disposable database.
   The **real producer**: two repair cases opened through `POST /api/cases`
   (`services/api/routers/cases.py:183`) on the real app against the test DB — the same
   route demo play uses; one quote added via `POST /api/cases/{id}/quotes`. The **real
@@ -274,6 +283,10 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   `tests/services/engine/test_grouped_count_scenario.py`).
   Command: `uv run pytest tests/verticals/fleet_maintenance/test_ask_repair_case_scenario.py -x 2>&1`.
   Pass read, fixed pre-run: `answer.grounded is True`; the count aggregate equals **2**;
+  (✎ *s294, `was an error` in the wording, not the intent:* an UNGROUPED count carries no
+  `aggregate` object — `nl_query.answer_question` builds one only for numeric aggregates
+  and grouped counts — so the count is asserted as the engine's own deterministic
+  sentence `2 RepairCase record(s) match that query.` together with the two source ids);
   `source ids == the two case_ids the POSTs returned` (proving the rows flowed, not a
   fixture); a second scenario case filters by `truck_id` and matches only that truck's
   case. **Non-vacuity probe with a named changing output:** opening a third case changes
@@ -472,6 +485,17 @@ property set, the excluded columns (`photos`, `note`, `attachment`, `seq`, `tena
 per `(type, column)`, AC-10 ✎ s294) never emitted, datetimes to ISO strings, `Decimal`
 to float — the procurement-datetime
 lesson.
+✎ **s294 — a coupling this draft did not see, and how it was built.** The scaffolder's
+golden oracle holds `data_adapter/__init__.py` STRUCTURALLY EQUAL to what the scaffolder
+emits (`test_row_4_adapter_is_structurally_equal_to_the_donor` — the one row that
+ledger claims equality for), so a DB branch written into that file reddens it. Witnessed
+RED before any oracle edit: exactly two failures, row 4 and the file-set test. Built as a
+subclass, `FleetMaintenanceAdapter`, in the post-scaffold module
+`verticals/fleet_maintenance/data_adapter/db_objects.py`; the registrar instantiates it,
+and row 4 names that two-line substitution exactly (each entry must match once, so a
+stale one reddens) while the class, every method and the rest of the registrar stay
+under structural equality. The subclass overrides only `__init__`, `fetch_objects` and
+`health_check` — pinned by a test — so `fetch_links` / `stream_events` remain the base's.
 Synthetic types fall through to the existing dict path unchanged. Update the module
 docstring (its "No external I/O" claim becomes false) and `health_check` (additive
 DB-status key only, AC-7). Injecting the *test-DB-bound factory* in tests is
@@ -490,10 +514,17 @@ offline pattern (F4-chain stays real end to end). Assert grounded/count/source-i
 AC-8's fixed read; act again (third case) and assert the count read **changes** 2→3 —
 the probe's named changing output. Witness the severed-branch RED once (scratch
 mutation, restore from scratchpad). Add the AC-9 unreachable-DB degrade case.
+✎ *s294:* the severed-branch RED ran through the shipped driver, not a hand-rolled scratch
+copy (CLAUDE.md §8): probe `S-severed` in `tests/batteries/plan-0109-phase2-serve.json`.
+That battery witnesses every assertion in the adapter and scenario modules — 38 probes,
+42 claims, 4 exemptions (each a positive control over the test's own seed, with its reason
+written), `GAPS: 0` — with restore checked by sha256 and `git status --porcelain`.
 
 ### Step 5 — Extend the compliance record (AC-11; lands in the Phase 2 PR) — ✎ rewritten s294, Errata (i)/(iv)
 
-Fix the added sentence's exact bytes in the PR body first. Then amend
+Fix the added sentence's exact bytes in the PR body first. ✎ *s294 — fixed as:*
+`PLAN-0109: Tab C phrase requests carry case description, vendor and reason to the on-prem model.`
+(96 characters, one line in both artifacts). Then amend
 `docs/compliance/ropa-change-statement-fleet.md` with a dated `🆕` subsection in the §3.3
 shape: PLAN-0109, the ruled IN-set (`description` / `vendor` / `reason`), the new reader
 (Tab C / `/query`), the new processing step (a phrase request to the on-prem model

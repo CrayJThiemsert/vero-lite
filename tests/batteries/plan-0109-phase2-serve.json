@@ -1,0 +1,356 @@
+{
+  "claim_sources": [
+    "tests/verticals/fleet_maintenance/test_adapter_db_objects.py",
+    "tests/api/test_ask_repair_case_scenario.py"
+  ],
+  "probes": [
+    {
+      "name": "A-one-row",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(limit)\n",
+      "new": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(0)\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "_only_row|len(rows) == 1|#0",
+      "note": "No row is read; the helper's one-row read reddens, after the seed's positive control has passed."
+    },
+    {
+      "name": "A-case-photos",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"photos\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "test_a_repair_case_is_projected_onto_its_declared_properties|\"photos\" not in row|#0",
+      "note": "The ruled-OUT photo list leaks into the projection; the absence assertion reddens first."
+    },
+    {
+      "name": "A-case-keys",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"tenant_id\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "test_a_repair_case_is_projected_onto_its_declared_properties|set(row) == _REPAIR_CASE_KEYS|#0",
+      "note": "An extra key that is not photos — the photo assertion stays green, the exact key set reddens."
+    },
+    {
+      "name": "A-case-description",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        value = getattr(row, name)\n",
+      "new": "        value = getattr(row, name)\n        if name == \"description\":\n            value = None\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "test_a_repair_case_is_projected_onto_its_declared_properties|row[\"description\"] == _DESCRIPTION|#0",
+      "note": "The key set is intact; only the ruled-IN free text is lost."
+    },
+    {
+      "name": "A-case-instant",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            value = value.isoformat()\n",
+      "new": "            value = value.replace(year=2000).isoformat()\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "test_a_repair_case_is_projected_onto_its_declared_properties|datetime.fromisoformat(str(row[\"opened_at\"])) == _OPENED|#0",
+      "note": "Still an ISO string, but the wrong instant."
+    },
+    {
+      "name": "A-case-iso",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            value = value.isoformat()\n",
+      "new": "            value = value\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_repair_case_is_projected_onto_its_declared_properties",
+      "expect_claim": "test_a_repair_case_is_projected_onto_its_declared_properties|isinstance(row[\"opened_at\"], str)|#0",
+      "note": "A raw datetime leaves the row: str() of it still parses to the same instant, so only the type assertion reddens."
+    },
+    {
+      "name": "A-quote-note",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"note\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|\"note\" not in row|#0",
+      "note": "Cray's ruled-OUT note leaks."
+    },
+    {
+      "name": "A-quote-attachment",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"attachment\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|\"attachment\" not in row|#0",
+      "note": "The document payload leaks; the note assertion before it stays green."
+    },
+    {
+      "name": "A-quote-keys",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"tenant_id\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|set(row) == _QUOTE_KEYS|#0",
+      "note": "An extra key that is neither note nor attachment."
+    },
+    {
+      "name": "A-quote-vendor",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        value = getattr(row, name)\n",
+      "new": "        value = getattr(row, name)\n        if name == \"vendor\":\n            value = None\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|row[\"vendor\"] == _VENDOR|#0",
+      "note": "The ruled-IN vendor is lost; the key set is intact."
+    },
+    {
+      "name": "A-quote-amount",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            value = float(value)\n",
+      "new": "            value = float(value) + 1\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|row[\"amount_thb\"] == 12000.0|#0",
+      "note": "Still a float, the wrong figure."
+    },
+    {
+      "name": "A-quote-float",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            value = float(value)\n",
+      "new": "            value = value\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_a_quote_is_projected_without_its_note_or_its_document",
+      "expect_claim": "test_a_quote_is_projected_without_its_note_or_its_document|type(row[\"amount_thb\"]) is float|#0",
+      "note": "A Decimal leaves the row. Decimal('12000.00') == 12000.0 is True, so the value assertion stays green and only the type assertion reddens."
+    },
+    {
+      "name": "A-accepted-seq",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"seq\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq",
+      "expect_claim": "test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq|\"seq\" not in row|#0",
+      "note": "The internal insertion-order key leaks."
+    },
+    {
+      "name": "A-accepted-keys",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"tenant_id\"]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq",
+      "expect_claim": "test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq|set(row) == _ACCEPTED_KEYS|#0",
+      "note": "An extra key that is not seq."
+    },
+    {
+      "name": "A-accepted-reason",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        value = getattr(row, name)\n",
+      "new": "        value = getattr(row, name)\n        if name == \"reason\":\n            value = None\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq",
+      "expect_claim": "test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq|row[\"reason\"] == _REASON|#0",
+      "note": "The ruled-IN reason is lost."
+    },
+    {
+      "name": "A-accepted-lowest",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            value = float(value)\n",
+      "new": "            value = float(value) + 1\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq",
+      "expect_claim": "test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq|row[\"lowest_amount_at_acceptance_thb\"] == 9500.0|#0",
+      "note": "The stored lowest-at-acceptance figure is misread."
+    },
+    {
+      "name": "A-newest-first",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "newest.desc()",
+      "new": "newest.asc()",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_rows_come_newest_first_so_a_limit_keeps_the_newest",
+      "expect_claim": "test_rows_come_newest_first_so_a_limit_keeps_the_newest|[row[\"case_id\"] for row in rows] == [\"case-newer\"]|#0",
+      "note": "Oldest first: a limit keeps the stale row."
+    },
+    {
+      "name": "A-order-coverage",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    \"RepairCaseAcceptedQuote\": \"accepted_at\",\n",
+      "new": "",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_every_db_backed_type_has_a_newest_first_column",
+      "expect_claim": "test_every_db_backed_type_has_a_newest_first_column|set(NEWEST_FIRST_COLUMN) == set(DB_BACKED_TYPES)|#0",
+      "note": "A DB-backed type with no read order would KeyError at the first question about it."
+    },
+    {
+      "name": "A-synthetic",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            return await super().fetch_objects(object_type, filter_expr, limit)\n",
+      "new": "            return (await super().fetch_objects(object_type, filter_expr, limit))[1:]\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_the_synthetic_types_are_served_exactly_as_the_base_adapter_serves_them",
+      "expect_claim": "test_the_synthetic_types_are_served_exactly_as_the_base_adapter_serves_them|differing == []|#0",
+      "note": "The subclass drops a synthetic row — AC-7's 'untouched' must see it."
+    },
+    {
+      "name": "A-health-existing",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        return {**report, \"db_backed_types\": sorted(DB_BACKED_TYPES)}\n",
+      "new": "        return {**report, \"status\": \"degraded\", \"db_backed_types\": sorted(DB_BACKED_TYPES)}\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_health_check_keeps_every_existing_key_and_adds_exactly_one",
+      "expect_claim": "test_health_check_keeps_every_existing_key_and_adds_exactly_one|{key: extended[key] for key in base} == base|#0",
+      "note": "An existing key changes value; the added-key set is still exactly db_backed_types."
+    },
+    {
+      "name": "A-health-added",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        return {**report, \"db_backed_types\": sorted(DB_BACKED_TYPES)}\n",
+      "new": "        return {**report, \"db_backed_types\": sorted(DB_BACKED_TYPES), \"db_status\": \"unknown\"}\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_health_check_keeps_every_existing_key_and_adds_exactly_one",
+      "expect_claim": "test_health_check_keeps_every_existing_key_and_adds_exactly_one|set(extended) - set(base) == {\"db_backed_types\"}|#0",
+      "note": "Every existing key intact; a second key added."
+    },
+    {
+      "name": "A-registrar-class",
+      "subject": "verticals/fleet_maintenance/data_adapter/__init__.py",
+      "old": "    adapter = FleetMaintenanceAdapter()\n",
+      "new": "    adapter = FleetMaintenanceSyntheticAdapter()\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_the_registrar_registers_the_db_aware_adapter",
+      "expect_claim": "test_the_registrar_registers_the_db_aware_adapter|isinstance(adapter, FleetMaintenanceAdapter)|#0",
+      "note": "The registrar goes back to the synthetic-only class — production would never read the tables."
+    },
+    {
+      "name": "A-registrar-instance",
+      "subject": "verticals/fleet_maintenance/data_adapter/__init__.py",
+      "old": "    registry.register_adapter(adapter)\n",
+      "new": "    registry.register_adapter(FleetMaintenanceAdapter())\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_the_registrar_registers_the_db_aware_adapter",
+      "expect_claim": "test_the_registrar_registers_the_db_aware_adapter|registry.get_adapter(\"fleet_maintenance\") is adapter|#0",
+      "note": "The right class, but not the instance returned — the isinstance assertion stays green."
+    },
+    {
+      "name": "A-subclass",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "class FleetMaintenanceAdapter(FleetMaintenanceSyntheticAdapter):\n",
+      "new": "class FleetMaintenanceAdapter:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_the_subclass_overrides_only_the_three_methods_it_must",
+      "expect_claim": "test_the_subclass_overrides_only_the_three_methods_it_must|issubclass(FleetMaintenanceAdapter, FleetMaintenanceSyntheticAdapter)|#0",
+      "note": "Not a subclass: the golden oracle's registrar substitution would no longer be an equivalence."
+    },
+    {
+      "name": "A-overrides",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    async def health_check(self) -> dict[str, Any]:\n",
+      "new": "    def fetch_links_shadow(self) -> None:\n        return None\n\n    async def health_check(self) -> dict[str, Any]:\n",
+      "node_id": "tests/verticals/fleet_maintenance/test_adapter_db_objects.py::test_the_subclass_overrides_only_the_three_methods_it_must",
+      "expect_claim": "test_the_subclass_overrides_only_the_three_methods_it_must|overridden == [\"__init__\", \"fetch_objects\", \"health_check\"]|#0",
+      "note": "A fourth method on the subclass; still a subclass, so issubclass stays green."
+    },
+    {
+      "name": "S-open-case",
+      "subject": "services/api/routers/cases.py",
+      "old": "@router.post(\"\", response_model=CaseResponse, status_code=201)",
+      "new": "@router.post(\"\", response_model=CaseResponse, status_code=200)",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_truck_filter_answers_about_that_trucks_case_only",
+      "expect_claim": "_open_case|response.status_code == 201|#0",
+      "note": "The producer route's contract moves; the scenario's helper names it."
+    },
+    {
+      "name": "S-severed",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        if object_type not in DB_BACKED_TYPES:\n",
+      "new": "        if True:\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_cases_opened_through_the_real_route_are_counted_from_ask",
+      "expect_claim": "test_cases_opened_through_the_real_route_are_counted_from_ask|answer.grounded is True|#0",
+      "note": "PLAN-0109 AC-8's named probe: the DB branch severed, RepairCase falls through to the synthetic source, which has none — the answer stops being grounded."
+    },
+    {
+      "name": "S-ids",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(limit)\n",
+      "new": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(1)\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_cases_opened_through_the_real_route_are_counted_from_ask",
+      "expect_claim": "test_cases_opened_through_the_real_route_are_counted_from_ask|sorted(answer.source_object_ids) == sorted([first[\"case_id\"], second[\"case_id\"]])|#0",
+      "note": "One of the two cases is read: still grounded, the source ids are not the two the routes returned."
+    },
+    {
+      "name": "S-sentence-two",
+      "subject": "services/engine/nl_query.py",
+      "old": "        return f\"{count} {query.object_type} record(s) match that query.\"",
+      "new": "        return f\"{count} {query.object_type} records match that query.\"",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_cases_opened_through_the_real_route_are_counted_from_ask",
+      "expect_claim": "test_cases_opened_through_the_real_route_are_counted_from_ask|answer.answer == \"2 RepairCase record(s) match that query.\"|#0",
+      "note": "Grounded, right ids, a different sentence from the engine's own template."
+    },
+    {
+      "name": "S-sentence-three",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(limit)\n",
+      "new": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(2)\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_cases_opened_through_the_real_route_are_counted_from_ask",
+      "expect_claim": "test_cases_opened_through_the_real_route_are_counted_from_ask|again.answer == \"3 RepairCase record(s) match that query.\"|#0",
+      "note": "The first read of two passes every assertion; the third case never reaches the second read — the changing output does not change."
+    },
+    {
+      "name": "S-truck-filter",
+      "subject": "services/engine/nl_query.py",
+      "old": "    return equal if flt.op == \"eq\" else not equal",
+      "new": "    return True",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_truck_filter_answers_about_that_trucks_case_only",
+      "expect_claim": "test_a_truck_filter_answers_about_that_trucks_case_only|answer.source_object_ids == [target[\"case_id\"]]|#0",
+      "note": "The ref filter matches every case."
+    },
+    {
+      "name": "S-quote-route",
+      "subject": "services/api/routers/cases.py",
+      "old": "@router.post(\"/{case_id}/quotes\", response_model=QuoteResponse, status_code=201)",
+      "new": "@router.post(\"/{case_id}/quotes\", response_model=QuoteResponse, status_code=200)",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_quote_reaches_ask_with_its_vendor_and_without_its_note",
+      "expect_claim": "test_a_quote_reaches_ask_with_its_vendor_and_without_its_note|response.status_code == 201|#0",
+      "note": "The quote route's contract moves."
+    },
+    {
+      "name": "S-note-control",
+      "subject": "services/api/routers/cases.py",
+      "old": "        note=(note or None),",
+      "new": "        note=None,",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_quote_reaches_ask_with_its_vendor_and_without_its_note",
+      "expect_claim": "test_a_quote_reaches_ask_with_its_vendor_and_without_its_note|response.json()[\"note\"] == \"ลูกค้าประจำ ขอส่วนลด\"|#0",
+      "note": "The producer stops storing the note — the positive control that keeps 'note not in record' from being vacuous reddens."
+    },
+    {
+      "name": "S-quote-read",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(limit)\n",
+      "new": "            sa.select(mapped).order_by(newest.desc(), *tiebreak).limit(0)\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_quote_reaches_ask_with_its_vendor_and_without_its_note",
+      "expect_claim": "test_a_quote_reaches_ask_with_its_vendor_and_without_its_note|len(answer.source_objects) == 1|#0",
+      "note": "The stored quote is not read."
+    },
+    {
+      "name": "S-vendor",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        value = getattr(row, name)\n",
+      "new": "        value = getattr(row, name)\n        if name == \"vendor\":\n            value = None\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_quote_reaches_ask_with_its_vendor_and_without_its_note",
+      "expect_claim": "test_a_quote_reaches_ask_with_its_vendor_and_without_its_note|record[\"vendor\"] == \"อู่ช่างเอก\"|#0",
+      "note": "Through the real producer: the ruled-IN vendor is lost on the way to Ask."
+    },
+    {
+      "name": "S-note-leak",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "    for name in allowlist:\n",
+      "new": "    for name in [*allowlist, \"note\"]:\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_a_quote_reaches_ask_with_its_vendor_and_without_its_note",
+      "expect_claim": "test_a_quote_reaches_ask_with_its_vendor_and_without_its_note|\"note\" not in record|#0",
+      "note": "Through the real producer: Cray's ruled-OUT note reaches Ask."
+    },
+    {
+      "name": "S-degrade-grounded",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        return await read_db_objects(factory, object_type, limit)\n",
+      "new": "        return [{\"case_id\": \"invented\"}]\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_an_unreachable_database_degrades_to_the_honest_answer",
+      "expect_claim": "test_an_unreachable_database_degrades_to_the_honest_answer|answer.grounded is False|#0",
+      "note": "AC-9: an invented row with no database behind it becomes a grounded answer."
+    },
+    {
+      "name": "S-degrade-sentence",
+      "subject": "verticals/fleet_maintenance/data_adapter/db_objects.py",
+      "old": "        return await read_db_objects(factory, object_type, limit)\n",
+      "new": "        try:\n            return await read_db_objects(factory, object_type, limit)\n        except Exception:\n            return []\n",
+      "node_id": "tests/api/test_ask_repair_case_scenario.py::test_an_unreachable_database_degrades_to_the_honest_answer",
+      "expect_claim": "test_an_unreachable_database_degrades_to_the_honest_answer|answer.answer == \"I couldn't retrieve the operational data to answer that.\"|#0",
+      "note": "The exact failure db_objects.py's docstring forbids: swallow the connection error and 'there are no repair cases' — still ungrounded, the wrong sentence."
+    }
+  ],
+  "exemptions": {
+    "test_a_repair_case_is_projected_onto_its_declared_properties|stored_photos|#0": "Positive control over the SEED this test writes (the row really carries a photo), which is what makes the photos-absence assertion non-vacuous. No production mutation reaches it: the adapter does not write rows.",
+    "test_a_quote_is_projected_without_its_note_or_its_document|stored.note == _NOTE|#0": "Positive control over the seed (the row really carries a note). The same control is witnessed through the REAL producer by probe S-note-control in the scenario module.",
+    "test_a_quote_is_projected_without_its_note_or_its_document|stored.attachment is not None|#0": "Positive control over the seed (the row really carries a document). No production mutation reaches it: the adapter does not write rows.",
+    "test_an_accepted_quote_is_projected_with_its_reason_and_without_its_seq|stored_seq is not None|#0": "Positive control over the database-assigned seq, which makes the seq-absence assertion non-vacuous. Reaching it would mean removing the column's Identity, which fails the insert (a crash, not this assertion)."
+  }
+}

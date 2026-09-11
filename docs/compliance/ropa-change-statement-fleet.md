@@ -241,6 +241,27 @@ under- nor over-claimed:
 personal-data CATEGORY, no new storage LOCATION, and no new recipient. It refines
 item 1's description of what the intake activity does.
 
+### 3.4 🆕 Case text now reaches the on-prem model through Tab C (Ask) — added s294
+
+_[Added by PLAN-0109 Phase 2 (AC-11). Nothing above is retracted: §3.1 item 2 and §4(a)
+stay true — ADR-0035 D6's prompt-log regime still does not reach case rows. This
+subsection ADDS a reader and a processing step that did not exist before.]_
+
+PLAN-0109: Tab C phrase requests carry case description, vendor and reason to the on-prem model.
+
+| | |
+|---|---|
+| **New reader** | Tab C (`POST /query`) — any visitor who reaches the system: the same audience §4(c) already rules intended for case text |
+| **What leaves the row** | Only the ontology-declared properties of `RepairCase`, `RepairCaseQuote` and `RepairCaseAcceptedQuote` — the SD-D ruled free text `description`, `vendor` and `reason`, plus ids, timestamps, statuses, amounts and the persona principal ids of §3.2.1. **Never** `photos`, `note`, `attachment`, `seq` or `tenant_id` (`verticals/fleet_maintenance/data_adapter/db_projection.py`, held by the `ontology-orm-lockstep` guard) |
+| **Where it goes** | The **phrase** request to the on-prem model host, up to `_PHRASE_FACT_CAP` records per question, and only when the model phrases the answer; the deterministic fallback sends nothing (`services/engine/nl_query.py`, `_phrase`). The translate request carries the ontology description and the question, never a row |
+| **What is stored** | Nothing new. The D6 prompt log records the visitor's **question** (`text`) in its closed field set, never a prompt body or a record (`services/engine/llm/prompt_log.py`, `record`) |
+| **Bounds** | The rows: the 90-day sweep (§3.1). The question: D6's rotation. Disclosure: the public `case-persist-notice` |
+| **Residual** | Visitor-typed text inside a phrase request is a prompt-injection-shaped surface; nothing moderates the content today (PLAN-0109 SD-F records it) |
+
+**For the controller.** Whether the RoPA names the on-prem model host as a processing step
+or a recipient is wording for the controller (ADR-0037 D2.1); this subsection supplies the
+facts only.
+
 ## 4. Three scope facts, so the update stays exact
 
 _[Was "Two" until s232, when (c) was measured and ruled.]_

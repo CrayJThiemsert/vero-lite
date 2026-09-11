@@ -94,7 +94,14 @@ class FleetMaintenanceSyntheticAdapter:
 
 
 def register_fleet_maintenance_adapter() -> FleetMaintenanceSyntheticAdapter:
-    """Register a fresh FleetMaintenanceSyntheticAdapter on the process-wide registry."""
-    adapter = FleetMaintenanceSyntheticAdapter()
+    """Register a fresh fleet adapter on the process-wide registry.
+
+    PLAN-0109 Step 3: the instance is ``FleetMaintenanceAdapter`` — the class above plus the
+    three DB-backed governance types. It lives in ``db_objects.py`` and is imported here,
+    not at module top, because it subclasses the class defined above.
+    """
+    from verticals.fleet_maintenance.data_adapter.db_objects import FleetMaintenanceAdapter
+
+    adapter = FleetMaintenanceAdapter()
     registry.register_adapter(adapter)
     return adapter
