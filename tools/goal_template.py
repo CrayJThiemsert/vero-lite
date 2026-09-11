@@ -69,6 +69,7 @@ import argparse
 import hashlib
 import json
 import re
+import shlex
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -214,6 +215,29 @@ def _evidence_arg(gid: str, criterion_id: str) -> str:
     return f"--report-to {EVIDENCE_ROOT / gid / (criterion_id + '.txt')} --gid {gid}"
 
 
+def _shell_arg(value: str) -> str:
+    r"""One caller-supplied value, quoted for the ONE shell layer a check script is.
+
+    ``shlex.quote``, never ``repr``. The two agree often enough to hide the
+    difference and part company exactly where a regex lives. Measured s295 on two
+    real T-ABSENT goals: ``repr`` doubles a backslash, and inside bash single
+    quotes a doubled backslash stays doubled, so ``tools/absent.py`` was handed
+    ``translate \\+ …`` (``matched=0`` against a file where the author's
+    ``translate \+ …`` matched once — a vacuous PASS) and ``internal. for .seq.\\)``
+    (not a valid regex: ``rc=2`` on every evaluation, no evidence file ever
+    written). ``repr`` also switches to DOUBLE quotes for a value holding ``'``;
+    R6 already refuses the ``$`` and backtick bash would expand there, but a value
+    holding both quote kinds came out unbalanced and died on a bash syntax error.
+
+    Every caller-supplied value goes through here, not only the ones that had
+    ``!r``: T-COUNT's file, field and value set, and every file path, were
+    interpolated with no quoting at all, so a space split them into two arguments.
+    A value made only of shell-safe characters comes back bare
+    (``shlex.quote("transport")`` is ``transport``) — the same argv either way.
+    """
+    return shlex.quote(value)
+
+
 # --- the three templates ------------------------------------------------------
 
 
@@ -233,15 +257,15 @@ def template_count(args: argparse.Namespace) -> Draft:
     draft.scripts[CONTROL_ID] = render_script(
         CONTROL_ID,
         "R3 control -- can this falsifier fail at all?",
-        f"python -m tools.tally {args.file} --field {args.field} "
-        f"--expect {expect},{_IMPOSSIBLE_VALUE} --expect-refusal "
+        f"python -m tools.tally {_shell_arg(args.file)} --field {_shell_arg(args.field)} "
+        f"--expect {_shell_arg(expect + ',' + _IMPOSSIBLE_VALUE)} --expect-refusal "
         f"{_evidence_arg(gid, CONTROL_ID)}",
     )
     draft.scripts["C1"] = render_script(
         "C1",
         "the reading itself",
-        f"python -m tools.tally {args.file} --field {args.field} --expect {expect} "
-        f"{_evidence_arg(gid, 'C1')}",
+        f"python -m tools.tally {_shell_arg(args.file)} --field {_shell_arg(args.field)} "
+        f"--expect {_shell_arg(expect)} {_evidence_arg(gid, 'C1')}",
     )
     draft.criteria = [
         Criterion(
@@ -300,14 +324,16 @@ def template_absent(args: argparse.Namespace) -> Draft:
     draft.scripts[CONTROL_ID] = render_script(
         CONTROL_ID,
         "R3 control -- can this instrument find anything at all?",
-        f"python -m tools.absent --file {args.file} --pattern {args.control!r} "
-        f"--control {args.control!r} --expect-present {_evidence_arg(gid, CONTROL_ID)}",
+        f"python -m tools.absent --file {_shell_arg(args.file)} "
+        f"--pattern {_shell_arg(args.control)} --control {_shell_arg(args.control)} "
+        f"--expect-present {_evidence_arg(gid, CONTROL_ID)}",
     )
     draft.scripts["C1"] = render_script(
         "C1",
         "the absence itself",
-        f"python -m tools.absent --file {args.file} --pattern {args.pattern!r} "
-        f"--control {args.control!r} {_evidence_arg(gid, 'C1')}",
+        f"python -m tools.absent --file {_shell_arg(args.file)} "
+        f"--pattern {_shell_arg(args.pattern)} --control {_shell_arg(args.control)} "
+        f"{_evidence_arg(gid, 'C1')}",
     )
     draft.criteria = [
         Criterion(
@@ -380,13 +406,18 @@ def template_oracle(args: argparse.Namespace) -> Draft:
     draft.scripts["C1"] = render_script(
         "C1",
         "the banked report carries no failure verdict",
-        f"python -m tools.absent --file {args.report} --pattern 'PROBE-BATTERY: FAIL' "
-        f"--control 'PROBE-BATTERY:' {_evidence_arg(gid, 'C1')}",
+        f"python -m tools.absent --file {_shell_arg(args.report)} "
+        f"--pattern 'PROBE-BATTERY: FAIL' --control 'PROBE-BATTERY:' {_evidence_arg(gid, 'C1')}",
     )
     draft.scripts["C2"] = render_script(
         "C2",
         "the claim under test was actually credited",
-        f"python -m tools.absent --file {args.report} --pattern {args.claim!r} "
+        # The claim is a LITERAL stable_key, but absent.py reads --pattern as a regex,
+        # where `|` is alternation. Measured s295: unescaped, `test_x|y == 1|#0` read
+        # PASS against a report whose only claim was `test_other|z == 2|#0` — the `#0`
+        # branch alone matched. re.escape makes the key mean only itself.
+        f"python -m tools.absent --file {_shell_arg(args.report)} "
+        f"--pattern {_shell_arg(re.escape(args.claim))} "
         f"--control 'PROBE-BATTERY:' --expect-present {_evidence_arg(gid, 'C2')}",
     )
     draft.criteria = [

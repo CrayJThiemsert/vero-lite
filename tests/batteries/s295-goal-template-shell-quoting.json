@@ -1,0 +1,179 @@
+{
+  "claim_sources": [
+    "tests/tools/test_goal_template_shell_quoting.py"
+  ],
+  "probes": [
+    {
+      "name": "PA0",
+      "subject": "tools/absent.py",
+      "old": "        f\"pattern: {reading.pattern!r}   control: {reading.control!r}\",",
+      "new": "        f\"pattern: {reading.pattern!r}  control: {reading.control!r}\",",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[backslash_plus]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|(_absent_received(direct.stdout), direct.returncode) == ((pattern, control), EXIT_FAIL)|#0",
+      "note": "Instrument control (Lesson #0056). Every T-ABSENT reading in the module is parsed from this report line; change its spacing and the argv-with-no-shell run can no longer be read back. The control must be able to go RED before any rendered reading is trusted."
+    },
+    {
+      "name": "PA1",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(args.control)} --control {_shell_arg(args.control)} \"",
+      "new": "        f\"--pattern {args.control!r} --control {_shell_arg(args.control)} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[backslash_plus]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c0.evidence) == (control, control)|#0",
+      "note": "🔴 C0's --pattern restored to repr. The control value carries a backslash, which repr doubles and bash single quotes keep doubled: the s295 mechanism, on the control check."
+    },
+    {
+      "name": "PA2",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(args.control)} --control {_shell_arg(args.control)} \"\n        f\"--expect-present",
+      "new": "        f\"--pattern {_shell_arg(args.control)} --control {args.control!r} \"\n        f\"--expect-present",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[backslash_paren]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c0.evidence) == (control, control)|#0",
+      "note": "C0's --control restored to repr: the one C0 site PA1 leaves quoted. The escaped-paren control arrives as a different but still valid regex, finds nothing, and C0's received pair differs from what was typed."
+    },
+    {
+      "name": "PA3",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(args.pattern)} --control {_shell_arg(args.control)} \"",
+      "new": "        f\"--pattern {args.pattern!r} --control {_shell_arg(args.control)} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[backslash_plus]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c1.evidence) == (pattern, control)|#0",
+      "note": "🔴 The s295 vacuous PASS, reproduced: C1's --pattern restored to repr hands absent.py the translate pattern with a doubled backslash, which reads matched=0 on a file where the author's pattern matched once."
+    },
+    {
+      "name": "PA4",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(args.pattern)} --control {_shell_arg(args.control)} \"\n        f\"{_evidence_arg(gid, 'C1')}\",",
+      "new": "        f\"--pattern {_shell_arg(args.pattern)} --control {args.control!r} \"\n        f\"{_evidence_arg(gid, 'C1')}\",",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[both_quotes_and_backslash]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c1.evidence) == (pattern, control)|#0",
+      "note": "C1's --control restored to repr, on the value holding both quote kinds. repr escapes the inner single quote with a backslash, which bash does not honour inside single quotes, so the script dies on unbalanced quoting before absent.py runs and no evidence file exists."
+    },
+    {
+      "name": "PA5",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(args.pattern)} --control {_shell_arg(args.control)} \"",
+      "new": "        f\"--pattern {args.pattern!r} --control {_shell_arg(args.control)} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[backslash_paren]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c1.evidence) == (pattern, control)|#0",
+      "note": "🔴 The second s295 shape: PA3's mutation on the escaped-paren pattern. Doubled, it is not a valid regex, so absent.py exits 2 and never writes the evidence file the judge is told to read."
+    },
+    {
+      "name": "PA6",
+      "subject": "tools/goal_template.py",
+      "old": "        \"the absence itself\",\n        f\"python -m tools.absent --file {_shell_arg(args.file)} \"",
+      "new": "        \"the absence itself\",\n        f\"python -m tools.absent --file {args.file} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[spaces]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c1.evidence) == (pattern, control)|#0",
+      "note": "C1's --file interpolated bare, as every file path was before this fix. The subject's directory carries a space and a quote, so bash splits and unbalances the argument."
+    },
+    {
+      "name": "PA7",
+      "subject": "tools/goal_template.py",
+      "old": "    return shlex.quote(value)",
+      "new": "    return \"'\" + value + \"'\"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[single_quote]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c0.evidence) == (control, control)|#0",
+      "note": "A plausible wrong fix: wrap in single quotes without escaping. repr survived the single-quote case by switching to double quotes, so this is the mutation that gives that case teeth; the first embedded quote ends the argument, and C0 is the first script to hit it."
+    },
+    {
+      "name": "PA8",
+      "subject": "tools/goal_template.py",
+      "old": "    return shlex.quote(value)",
+      "new": "    return value",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[spaces]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|_absent_received(c0.evidence) == (control, control)|#0",
+      "note": "The other plausible wrong fix: no quoting at all, which is what T-COUNT and every file path had. C0 is the first script to run, so C0's pair is the claim it reddens."
+    },
+    {
+      "name": "PA9",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--expect-present {_evidence_arg(gid, CONTROL_ID)}\",",
+      "new": "        f\"{_evidence_arg(gid, CONTROL_ID)}\",",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte[spaces]",
+      "expect_claim": "test_a_rendered_absent_goal_hands_absent_py_every_value_byte_for_byte|(c0.returncode, c1.returncode) == (EXIT_PASS, direct.returncode)|#0",
+      "note": "🔴 C0 loses --expect-present. Every value still arrives byte for byte, so both received-pair assertions stay green; only the exit code changes, and the exit code is the one thing the Stop gate records."
+    },
+    {
+      "name": "PO0",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "        lines.append(f\"      claim : {res.probe.expect_claim}\")",
+      "new": "        lines.append(f\"      claim : {res.probe.name}\")",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex",
+      "expect_claim": "test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex|direct == [EXIT_PASS, EXIT_FAIL]|#0",
+      "note": "Report-producer control: the driver's claim line stops naming the stable_key, so no pattern can tell the two banked reports apart. The control has to be able to go RED before C2's two readings mean anything."
+    },
+    {
+      "name": "PO1",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--pattern {_shell_arg(re.escape(args.claim))} \"",
+      "new": "        f\"--pattern {re.escape(args.claim)!r} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex",
+      "expect_claim": "test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex|on_credited.returncode == EXIT_PASS|#0",
+      "note": "C2's --pattern restored to repr. The escaped key's backslashes double, every alternative now demands a literal backslash the report does not contain, and the report that DOES credit the claim reads FAIL."
+    },
+    {
+      "name": "PO2",
+      "subject": "tools/goal_template.py",
+      "old": "{_shell_arg(re.escape(args.claim))}",
+      "new": "{_shell_arg(args.claim)}",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex",
+      "expect_claim": "test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex|on_other.returncode == EXIT_FAIL|#0",
+      "note": "🔴 The T-ORACLE defect (s295 M3): re.escape dropped. The crediting report still passes through the test_x branch, so on_credited stays green, and the report crediting a DIFFERENT claim passes too, through the #0 branch alone."
+    },
+    {
+      "name": "PO3",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"python -m tools.absent --file {_shell_arg(args.report)} \"\n        f\"--pattern {_shell_arg(re.escape(args.claim))} \"",
+      "new": "        f\"python -m tools.absent --file {args.report} \"\n        f\"--pattern {_shell_arg(re.escape(args.claim))} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex",
+      "expect_claim": "test_a_rendered_oracle_goal_reads_the_claim_as_a_literal_not_a_regex|on_credited.returncode == EXIT_PASS|#0",
+      "note": "C2's --file interpolated bare. The banked report's directory has a space, so absent.py is handed two arguments and exits 2 on its own usage error, which is what the pre-fix renderer read."
+    },
+    {
+      "name": "PC0",
+      "subject": "tools/tally.py",
+      "old": "        f\"missing '{tally.field}': {tally.missing_field}\",",
+      "new": "        f\"missing <{tally.field}>: {tally.missing_field}\",",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte",
+      "expect_claim": "test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte|(_tally_received(direct.stdout), direct.returncode) == ( (str(records), field, values), EXIT_PASS, )|#0",
+      "note": "Instrument control: tally's report line naming the field changes shape, so the argv-with-no-shell run can no longer be read back. A repr-style change would NOT do here: repr of the field prints the same quotes the parser already expects."
+    },
+    {
+      "name": "PC1",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--expect {_shell_arg(expect + ',' + _IMPOSSIBLE_VALUE)} --expect-refusal \"",
+      "new": "        f\"--expect {expect},{_IMPOSSIBLE_VALUE} --expect-refusal \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte",
+      "expect_claim": "test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte|_tally_received(c0.evidence) == (str(records), field, sorted([*values, impossible]))|#0",
+      "note": "C0's --expect, with its appended impossible value, interpolated bare: the value with a space splits, and tally refuses its own argv before reading a record."
+    },
+    {
+      "name": "PC2",
+      "subject": "tools/goal_template.py",
+      "old": "        f\"--expect {_shell_arg(expect)} {_evidence_arg(gid, 'C1')}\",",
+      "new": "        f\"--expect {expect} {_evidence_arg(gid, 'C1')}\",",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte",
+      "expect_claim": "test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte|_tally_received(c1.evidence) == (str(records), field, values)|#0",
+      "note": "C1's --expect interpolated bare: the same split, on the reading itself. C0 stays quoted, so C0's assertion is green and the RED lands on C1's."
+    },
+    {
+      "name": "PC3",
+      "subject": "tools/goal_template.py",
+      "old": "        \"the reading itself\",\n        f\"python -m tools.tally {_shell_arg(args.file)} --field {_shell_arg(args.field)} \"",
+      "new": "        \"the reading itself\",\n        f\"python -m tools.tally {_shell_arg(args.file)} --field {args.field} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte",
+      "expect_claim": "test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte|_tally_received(c1.evidence) == (str(records), field, values)|#0",
+      "note": "🔴 The T-COUNT sibling as measured in s295: C1's --field interpolated bare, so a field with a space reaches tally as two arguments (unrecognized arguments: kind) and the check exits 2."
+    },
+    {
+      "name": "PC4",
+      "subject": "tools/goal_template.py",
+      "old": "{_shell_arg(expect + ',' + _IMPOSSIBLE_VALUE)} --expect-refusal \"",
+      "new": "{_shell_arg(expect + ',' + _IMPOSSIBLE_VALUE)} \"",
+      "node_id": "tests/tools/test_goal_template_shell_quoting.py::test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte",
+      "expect_claim": "test_a_rendered_count_goal_hands_tally_every_value_byte_for_byte|(c0.returncode, c1.returncode) == (EXIT_PASS, EXIT_PASS)|#0",
+      "note": "C0 loses --expect-refusal. Every value is unchanged and both received assertions stay green; C0 now reports its refused reading as a FAIL instead of passing as the control, and only the exit-code assertion can see that."
+    }
+  ],
+  "exemptions": {}
+}
