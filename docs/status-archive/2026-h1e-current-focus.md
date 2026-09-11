@@ -580,3 +580,58 @@ of this file after the append.
 > fabricated instruction (`decision=proceed`, `transport=retry`) whose `reason`
 > invented a user question never asked — the **proceed-arm reason-quality**
 > defect (SD-3/AC-12), which this transport work neither fixed nor claimed to.
+
+### Rotated at the s293 reconcile — the session-291 Current-Focus block [on the R1 headroom rule: STATUS opened the reconcile at **63,062 B**, and keeping this block would have left only **2,149 B** under R1's 65,536 B ceiling, so the window stays at TWO (292, 293) — the fifth consecutive reconcile of that shape. Block is **3,464 B** as carved from `git show HEAD:docs/STATUS.md`. 🔴 **Its own Current-Focus ledger entry was DROPPED, not appended:** probed at six widths, five read 0 and `58,401 B` read 1 — inside the `### Rotated at the s291 reconcile` header above, which is that entry rewritten (the headroom rule, 58,401 B, TWO (290, 291), no s289 entry to travel). Only its `51,511 B` destination size is absent, and that header withholds this archive's size by design. Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 291, 2026-09-10 (`793b9d9` → `b179825`) — THREE PRs
+> ([#1457](https://github.com/CrayJThiemsert/vero-lite/pull/1457)–[#1459](https://github.com/CrayJThiemsert/vero-lite/pull/1459)),
+> all merged. **A verification survey found that every shipped guard checks
+> agreement, never a fact — PLAN-0125 now owns the gap.**
+>
+> 🔴 **The survey (three Explore agents + Code, grounded):** every shipped
+> guard checks *reference integrity* or *pairwise agreement*, **none
+> re-derives a fact** — `tools/check_ac_consistency.py` says so in its own
+> docstring (*"a wrong fact stated consistently passes"*). Root cause is
+> structural: `status-scribe` and `plan-drafter` both carry `Bash` in
+> `disallowedTools`. The rule already exists (ADR-0038 C2 →
+> `CLAUDE.md:145`); the **mechanism** is ADR-0038 OQ-5, *"ratified as
+> required … owed work"*, with no owner — now owned by **PLAN-0125**
+> (drafted by the in-harness `plan-drafter`, 16 ACs, 9 SDs; SD-5 and SD-6
+> depart from the typed shape and are Cray's). Behavioral claims (the s281
+> G20 shape) are named **out of scope** by the draft itself.
+>
+> ✅ **#1457 — the tools catalogue.** `tools/README.md` (20 entries: 12
+> scripts + 8 packages, split by who invokes them) and `CLAUDE.md` §10 grew
+> from 1 to 10 `tools/` rows (**+1,441 B**); the `.claude/skills/` row named
+> 2 of 10 skills, corrected. Cost of the gap, measured: **twice in one
+> session** Code ranked an existing tool as unbuilt work
+> (`hook_copies_audit.py`, cited **0×** in CLAUDE.md). Its own verification
+> script passed **vacuously** on first run (`readme_cited=0 → ALL-PASS`) and
+> was repaired by *deriving* the anchor, not by relaxing the assertion.
+>
+> ✅ **#1458 — `tools/check_status_freshness.py` (④-lite):** exits 1 only on
+> a broken `head_commit`; drift is **printed** every commit via
+> `always_run + verbose`, **never gated** (a zero-tolerance gate would redden
+> every PR between reconciles). At dispatch it read `head=793b9d9
+> newest=8bf378e drift=4`. The gating threshold is PLAN-0125 SD-1.
+>
+> ✅ **#1459 — PLAN-0123 Step 1**, RED-first with printed values: AC-1
+> `status_post=passed → active + _goal_gate:invalid_goal` (enforce:false) /
+> `blocked-pending-human` (enforce:true); AC-2 `prose=600 constant=120 →
+> 120/120`; AC-3 `C1=fail → basis-moved`, `ladder_rung 1 → 0`, and the mixed
+> case measured `pings=['basis_moved','warn']` — nothing masked. Three
+> batteries (the shipped lint refused one combined file: cross-module key
+> collision), **8/8 WITNESSED, COVERAGE COMPLETE ×3**, exemptions **derived**
+> by a generator (139+2+3). Restore verified by content; `tests/handoffs`
+> **816 passed**. The "hook edits are classifier-gated" risk the Step
+> budgeted was **measured absent** (no PreToolUse hook is scoped to
+> `.claude/hooks/`; PLAN-0122 G20 had it FALSE at s281).
+>
+> ⚠️ **The live `/goal` for Step 1 first read `C1=C2=C3=fail`** while every
+> test was green: its cmds named `python -m pytest`, and the Stop hook runs
+> **Windows-side**, where `C:\Python313\python.exe` has no pytest.
+> Re-declared with the hook's own bridge shape (`wsl.exe --exec bash
+> <WSL-side script>`), the old goal archived to `goal-history/` per R8, and
+> **controlled from the hook's call shape (`rc=0`)** before the gate was
+> trusted — which then recorded `_goal_gate:passed` on its own. This is
+> PLAN-0123 Step 2's reason (*"the renderer runs WSL-side"*), measured live.
