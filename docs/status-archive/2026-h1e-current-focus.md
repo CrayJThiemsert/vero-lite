@@ -635,3 +635,66 @@ of this file after the append.
 > **controlled from the hook's call shape (`rc=0`)** before the gate was
 > trusted — which then recorded `_goal_gate:passed` on its own. This is
 > PLAN-0123 Step 2's reason (*"the renderer runs WSL-side"*), measured live.
+
+### Rotated at the s294 reconcile — the session-292 Current-Focus block [on the R1 headroom rule: STATUS opened the reconcile at **59,921 B**, and keeping this block beside the new s294 block (**3,412 B**) would have left only **2,574 B** under R1's 65,536 B ceiling, so the window stays at TWO (293, 294) — the sixth consecutive reconcile of that shape. Block is **4,002 B** as carved from `git show HEAD:docs/STATUS.md` (reconcile run in s295), not from the scribe's return. 🔴 **Its own Current-Focus ledger entry was DROPPED, not appended:** its measured tokens (`2,459 B`, `64,680 B`, `856 B`, `(291, 292)`) each read 1 inside the `### Rotated at the s292 reconcile` header above, which is that entry rewritten. ⚠️ **This block's specimen line is corrected in STATUS, not here** (a move-only archive): "4 of 6 … on the only 1 of 20 worktrees running the shipped bytes" was `was an error` on attribution — the two classifier logs share their first 256 lines, and 3 of the 5 fabricated requests are `main`'s (s294). Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 292, 2026-09-10 (`b179825` → `21ed10d`) — FOUR PRs
+> ([#1461](https://github.com/CrayJThiemsert/vero-lite/pull/1461)–[#1464](https://github.com/CrayJThiemsert/vero-lite/pull/1464)),
+> all merged. **PLAN-0123 Step 2 COMPLETE and `tools/` is `mypy --strict`
+> clean — but the finding is SIX refuted generalisations in one day.**
+>
+> ✅ **#1461 + #1463 — PLAN-0123 Step 2 COMPLETE: AC-4…AC-8, 5 batteries,
+> 41/41 WITNESSED (22 + 19), `PROBE-COVERAGE: COMPLETE` on each.**
+> `tools/absent.py` = T-ABSENT: an absence with a positive control that can
+> fail, printing `lines/consumed/matched/control_hits/self_excluded`.
+> `goal_template.py` renders T-COUNT / T-ABSENT / T-ORACLE behind an R1–R8
+> validator, **schema imported from `_goal_state.py` so it cannot drift from
+> the gate's parse**; plus `_evidence.py`, `stamp_evidence.py` (Cray, typed)
+> and `--report-to` provenance on the driver + `tally.py`.
+>
+> ✅ **#1462 — `mypy --strict` in `tools/`: 4 errors in 3 files → 0** (43
+> source files both sides). Three `tools/handoffs/` CLIs imported a sibling
+> by bare name behind a `sys.path.insert` of their own directory — invisible
+> to `ruff`, unresolvable to mypy (three `_schema.py` exist); now
+> `from tools.handoffs._schema import …` behind the `__package__` bootstrap,
+> all three invocation modes verified with a negative control. **The
+> `no-any-return` at `validate_handoff.py:63` was a downstream symptom, not
+> a wrong declaration** — the fix cleared it, nothing relaxed; `tests/handoffs`
+> **811 passed / 5 failed / 2 skipped, byte-identical both sides**
+> (`docs/lessons/0042`).
+>
+> ⚠️ **#1464 — the command #1462 documented was itself incomplete.**
+> `goal_template.py` imports `_goal_state` from `.claude/hooks/` by design:
+> `MYPYPATH=.` gives **1 error on a clean tracked tree**,
+> `MYPYPATH=.:.claude/hooks` **0 errors / 47 source files** — now what
+> `tools/README.md` says, beside a `# noqa: E402` note narrowed from
+> universal: **two files need opposite answers from one linter**, split by a
+> top-level `sys.path.insert` vs one inside the `__package__` guard.
+>
+> 🔴 **Six refuted generalisations in one exchange, all measured.** s291 and
+> s292 refuted each other twice and each refuted its own replacement once,
+> over one `tools/README.md` paragraph: *two files* · *the `__init__.py`
+> subpackages* · *another named file's import* · *grep the `__init__.py`* ·
+> *`reason` must cite a matched row* · *the noqa rule is universal*. Each was
+> a cheaper predicate off ONE instance; only the general form (**one file
+> entering one build under two module names**) survived, and the sixth was
+> caught **before** shipping. Detail: `tools/README.md`.
+>
+> 🔴 **The Stop-hook classifier fabricated a user request — a recurrence.**
+> It told a session whose user asked for none that *"The user requested a new
+> function to be added to the repository"*: **4 of 6 block emissions in 4
+> days carry a fabricated user-intent claim** (`09-08T05:06` · `09-09T17:04`
+> · `09-09T23:11` · `09-10T10:56`), on the **only 1 of 20 worktrees running
+> the shipped bytes** — live code, not a stale copy. *"`reason` must cite a
+> matched row"* was **retracted on measurement: `matched_rows` is empty on
+> 244/266 (91%)**. **Awaiting Cray:** the specimens, PLAN-0122 SD-5's
+> ruled-but-unbuilt shadow checks, and a `CLAUDE.md` §8 line.
+>
+> 🔴 **AC-12's precondition rests on a misread — `was an error`, not
+> `superseded` (measured s291).** PLAN-0122:140 says *"Records written before
+> that PR keep their old label"*: a pre-repair record has the "impossible"
+> shape **by design** — repair `793b9d9` at `2026-09-10T00:54:44+07:00` ·
+> `records=269` · `impossible_shape=64` · `of_those_AFTER_the_repair=0`,
+> control: post-repair records that exist at all = **43**. **The clash with
+> Cray's s282 "leave the worktrees in place" ruling dissolves — the window
+> opens without touching the 19 worktrees. Cray's ruling, not ours.**
