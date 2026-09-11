@@ -59,6 +59,7 @@ need to not re-implement them.
 | `retired-claim-guard` | `check_retired_claims.py` | A claim declared `retired:` does not survive anywhere live |
 | `ac-consistency-guard` | `check_ac_consistency.py` | An AC's ledger agrees with itself (STATUS `CLOSED` ⇔ PLAN checkbox) |
 | `battery-definition-lint` | `check_battery_definitions.py` | Every probe battery can still **address** what it declares |
+| `ontology-orm-lockstep` | `check_ontology_orm_lockstep.py` | Fleet's DB-backed ontology types ⇔ their hand-written tables, both directions, plus stale `(type, column)` exclusions and type compatibility (PLAN-0109) |
 
 ⚠️ **What this group does NOT do.** Every one of these verifies a *lexical shape* — a
 regex, a byte count, a path's resolvability, a checkbox's state — or a *pairwise

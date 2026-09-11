@@ -1,0 +1,324 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_ontology_orm_lockstep.py",
+    "tests/api/test_meta_fleet_governance_types.py"
+  ],
+  "probes": [
+    {
+      "name": "L-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(set(columns) - set(properties) - excluded):",
+      "new": "    for column in sorted(set(columns) - set(properties)):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_lockstep_tree_passes_with_its_counts_printed",
+      "expect_claim": "test_a_lockstep_tree_passes_with_its_counts_printed|code == 0|#0",
+      "note": "Ignores the exclusions, so the fixture's two excluded columns become offenders: the lockstep tree must stop passing. The positive control's own RED."
+    },
+    {
+      "name": "L-counts",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    report.columns += len(columns)",
+      "new": "    report.columns += 0",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_lockstep_tree_passes_with_its_counts_printed",
+      "expect_claim": "test_a_lockstep_tree_passes_with_its_counts_printed|\"types=1 declared=5 columns=7 excluded=2 offenders=0\" in out|#0",
+      "note": "Offender-neutral: code stays 0, only the printed column count moves — so the counts assertion reddens alone."
+    },
+    {
+      "name": "L-verdict",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "print(\"ontology-orm-lockstep: VERDICT: PASS exit=0\")",
+      "new": "print(\"ontology-orm-lockstep: VERDICT: OK exit=0\")",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_lockstep_tree_passes_with_its_counts_printed",
+      "expect_claim": "test_a_lockstep_tree_passes_with_its_counts_printed|\"VERDICT: PASS exit=0\" in out|#0",
+      "note": "Code and counts unchanged; only the verdict token moves."
+    },
+    {
+      "name": "i-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(set(columns) - set(properties) - excluded):",
+      "new": "    for column in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_i_a_column_neither_declared_nor_excluded_fails_and_is_named",
+      "expect_claim": "test_i_a_column_neither_declared_nor_excluded_fails_and_is_named|code == 1|#0",
+      "note": "AC-3 (i) disabled: the undeclared column no longer counts, the guard exits 0."
+    },
+    {
+      "name": "i-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_i_a_column_neither_declared_nor_excluded_fails_and_is_named",
+      "expect_claim": "test_i_a_column_neither_declared_nor_excluded_fails_and_is_named|\"[undeclared-column] Widget.colour\" in err|#0",
+      "note": "The offender line loses its bracketed kind while the exit stays 1 — the name assertion reddens alone (Lesson #0043: a RED must name what broke)."
+    },
+    {
+      "name": "ii-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for prop in sorted(set(properties) - set(columns)):",
+      "new": "    for prop in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ii_a_property_with_no_column_fails_and_is_named",
+      "expect_claim": "test_ii_a_property_with_no_column_fails_and_is_named|code == 1|#0",
+      "note": "AC-3 (ii) disabled."
+    },
+    {
+      "name": "ii-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ii_a_property_with_no_column_fails_and_is_named",
+      "expect_claim": "test_ii_a_property_with_no_column_fails_and_is_named|\"[column-less-property] Widget.nickname\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "iii-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "        if column not in {str(c.name) for c in table.columns}:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_iii_a_stale_exclusion_fails_and_is_named",
+      "expect_claim": "test_iii_a_stale_exclusion_fails_and_is_named|code == 1|#0",
+      "note": "AC-3 (iii) disabled: an exclusion naming a missing column passes."
+    },
+    {
+      "name": "iii-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_iii_a_stale_exclusion_fails_and_is_named",
+      "expect_claim": "test_iii_a_stale_exclusion_fails_and_is_named|\"[stale-exclusion] Widget.gone\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "iv-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    if declared not in allowed:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_iv_an_incompatible_type_fails_and_is_named",
+      "expect_claim": "test_iv_an_incompatible_type_fails_and_is_named|code == 1|#0",
+      "note": "AC-3 (iv) disabled: a string declared on a Numeric column passes."
+    },
+    {
+      "name": "iv-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_iv_an_incompatible_type_fails_and_is_named",
+      "expect_claim": "test_iv_an_incompatible_type_fails_and_is_named|\"[type-incompatible] Widget.amount\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "ed-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(excluded & set(properties)):",
+      "new": "    for column in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_column_both_excluded_and_declared_fails_and_is_named",
+      "expect_claim": "test_a_column_both_excluded_and_declared_fails_and_is_named|code == 1|#0",
+      "note": "excluded-and-declared disabled. On that fixture no other check fires (the column is declared AND has a column), so the guard exits 0."
+    },
+    {
+      "name": "ed-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_column_both_excluded_and_declared_fails_and_is_named",
+      "expect_claim": "test_a_column_both_excluded_and_declared_fails_and_is_named|\"[excluded-and-declared] Widget.secret\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "ut-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "        report.offenders.append(\n            Offender(\n                \"undeclared-type\",",
+      "new": "        (\n            Offender(\n                \"undeclared-type\",",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_mapped_type_the_ontology_does_not_declare_fails_and_is_named",
+      "expect_claim": "test_a_mapped_type_the_ontology_does_not_declare_fails_and_is_named|code == 1|#0",
+      "note": "The offender is built and discarded instead of appended; the early return still runs, so nothing crashes on the missing block."
+    },
+    {
+      "name": "ut-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_a_mapped_type_the_ontology_does_not_declare_fails_and_is_named",
+      "expect_claim": "test_a_mapped_type_the_ontology_does_not_declare_fails_and_is_named|\"[undeclared-type] Widget.Widget\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "refuse-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "        return 2",
+      "new": "        return 3",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_missing_inputs_refuse_rather_than_pass",
+      "expect_claim": "test_missing_inputs_refuse_rather_than_pass|code == 2|#0",
+      "note": "The refusal branch still prints its verdict line, so only the exit assertion reddens."
+    },
+    {
+      "name": "refuse-verdict",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "print(\"ontology-orm-lockstep: VERDICT: REFUSED exit=2\")",
+      "new": "print(\"ontology-orm-lockstep: VERDICT: REFUSAL exit=2\")",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_missing_inputs_refuse_rather_than_pass",
+      "expect_claim": "test_missing_inputs_refuse_rather_than_pass|\"VERDICT: REFUSED exit=2\" in out|#0",
+      "note": "Exit stays 2; only the token moves."
+    },
+    {
+      "name": "ac10a-control",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    report.allowlists[type_name] = frozenset(properties)",
+      "new": "    report.allowlists[type_name] = frozenset()",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard",
+      "expect_claim": "test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard|\"amount\" in allowlist|#0",
+      "note": "An empty allowlist would satisfy 'colour not in allowlist' vacuously — this reddens the positive control that rules that out."
+    },
+    {
+      "name": "ac10a-allowlist",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    report.allowlists[type_name] = frozenset(properties)",
+      "new": "    report.allowlists[type_name] = frozenset(columns)",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard",
+      "expect_claim": "test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard|\"colour\" not in allowlist|#0",
+      "note": "'All columns' instead of 'the declared set' — the denylist shape AC-10 forbids. 'amount' is a column too, so the control above stays green."
+    },
+    {
+      "name": "ac10a-offender",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(set(columns) - set(properties) - excluded):",
+      "new": "    for column in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard",
+      "expect_claim": "test_ac10_a_new_column_is_outside_the_allowlist_and_reddens_the_guard|(\"undeclared-column\", \"colour\") in {(o.kind, o.name) for o in report.offenders}|#0",
+      "note": "The allowlist is untouched, so both allowlist assertions stay green and only the red-guard half reddens."
+    },
+    {
+      "name": "ac10b-code",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(set(columns) - set(properties) - excluded):",
+      "new": "    for column in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac10_deleting_an_exclusion_while_the_yaml_stays_silent_reddens",
+      "expect_claim": "test_ac10_deleting_an_exclusion_while_the_yaml_stays_silent_reddens|code == 1|#0",
+      "note": "A deleted exclusion with a silent YAML is caught by (i) alone; disabling (i) lets the quiet leak attempt pass."
+    },
+    {
+      "name": "ac10b-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "f\"  - [{offender.kind}] {offender.type_name}.",
+      "new": "f\"  - {offender.kind} {offender.type_name}.",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac10_deleting_an_exclusion_while_the_yaml_stays_silent_reddens",
+      "expect_claim": "test_ac10_deleting_an_exclusion_while_the_yaml_stays_silent_reddens|\"[undeclared-column] Widget.secret\" in err|#0",
+      "note": "Same format mutation as i-name, its own node."
+    },
+    {
+      "name": "AC4-a",
+      "subject": "services/db/repair_case.py",
+      "old": "    status: Mapped[str] = mapped_column(sa.Text, nullable=False, default=CASE_STATUS_OPEN)\n",
+      "new": "    status: Mapped[str] = mapped_column(sa.Text, nullable=False, default=CASE_STATUS_OPEN)\n    probe_scratch: Mapped[str | None] = mapped_column(sa.Text, nullable=True)\n",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_this_repository_passes_its_own_guard",
+      "expect_claim": "test_this_repository_passes_its_own_guard|result.returncode == 0|#0",
+      "note": "PLAN-0109 AC-4 (a), on the LIVE tree: a scratch column on the real RepairCase model must turn the real guard red (the assertion message carries the guard's stderr, which names the column)."
+    },
+    {
+      "name": "AC4-b",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "      opened_at:\n        type: timestamp\n        required: true\n      description:",
+      "new": "      opened_at:\n        type: timestamp\n        required: true\n      probe_scratch:\n        type: string\n      description:",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_this_repository_passes_its_own_guard",
+      "expect_claim": "test_this_repository_passes_its_own_guard|result.returncode == 0|#0",
+      "note": "PLAN-0109 AC-4 (b), the other direction on the LIVE tree: a scratch property on the real RepairCase declaration. The anchor includes 'description:' because Alert also has an opened_at block."
+    },
+    {
+      "name": "AC4-a-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for column in sorted(set(columns) - set(properties) - excluded):",
+      "new": "    for column in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac4_a_a_scratch_column_on_the_real_model_is_named",
+      "expect_claim": "test_ac4_a_a_scratch_column_on_the_real_model_is_named|(\"undeclared-column\", \"RepairCase\", \"probe_scratch\") in named|#0",
+      "note": "AC-4 (a)'s NAME half on the real inputs: with (i) disabled the scratch column on the in-memory copy of the real table is no longer named. AC4-a above witnesses the tracked-file edit; the driver does not keep the stderr that named it, so this is where the name is witnessed."
+    },
+    {
+      "name": "AC4-b-name",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    for prop in sorted(set(properties) - set(columns)):",
+      "new": "    for prop in sorted(set()):",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_ac4_b_a_scratch_property_on_the_real_yaml_is_named",
+      "expect_claim": "test_ac4_b_a_scratch_property_on_the_real_yaml_is_named|(\"column-less-property\", \"RepairCase\", \"probe_scratch\") in named|#0",
+      "note": "AC-4 (b)'s NAME half on the real inputs: with (ii) disabled the scratch property on the in-memory copy of the real YAML is no longer named."
+    },
+    {
+      "name": "real-counts",
+      "subject": "tools/check_ontology_orm_lockstep.py",
+      "old": "    report = Report(types=len(types), excluded=len(exclusions))",
+      "new": "    report = Report(types=len(types), excluded=0)",
+      "node_id": "tests/tools/test_check_ontology_orm_lockstep.py::test_this_repository_passes_its_own_guard",
+      "expect_claim": "test_this_repository_passes_its_own_guard|\"types=3 declared=21 columns=28 excluded=7 offenders=0\" in result.stdout|#0",
+      "note": "The real run still exits 0; only the printed exclusion count moves, so the counts pin reddens alone."
+    },
+    {
+      "name": "M-status",
+      "subject": "services/api/routers/actions.py",
+      "old": "@router.get(\"/meta\", response_model=OntologyMeta)",
+      "new": "@router.get(\"/meta\", response_model=OntologyMeta, status_code=203)",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_advertises_each_ruled_type_with_its_primary_key",
+      "expect_claim": "_fleet_types|response.status_code == 200|#0",
+      "note": "A non-200 that still carries the JSON body, so the helper's status assertion reddens without a decode crash behind it."
+    },
+    {
+      "name": "M-vertical",
+      "subject": "services/api/routers/actions.py",
+      "old": "    meta = load_ontology_meta(settings.oct_vertical)",
+      "new": "    meta = load_ontology_meta(\"energy\")",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_advertises_each_ruled_type_with_its_primary_key",
+      "expect_claim": "_fleet_types|body[\"vertical\"] == _VERTICAL|#0",
+      "note": "The route ignores the configured vertical: the control that the monkeypatch reached the route must redden."
+    },
+    {
+      "name": "M-truck-control",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "  Truck:\n    primary_key: truck_id",
+      "new": "  Truck:\n    primary_key: plate",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_advertises_each_ruled_type_with_its_primary_key",
+      "expect_claim": "test_meta_advertises_each_ruled_type_with_its_primary_key|types[\"Truck\"][\"primary_key\"] == \"truck_id\"|#0",
+      "note": "Reddens the positive control that a missing ruled type is about the ontology, not the reader."
+    },
+    {
+      "name": "M-missing",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "  RepairCaseQuote:\n    primary_key: quote_id",
+      "new": "  RepairCaseQuoteProbe:\n    primary_key: quote_id",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_advertises_each_ruled_type_with_its_primary_key",
+      "expect_claim": "test_meta_advertises_each_ruled_type_with_its_primary_key|not missing|#0",
+      "note": "One ruled type renamed away; Truck's control stays green."
+    },
+    {
+      "name": "M-pk",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "    primary_key: accepted_id",
+      "new": "    primary_key: accepted_key",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_advertises_each_ruled_type_with_its_primary_key",
+      "expect_claim": "test_meta_advertises_each_ruled_type_with_its_primary_key|not wrong|#0",
+      "note": "All three types still present, one primary key wrong — 'missing' stays green."
+    },
+    {
+      "name": "M-ref",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "        target: RepairCaseQuote",
+      "new": "        target: RepairCase",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_meta_carries_the_relational_refs",
+      "expect_claim": "test_meta_carries_the_relational_refs|found == _RULED_REFS|#0",
+      "note": "The accepted quote's quote_id points at the wrong type; the three other refs are untouched."
+    },
+    {
+      "name": "M-present",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "  RepairCase:\n    primary_key: case_id",
+      "new": "  RepairCaseProbe:\n    primary_key: case_id",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_declared_enums_equal_the_values_the_code_writes",
+      "expect_claim": "test_declared_enums_equal_the_values_the_code_writes|\"RepairCase\" in types|#0",
+      "note": "The enum test's precondition, so a missing type fails on its own named assertion rather than a KeyError."
+    },
+    {
+      "name": "M-enum",
+      "subject": "verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml",
+      "old": "        values: [open, closed]",
+      "new": "        values: [open, closed, parked]",
+      "node_id": "tests/api/test_meta_fleet_governance_types.py::test_declared_enums_equal_the_values_the_code_writes",
+      "expect_claim": "test_declared_enums_equal_the_values_the_code_writes|declared == written|#0",
+      "note": "The ontology gains a status the code never writes — the drift this test exists to stop."
+    }
+  ],
+  "exemptions": {}
+}
