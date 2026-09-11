@@ -78,8 +78,8 @@
     {
       "name": "P7i",
       "subject": "tools/goal_template.py",
-      "old": "        \"the reading itself\",\n        f\"python -m tools.tally {args.file} --field {args.field} --expect {expect} \"",
-      "new": "        \"the reading itself\",\n        f\"git show HEAD:{args.file} --field {args.field} --expect {expect} \"",
+      "old": "        \"the reading itself\",\n        f\"python -m tools.tally {_shell_arg(args.file)} --field {_shell_arg(args.field)} \"",
+      "new": "        \"the reading itself\",\n        f\"git show HEAD:{_shell_arg(args.file)} --field {_shell_arg(args.field)} \"",
       "node_id": "tests/tools/test_goal_template.py::test_no_template_ever_pins_the_basis_to_a_commit[T-COUNT]",
       "expect_claim": "test_no_template_ever_pins_the_basis_to_a_commit|values[\"has_head_pin\"] == \"False\"|#0",
       "note": "🔴 AC-7 A4 / clause R5. Emit a basis pinned to a commit. Measured in s289: such a check failed at four consecutive Stops after its PR merged, and under enforce:false the agent's context received none of them — a gate that reliably fails after success teaches that the gate is noise."
