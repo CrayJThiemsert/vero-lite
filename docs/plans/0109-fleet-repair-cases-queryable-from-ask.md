@@ -16,6 +16,38 @@
 > mechanism, open to countermand. Code re-verified F11/F12/F13, the SD-E anchors and
 > the retention-docstring anchor on disk before the fold: all held.
 
+> **Errata — session 294 (Cray, typed: fix the four defects before Step 1).** Four defects
+> in RULED content, each `was an error` in the draft as written and each re-measured on disk
+> at `main` `816a478` before the edit (STATUS Active TODOs, the PLAN-0109 row; (i)–(iii)
+> first measured s241, (iv) s260). **The rulings are untouched** — SD-A (b), the SD-B type
+> set and the SD-D IN/OUT set stand; what changed is the drafter's factual scaffolding.
+> **(i)** AC-11 prescribed deleting a TRUE sentence and writing a FALSE one. Measured: projected
+> row values reach the **phrase** request only (`services/engine/nl_query.py:1208-1235`,
+> `facts_json`, capped at `_PHRASE_FACT_CAP`, and only when the LLM arm phrases); the
+> translate request carries the ontology description + the question (`_describe_ontology`
+> `:395`, `_translate_messages` `:414`) — never row values; and the ADR-0035 D6 prompt log
+> stores the closed field set `{ts_utc, route, vertical, text=the QUESTION, model, outcome,
+> arm}` (`services/engine/llm/prompt_log.py:81-113`) — never a prompt body or a row. So
+> *"D6's regime … does not reach case text"* stays TRUE after Phase 2, and the ROPA's two
+> tripwires fire on other days (§4(a): the day Tab I published, s234; §4(c): the day REAL
+> case text replaces synthetic). AC-11, Step 5, SD-D consequence 1, SD-F and Verification
+> §5 are rewritten to the measured truth.
+> **(ii)** all three tables carry `tenant_id` through `TenantKeyMixin` (`services/db/repair_case.py:57`,
+> `repair_case_evidence.py:73,:167`; the mixin at `services/db/tenant.py:62-71`) and the
+> exclusion enumeration omitted it — AC-3 (i) would redden on the first run. Added, ×3.
+> **(iii)** AC-10 keyed exclusions by column alone while AC-3 (iii) fails any exclusion
+> *"naming a column the ORM no longer has"*: `seq` exists on `repair_case_accepted_quote`
+> only (`repair_case_evidence.py:307`), `photos` on `repair_case` only, `note` / `attachment`
+> on `repair_case_quote` only — a flat dict is stale for two tables on every non-universal
+> entry. Exclusions are now keyed `(type, column)` and AC-3 (iii) is defined per pair.
+> **(iv)** AC-11's `grep` read was half-vacuous: at baseline the verbatim needle reads
+> ROPA=**1**, module=**0**, because the docstring line-wraps the phrase (`does not reach case`
+> / `text`, `repair_case_retention.py:8-9`); a whitespace-normalised instrument with a
+> control reads module=1, ROPA=1 (s294, control PASS). With (i) the absence read is
+> withdrawn entirely; the presence reads AC-11 now carries are per-artifact `grep -c` on
+> sentences written on ONE physical line (ruff `line-length = 100` permits it), so the
+> instrument can see what it is asked about.
+
 ---
 
 ## Goal
@@ -153,9 +185,14 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   columns are deliberately undeclared, never what the compared sets contain).
   Command: `uv run pytest tests/tools/test_check_ontology_orm_lockstep.py -x 2>&1`.
   Pass read, fixed pre-run — the tool exits 1 and names the offender for each of:
-  (i) an ORM column absent from the YAML and not in the exclusion list;
+  (i) an ORM column absent from the YAML and not in **that type's** exclusion entries
+  (✎ s294: `tenant_id`, stamped on every table by `TenantKeyMixin`, is the first column
+  this fires on if the entries omit it — Errata (ii));
   (ii) a YAML property with no ORM column;
-  (iii) a **stale exclusion** — an exclusion entry naming a column the ORM no longer has;
+  (iii) a **stale exclusion** — an exclusion entry `(type, column)` whose column that
+  type's table no longer has (✎ s294, Errata (iii): defined per pair, because `seq`,
+  `photos`, `note` and `attachment` each exist on ONE of the three tables — a column-only
+  entry would be stale for the other two by this very rule);
   (iv) a declared YAML property whose type is incompatible with the column's SQL type
   (per the small SQLA→ontology type map: `Text→string`, `Numeric→float`,
   `DateTime→timestamp`, `JSONB→json`, `BigInteger→int`);
@@ -192,7 +229,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   RepairCaseQuote: `{quote_id, case_id, vendor, amount_thb, entered_by, entered_at}`;
   RepairCaseAcceptedQuote: `{accepted_id, case_id, quote_id, reason, accepted_by,
   accepted_at, lowest_amount_at_acceptance_thb, lowest_at_acceptance_basis}` (`seq`
-  excluded as internal). **Presence controls (ruled IN):** the seeded `description`,
+  excluded as internal; `tenant_id` excluded on all three types — AC-10, ✎ s294). **Presence controls (ruled IN):** the seeded `description`,
   `vendor` and `reason` values round-trip **verbatim** into the projected dicts.
   **Absence controls (ruled OUT):** `note`, `photos`, `attachment` appear in **no**
   returned dict — and the seed's non-null values are the positive control making that
@@ -232,10 +269,14 @@ provenance — the last two are Code's exclusion, reversible by Cray).
 - [ ] **AC-10 — the projection is an ALLOWLIST, single-sourced and leak-resistant.**
   Artifact: one shared module (recommended:
   `verticals/fleet_maintenance/data_adapter/db_projection.py`) holding the
-  type↔table mapping and the exclusion entries `{column: reason}` — reasons carry
-  provenance (`ruled-out (Cray)` for `note`; `payload-not-text (Code, reversible)` for
-  `photos`/`attachment`; `internal` for `seq`); **both** the adapter's projection and
-  `tools/check_ontology_orm_lockstep.py` import it.
+  type↔table mapping and the exclusion entries keyed **`(type, column) → reason`** —
+  ✎ s294, per pair, never by column alone (Errata (iii)). The seven entries, authored from
+  the model classes: `(RepairCase, photos)` and `(RepairCaseQuote, attachment)` —
+  `payload-not-text (Code, reversible)`; `(RepairCaseQuote, note)` — `ruled-out (Cray)`;
+  `(RepairCaseAcceptedQuote, seq)` — `internal`; `(RepairCase, tenant_id)`,
+  `(RepairCaseQuote, tenant_id)` and `(RepairCaseAcceptedQuote, tenant_id)` —
+  `tenancy-key (TenantKeyMixin, ADR-0035 D7; never queryable)`. **Both** the adapter's
+  projection and `tools/check_ontology_orm_lockstep.py` import it.
   **The projection emits exactly the declared YAML property set** (read from the real
   ontology artifact) — an allowlist naming what is included, never "all columns minus a
   denylist". Consequence, asserted in the tool tests: an ORM column added later is
@@ -247,32 +288,53 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   guard exit 1; (b) deleting an exclusion entry while the YAML stays silent makes the
   guard exit 1 (a quiet leak attempt forces a visible diff or a red guard).
 
-- [ ] **AC-11 — the compliance record is corrected in the same PR (SD-D consequence 1 — mandatory, its own AC, not a Step footnote).**
+- [ ] **AC-11 — the compliance record is EXTENDED in the same PR, and its true sentences are KEPT (SD-D consequence 1 — mandatory, its own AC, not a Step footnote). ✎ Rewritten s294 — Errata (i) + (iv).**
   Artifacts: `docs/compliance/ropa-change-statement-fleet.md` **and** the module
   docstring of `services/db/repair_case_retention.py`.
-  Shipping `description` into Ask makes recorded sentences **false at the moment of
-  merge**, so this AC lands in the same PR as the Phase 2 serving change. The passages
-  that go stale, named: (a) the retention docstring's claim that ADR-0035 D6's regime
-  "does not reach case text (`docs/compliance/ropa-change-statement-fleet.md` §4(a))"
-  (`repair_case_retention.py:7-13`); (b) the ROPA's §4(a)-anchored scope claim
-  ("defined per LLM request and does not reach case text"); (c) the ROPA's own two
-  tripwire sentences — "goes **stale as stated** the day fleet…" (§4 scope facts) and
-  "The day any real case text enters this surface the ruling is stale" — §239's day
-  **is this PR**. Each must be **corrected to state the new truth** (case
-  `description`, quote `vendor`, accepted-quote `reason` now reach the `/query`
-  translate + phrase prompts and the D6 prompt log), never merely appended to.
-  Command: `grep -n "does not reach case text" services/db/repair_case_retention.py docs/compliance/ropa-change-statement-fleet.md 2>&1`
-  (output to a file). Pass read (fixed): **zero** remaining occurrences of the
-  now-false sentence in either artifact, and the amended ROPA names PLAN-0109, the
-  ruled IN-set, the new surface, and its bounds (the 90-day case sweep; D6 prompt-log
-  rotation; the `case-persist-notice`).
+  **What Phase 2 changes, measured:** once the fleet adapter serves the three types, a
+  `/query` question that returns rows sends the projected values — including the
+  ruled-IN free text `description` / `vendor` / `reason` — to the on-prem model as part
+  of the **phrase** request (`services/engine/nl_query.py:1208-1235`: up to
+  `_PHRASE_FACT_CAP` records as `facts_json`, only when the LLM arm phrases; the
+  deterministic fallback sends nothing). **What it does NOT change:** the translate
+  request still carries the ontology description + the question and never a row
+  (`_describe_ontology` `:395`, `_translate_messages` `:414`); the ADR-0035 D6 prompt log
+  still stores its closed field set, whose `text` is the visitor's **question** — never
+  the prompt body or a record (`services/engine/llm/prompt_log.py:81-113`); so D6's
+  **retention regime still does not reach case text**. The sentences the draft called
+  stale are therefore TRUE and stay: (a) `repair_case_retention.py:7-13` ("does not
+  reach case text"); (b) the ROPA's §3.1 item 2 / §4(a) scope claim. The ROPA's two
+  tripwires are not this PR's either — §4(a)'s fired when Tab I published (s234) and
+  §4(c)'s fires when REAL case text replaces synthetic; neither is re-attributed.
+  **What must be written — an addition that corrects the record's completeness, never
+  an appendage to a false sentence:** (1) a new dated subsection in the ROPA change
+  statement, in the §3.3 shape ("🆕 … added sNNN"), naming PLAN-0109, the ruled IN-set,
+  the new **reader** (Tab C / `/query`), the new **processing step** (case text leaves
+  the row in a phrase request to the on-prem model host, `_PHRASE_FACT_CAP` records per
+  question), what is stored (the question only — the D6 field set), and its bounds (the
+  90-day case sweep; D6 prompt-log rotation applies to the question, not to rows; the
+  `case-persist-notice`; the SD-F injection-shaped surface); (2) in the retention
+  docstring, one added sentence beside the kept one, so *"does not reach case text"*
+  cannot be misread as *"the model never sees case text"*. **The same one-line sentence
+  appears verbatim in both artifacts** (the ROPA subsection opens with it), written on
+  ONE physical line (ruff `line-length = 100`), and the docstring's kept sentence is
+  re-flowed so its needle sits on one line too — a needle that spans a wrap reads 0
+  while the content is present (Errata (iv): verbatim module=0, normalised module=1).
+  Commands (each to a file; `grep -c` over two files prints one count PER file):
+  `grep -c "does not reach case text" services/db/repair_case_retention.py docs/compliance/ropa-change-statement-fleet.md 2>&1`
+  and `grep -c "<the added sentence, bytes fixed in the PR body BEFORE the edit>" services/db/repair_case_retention.py docs/compliance/ropa-change-statement-fleet.md 2>&1`.
+  Pass read (fixed): the kept sentence reads **≥ 1 in EACH artifact** (retention, and the
+  positive control that the instrument sees both files); the added sentence reads **≥ 1
+  in EACH artifact**; the ROPA subsection names PLAN-0109 and the IN-set. **Witnessed RED
+  at baseline (s294):** added sentence `0` / `0`; kept sentence module `0` (wrapped) /
+  ROPA `1` — so a green on the kept-sentence read is itself evidence the re-flow landed.
   **Why no existing guard closes this:** the retention module's own import-absence
   guard — `test_ac9_the_module_does_not_inherit_the_prompt_log_regime`
   (`tests/services/db/test_case_retention.py:327,:343`) — asserts only that the
   retention module **imports** nothing from `prompt_log`. This change adds no import,
   so that guard **cannot redden** on it: the coupling is data-flow (case text flowing
-  *into* prompt-log content), and the instrument is aimed one field to the left. Hence
-  a mandatory AC with its own grep read instead of trust in an existing green.
+  *into* a model request), and the instrument is aimed one field to the left. Hence a
+  mandatory AC with its own per-artifact reads instead of trust in an existing green.
 
 ### Phase 3 — Evidence + closure
 
@@ -342,8 +404,9 @@ Add the SD-B-ratified object types to `fleet_maintenance_v0.yaml` under ADR-008 
 provenance; Thai-first synonyms per the `_property_aliases` rationale, e.g. RepairCase:
 `th: [เคสซ่อม, ใบแจ้งซ่อม]`). Types use the schema's enum vocabulary (F12 check ran:
 `timestamp` for datetimes, `float` for `Numeric`, never a made-up `datetime`).
-Property sets = ORM columns minus the ruled exclusions (`photos`, `note`, `attachment`,
-plus internal `seq`) — authored by reading the model classes (F7), not from memory. The
+Property sets = ORM columns minus the exclusions (`photos`, `note`, `attachment`, internal
+`seq`, and `tenant_id` on every table — `TenantKeyMixin`, ✎ s294 Errata (ii)) — authored
+by reading the model classes (F7), not from memory. The
 ruled-IN free text (`description`, `vendor`, `reason`) is declared as `string`
 properties like any other.
 
@@ -378,8 +441,9 @@ mapping first — for a governance type it opens a short-lived session from an i
 engine creation is lazy, `services/db/session.py:14`, so import cost is nil), runs a
 deterministic `select(...).order_by(opened_at/entered_at DESC).limit(limit)`, and
 projects rows through the declared-property **allowlist** (AC-10): exactly the YAML
-property set, the ruled-OUT columns (`photos`, `note`, `attachment`, `seq`) never
-emitted, datetimes to ISO strings, `Decimal` to float — the procurement-datetime
+property set, the excluded columns (`photos`, `note`, `attachment`, `seq`, `tenant_id` —
+per `(type, column)`, AC-10 ✎ s294) never emitted, datetimes to ISO strings, `Decimal`
+to float — the procurement-datetime
 lesson.
 Synthetic types fall through to the existing dict path unchanged. Update the module
 docstring (its "No external I/O" claim becomes false) and `health_check` (additive
@@ -400,23 +464,26 @@ AC-8's fixed read; act again (third case) and assert the count read **changes** 
 the probe's named changing output. Witness the severed-branch RED once (scratch
 mutation, restore from scratchpad). Add the AC-9 unreachable-DB degrade case.
 
-### Step 5 — Correct the compliance record (AC-11; lands in the Phase 2 PR)
+### Step 5 — Extend the compliance record (AC-11; lands in the Phase 2 PR) — ✎ rewritten s294, Errata (i)/(iv)
 
-Amend `docs/compliance/ropa-change-statement-fleet.md`: correct the §4(a)-anchored
-scope claim and resolve the ROPA's two self-declared tripwires ("goes **stale as
-stated** the day fleet…"; "The day any real case text enters this surface the ruling is
-stale") by recording the day — this PR, PLAN-0109 — the ruled IN-set
-(`description` / `vendor` / `reason`), the new surface (the `/query` translate + phrase
-prompts and the ADR-0035 D6 prompt log), and its bounds (90-day case sweep on
-`opened_at`; D6's prompt-log rotation; the public `case-persist-notice`). Rewrite the
-retention-module docstring sentence (`repair_case_retention.py:7-13`) so it states the
-new truth instead of the now-false one. State plainly in the diff that the existing
-import-absence guard (`test_ac9_the_module_does_not_inherit_the_prompt_log_regime`,
+Fix the added sentence's exact bytes in the PR body first. Then amend
+`docs/compliance/ropa-change-statement-fleet.md` with a dated `🆕` subsection in the §3.3
+shape: PLAN-0109, the ruled IN-set (`description` / `vendor` / `reason`), the new reader
+(Tab C / `/query`), the new processing step (a phrase request to the on-prem model
+carrying up to `_PHRASE_FACT_CAP` projected records — `nl_query.py:1208-1235`), what is
+stored (the D6 log's `text` is the question — `prompt_log.py:81-113`), and the bounds
+(90-day case sweep on `opened_at`; D6 rotation applies to the question, not to rows; the
+public `case-persist-notice`; SD-F). **Keep** §3.1 item 2 and §4(a) — they stay true —
+and do **not** re-attribute either tripwire to this PR. In `repair_case_retention.py:7-13`
+**keep** the "does not reach case text" sentence, re-flow it onto one line, and add the
+same one-line sentence the ROPA subsection opens with. State plainly in the diff that the
+existing import-absence guard (`test_ac9_the_module_does_not_inherit_the_prompt_log_regime`,
 `tests/services/db/test_case_retention.py:327`) cannot see this coupling — it guards
 imports, and this change adds none (AC-11's rationale).
-**Non-vacuity probe / changing output:** the AC-11 grep's match set changes from
-occurrences in **both** artifacts (baseline, witnessed) to **zero** — the corrected
-files are the output that changes.
+**Non-vacuity probe / changing output:** the added-sentence `grep -c` changes from `0` /
+`0` (baseline, witnessed s294) to `≥ 1` / `≥ 1`, and the kept-sentence read changes from
+module `0` (wrapped) / ROPA `1` to `≥ 1` / `≥ 1` — per artifact, so a green on one file
+cannot vouch for the other (Errata (iv)).
 
 ### Step 6 — Regenerate reference artifacts + evidence + closeout prep (AC-12, AC-13)
 
@@ -506,13 +573,15 @@ relabeling it (attribution-honesty rule: "เคาะ" = typed picks only).
 
 Context, unchanged: repair cases carry visitor-typed free text under the 90-day sweep
 (`services/db/repair_case_retention.py`), and Ask adds a **new** surface — projected
-values enter the **LLM prompt** (translate/phrase) and the ADR-0035 D6 **prompt log**.
+values enter the **phrase request** to the model (✎ s294, Errata (i): the translate
+request carries no row, and the ADR-0035 D6 prompt log stores the question only).
 F13: the visitor-typed set is `description`, `photos`, `note`, `attachment`, `reason`,
 plus the short string `vendor`. The drafter recommended excluding all free text; **Cray
 ruled more free text IN.**
 
-**RULED IN** (projected, queryable, reaching the LLM prompt and the D6 prompt log):
-`RepairCase.description`, `RepairCaseQuote.vendor`, `RepairCaseAcceptedQuote.reason`.
+**RULED IN** (projected, queryable, reaching the phrase request — ✎ s294: the ruling is
+the SET; the reach is the measured fact, Errata (i)): `RepairCase.description`,
+`RepairCaseQuote.vendor`, `RepairCaseAcceptedQuote.reason`.
 `opened_by` / `entered_by` / `accepted_by` are demo-persona principal ids from the
 procedures roster, not visitor identities — included.
 
@@ -525,23 +594,25 @@ procedures roster, not visitor identities — included.
   (reversal path in Out of Scope).
 
 **Consequences of the ruling — written, not softened:**
-1. **The compliance record goes false at merge — AC-11, mandatory, same PR.**
-   `services/db/repair_case_retention.py:7-13` states in its own docstring that the D6
-   regime "does not reach case text (`docs/compliance/ropa-change-statement-fleet.md`
-   §4(a))" — shipping `description` into Ask makes that sentence FALSE the moment the
-   Phase 2 PR merges. The ROPA's own tripwires already call this out: "goes **stale as
-   stated** the day fleet…" and "The day any real case text enters this surface the
-   ruling is stale" — that day is this PR. AC-11 names each stale passage and requires
-   correction, not appendage.
+1. **The compliance record goes INCOMPLETE at merge — AC-11, mandatory, same PR.**
+   ✎ Corrected s294 (Errata (i), `was an error`): this item read that
+   `repair_case_retention.py:7-13`'s *"does not reach case text"* becomes FALSE and that
+   the ROPA's two tripwires fire on this PR. Measured otherwise — the D6 log stores the
+   question (`prompt_log.py:81-113`) and its retention regime still does not reach case
+   rows; the tripwires belong to Tab I's publish day (§4(a)) and to real-data day
+   (§4(c)). What merge makes true and unrecorded is a new **reader** and a new
+   **processing step**: case text leaves the row in a phrase request to the on-prem
+   model. AC-11 requires that to be written as an addition, with the true sentences kept.
 2. **No existing guard sees this coupling.** The retention module deliberately imports
    nothing from `prompt_log`, and PLAN-0105's AC-9 guard
    (`test_ac9_the_module_does_not_inherit_the_prompt_log_regime`,
    `tests/services/db/test_case_retention.py:327,:343`) enforces exactly that
    **import** absence — verified on disk: it scans imported module names for
    `prompt_log`. This change adds no import, so the guard **cannot redden**; the
-   coupling is data-flow (case text flowing *into* prompt-log content), one field to
-   the left of where the instrument is aimed. Priced accordingly: AC-11 is a manual
-   correction with its own grep-based pass read, not a trusted green.
+   coupling is data-flow (case text flowing *into* a model request — ✎ s294, not into
+   prompt-log content), one field to the left of where the instrument is aimed. Priced
+   accordingly: AC-11 is a manual correction with its own per-artifact reads, not a
+   trusted green.
 3. **The operational consequence is recorded for Cray** — SD-F below.
 
 ### SD-E — Generated-artifact impact (confirm, then record)
@@ -564,7 +635,8 @@ and this SD reopens. *(Ruling status: none needed — confirmed unchanged 2026-0
 
 With `description` queryable, a visitor on the **public** demo can type arbitrary free
 text that a *later* visitor's Ask question surfaces through the model: it enters the
-translate/phrase prompts and can be echoed inside a grounded answer. What bounds it
+phrase request (✎ s294 — not the translate request, Errata (i)) and can be echoed inside
+a grounded answer. What bounds it
 today, stated exactly: the **90-day sweep** deletes the rows, their FK children and the
 upload directory (`services/db/repair_case_retention.py` — age-anchored on
 `opened_at`); the **D6 prompt-log rotation** bounds the prompt-side copies of the same
@@ -594,10 +666,10 @@ How we know it worked, end to end — each already fixed in its AC:
 4. **Related, provably:** the scenario (AC-8) — rows demo play's own route created are
    the source ids of a grounded Tab C answer, count changing 2→3 when a third case is
    opened, transport-stub-only per the binding §8 scenario rule.
-5. **Compliance true at merge:** zero remaining occurrences of "does not reach case
-   text" across the retention docstring and the ROPA statement, the ROPA's own
-   tripwire sentences resolved with this PR named, landed in the same PR as the
-   serving change (AC-11).
+5. **Compliance true at merge:** the kept sentence "does not reach case text" reads
+   ≥ 1 in EACH of the retention docstring and the ROPA statement, the added one-line
+   sentence reads ≥ 1 in EACH, and the ROPA's new dated subsection names PLAN-0109 and
+   the IN-set — landed in the same PR as the serving change (AC-11, ✎ s294).
 6. **Priced and clean:** zero committed-file drift from codegen (AC-12), full CI-scope
    offline gate green (AC-13), and — only with Cray's typed go — one live smoke as
    evidence, never as the gate (AC-14).
