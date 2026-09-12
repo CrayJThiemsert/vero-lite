@@ -2,7 +2,7 @@
 
 import os
 import socket
-from collections.abc import Iterator
+from collections.abc import Collection, Iterator, Mapping
 from typing import Any
 
 import pytest
@@ -18,6 +18,55 @@ from tests import db_guard, db_support
 # monkeypatches it back on per-test). Attribute-level (not env) so dev (.env
 # present) and CI (no .env) collect identically.
 settings.api_auth_enabled = False
+
+
+# --- s296: an inherited GIT_* must not reach the suite's git subprocesses ------
+#
+# Measured, not hypothesised. Session 295 ``export``ed ``GIT_DIR`` / ``GIT_WORK_TREE``
+# in a shell that then ran ``pytest -q``. Both were inherited, and ``git`` stops
+# discovering a repository from ``cwd`` the moment ``GIT_DIR`` is set — so the
+# ``cwd=<tmp repo>`` every git fixture passes was ignored, and the fixtures wrote into
+# the REAL repository. The shared ``.git/config`` gained ``core.worktree``,
+# ``user.name=Test`` and ``user.email=test@example.com``, and a branch ``trunk``
+# appeared on it. Repaired by hand that session; this is the structural half.
+#
+# Re-measured in s296 against a throwaway victim repository, because the s295 writer
+# list was assembled by grep and grep finds a ``def`` as readily as a call. The live
+# writers are ``tests/vero_bridge/test_lint_status.py::_init`` (the identity) and
+# ``tests/tools/test_check_status_freshness.py::_repo`` (the ``trunk`` branch, and
+# ``HEAD`` moved onto it). ``tests/handoffs/test_posttooluse_progress_observer.py``
+# was named there too, but its ``_init_repo`` has no call sites and never ran.
+#
+# **An allow-list, not a deny-list.** Every ``GIT_``-prefixed name goes unless it is
+# named in ``_GIT_ENV_KEEP``. A deny-list would have to enumerate git's variables
+# correctly today and stay correct as git adds them; ``git help environment`` prints
+# nothing on this box (no man pages installed), so such a list would rest on recall
+# rather than on a source — and the failure mode of a missed name is silent. Note the
+# prefix is ``GIT_``: ``GITHUB_*`` is untouched, so CI's own environment survives.
+#
+# Deliberately at import, not in a fixture: collection and session-scoped fixtures run
+# before the first test, and the same cleaning has to cover them.
+
+#: Nothing is kept today. No test reads a ``GIT_*`` variable — s296 measured the only
+#: tracked references as prose (``.claude/skills/git-workflow/SKILL.md``, Lesson #3, a
+#: classifier gold file). A test that genuinely needs one adds it here, where the
+#: exception is visible and reviewable, rather than by weakening the sweep.
+_GIT_ENV_KEEP: frozenset[str] = frozenset()
+
+
+def git_env_keys_to_strip(
+    env: Mapping[str, str], keep: Collection[str] = _GIT_ENV_KEEP
+) -> list[str]:
+    """The ``GIT_*`` names to remove from ``env`` — pure, so the unit suite can drive it.
+
+    Returns a materialised ``list`` rather than a generator on purpose: the caller
+    deletes from the very mapping it is scanning.
+    """
+    return sorted(name for name in env if name.startswith("GIT_") and name not in keep)
+
+
+for _inherited_git_var in git_env_keys_to_strip(os.environ):
+    del os.environ[_inherited_git_var]
 
 
 @pytest.fixture(autouse=True)
