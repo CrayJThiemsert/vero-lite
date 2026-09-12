@@ -698,3 +698,43 @@ of this file after the append.
 > control: post-repair records that exist at all = **43**. **The clash with
 > Cray's s282 "leave the worktrees in place" ruling dissolves — the window
 > opens without touching the 19 worktrees. Cray's ruling, not ours.**
+
+### Rotated at the s295-296 reconcile — the session-293 Current-Focus block [on the R1 headroom rule: STATUS opened at **61,024 B** and a combined s295–296 block had to land, so the window stays at TWO (294, 295–296) — the seventh consecutive reconcile of that shape. Block is **2,264 B** as carved from `git show HEAD:docs/STATUS.md`. 🔴 **A first slice measured it at 3,997 B by running past the block into the Current-Focus rotation-ledger line — the s284 trap, caught by the last-line pin before anything was written.** ⚠️ **Its own Current-Focus ledger entry was DROPPED, not appended:** its facts (`3,464 B`, `63,062 B`, `2,149 B`, `(292, 293)`) each read 1 inside this file's own `### Rotated at the s293 reconcile` header, which is that entry rewritten, against a control (`s291` = 4) and a fabricated needle (= 0). Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 293, 2026-09-11 (`21ed10d` → `da0c900`) — ONE PR
+> ([#1466](https://github.com/CrayJThiemsert/vero-lite/pull/1466)), merged.
+> **PLAN-0123 Step 3.1: AC-9's pre-committed kill criterion FAILED — AC-10
+> is struck, the advisory does not ship, and the hook was never opened.**
+>
+> 🔴 **The reading (`tools/reading_shape_replay.py`, s287–s289 transcripts):**
+> `corpus_calls=597 raw_matches=162 (27.1 %) deduped_fires=18 valid=9
+> misfire=9 reachable=3/3`. Clause 1 pass (in-sample, credits nothing) ·
+> **clause 2 FAIL — `p=27.1 %` ≥ 5 %** · clause 3 pass. `grep -c` or `wc -l`
+> appears in **114** of the 162 matching calls: in a measurement-heavy
+> session a reading is over a quarter of all Bash calls — the noise the
+> ceiling exists to stop, and close to the shell-hygiene advisory's own
+> 30.8 % (G9). The fires are **well aimed** (9 of 18 valid); the advisory is
+> too talkative, not wrong. Record: PLAN-0123 §11.1.
+>
+> ⚠️ **Clause 3 passed on a knife edge — never quote it as robust:** `X = V =
+> 9`, four of eighteen hand classifications are borderline, and flipping any
+> ONE reverses it. 🔴 **AC-11 is unreachable too** — it runs "≥ 14 days after
+> AC-10 ships"; marked in the PLAN at this reconcile.
+>
+> ⚠️ **The control is weaker than `3/3` reads:** census errors #8 and #10 are
+> **not `Bash` calls anywhere in the corpus**, so two of three prove the
+> regexes match §1.2's prose, not what ran. The corpus was identified by
+> content — a **CCD session id does not name a transcript file** (tested on a
+> live id).
+>
+> ✅ **Gate:** `pytest` **5188 passed** — 5167 + 21 new, exactly, which rules
+> out uncollected tests · CI `PASS` at the updated head `9e15380`.
+>
+> 🔴 **Two §11.1 sentences corrected here, `was an error`:** "125 of the 162"
+> summed per-shape hits, counting twice a call that carries both; and a
+> recurrence of census error #10's failure mode was named as #10 itself.
+>
+> ⚠️ **`mypy --strict tools/` does not name a fixed set** — an untracked
+> `tools/probes/` file sits in its scope; the reproducible form is in commit
+> `8b97e3e`, and `tools/README.md` is the parallel session's to write.
+> AC-12's first session after Step 2 declared **no** template goal: it counts 0.
