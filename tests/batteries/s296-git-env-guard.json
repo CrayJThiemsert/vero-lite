@@ -1,0 +1,82 @@
+{
+  "claim_sources": [
+    "tests/test_git_env_guard.py"
+  ],
+  "probes": [
+    {
+      "name": "PG1",
+      "subject": "tests/conftest.py",
+      "old": "for _inherited_git_var in git_env_keys_to_strip(os.environ):",
+      "new": "for _inherited_git_var in []:",
+      "node_id": "tests/test_git_env_guard.py::test_a_polluted_child_leaves_the_victim_repository_byte_identical",
+      "expect_claim": "test_a_polluted_child_leaves_the_victim_repository_byte_identical|after == before|#0",
+      "note": "🔴 The s295 incident itself: the guard computes the names and strips none of them. The child's git fixtures then write into whatever GIT_DIR names — here the throwaway victim, in s295 the real repository."
+    },
+    {
+      "name": "PG2",
+      "subject": "tests/conftest.py",
+      "old": "for _inherited_git_var in git_env_keys_to_strip(os.environ):",
+      "new": "for _inherited_git_var in []:",
+      "node_id": "tests/test_git_env_guard.py::test_the_polluted_child_still_passes",
+      "expect_claim": "test_the_polluted_child_still_passes|child.returncode == 0|#0",
+      "note": "The same mutation on the non-vacuity control. Unguarded, the two driven nodes fail (measured s296: 27 failed across the seven git-writing files), so the child's own exit code reddens — which is what rules out 'the victim was untouched because the child never ran'."
+    },
+    {
+      "name": "PG3",
+      "subject": "tests/conftest.py",
+      "old": "for _inherited_git_var in git_env_keys_to_strip(os.environ):",
+      "new": "for _inherited_git_var in []:",
+      "node_id": "tests/test_git_env_guard.py::test_a_polluted_child_process_has_no_git_variables_left",
+      "expect_claim": "test_a_polluted_child_process_has_no_git_variables_left|child.returncode == 0|#0",
+      "note": "The absence assertion, witnessed where it can fail. Unguarded, the child's own environment still holds GIT_DIR and GIT_WORK_TREE, so the payload node reddens inside the child and the parent reads a non-zero code."
+    },
+    {
+      "name": "PG4",
+      "subject": "tests/test_git_env_guard.py",
+      "old": "        \"config\": (git_dir / \"config\").read_text(encoding=\"utf-8\"),",
+      "new": "        \"config\": \"\",",
+      "node_id": "tests/test_git_env_guard.py::test_the_snapshot_sees_a_config_change",
+      "expect_claim": "test_the_snapshot_sees_a_config_change|after[\"config\"] != before[\"config\"]|#0",
+      "note": "Instrument control (Lesson #0056). The snapshot goes blind to config, which is the field carrying the s295 identity rewrite. A blind instrument reports 'unchanged' on every run, so this has to be able to go RED before the byte-identical assertion means anything."
+    },
+    {
+      "name": "PG5",
+      "subject": "tests/test_git_env_guard.py",
+      "old": "        \"refs\": _git(repo, \"for-each-ref\", \"--format=%(refname) %(objectname)\"),",
+      "new": "        \"refs\": \"\",",
+      "node_id": "tests/test_git_env_guard.py::test_the_snapshot_sees_a_new_ref",
+      "expect_claim": "test_the_snapshot_sees_a_new_ref|after[\"refs\"] != before[\"refs\"]|#0",
+      "note": "The same control for the other dimension. s295 created a branch as well as rewriting the identity, so one control per field — config blind and refs blind are different failures and neither covers the other."
+    },
+    {
+      "name": "PG6",
+      "subject": "tests/conftest.py",
+      "old": "name.startswith(\"GIT_\") and name not in keep",
+      "new": "name.startswith(\"ZZZ_\") and name not in keep",
+      "node_id": "tests/test_git_env_guard.py::test_every_git_prefixed_name_is_stripped",
+      "expect_claim": "test_every_git_prefixed_name_is_stripped|git_env_keys_to_strip(env) == [ \"GIT_CONFIG_COUNT\", \"GIT_DIR\", \"GIT_WORK_TREE\", ]|#0",
+      "note": "The sweep stops recognising its own prefix and returns nothing. Witnesses that the listed names are found because they are GIT_-prefixed, not by accident of ordering."
+    },
+    {
+      "name": "PG7",
+      "subject": "tests/conftest.py",
+      "old": "name.startswith(\"GIT_\") and name not in keep",
+      "new": "name.startswith(\"GIT\") and name not in keep",
+      "node_id": "tests/test_git_env_guard.py::test_github_variables_are_not_git_variables",
+      "expect_claim": "test_github_variables_are_not_git_variables|git_env_keys_to_strip(env) == []|#0",
+      "note": "🔴 The one-character slip that would break CI: drop the underscore and GITHUB_TOKEN / GITHUB_SHA become 'git variables' and get deleted from the environment of every CI run. The test that says GITHUB_ survives is an absence assertion, so it needs exactly this mutation to prove it is not vacuous."
+    },
+    {
+      "name": "PG8",
+      "subject": "tests/conftest.py",
+      "old": "    return sorted(name for name in env if name.startswith(\"GIT_\") and name not in keep)",
+      "new": "    return sorted(name for name in env if name.startswith(\"GIT_\"))",
+      "node_id": "tests/test_git_env_guard.py::test_the_keep_list_is_consulted",
+      "expect_claim": "test_the_keep_list_is_consulted|git_env_keys_to_strip(env, keep=keep) == [ \"GIT_DIR\" ]|#0",
+      "note": "The keep-list stops being consulted. _GIT_ENV_KEEP is empty today, so nothing in the suite's own behaviour would change and no other test could notice — this probe is the only thing standing between the policy knob and silent decoration."
+    }
+  ],
+  "exemptions": {
+    "test_this_process_has_no_inherited_git_variables_left|leftover == []|#0": "Structurally unreachable by any mutation of the guard: run from a clean shell the parent process has no GIT_* to begin with, so the assertion holds whether or not the guard stripped anything. Registered rather than probed. Its content IS witnessed — PG3 runs this very node inside a child spawned with GIT_DIR and GIT_WORK_TREE set, where it reddens."
+  }
+}

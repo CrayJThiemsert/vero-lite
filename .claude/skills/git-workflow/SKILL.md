@@ -198,15 +198,16 @@ A worktree created from the Code tab registers its `gitdir` as a UNC path
 **Fix — point WSL git at the *same* hooks via a POSIX-resolvable path:**
 
 ```bash
-export GIT_DIR=/home/crayj/work/vero-lite/.git/worktrees/<name>
-export GIT_WORK_TREE=/home/crayj/work/vero-lite/.claude/worktrees/<name>
+GIT_DIR=/home/crayj/work/vero-lite/.git/worktrees/<name> \
+GIT_WORK_TREE=/home/crayj/work/vero-lite/.claude/worktrees/<name> \
 git -c core.hooksPath=/home/crayj/work/vero-lite/.git/hooks commit -F /tmp/msg.txt
 ```
 
 - ✅ **This is not a `--no-verify` bypass.** Hooks run normally —
   `detect-secrets` and the repo guards all fire. `--no-verify` stays forbidden
   (CLAUDE.md §8); this recipe exists so you never need it.
-- **`gh` needs `GIT_DIR` exported too.**
+- **`gh` needs `GIT_DIR` too** — prefix it onto the `gh` command the same way;
+  never `export` it to cover both.
 - **Push through WSL** — Windows git dies on the network leg (stale CA bundle).
 
 🔴 **Use the environment variables above — never `git config core.worktree …`.**
@@ -214,8 +215,21 @@ git -c core.hooksPath=/home/crayj/work/vero-lite/.git/hooks commit -F /tmp/msg.t
 `core.worktree` there redirects *everyone's* git at your worktree, silently and
 persistently. Measured session 266: it survived the session that set it, and the
 next session spent ~15 measurements diagnosing the filesystem before checking
-`git rev-parse --show-toplevel` (Lesson #0053). `GIT_WORK_TREE` is scoped to your
-shell and cannot leak.
+`git rev-parse --show-toplevel` (Lesson #0053).
+
+🔴 **Prefix these variables onto the one git command — never `export` them.** The
+sentence that stood here claimed `GIT_WORK_TREE` "is scoped to your shell and cannot
+leak". That is wrong, and session 295 paid for it. An `export` is scoped to the shell
+**and every process it starts** — including `pytest`. `git` stops discovering a
+repository from `cwd` the moment `GIT_DIR` is set, so the suite's git fixtures ignored
+the tmp directories they were handed and wrote into the REAL repository: the shared
+`.git/config` gained `core.worktree`, `user.name=Test` and `user.email=test@example.com`,
+and a branch `trunk` appeared on it.
+
+Since s296 the suite defends itself — `tests/conftest.py` strips every inherited `GIT_*`
+at import, witnessed by `tests/batteries/s296-git-env-guard.json`. That guard covers
+`pytest` and nothing else: `gh`, a script, a nested shell all still inherit whatever you
+export. The prefix form is what makes the scope match the intent.
 
 **If it aborts with `` Unable to create '…/index.lock': File exists ``** inside
 pre-commit's `git write-tree`: **verify `HEAD` first — the commit did not
