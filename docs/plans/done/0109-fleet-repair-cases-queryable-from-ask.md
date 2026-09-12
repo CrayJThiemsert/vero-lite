@@ -1,8 +1,9 @@
 # PLAN-0109: Fleet repair-case data queryable from Tab C (Ask) — declare, serve, and guard the lockstep
 
-**Status:** Draft
+**Status:** Complete (2026-09-12, session 296 — see §Closeout). **13 of 14 ACs ticked.** AC-14 is deliberately UNTICKED: it is a host-state live smoke and no typed Cray go for it exists (CLAUDE.md §8). Every ticked AC was re-measured against `main` `c519466` in s296 — the ticks rest on that run, not on the s294 PR bodies.
 **Owner:** both — Claude Code executes; SD-A / SD-B / SD-D are RULED (Cray, typed 2026-08-18, session 237); SD-C is Code-adopted, open to countermand; SD-E needs no ruling. **Execution is unblocked — no step waits on a ruling.**
 **Created:** 2026-08-18
+**Batteries:** `tests/batteries/plan-0109-*.json` — the three committed probe-battery definitions whose reports this PLAN's acceptance criteria cite. Figures are the s296 re-run, not the authoring run. `plan-0109-phase1-declare-and-guard.json` (**34 claims, 34 witnessed, 0 exemptions**, `GAPS: 0`) carries AC-3/AC-4's live-tree witnesses; `plan-0109-phase2-serve.json` (**42 claims, 38 witnessed, 4 exemptions**, `GAPS: 0`) carries AC-6…AC-10's; `plan-0109-ac5-golden-exemption.json` (**38 claims, 2 witnessed, 36 exemptions**, `GAPS: 0`, added s296) carries AC-5's two — the set-equality at `tests/services/engine/scaffolder/test_golden_e2e.py:398` and the missing-object tripwire at `:394`. ⚠️ That last ratio is stated here rather than left behind the word COMPLETE: the 36 exemptions are the scaffolder's own pre-existing grammar claims, which this PLAN neither authored nor modified, and an exemption is not a witness. A coverage report is not reviewable without its definition.
 **Related ADRs:** ADR-007 (DataAdapter contract — deliberately untouched, see SD-A), ADR-008 (ontology schema + D1 "may extend" license), ADR-0032 (D1 demo→pilot wedge — the customer rationale), ADR-0035 (D6 prompt-log retention — bears on SD-D)
 
 > **Drafting provenance (ADR-012 D4.3).** Authored by the in-harness `plan-drafter`
@@ -147,7 +148,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
 
 ### Phase 1 — Declare + guard (one unit: REJECT-IF-2 — the declaration never lands on `main` without the guard)
 
-- [ ] **AC-1 — the YAML declares the ratified types.**
+- [x] **AC-1 — the YAML declares the ratified types.**
   Artifact: `verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml`.
   Command (a): `uv run --no-sync pre-commit run check-jsonschema --all-files` → exit 0.
   Command (b): `uv run python -c "from services.engine.ontology_meta import load_ontology_meta; print(sorted(t.name for t in load_ontology_meta('fleet_maintenance').object_types))"`.
@@ -158,7 +159,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   relational refs — `RepairCase.truck_id` as `ref → Truck`, `*.case_id` as
   `ref → RepairCase` — because the refs are the machine-readable form of "the screens
   are related" (Goal) and what `_describe_ontology` renders as `(ref->Target)`.
-- [ ] **AC-2 — `/meta` advertises them.**
+- [x] **AC-2 — `/meta` advertises them.**
   Artifact: a test in `tests/api/` (new file `tests/api/test_meta_fleet_governance_types.py`
   or the existing meta-test module — executor's call) asserting GET `/meta` under the
   fleet vertical contains each ratified type with its declared `primary_key` and that
@@ -167,7 +168,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   Pass read: green. **Witnessed RED (mandatory, CLAUDE.md §8):** the same test run at
   baseline (before the YAML edit) fails on the missing type name — captured in the step
   log before the edit lands.
-- [ ] **AC-3 — the lockstep guard exists, reads both artifacts, and reddens in both directions.**
+- [x] **AC-3 — the lockstep guard exists, reads both artifacts, and reddens in both directions.**
   Artifacts: `tools/check_ontology_orm_lockstep.py`; hook id **`ontology-orm-lockstep`**
   in `.pre-commit-config.yaml` (local repo, `uv run python tools/check_ontology_orm_lockstep.py`,
   `always_run: true` — the violation is authored by editing a *different* file than the
@@ -207,7 +208,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   YAML does not declare, which would otherwise be compared against nothing), and a
   REFUSAL, exit 2, when either input is missing. The mapping module is loaded by path, so
   `ONTOLOGY_GUARD_ROOT` fixture trees supply their own tables.
-- [ ] **AC-4 — the guard is non-vacuous on the LIVE tree (witnessed RED, both directions).**
+- [x] **AC-4 — the guard is non-vacuous on the LIVE tree (witnessed RED, both directions).**
   Development-time probes, evidence captured in the PR body: (a) add a scratch column to
   `services/db/repair_case.py` (backup to the scratchpad first, restore from that copy —
   never from git), run `uv run python tools/check_ontology_orm_lockstep.py 2>&1` → exit 1
@@ -226,7 +227,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   `test_ac4_b_a_scratch_property_on_the_real_yaml_is_named` (the real YAML and real models,
   the scratch column or property added to an in-memory copy — no tracked file touched), each
   witnessed by its own probe; and on the fixture trees, one probe per named assertion.
-- [ ] **AC-5 — the scaffolder golden oracle stays green via a written exemption, not a weakened assertion.**
+- [x] **AC-5 — the scaffolder golden oracle stays green via a written exemption, not a weakened assertion.**
   Artifact: `tests/services/engine/scaffolder/test_golden_e2e.py` —
   `_DONOR_EXTENSION_OBJECTS` extended per Step 1 (recommended: derive the exemption for
   DB-backed types from the guard's mapping module so one source of truth feeds both,
@@ -237,7 +238,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
 
 ### Phase 2 — Serve the data through the adapter seam (SD-A RULED (b) — the session-owning fleet adapter)
 
-- [ ] **AC-6 — the fleet adapter serves DB-backed types with the SD-D-RULED projection.**
+- [x] **AC-6 — the fleet adapter serves DB-backed types with the SD-D-RULED projection.**
   Artifact: `verticals/fleet_maintenance/data_adapter/__init__.py` (+ a projection
   module if the executor splits it). DB-backed test (existing disposable-test-DB
   convention, `tests/db_support.py`) seeding one repair case **with a non-null
@@ -257,7 +258,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   returned dict — and the seed's non-null values are the positive control making that
   absence a real exclusion, not a vacuous one (CLAUDE.md §8: an absence needs a positive
   control); datetimes are ISO-8601 strings; `amount_thb` is a float.
-- [ ] **AC-7 — the seven synthetic types are untouched.**
+- [x] **AC-7 — the seven synthetic types are untouched.**
   Command: `uv run pytest tests/verticals/fleet_maintenance/ 2>&1` (full directory).
   Pass read: every pre-existing test green with zero modifications to their assertions;
   `health_check()` still reports the seven synthetic object counts (it may *add* a DB
@@ -268,7 +269,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   every existing key keeps its value and exactly one key is added, `db_backed_types`
   (listed, not pinged); the synthetic types are compared against the unchanged base
   adapter in `tests/verticals/fleet_maintenance/test_adapter_db_objects.py`.
-- [ ] **AC-8 — the scenario test (CLAUDE.md §8, binding): real producer into real consumer.**
+- [x] **AC-8 — the scenario test (CLAUDE.md §8, binding): real producer into real consumer.**
   Artifact: `tests/verticals/fleet_maintenance/test_ask_repair_case_scenario.py`.
   ✎ *s294:* built at `tests/api/test_ask_repair_case_scenario.py` — `client_with_db` and
   `api_db_maker` live in `tests/api/conftest.py`, and a copy would be a second definition
@@ -295,13 +296,13 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   scratchpad) flips `grounded` to False — witnessed once during Step 4.
   ⚠️ Like the PLAN-0104 scenario, this makes **no claim the live model emits the
   translation** — that claim belongs to the (Cray-gated) live smoke in AC-14 only.
-- [ ] **AC-9 — honest degrade without a database.**
+- [x] **AC-9 — honest degrade without a database.**
   Artifact: an offline test in the same module: adapter constructed with a session
   factory pointing at an unreachable URL → `answer_question` returns the ungrounded
   "couldn't retrieve" answer (`nl_query.py:1363-1367` path), never an invented count.
   Command: same pytest file, no DB required for this case.
   Pass read: `grounded is False` and the canned honest-degrade phrase, not a number.
-- [ ] **AC-10 — the projection is an ALLOWLIST, single-sourced and leak-resistant.**
+- [x] **AC-10 — the projection is an ALLOWLIST, single-sourced and leak-resistant.**
   Artifact: one shared module (recommended:
   `verticals/fleet_maintenance/data_adapter/db_projection.py`) holding the
   type↔table mapping and the exclusion entries keyed **`(type, column) → reason`** —
@@ -323,7 +324,7 @@ provenance — the last two are Code's exclusion, reversible by Cray).
   guard exit 1; (b) deleting an exclusion entry while the YAML stays silent makes the
   guard exit 1 (a quiet leak attempt forces a visible diff or a red guard).
 
-- [ ] **AC-11 — the compliance record is EXTENDED in the same PR, and its true sentences are KEPT (SD-D consequence 1 — mandatory, its own AC, not a Step footnote). ✎ Rewritten s294 — Errata (i) + (iv).**
+- [x] **AC-11 — the compliance record is EXTENDED in the same PR, and its true sentences are KEPT (SD-D consequence 1 — mandatory, its own AC, not a Step footnote). ✎ Rewritten s294 — Errata (i) + (iv).**
   Artifacts: `docs/compliance/ropa-change-statement-fleet.md` **and** the module
   docstring of `services/db/repair_case_retention.py`.
   **What Phase 2 changes, measured:** once the fleet adapter serves the three types, a
@@ -373,13 +374,13 @@ provenance — the last two are Code's exclusion, reversible by Cray).
 
 ### Phase 3 — Evidence + closure
 
-- [ ] **AC-12 — SD-E confirmed on disk: the YAML edit changes zero committed files via codegen.**
+- [x] **AC-12 — SD-E confirmed on disk: the YAML edit changes zero committed files via codegen.**
   Command: run the engine's generate CLI for fleet (`uv run vero-lite ...` — the
   console-script form, never `python -m`), then `git status --porcelain 2>&1` written to
   a file. Pass read (fixed): empty output — every regenerated artifact lands under
   gitignored `verticals/fleet_maintenance/generated/` (F8). The changed gitignored set
   (models/schema/mcp/types/orm/context-pack) is listed in the step log for the record.
-- [ ] **AC-13 — full offline gate at CI scope.**
+- [x] **AC-13 — full offline gate at CI scope.**
   Commands: bare `uv run ruff check . 2>&1`; full `uv run mypy services/ verticals/ 2>&1`
   (CI scope per PLAN-0107 AC-5); full `uv run pytest tests/ 2>&1` on the checkout that
   owns the test DB. Pass read: all green — partial-scope greens do not close this AC.
@@ -731,3 +732,51 @@ How we know it worked, end to end — each already fixed in its AC:
 6. **Priced and clean:** zero committed-file drift from codegen (AC-12), full CI-scope
    offline gate green (AC-13), and — only with Cray's typed go — one live smoke as
    evidence, never as the gate (AC-14).
+
+## Closeout (session 296, 2026-09-12)
+
+Every AC below was **re-measured against `main` `c519466`** in this session. Nothing here is
+carried over from the s294 PR bodies; where a figure differs from what was written then, the
+fresh reading is the one recorded.
+
+| AC | Command re-run | Read |
+|---|---|---|
+| AC-1 | `load_ontology_meta('fleet_maintenance')` + `check-jsonschema` | printed list **equals** the ratified 10 names, exit 0 |
+| AC-2 | `pytest tests/api/test_meta_fleet_governance_types.py` | 3 passed |
+| AC-3 | `pytest tests/tools/test_check_ontology_orm_lockstep.py` | 13 passed; guard on the real tree `VERDICT: PASS exit=0` |
+| AC-4 | `probe_battery run --battery plan-0109-phase1-…` | 34 claims, **34 witnessed**, `GAPS: 0`, PASS |
+| AC-5 | `probe_battery run --battery plan-0109-ac5-golden-exemption.json` | 2 witnessed at `:398` and `:394`, `GAPS: 0`, PASS |
+| AC-6 / AC-7 | `pytest tests/verticals/fleet_maintenance/` | 129 passed |
+| AC-8 / AC-9 | `pytest tests/api/test_ask_repair_case_scenario.py` + phase-2 battery | 4 passed; 42 claims, 38 witnessed, `GAPS: 0`, PASS |
+| AC-10 | the lockstep tool tests above | included in the 13 |
+| AC-11 | the two per-file greps | kept sentence **1 in each** artifact; added sentence present in **both** (`repair_case_retention.py:16`, `ropa-change-statement-fleet.md:250`) |
+| AC-12 | `vero-lite generate fleet_maintenance` then `git status --porcelain` | porcelain **byte-identical** pre vs post; positive control (a scratch file) proved the instrument sees a change |
+| AC-13 | `ruff check .`, `ruff format --check .`, `mypy --strict services/ verticals/`, full `pytest` | all rc=0; **5238 passed, 8 skipped**; `db_tests=499` (above the 400 floor, so the DB layer really ran) |
+
+**AC-13's basis.** The full gate ran on the tree at `f506292`; `git diff f506292 c519466` is
+**empty**, so the result transfers to `main` rather than being re-asserted from memory.
+
+### Two corrections to the closeout premises
+
+1. 🔴 **`check_ac_consistency.py` Check 3 is INERT for this PLAN** — measured, not assumed. Check 3
+   scans a *single line* beginning `- [x] **AC-N ` for an italicised `*Artifacts:*` clause;
+   PLAN-0109 writes `Artifact:` on the **continuation** line, unitalicised, so `_ARTIFACT_SEG`
+   returns `None` and every AC is skipped as "a command-run AC". This PLAN also carries neither
+   the binding sentence (`no AC box is ticked before its probe`) nor — until this commit — a
+   `**Batteries:**` header, so none of Check 3's three branches could fire. The s294/s295 handoffs
+   recorded AC-5's missing battery as a *Check 3* blocker; the substantive concern was right, the
+   mechanical one was not. The battery was built because §8 requires the witness, not because a
+   guard demanded it. The header added above arms the glob branch for any future tick.
+2. **AC-5's battery is deliberately narrow.** 36 of its 38 claims are exempted (see the
+   `**Batteries:**` line). AC-5's obligation is that the golden oracle stays green *through a
+   written exemption rather than a weakened assertion* — that rests on the two assertions the
+   exemption mechanism itself carries, and both are witnessed. Witnessing the scaffolder's own
+   grammar claims belongs to the PLAN that owns that tool.
+
+### What stays open
+
+- **AC-14** — unticked. A live smoke on the published demo is host-state (CLAUDE.md §8) and
+  needs Cray's typed go. The offline oracle (AC-8) is the gate; AC-14 would be evidence only,
+  and skipping it does not block this closeout.
+- The **object-synonym** options (i)/(ii)/(iii) and the other merged-but-never-typed-ruled items
+  remain Cray's, and are tracked in `docs/STATUS.md`, not here.
