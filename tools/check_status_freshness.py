@@ -3,8 +3,8 @@
 
 🔴 **The measured failure this makes visible.** At session 291's open, STATUS's
 frontmatter read ``head_commit: 793b9d9`` while ``main`` stood at ``f65f7ea`` — nine
-substantive commits behind, four merged PRs (#1453-#1456) recorded nowhere in the
-file every session reads first. Nothing said so. A re-deriver for exactly this field
+commits (three substantive) behind, four merged PRs (#1453-#1456) recorded nowhere in
+the file every session reads first. Nothing said so. A re-deriver for exactly this field
 already existed — ``tools/vero_bridge/_status_lint.py::compute_status_freshness``,
 fail-closed — but it ran only when a human called the ``lint_status`` MCP tool, which
 nobody did. The number was there to be measured and was not being looked at.
