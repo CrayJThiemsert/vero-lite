@@ -462,10 +462,25 @@ Nothing is carried over from the s291–s297 PR bodies.
 | AC-10 | `_reading_shape_advisory` in `posttooluse_progress_observer.py` | **0**, with control `_shell_hygiene_warning` = 2; commits to the observer since #1466: **0**. Stays **STRUCK** | ☐ struck |
 | AC-11 | — | unreachable: its precondition, AC-10, never shipped | ☐ unreachable |
 | AC-12 | `goal-history/` under §11.2's counting rule | `in_window=2 template_goals=1 renderings=2 passed=0`; the control found `passed` on the out-of-window s291 record. Identical to s297. **NOT MET, ruled B** | ☐ NOT MET |
-| AC-13 | `ruff check .` · `ruff format --check .` · `mypy --strict services/ verticals/` · full `pytest -q` · `check_ac_consistency.py` | `ruff=0 format=0 (771 files) mypy=0 (204 files) pytest=0 (5243 passed, 8 skipped, db_tests=499)`; `check_ac_consistency: clean — 89 AC(s) across 10 active PLAN(s)` | ✅ |
+| AC-13 | `ruff check .` · `ruff format --check .` · `mypy --strict services/ verticals/` · full `pytest -q` · `check_ac_consistency.py` | `ruff=0 format=0 (771 files) mypy=0 (204 files) pytest=0 (5243 passed, 8 skipped, db_tests=499)`; `check_ac_consistency: clean — 73 AC(s) across 9 active PLAN(s)` on the tracked tree | ✅ |
 
 The real `.claude/state/goal-checks/` held **36 → 36** directories across that full run, so the
 #1479 leak fix held.
+
+_[s298, corrected before merge, `was an error`: AC-13's ledger count was first recorded as
+`89 AC(s) across 10 active PLAN(s)`. The verdict `clean` was right. The figure was not a reading
+of `c39f4e3`: `check_ac_consistency.py` walks `docs/plans/*.md` on **disk**, and the main
+checkout also held the untracked PLAN-0125 draft, which has 16 AC boxes. With that draft moved
+aside the same guard read `clean — 73 AC(s) across 9 active PLAN(s)`, which is the tracked
+tree's figure. The gap surfaced because #1484's worktree, which has no such draft, read 73/9
+where this closeout had 89/10.
+- Unaffected: ruff, format and mypy read only Python.
+- Also read the disk tree: the full `pytest` runs every `tools/check_*.py` there, via
+  `tests/tools/test_guards_hold_on_the_real_tree.py`. Those tests assert that each guard
+  accepts the tree, not a count, and acceptance holds with or without the draft.
+
+The archive commit's "89 → 80" carries the same inflation of 16 on both sides, so its "a drop of
+9" stands.]_
 
 ### What the closeout found, and what it changed
 
