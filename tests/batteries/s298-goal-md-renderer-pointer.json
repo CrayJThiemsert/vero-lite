@@ -1,0 +1,71 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_command_points_at_the_renderer.py"
+  ],
+  "probes": [
+    {
+      "name": "GP1",
+      "subject": ".claude/commands/goal.md",
+      "old": "`.venv/bin/python -m tools.goal_template list` prints",
+      "new": "`.venv/bin/python -m tools.goal_template ls` prints",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_goal_md_names_the_renderer_invocation",
+      "expect_claim": "test_goal_md_names_the_renderer_invocation|found >= 1|#0",
+      "note": "The prose drifts to a command the renderer does not have. The template table is untouched, so A2b would stay green; this is the reworded-pointer rot."
+    },
+    {
+      "name": "GP2",
+      "subject": ".claude/commands/goal.md",
+      "old": "| `T-ORACLE` |",
+      "new": "| `T-ORACL` |",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_documented_templates_are_the_renderers",
+      "expect_claim": "test_the_documented_templates_are_the_renderers|sorted(doc) == sorted(listed)|#0",
+      "note": "The prose names a template the renderer does not render. The renderer still prints three, so A2a stays green and only the set comparison can redden."
+    },
+    {
+      "name": "GP3",
+      "subject": "tools/goal_template.py",
+      "old": "        print(f\"  {name}\")",
+      "new": "        print(f\"   {name}\")",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_documented_templates_are_the_renderers",
+      "expect_claim": "test_the_documented_templates_are_the_renderers|listed|#0",
+      "note": "The renderer's list output changes shape so the parser reads nothing. Without A2a, doc=[3] vs listed=[] would still redden A2b, but an EMPTY prose table would then agree with it; A2a is the guard against that vacuous agreement."
+    },
+    {
+      "name": "GP4",
+      "subject": "tools/goal_template.py",
+      "old": "        return _cmd_list()",
+      "new": "        return _cmd_list() or 3",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_documented_invocation_runs",
+      "expect_claim": "test_the_documented_invocation_runs|proc.returncode == 0|#0",
+      "note": "The documented command prints its templates but exits non-zero. Stdout is intact, so A3b and A2 stay green; only the exit-code assertion can redden."
+    },
+    {
+      "name": "GP5",
+      "subject": "tools/goal_template.py",
+      "old": "        print(f\"  {name}\")",
+      "new": "        print(f\"   {name}\")",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_documented_invocation_runs",
+      "expect_claim": "test_the_documented_invocation_runs|len(listed) >= 1|#0",
+      "note": "The command exits 0 but prints nothing the parser recognises as a template, so A3a stays green and A3b reddens. Same mutation as GP3, a different assertion in a different node."
+    },
+    {
+      "name": "GP6",
+      "subject": "tests/handoffs/test_goal_command_points_at_the_renderer.py",
+      "old": "    return DOC_ROW_RE.findall(text)",
+      "new": "    return DOC_ROW_RE.findall(text)[:1]",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_parsers_pass_their_controls",
+      "expect_claim": "test_the_parsers_pass_their_controls|doc == [\"T-ONE\", \"T-TWO\"]|#0",
+      "note": "The prose-table parser drops rows. Its control catches it before any real reading is trusted; the list parser's control is untouched."
+    },
+    {
+      "name": "GP7",
+      "subject": "tests/handoffs/test_goal_command_points_at_the_renderer.py",
+      "old": "    return LIST_NAME_RE.findall(stdout)",
+      "new": "    return LIST_NAME_RE.findall(stdout)[:1]",
+      "node_id": "tests/handoffs/test_goal_command_points_at_the_renderer.py::test_the_parsers_pass_their_controls",
+      "expect_claim": "test_the_parsers_pass_their_controls|listed == [\"T-ONE\", \"T-TWO\"]|#0",
+      "note": "The list-output parser drops names. The doc control runs first and stays green, so the reddening assertion is the second."
+    }
+  ],
+  "exemptions": {}
+}
