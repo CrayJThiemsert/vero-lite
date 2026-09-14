@@ -794,3 +794,44 @@ of this file after the append.
 > hold on `main` (intended patterns: `matched=0`, `control_hits=9`). Fix: a
 > `fix/*` chip in a separate session; the goal file is archived to
 > `goal-history/` with `disposition: cleared-unpassed`.
+
+### Rotated at the s298 reconcile — the session-295–296 Current-Focus block [on the R1 headroom rule: STATUS opened at **60,428 B**, **5,108 B** under R1's 65,536 B ceiling, and the s298 block had to land, so the window stays at TWO (297, 298) — the ninth consecutive reconcile of that shape. Block is **2,447 B** as carved from `git show HEAD:docs/STATUS.md` on its own last line, probed ABSENT here first (its header line = 0, against the s294 block's rotation header = 1). The Current-Focus ledger's s295–296 entry left the window and is carried VERBATIM after the block rather than dropped on a token sweep, so none of its measured tokens rests on a count. Presence asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 295–296, 2026-09-11/12 (`b6318fd` → `6cb0067`) — THREE PRs
+> ([#1472](https://github.com/CrayJThiemsert/vero-lite/pull/1472), [#1473](https://github.com/CrayJThiemsert/vero-lite/pull/1473), [#1474](https://github.com/CrayJThiemsert/vero-lite/pull/1474)), all merged.
+> **PLAN-0109 is CLOSED at 13 of 14 ACs, and the s295 `.git/config` incident
+> now has a structural guard.**
+>
+> ✅ **#1472 (s295) — `tools/goal_template.py` renders every check parameter
+> through `shlex.quote`**, and T-ORACLE's C2 `re.escape`s the claim. The `!r`
+> form doubled a backslash inside bash single quotes, which is what let both
+> s294 template goals return a verdict about nothing. Battery 19/19.
+>
+> ✅ **#1473 — the suite can no longer be made to write the REAL repository.**
+> `tests/conftest.py` strips every inherited `GIT_*` at import — an ALLOW-list
+> (everything `GIT_`-prefixed goes unless named in `_GIT_ENV_KEEP`, empty
+> today), because `git help environment` prints nothing on this box and a
+> deny-list would rest on recall. `GITHUB_*` survives, witnessed. Battery
+> **8/8, GAPS 0**; the scenario case drives a real child `pytest` into the real
+> git fixtures with both variables pointed at a THROWAWAY repo, and the child's
+> own exit code is that case's non-vacuity control.
+>
+> ✅ **#1474 — PLAN-0109 CLOSED**, every AC re-measured against `main`
+> `c519466`: AC-1's list equals the ratified ten; AC-4 **34/34** witnessed;
+> AC-8/9 4 passed plus 38 witnessed; AC-12's porcelain byte-identical across a
+> real `vero-lite generate`, with a scratch-file positive control. AC-13
+> transfers by tree identity (`git diff f506292 c519466` empty): **5238
+> passed**, `db_tests=499`. **AC-14 stays UNTICKED — host-state, no typed go.**
+>
+> 🔴 **Two inherited premises fell to measurement.** (1) `check_ac_consistency`
+> **Check 3 is INERT for PLAN-0109** — it scans one line beginning
+> `- [x] **AC-N ` for an italicised `*Artifacts:*` clause, and this PLAN puts
+> `Artifact:` on the continuation line, so the guard would have passed an
+> unwitnessed AC-5 in silence. The battery exists because §8 asks for the
+> witness, not because a guard did. (2) The s295 writer list named
+> `test_posttooluse_progress_observer.py`, whose `_init_repo` has **no call
+> sites** in 489 lines — grep finds a `def` as readily as a call. The live
+> writers are `test_lint_status.py::_init` and
+> `test_check_status_freshness.py::_repo`.
+
+_[The Current-Focus rotation ledger's s295–296 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s295–296) reconcile rotates ONE block — s293 (**2,264 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **61,024 B** and a combined s295–296 block had to land, so the window stays at TWO (294, 295–296) — the seventh consecutive reconcile of that shape. ⚠️ **Measurement correction, recorded rather than quietly fixed:** a first slice read the block at **3,997 B** by running past it into THIS ledger line — the s284 trap; carved on the block's own last line it measures **2,264 B**. ⚠️ **The s293 entry left the window and was DROPPED, not appended:** its facts (`3,464 B`, `63,062 B`, `2,149 B`, `(292, 293)`) each read 1 inside h1e's `### Rotated at the s293 reconcile` header, which is that entry rewritten, against a control (`s291` = 4) and a fabricated needle (= 0).
