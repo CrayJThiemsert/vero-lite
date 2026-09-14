@@ -172,7 +172,7 @@ A green is not evidence: no AC box is ticked before its probe reports WITNESSED.
 - [ ] 🔴 **MEASURED s293 — FAILED on clause 2: `p=27.1 %` against the 5 % ceiling. Full record: §11.1.** **AC-9 [check-replay] — the nudge's detector meets the kill criterion fixed in §4.5, offline, before any hook is touched.** *Artifacts:* `tools/reading_shape_replay.py` (the detector as a pure function over a transcript corpus, with the classification rubric from §4.5 in its docstring), `tests/tools/test_reading_shape_replay.py`, the replay report under `.claude/benchmark-results/`. *Pass read:* prints `corpus_calls=N raw_matches=M (p %) deduped_fires=F valid=V misfire=X reachable=k/3`; pass iff `k == 3` AND `p < 5` AND `X ≤ V`. *Controls (before the first real reading is trusted):* the three s288 commands (#1, #8, #10) planted in a fixture transcript fire (`reachable=3/3`); a fixture of 20 benign commands (`git status`, `ls`, `pytest -q`, …) fires 0; a planted `wc -l` fires exactly once across two occurrences in one session (dedup). *Probes:* P9a — widen the predicate to any `grep` → the benign fixture reddens. P9b — drop dedup → the two-occurrence fixture reddens. **Failing the read is a finding, not a reason to edit the read:** AC-10 is then struck with this AC cited.
 - [ ] 🔴 **STRUCK s293 — its precondition AC-9 failed. DO NOT add `_reading_shape_advisory` to `_handle_bash`; the advisory does not ship, and §4.5's read is not to be re-tuned to make it. Full record: §11.1.** **AC-10 [check] — *contingent on AC-9 and SD-1* — the advisory fires once per session per shape, only with no active goal, and carries a pre-filled renderer command.** *Artifacts:* `posttooluse_progress_observer.py` (`_reading_shape_advisory`), `tests/handoffs/test_reading_shape_advisory.py`. *Pass read:* the real `_handle_bash` fed a `grep -c` payload with no goal file prints one JSON object whose `reason` contains `Reading-shape advisory` and `tools/goal_template.py T-COUNT --file <the file from the command>`; the same payload with an `active` goal on disk prints nothing; a second `grep -c` in the same session prints nothing; a `wc -l` in the same session prints one; prints `fires=[…] goal_active=<b> session=<id>`; (A1) fire on first; (A2) silent under an active goal; (A3) silent on the same shape again; (A4) fires on a new shape; (A5) the shell-hygiene advisory still fires on its shapes (positive control that the sibling was not displaced). *Probes:* P10a — ignore `load_goal()` → A2 reddens. P10b — key dedup on the command text rather than the shape → A3 reddens, A4 green. P10c — replace the advisories list rather than extend it → A5 reddens.
 - [ ] 🔴 **UNREACHABLE s293 — it runs "≥ 14 days after AC-10 ships" and AC-10 is struck; see §11.1.** **AC-11 [live-ledger] — the advisory holds on real traffic.** ≥ 14 days after AC-10 ships, `tools/reading_shape_replay.py` over the main-session transcripts since the ship commit prints the same three numbers with the same rubric; pass iff `p < 5` AND `X ≤ V`; a breach is recorded in STATUS and the advisory is demoted to Telegram-only (PLAN-0092). A small `n` is reported as small, never rounded into a pass.
-- [ ] **AC-12 [live-ledger, judgment] — the templates are reached for, and at least once they refused something real.** Over the first five sessions after Step 2 ships, `goal-history/` holds ≥ 3 template-rendered goals with `disposition: passed`, and ≥ 1 evidence file across them records a control refusal or a check failure that Code's closeout narrative classifies as a real finding (not a provenance failure). Cray reads the narrative; the counts are read from the directory, not from memory. Printed: `template_goals=<n> passed=<p> replaced_unpassed=<r> real_findings=<f>`.
+- [ ] 🔴 **READ s297 — the numeric half is NOT MET: `template_goals=1 renderings=2 passed=0 replaced_unpassed=0 real_findings=0`. Unticked — `[judgment]`, Cray's reading. Full record and Code's narrative: §11.2.** **AC-12 [live-ledger, judgment] — the templates are reached for, and at least once they refused something real.** Over the first five sessions after Step 2 ships, `goal-history/` holds ≥ 3 template-rendered goals with `disposition: passed`, and ≥ 1 evidence file across them records a control refusal or a check failure that Code's closeout narrative classifies as a real finding (not a provenance failure). Cray reads the narrative; the counts are read from the directory, not from memory. Printed: `template_goals=<n> passed=<p> replaced_unpassed=<r> real_findings=<f>`.
 - [ ] **AC-13 [check] — offline gate green at CI scope in the main tree, plus the AC-ledger guard.** `uv run --no-sync ruff check .` · `ruff format --check .` · `mypy --strict services/ verticals/` · `pytest -q` — each `2>&1` to a file, real exit code echoed immediately after its own command; prints `ruff=0 format=0 mypy=0 pytest=0 (passed=N skipped=S)` and `check_ac_consistency: gaps=0` with the machine-form batteries header matching ≥ 1 file. `tests/tools/test_guards_hold_on_the_real_tree.py` is part of the run and is what makes any new `tools/check_*.py` here prove it accepts the healthy tree.
 
 ## 6. Out of Scope
@@ -346,3 +346,87 @@ made on top of it would collide with an open PR against the same file. Once #146
 headroom is ~2,474 B and this entry is writable. The finding is recorded here in the
 meantime, on a tracked surface — including its do-not-act instruction, at AC-10, which is
 where it binds. _[Discharged at the s293 reconcile: the STATUS entry is written.]_
+
+## 11.2 AC-12 — the field ledger was read, and its numeric half is NOT MET (session 297, 2026-09-14)
+
+**Reading:** `template_goals=1 renderings=2 passed=0 replaced_unpassed=0 other={cleared-unpassed: 1} real_findings=0 orphan_render_dirs=34`.
+Against the read fixed in §5 — **≥ 3** template goals with `disposition: passed`, and **≥ 1**
+evidence file recording a refusal Code classifies as a real finding — both halves are
+**NOT MET**. AC-12 is `[judgment]` and stays unticked. What follows is Code's narrative for
+Cray's reading; a failed pre-committed read is a finding, not a reason to edit the read.
+
+*Window.* Step 2 shipped with #1463, merged `2026-09-10T12:44:28Z` (s292). The five sessions
+after it are s293–s297. The reading was taken during s297, before any goal had been declared
+in it, and none was declared for the reading: a goal declared now would move an adoption count
+by the act of measuring it. A record is in the window when its `created` is at or after that
+merge.
+
+*Counting rule — fixed before any record was opened, read off the producer rather than
+remembered.* A record (a `goal-history/*.json`, or a live `goal.json` — absent at the reading) is
+**template-rendered** iff at least one `check` criterion's `cmd` names `goal-checks/<gid>/`
+(`tools/goal_template.py` `_cmd_for`). An **appended** record — a second declaration over an
+unpassed goal, its criteria prefixed `T1-` (`apply_lifecycle`) — is **one** goal with two
+renderings, because a disposition belongs to the record; both numbers are printed. This settles
+the question the s296 handoff left open. Controls ran before the first real reading: a planted
+two-gid record read `template=True renderings=2`; a plain-command record read `False`; a judge
+that only *names* a `goal-checks` path read `False`; and `tools/tally.py --expect-refusal` on a
+wrong value set was REFUSED. The disposition breakdown itself came from `tools/tally.py`
+(`TALLY: EXHAUSTIVE`, `sum 1 == records 1`).
+
+*The records.* Four files exist; two are in the window.
+
+| record | session | template-rendered | renderings | disposition |
+|---|---|---|---|---|
+| `20260911T125352-3cd3b8b4.json` | 294 | yes — T-ABSENT, twice | 2 | `cleared-unpassed` |
+| `20260912T190443-plan0109-closeout.json` | 296 | **no** — hand-written | 0 | `cleared-work-complete` |
+
+The other two were created in s291, before Step 2 shipped. One of them,
+`20260911T074919-080ba6b3.json`, is s291's hand-written goal: the renderer's own R8 lifecycle
+archived it as `passed` when s294 declared over it. That is R8 working, not a template goal.
+It is also the positive control for the zero: the same read found `disposition: passed` on
+this record, so `passed=0` in the window means none passed, not that the field went unread.
+
+*Evidence, and why `real_findings=0`.* The one template goal produced three evidence files,
+each `VERDICT: PASS exit=0`, and five gate evaluations, each `T1-C1=fail`:
+- rendering `…6d1d537c`: C0 `matched=9 control_hits=9`; C1 `matched=0 control_hits=9`. This is the
+  **vacuous** pass s295 traced to `!r` doubling a backslash — the rendered script reads
+  `\\+`, and the target is present in the PLAN. The instrument manufactured the pass, so it counts
+  as a provenance failure, not a finding.
+- rendering `…5d8c9e87`: C0 `matched=9 control_hits=9`, and **no C1 file**. Its `\)` pattern
+  crashed before any evidence was written (`not a valid regex`, rc=2). The gate read that crash as
+  `fail`, so this is the instrument refusing about itself — again a provenance failure.
+
+#1472 (s295) fixed both defects. No check in the window refused something that was actually
+wrong in its subject.
+
+*What the counts suggest — Code's reading, Cray's to judge.* In five sessions the templates were
+reached for **once**, in s294, and that use produced no usable reading because of a defect in
+the templates' own renderer. The only other goal in the window, s296's, was written by hand:
+`check_ac_consistency.py`, `check_battery_definitions.py` and a bare `python -m pytest`. None of
+those three is a shape any template renders, since §4.2 names only T-COUNT, T-ABSENT and T-ORACLE.
+Its pytest check failed at all three evaluations while passing by hand, because the Stop hook does
+not activate `.venv`; `render_script` does, but only for the shapes it renders. So the evidence
+bears on reach as much as on correctness. With n = 2 goals it is a direction, not a rate (§10:
+*"AC-12 is the only adoption measurement and it is judgment"*).
+
+*A second finding, measured — the renderer's tests write into the real state directory.*
+`goal-checks/` held **36** render directories, **34** of them referenced by no goal record, in
+same-second groups of four. `tests/tools/test_goal_template_lifecycle.py` renders through a
+`python -m tools.goal_template` subprocess and overrides only `--goal-file` and `--history-root`,
+so `SCRIPT_ROOT` and `EVIDENCE_ROOT` resolve to the checkout's own `.claude/state/`.
+Reproduced in s297:
+- one run of that file took the count **36 → 40**
+- `tests/tools/test_goal_template_shell_quoting.py`, which monkeypatches both roots, left it at
+  **36 → 36** (the control)
+
+The four new directories were removed afterwards. The harm is bounded, since the directories are
+gitignored and no gate reads them, but `goal-checks/` cannot serve as a population. It is the same
+class as the s295 `GIT_*` incident: a test mutating the real checkout's state. Nothing here fixes it.
+
+*Owed.*
+1. The NOT MET goes into `docs/STATUS.md` at the next reconcile (§11).
+2. SD-5 said *"ADR text once AC-11/AC-12 have numbers"*. AC-12 now has numbers; AC-11 has none,
+   because it is unreachable (§11.1). Whether that discharges or voids the ADR-0018 edit is a
+   Step 5 question, and an Accepted-ADR edit is G1-gated for Code.
+3. A `fix/*` for the test leak above: a root override on the renderer, or an in-process lifecycle
+   test with both roots monkeypatched.
