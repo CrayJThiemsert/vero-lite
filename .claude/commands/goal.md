@@ -22,6 +22,24 @@ load it and confirm its final `status` to the user before deleting). Confirm:
 
 ## Otherwise — declare the goal
 
+0. **Reach for the renderer first.** Three reading shapes have a template that
+   writes a goal satisfying R1–R8 for you — or refuses by clause name and writes
+   nothing (PLAN-0123 §4.1–§4.2, `tools/goal_template.py`). Run it WSL-side from
+   the repo root: `.venv/bin/python -m tools.goal_template list` prints each
+   template with its trigger and its instrument.
+
+   | Template | Reach for it when you are | Parameters |
+   |---|---|---|
+   | `T-COUNT` | about to type `grep -c` / `wc -l` / hand-add buckets | `--file --field --expect` |
+   | `T-ABSENT` | about to report 0 / "no hits" / "not running", or a value read through a window | `--file --pattern --control` |
+   | `T-ORACLE` | about to cite a new or changed assertion in an AC | `--battery --claim --report` |
+
+   `--dry-run` prints the goal and writes nothing; `--session N` and
+   `--source <PLAN pointer>` fill those fields; `--replace` archives an unpassed
+   goal instead of appending to it (R8). A rendered goal is already written —
+   go to step 4. Hand-write a goal (steps 1–3) only for a shape no template
+   renders.
+
 1. **Parse the goal statement.** The argument is a one-sentence goal. If it
    references a PLAN (e.g. `source: docs/plans/0021-...md#acceptance-criteria`
    or "per PLAN-0021"), resolve that pointer — the PLAN's AC block is the
@@ -64,7 +82,7 @@ load it and confirm its final `status` to the user before deleting). Confirm:
    what the earlier goal found. To replace it on purpose, archive the old file to
    `.claude/state/goal-history/` first, so the abandonment is a record and not a
    disappearance (PLAN-0123 R8 / AC-8; the renderer's `--replace` does this for
-   you once Step 2 lands — until then, do it by hand). A `passed` goal may be
+   you — a hand-written goal is archived by hand). A `passed` goal may be
    replaced freely.
 
 3. **Write the file** (`Write` to `.claude/state/goal.json`, honoring a
@@ -150,4 +168,8 @@ typed sign-off, recorded as the amendment).
 
 - `docs/adr/0018-axis-b-verification-loop.md` (design of record; Accepted)
 - `docs/plans/done/0021-axis-b-verification-loop-build.md` (build plan)
+- `docs/plans/done/0123-goal-declaration-trigger-and-templates.md` (the R1–R8
+  contract, the templates, `basis-moved`)
 - `.claude/hooks/_goal_state.py` (schema), `.claude/hooks/_goal_gate.py` (gate)
+- `tools/goal_template.py` (the renderer — step 0); its pointer here is pinned
+  by `tests/handoffs/test_goal_command_points_at_the_renderer.py`
