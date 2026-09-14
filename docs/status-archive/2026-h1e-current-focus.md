@@ -835,3 +835,54 @@ of this file after the append.
 > `test_check_status_freshness.py::_repo`.
 
 _[The Current-Focus rotation ledger's s295–296 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s295–296) reconcile rotates ONE block — s293 (**2,264 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **61,024 B** and a combined s295–296 block had to land, so the window stays at TWO (294, 295–296) — the seventh consecutive reconcile of that shape. ⚠️ **Measurement correction, recorded rather than quietly fixed:** a first slice read the block at **3,997 B** by running past it into THIS ledger line — the s284 trap; carved on the block's own last line it measures **2,264 B**. ⚠️ **The s293 entry left the window and was DROPPED, not appended:** its facts (`3,464 B`, `63,062 B`, `2,149 B`, `(292, 293)`) each read 1 inside h1e's `### Rotated at the s293 reconcile` header, which is that entry rewritten, against a control (`s291` = 4) and a fabricated needle (= 0).
+
+### Rotated at the s299 reconcile — the session-297 Current-Focus block [on the R1 headroom rule: STATUS opened at **58,941 B**, **6,595 B** under R1's 65,536 B ceiling, and the s299 block had to land, so the window stays at TWO (298, 299) — the tenth consecutive reconcile of that shape. Block is **3,243 B** as carved from `git show HEAD:docs/STATUS.md`, probed ABSENT here first against a control derived from this file's own last block (=1). The Current-Focus ledger's s297 entry follows it verbatim.]
+
+> **Session 297, 2026-09-14 (`9803e22` → `2254b29`) — FOUR PRs
+> ([#1476](https://github.com/CrayJThiemsert/vero-lite/pull/1476)–[#1479](https://github.com/CrayJThiemsert/vero-lite/pull/1479)), all merged. **The base `-status` archive got its R4
+> continuation file before any reconcile had to rotate into it; PLAN-0123's AC-12 read
+> NOT MET; and a test leak into the checkout's `.claude/state/` was closed.**
+>
+> ✅ **#1476 — sessions 226→273 (2026-08-13 → 09-02) spilled to the new
+> `2026-h1i-status.md`** (138,348 B); the base fell **193,988 → 58,764 B**
+> and keeps s275 onward, cut on a `##` heading. All nine chain lines name
+> `h1i`; `h1h`'s line count is unchanged, so ADR-0018's `h1h:733-735`
+> citation holds. Verified against `git show 9803e22:` — the original body
+> equals `h1i`'s body, one newline and the base's body **byte for byte**;
+> 98 headings as a multiset; the pre-write gate witnessed RED (boundary one
+> section early → 4 pins failed, nothing written); battery **16/16
+> WITNESSED, GAPS 0**; the merge verified by blob (9 equal, 0 differ).
+>
+> 🔴 **Two instrument findings, both caught before anything shipped.**
+> (1) `end-of-file-fixer` strips a carve's trailing blank line once it is a
+> new file's last bytes — the byte check read `190430` against `190431`; the
+> split drops that newline under an assertion rather than loosening the
+> check. (2) A redo script's `git checkout -- <path>` restores from the
+> **index**, so after staging, "undo" brought back the split, not HEAD; the
+> pre-write "working copy == pinned blob" gate aborted it.
+>
+> ⚠️ **`was an error`, corrected at this reconcile.** (a) #1476's body said
+> STATUS held the "continuation owed" note in four places; it held
+> **three** — `next_action`, the RD ledger, the Next-Steps blockquote — and
+> the fourth is the base archive's own s295–296 header, history that stays.
+> All three are lifted here. (b) The s295–296 reconcile wrote that both
+> ledgers' s293 entries were DROPPED but left them in place (measured:
+> `entries=['s293','s294','s295–296']` against a TWO-session window); they
+> leave now, with s294's. Surfaced, not fixed: runbook R4's `Live chains:`
+> line has omitted `h1h` since s247 — Active TODOs.
+>
+> ✅ **#1478 — PLAN-0123 Step 4: AC-12's field ledger, numeric half NOT MET**
+> (`template_goals=1 renderings=2 passed=0 replaced_unpassed=0 real_findings=0`).
+> The counting rule was fixed before any record was opened, read off the renderer;
+> an appended `T1-` record counts as ONE goal. The one template goal (s294, T-ABSENT
+> ×2) gave a vacuous PASS and a crash — provenance failures #1472 fixed. **Unticked:
+> `[judgment]`, Cray's reading of §11.2; Step 5 and SD-5's ADR-0018 question wait on it.**
+>
+> ✅ **#1479 — the renderer's tests no longer write the checkout's `.claude/state/`.**
+> The lifecycle test rendered through a subprocess no monkeypatch reaches: +4 dirs a
+> run (36 → 40, control 36 → 36; 34 of the 36 belonged to no goal). Now
+> `resolve_state_dir()` honours `CLAUDE_GOAL_STATE_DIR`, which `tests/conftest.py` sets
+> at import. RED-first 5 failed; battery 11/11 WITNESSED; **5243 passed**, and the real
+> dirs held **36 → 36** across that full run.
+
+_[The Current-Focus rotation ledger's s297 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s297) reconcile rotates ONE block — s294 (**3,412 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **63,281 B**, 2,255 B under R1's 65,536 B ceiling, so the window stays at TWO (295–296, 297) — the eighth consecutive reconcile of that shape. ⚠️ **Two entries left the window, s293's and s294's, and were DROPPED:** every measured token of each reads inside h1e's own `### Rotated at the s293 reconcile` / `### Rotated at the s294 reconcile` header (`3,464 B`, `63,062 B`, `2,149 B`, `51,511 B`; `4,002 B`, `59,921 B`, `2,574 B`, `64,680 B`). 🔴 `was an error` (s295–296): that reconcile declared the s293 entry DROPPED and left it here.
