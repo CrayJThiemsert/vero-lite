@@ -1,0 +1,190 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_ac_consistency_marker_prefix.py"
+  ],
+  "probes": [
+    {
+      "name": "M1-shapes",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    r\"|~~\"\n",
+      "new": "    r\"|(?!)\"\n",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_every_measured_marker_shape_is_parsed_with_its_own_box_state",
+      "expect_claim": "test_every_measured_marker_shape_is_parsed_with_its_own_box_state|guard._AC_BOX.findall(_MEASURED_SHAPES) == [ (\" \", \"9\"), (\" \", \"12\"), (\"x\", \"2\"), (\" \", \"5\"), (\"x\", \"7\"), ]|#0",
+      "note": "🔴 Drops ONE measured marker shape — the strikethrough opener (done/0049 AC-5) — by making its alternative unmatchable. The struck AC-5 falls out of the parsed list, so the shape assertion reddens. Chosen over removing the whole marker group so the 🔴-bold shape the Check 1/2/3 cases plant keeps parsing; X1 measures that the Check 3 case stays green under it."
+    },
+    {
+      "name": "M2-prose",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "(?:{_MARKER}[ \\t]*)*\\*\\*AC-(\\d+)\\b",
+      "new": ".*?AC-(\\d+)\\b",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_an_ac_referenced_in_prose_does_not_become_an_ac",
+      "expect_claim": "test_an_ac_referenced_in_prose_does_not_become_an_ac|guard._ac_labels(text) == [10]|#0",
+      "note": "🔴 THE NEGATIVE CONTROL'S WITNESS. Replaces the marker grammar with the obvious widening — anything, then AC-N, bold or not. PLAN-0123 AC-10's line then yields AC-9 (named inside its own STRUCK marker) and the Step checkbox yields a phantom AC-4: [9, 4], not [10]. X2 measures that the sibling-label case stays green under it, because its first AC-N is its real label."
+    },
+    {
+      "name": "M3-sibling",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "\\*\\*(?!AC-\\d)(?:{_CODE_SPAN}",
+      "new": "\\*\\*(?:{_CODE_SPAN}",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_bold_ac_right_after_the_label_is_not_mistaken_for_the_label",
+      "expect_claim": "test_a_bold_ac_right_after_the_label_is_not_mistaken_for_the_label|guard._ac_labels(text) == [2]|#0",
+      "note": "🔴 Lets a bold marker be an AC label. The greedy marker loop then swallows `**AC-2 — a criterion.**` as a 'marker' and backtracks onto the bold sibling, renumbering the AC to 3. X3 measures that the prose case stays green: its AC-10 label is followed by words, so the loop backtracks to the real label."
+    },
+    {
+      "name": "M4-lookup",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        line = _own_text(text, match)\n",
+      "new": "        line = next((ln for ln in text.splitlines() if ln.startswith(f\"- [x] **AC-{num} \")), \"\")\n",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found",
+      "expect_claim": "test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(9, True)]|#0",
+      "note": "🔴 THE s298 DEFECT, half two: restores the pre-fix line lookup while leaving the widened matcher in place. The matcher finds AC-9, the literal `- [x] **AC-9 ` lookup does not, the artifact clause reads as absent, and the tick goes unverified — so widening the regex alone would NOT have fixed Check 3. X4 measures that the shape assertion stays green under it (it reads the matcher, not the lookup)."
+    },
+    {
+      "name": "M5-overfire",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if module in sources:\n                continue",
+      "new": "            if False:\n                continue",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_marker_prefixed_ticked_ac_whose_artifact_is_covered_is_clean",
+      "expect_claim": "test_a_marker_prefixed_ticked_ac_whose_artifact_is_covered_is_clean|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 Makes Check 3 report every named artifact, covered or not. The covered marker-prefixed case reddens — which it could NOT do before the fix, when the line was never parsed and this assertion passed vacuously (RED-first run: it was one of the two new tests green on the old guard). X5 measures that the uncovered case stays green: its single gap is unchanged."
+    },
+    {
+      "name": "M6-dup",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    return [int(n) for _, n in _AC_BOX.findall(text)]",
+      "new": "    return [int(n) for _, n in re.findall(r\"^- \\[([x ])\\] \\*\\*AC-(\\d+)\\b\", text, re.M)]",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_duplicate_label_hidden_behind_a_marker_is_found",
+      "expect_claim": "test_a_duplicate_label_hidden_behind_a_marker_is_found|[(d.plan, d.label, d.count) for d in dupes] == [(\"0123-x.md\", 9, 2)]|#0",
+      "note": "🔴 Reverts ONLY Check 1's consumer to the pre-s298 matcher. The marker-prefixed second AC-9 goes uncounted and the duplicate vanishes. Check 2 (`_ac_state`) still uses the widened matcher; X6 measures that its case stays green."
+    },
+    {
+      "name": "M7-status",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    return {int(n): flag for flag, n in _AC_BOX.findall(text)}",
+      "new": "    return {int(n): flag for flag, n in re.findall(r\"^- \\[([x ])\\] \\*\\*AC-(\\d+)\\b\", text, re.M)}",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_status_closure_of_an_unticked_marker_prefixed_ac_names_the_real_disagreement",
+      "expect_claim": "test_a_status_closure_of_an_unticked_marker_prefixed_ac_names_the_real_disagreement|[(m.ac, \"still has it as\" in m.reason) for m in found] == [(9, True)]|#0",
+      "note": "🔴 Reverts ONLY Check 2's consumer to the pre-s298 matcher. The claim is still refused, but as `declares no AC-9` — the misdirection the fix removed — so the reason assertion reads (9, False). Check 1's consumer is untouched; X7 measures that the duplicate case stays green."
+    },
+    {
+      "name": "M8-loud",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if _AC_CANDIDATE.match(line) and not _AC_BOX.match(line):",
+      "new": "            if False:",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_an_ac_line_behind_an_unrecognised_marker_is_reported",
+      "expect_claim": "test_an_ac_line_behind_an_unrecognised_marker_is_reported|[(u.plan, u.line) for u in found] == [(\"0124-x.md\", 3)]|#0",
+      "note": "🔴 Silences Check 4 — the state before s298, where an AC the matcher cannot read simply is not there. The unrecognised-marker line goes unreported. X8 measures that the measured-shapes control stays green (it expects nothing reported)."
+    },
+    {
+      "name": "M9-overrefuse",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "and not _AC_BOX.match(line)",
+      "new": "and True",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_no_measured_shape_is_reported_as_unparsed",
+      "expect_claim": "test_no_measured_shape_is_reported_as_unparsed|guard.find_unparsed_ac_lines(tmp_path) == []|#0",
+      "note": "🔴 Makes Check 4 refuse every AC line, readable or not — a guard that cries wolf. All five measured shapes are reported. X9 measures that the unrecognised-marker case stays green: its file holds that one AC line only, so the report is unchanged."
+    },
+    {
+      "name": "M10-live",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "and not _AC_BOX.match(line)",
+      "new": "and True",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_the_live_repo_has_no_unparsed_ac_lines",
+      "expect_claim": "test_the_live_repo_has_no_unparsed_ac_lines|guard.find_unparsed_ac_lines(REPO_ROOT) == []|#0",
+      "note": "🔴 The live-tree assertion's positive control: the same over-refusal as M9, read against the real docs/plans/. Deliberately tree-independent — any active PLAN with any AC reddens it — so this probe does not rot when PLAN-0123 (the only active PLAN with marker lines at c39f4e3) moves to done/."
+    },
+    {
+      "name": "X1",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    r\"|~~\"\n",
+      "new": "    r\"|(?!)\"\n",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found",
+      "expect_claim": "test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(9, True)]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M1: with the strikethrough shape gone, the 🔴-bold Check 3 case still parses and still reports its gap. Rules out M1's RED being 'the whole matcher broke'."
+    },
+    {
+      "name": "X2",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "(?:{_MARKER}[ \\t]*)*\\*\\*AC-(\\d+)\\b",
+      "new": ".*?AC-(\\d+)\\b",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_bold_ac_right_after_the_label_is_not_mistaken_for_the_label",
+      "expect_claim": "test_a_bold_ac_right_after_the_label_is_not_mistaken_for_the_label|guard._ac_labels(text) == [2]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M2: the loose rule still reads the sibling line's label correctly, so M2's RED is about prose references and nothing else."
+    },
+    {
+      "name": "X3",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "\\*\\*(?!AC-\\d)(?:{_CODE_SPAN}",
+      "new": "\\*\\*(?:{_CODE_SPAN}",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_an_ac_referenced_in_prose_does_not_become_an_ac",
+      "expect_claim": "test_an_ac_referenced_in_prose_does_not_become_an_ac|guard._ac_labels(text) == [10]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M3: without the label exclusion the prose case still reads [10], so M3's RED is about a bold sibling and nothing else. The M2/M3 pair is disjoint in both directions."
+    },
+    {
+      "name": "X4",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        line = _own_text(text, match)\n",
+      "new": "        line = next((ln for ln in text.splitlines() if ln.startswith(f\"- [x] **AC-{num} \")), \"\")\n",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_every_measured_marker_shape_is_parsed_with_its_own_box_state",
+      "expect_claim": "test_every_measured_marker_shape_is_parsed_with_its_own_box_state|guard._AC_BOX.findall(_MEASURED_SHAPES) == [ (\" \", \"9\"), (\" \", \"12\"), (\"x\", \"2\"), (\" \", \"5\"), (\"x\", \"7\"), ]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M4: the matcher is intact under the old lookup, so M4's RED is the second parser alone — the measured reason a regex-only fix would have left Check 3 blind."
+    },
+    {
+      "name": "X5",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if module in sources:\n                continue",
+      "new": "            if False:\n                continue",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found",
+      "expect_claim": "test_a_marker_prefixed_ticked_ac_whose_artifact_is_in_no_battery_is_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(9, True)]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M5: over-firing leaves the uncovered case's single gap unchanged, so the covered/uncovered pair is disjoint."
+    },
+    {
+      "name": "X6",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    return [int(n) for _, n in _AC_BOX.findall(text)]",
+      "new": "    return [int(n) for _, n in re.findall(r\"^- \\[([x ])\\] \\*\\*AC-(\\d+)\\b\", text, re.M)]",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_status_closure_of_an_unticked_marker_prefixed_ac_names_the_real_disagreement",
+      "expect_claim": "test_a_status_closure_of_an_unticked_marker_prefixed_ac_names_the_real_disagreement|[(m.ac, \"still has it as\" in m.reason) for m in found] == [(9, True)]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M6: reverting Check 1's consumer leaves Check 2 correct, so each check's widening is witnessed on its own."
+    },
+    {
+      "name": "X7",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    return {int(n): flag for flag, n in _AC_BOX.findall(text)}",
+      "new": "    return {int(n): flag for flag, n in re.findall(r\"^- \\[([x ])\\] \\*\\*AC-(\\d+)\\b\", text, re.M)}",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_a_duplicate_label_hidden_behind_a_marker_is_found",
+      "expect_claim": "test_a_duplicate_label_hidden_behind_a_marker_is_found|[(d.plan, d.label, d.count) for d in dupes] == [(\"0123-x.md\", 9, 2)]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M7: reverting Check 2's consumer leaves Check 1 correct. With X6, the M6/M7 pair is disjoint in both directions."
+    },
+    {
+      "name": "X8",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if _AC_CANDIDATE.match(line) and not _AC_BOX.match(line):",
+      "new": "            if False:",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_no_measured_shape_is_reported_as_unparsed",
+      "expect_claim": "test_no_measured_shape_is_reported_as_unparsed|guard.find_unparsed_ac_lines(tmp_path) == []|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M8: a silenced Check 4 still reports nothing on the measured shapes — as it must, which is exactly why M9 exists to show that control can fail."
+    },
+    {
+      "name": "X9",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "and not _AC_BOX.match(line)",
+      "new": "and True",
+      "node_id": "tests/tools/test_check_ac_consistency_marker_prefix.py::test_an_ac_line_behind_an_unrecognised_marker_is_reported",
+      "expect_claim": "test_an_ac_line_behind_an_unrecognised_marker_is_reported|[(u.plan, u.line) for u in found] == [(\"0124-x.md\", 3)]|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for M9: an over-refusing Check 4 still reports exactly the one unrecognised line, so the M8/M9 pair is disjoint in both directions."
+    }
+  ],
+  "exemptions": {
+    "_load_module|spec and spec.loader|#0": "Import-harness precondition, not a claim about the guard: it asserts importlib could build a spec for tools/check_ac_consistency.py. Reddening it means deleting or renaming the guard file, which every other test in the module then fails on as a CRASH, so no one-assertion mutation can reach it."
+  }
+}

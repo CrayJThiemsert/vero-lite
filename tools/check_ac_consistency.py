@@ -54,6 +54,40 @@ correctly attributed, zero ambiguous):
 * Neither check knows whether an AC *should* be closed. They compare two
   statements of the same fact; a wrong fact stated consistently passes.
 
+## AC lines that carry a status marker (s298), and Check 4
+
+A PLAN may put a status marker between an AC's checkbox and its bold label::
+
+    - [ ] 🔴 **MEASURED s293 — FAILED on clause 2: …** **AC-9 [check-replay] — …
+
+Until s298 the matcher required ``**AC-N`` straight after the box, so such a line was
+invisible to every check at once — found when archiving PLAN-0123 (13 ACs) dropped the
+active count by 9. Counted across all 125 PLAN files, active and ``done/``, the prefix
+took five forms, and the matcher reads exactly those:
+
+* none — 976 of the 1002 checkbox lines carrying an AC token;
+* a symbol run, then a bold marker — ``🔴 **MEASURED …**`` (PLAN-0123 AC-9..AC-12);
+* two of those stacked — ``⚖️ **RULED s298 …** 🔴 **READ s297 …**`` (PLAN-0123 AC-12);
+* an italic tick-note — ``*(ticked 2026-07-11 s118 close — …)*`` (``done/0010``, ``0012``);
+* a strikethrough opener — ``~~**AC-5 …`` (``done/0049``).
+
+* **The box state is the checkbox and nothing else.** A marker is prose for a human —
+  MEASURED, STRUCK, UNREACHABLE, READ, RULED, ticked — an open vocabulary this guard does
+  not interpret. In every measured marker line the author had kept the box consistent.
+* **The label is the first bold span opening with ``AC-N``, reached only through
+  markers.** An ``AC-N`` inside a marker's or a body's prose is a reference, never a
+  label; so is a bold ``**AC-N**`` that follows words, as in a Step checkbox naming the
+  AC it closes. A marker may not itself be an AC label, or the label after it would be
+  read in its place.
+
+**Check 4 — an active PLAN's AC line the matcher cannot read FAILS.** The marker list is
+closed, so the next new shape would reopen this blind spot exactly as silently as the
+last one did. Instead, any checkbox line holding a bold-opened ``**AC-N`` that the matcher
+does not parse is reported. That also covers the shapes the matcher deliberately leaves
+unread — a letter-suffixed ``**AC-1a`` (15 lines, all in ``done/``), a ``[~]`` box (one,
+``done/0094``), an indented or non-``-`` checkbox (none) — so none of them can enter an
+active PLAN unnoticed. Active PLANs only, like Check 1; in ``done/`` they stay invisible.
+
 Exit codes: 0 = clean; 1 = at least one inconsistency.
 
 ``AC_CONSISTENCY_ROOT`` overrides the scanned repo root for tests (mirrors the
@@ -69,8 +103,28 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-#: An AC checkbox line, the form every PLAN uses.
-_AC_BOX = re.compile(r"^- \[([x ])\] \*\*AC-(\d+)\b", re.M)
+#: A code span, which may hold a ``*`` that is not markup (``mcp__vero-bridge__*``).
+_CODE_SPAN = r"`[^`\n]*`"
+
+#: One status marker ahead of an AC's label — the four measured shapes, and no others
+#: (module docstring): a symbol run, a bold span that is not itself an AC label, an
+#: italic span, a strikethrough opener. Atomic, so a line that fails fails in linear time.
+_MARKER = (
+    r"(?>"
+    r"[^\w\s*`~]+"
+    rf"|\*\*(?!AC-\d)(?:{_CODE_SPAN}|[^*`\n]|\*(?!\*))+\*\*"
+    rf"|\*(?!\*)(?:{_CODE_SPAN}|[^*`\n])+\*"
+    r"|~~"
+    r")"
+)
+
+#: An AC checkbox line: the box, any status markers, then the AC's own bold label.
+_AC_BOX = re.compile(rf"^- \[([x ])\] (?:{_MARKER}[ \t]*)*\*\*AC-(\d+)\b", re.M)
+
+#: Any checkbox item holding a bold-opened AC label ANYWHERE — deliberately broader than
+#: ``_AC_BOX`` in every dimension (indent, bullet, box character, prefix, label suffix).
+#: A line this matches and ``_AC_BOX`` does not is an AC no check can read.
+_AC_CANDIDATE = re.compile(r"^[ \t]*[-*+][ \t]+\[[^\]\n]?\][ \t].*\*\*AC-\d")
 
 _CLOSED = re.compile(r"\bCLOSED\b")
 _AC_REF = re.compile(r"\bAC-(\d+)\b")
@@ -103,6 +157,13 @@ class BatteryGap:
     reason: str
 
 
+@dataclass(frozen=True)
+class UnparsedLine:
+    plan: str
+    line: int
+    text: str
+
+
 #: A PLAN's machine-addressable pointer at its committed battery definitions.
 _BATTERIES = re.compile(r"^\*\*Batteries:\*\*\s+`([^`]+)`", re.M)
 
@@ -132,6 +193,19 @@ def _battery_sources(root: Path, pattern: str) -> tuple[set[str], int]:
     return sources, len(files)
 
 
+def _own_text(text: str, match: re.Match[str]) -> str:
+    """One AC's own text: from its bold label to the end of its line, markers excluded.
+
+    Replaces a lookup that re-found the line with ``startswith(f"- [x] **AC-{num} ")`` — a
+    second, stricter parser of the same shape, so widening the matcher alone left Check 3
+    blind. Measured s298, it also skipped the 14 ticked ``**AC-N**`` / ``**AC-N.**``
+    labels in ``done/``, and for a duplicated label it fetched the first copy's line twice.
+    """
+    start = match.start(2) - len("**AC-")
+    end = text.find("\n", start)
+    return text[start:] if end == -1 else text[start:end]
+
+
 def _uncovered_artifacts(plan_name: str, text: str, sources: set[str]) -> list[BatteryGap]:
     """Every ticked AC in ``text`` naming an artifact module outside ``sources``.
 
@@ -151,10 +225,11 @@ def _uncovered_artifacts(plan_name: str, text: str, sources: set[str]) -> list[B
     still cannot slip through unwitnessed — the s278 defect stays caught.
     """
     out: list[BatteryGap] = []
-    for flag, num in _AC_BOX.findall(text):
+    for match in _AC_BOX.finditer(text):
+        flag, num = match.groups()
         if flag != "x":
             continue
-        line = next((ln for ln in text.splitlines() if ln.startswith(f"- [x] **AC-{num} ")), "")
+        line = _own_text(text, match)
         seg = _ARTIFACT_SEG.search(line)
         if seg is None:
             continue  # an AC with no test artifact (a command-run AC) is not a gap
@@ -284,6 +359,21 @@ def find_duplicate_labels(root: Path) -> list[DuplicateLabel]:
     return out
 
 
+def find_unparsed_ac_lines(root: Path) -> list[UnparsedLine]:
+    """Check 4 — an active PLAN's AC line the matcher cannot read is an error, not a skip.
+
+    See the module docstring: the marker grammar is a closed list, and an AC it cannot
+    read escapes Checks 1-3 without a word. Failing here turns the next unmeasured shape
+    into one visible report on the commit that introduces it.
+    """
+    out: list[UnparsedLine] = []
+    for p in active_plans(root):
+        for ln_no, line in enumerate(p.read_text(encoding="utf-8").splitlines(), 1):
+            if _AC_CANDIDATE.match(line) and not _AC_BOX.match(line):
+                out.append(UnparsedLine(plan=p.name, line=ln_no, text=line))
+    return out
+
+
 def _plan_text(root: Path, num: str) -> str | None:
     """A PLAN by number, active or archived — a STATUS claim may name either."""
     for sub in ("plans", "plans/done"):
@@ -365,6 +455,19 @@ def main() -> int:
     dupes = find_duplicate_labels(root)
     mismatches = find_status_mismatches(root)
     gaps = find_battery_gaps(root)
+    unparsed = find_unparsed_ac_lines(root)
+
+    for u in unparsed:
+        print(
+            f"UNPARSED AC LINE: docs/plans/{u.plan}:{u.line}\n"
+            f"    {u.text[:120]}\n"
+            f"    no check can read this AC, so a tick, a duplicate label or a STATUS claim "
+            f"about it would pass unseen.\n"
+            f"    fix: write `- [x] **AC-N`, with any status marker before the label as a "
+            f"symbol, a **bold** or *italic* span, or `~~` — or, if the line is not an AC, "
+            f"un-bold the reference.",
+            file=sys.stderr,
+        )
 
     for d in dupes:
         print(
@@ -389,10 +492,11 @@ def main() -> int:
             file=sys.stderr,
         )
 
-    if dupes or mismatches or gaps:
+    if dupes or mismatches or gaps or unparsed:
         print(
             f"\ncheck_ac_consistency: {len(dupes)} duplicate label(s), "
-            f"{len(mismatches)} ledger disagreement(s), {len(gaps)} battery gap(s).",
+            f"{len(mismatches)} ledger disagreement(s), {len(gaps)} battery gap(s), "
+            f"{len(unparsed)} unparsed AC line(s).",
             file=sys.stderr,
         )
         return 1
