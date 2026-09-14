@@ -1,7 +1,7 @@
 # ADR-0018: Axis-B Verification Loop — `/goal` Stop-hook gate + `goal-evaluator` subagent
 
 **Status:** Accepted
-**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below); **Amendment** 2026-09-02 (factual correction, `was an error` — the SD-1 deny hook never ran in-harness until #1363; see §Amendment 2026-09-02 below); **Amendment** 2026-09-03 (direction ratified by Cray, typed, s275 — adds **D8** the resource-binding contract for `check` criteria; corrects D1's "un-arguable" as `was an error`; the deterministic layer fabricated nine test failures by binding the session's own test database at Stop — see §Amendment 2026-09-03 below; **SD-A / SD-B ruled (b)** later the same session, Cray typed — identity marker + Postgres session advisory lock, against the dispatch's specified mechanism (`was an error` on the dispatch's part); SD-C / SD-D remain open)
+**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below); **Amendment** 2026-09-02 (factual correction, `was an error` — the SD-1 deny hook never ran in-harness until #1363; see §Amendment 2026-09-02 below); **Amendment** 2026-09-03 (direction ratified by Cray, typed, s275 — adds **D8** the resource-binding contract for `check` criteria; corrects D1's "un-arguable" as `was an error`; the deterministic layer fabricated nine test failures by binding the session's own test database at Stop — see §Amendment 2026-09-03 below; **SD-A / SD-B ruled (b)** later the same session, Cray typed — identity marker + Postgres session advisory lock, against the dispatch's specified mechanism (`was an error` on the dispatch's part); SD-C / SD-D remain open); **Amendment** 2026-09-14 (s298 — PLAN-0123 SD-5 (c) discharged by Cray's typed "AC-12 = B, SD-5 = X1": the gate's check-state enumeration is closed by name — eighth state `basis-moved` (declarative, PLAN-0123 §4.4), seventh `contended` recorded (PLAN-0120); a hollow goal never passes (`was an error`, omission); the OQ-8 adoption question acted on and left open; **F1–F3 ruled as recommended** by Cray, typed, at review of #1482 — see §Amendment 2026-09-14 below)
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-013 (autonomy-axis relocation — harness primitives are Code-built per D1; **this ADR applies that boundary**: the gate + evaluator are Code-authored), ADR-009 (D1 — this ADR is Cowork-drafted under the interim process; D2 — only Code commits; D3 — K-1/K-2 workflow used for the companion handoff), ADR-0017 (track-1 precedent off the same harness review; D7 harness-as-plugin forward link → OQ-8 here), ADR-0016 (D5 product-side `Procedure.goal` — a **distinct concept**; see D2 NB below), ADR-012 (D4.3 author≠reviewer disclosure), PLAN-0008 (in `done/` — the `Stop` continuation loop + Sonnet classifier this gate composes with), PLAN-0009 (subagent topology — the Step 5c dispatch-block spawn pattern + Step 1b subagent contract reused here), PLAN-0010 (scheduled-task autonomy loop — the unattended-run scope in D5), CLAUDE.md §6 (tier table), §7 (PR flow — explicitly NOT gated in v1, D5). Authoring dispatch: `.claude/handoffs/session-51/2026-06-10-0147-code-axisb-verification-loop-adr-dispatch.md`.
 
@@ -118,7 +118,10 @@ Verification mirrors the proven Axis-A two-layer pattern (deterministic hooks
    `pytest` check firing at Stop against the checkout's shared test database
    produced nine failures that a serialized re-run reversed. The split rule
    below stands unweakened; D8 adds the missing resource-binding contract.
-   Full account: §Amendment (2026-09-03) below.]_
+   Full account: §Amendment (2026-09-03) below.]_ _[Amended s298 —
+   "pass/fail" is an eight-state enumeration, closed by name (A4-1); two of
+   them are about the basis, not the work. Full account: §Amendment
+   (2026-09-14) below.]_
 2. **LLM layer (the `goal-evaluator` subagent, D3).** Criteria that cannot be
    reduced to an exit code (e.g. *"the ADR resolves OQ-1…OQ-7 with
    decisions"*, *"the doc follows the template shape"*) are declared as
@@ -160,7 +163,8 @@ ADR-013 D1) and stored as a **per-session goal file at
   derived-artifact discipline as ADR-0017 D3/D6; on divergence the PLAN
   wins). Ad-hoc (non-PLAN) sessions may declare standalone criteria.
 - **Lifecycle.** Created/replaced by `/goal`; marked `passed` by the gate
-  when all criteria pass (the gate then stands down for the session);
+  when all criteria pass _[s298: never over an empty criteria list — A4-3,
+  §Amendment (2026-09-14) below]_ (the gate then stands down for the session);
   cleared/replaced explicitly by `/goal` (new goal or `clear`); a session
   end with an unmet goal leaves the file for the next session to re-ground
   on (the Anthropic structural-artifact pattern) — the gate re-arms on next
@@ -462,9 +466,14 @@ Control flow at the D4 insertion point (after chain-cap, before classifier):
    the check inherits the session's environment and lands on the checkout's
    own test database. D8.2 requires the check subprocess to bind a database
    distinct from the interactive one. Full account: §Amendment (2026-09-03)
+   below.]_ _[Amended s298 — the recorded states are the eight named in A4-1;
+   `basis-moved` is assigned declaratively (A4-2). §Amendment (2026-09-14)
    below.]_
 3. **All criteria resolved + all pass** → set `status: "passed"`, Telegram
    info ping, fall through to classifier (stop proceeds normally).
+   _[Amended s298, `was an error` (omission) — "all pass" over zero criteria
+   is vacuously true and passed a hollow goal; A4-3 forbids it. Full account:
+   §Amendment (2026-09-14) below.]_
 4. **`judge` criteria unresolved + work-since-last-evaluation** (fingerprint
    mismatch — e.g. the Step 3 `turn_touched` marker or a diff hash) → emit
    the **dispatch-block** instructing the main agent to spawn
@@ -561,7 +570,9 @@ are done in this draft:
 - **`/goal` discipline is manual.** Nothing forces a session to declare a
   goal; an undeclared session is exactly as unverified as today. Adoption
   pressure (e.g. loop-dispatcher auto-declaring goals from PLAN ACs) is
-  OQ-8 material.
+  OQ-8 material. _[s298: acted on by PLAN-0123 — trigger refuted at its
+  pre-committed read, templates shipped, adoption NOT MET and read as reach;
+  stays open (A4-4). §Amendment (2026-09-14) below.]_
 
 ### Neutral
 
@@ -603,6 +614,13 @@ No architectural state migrates; no Axis-A surface is touched either way
   - **Auto-declared goals:** loop-dispatcher deriving `goal.json` from the
     PLAN AC block it executes, removing the manual `/goal` step in
     unattended runs.
+    **ACTED ON, NOT CLOSED — 2026-09-14** (PLAN-0123, the first artifact on
+    this item): nothing auto-declares — §6 keeps it out of scope — but the
+    adoption question this bullet homes (Consequences §Negative) was worked:
+    the reading-shape trigger failed its pre-committed read and does not
+    ship; the templates shipped; adoption read NOT MET at n = 1 and as a
+    reach failure (AC-12 = B). Stays open with V2-OQ-2 — A4-4, §Amendment
+    (2026-09-14) below.
 - **VX — verify-at-execution items (Code confirms during T2, not
   re-litigated here):**
   - **VX-1:** the exact non-blocking warn/annotate mechanism available to a
@@ -1326,7 +1344,10 @@ reading recorded as `fail` lands in an **append-only** `evaluations[]` trail
 that nobody can remove (the very hazard `:617-623` names for the battery
 case), and under V2-D3 an `enforce: true` goal would ride a fabricated
 `check` FAIL straight into the block ladder. The exact code and status name
-are the build PLAN's.
+are the build PLAN's. _[s298: named `contended`, exit 75 (PLAN-0120;
+`_goal_gate.py:176`, `:193`) — never recorded here until now; the eighth
+state `basis-moved` enters on the same precedent. A4-1, §Amendment
+(2026-09-14) below.]_
 
 _[Amended s275, post-ruling (SD-B (b)) — with an advisory lock the second
 arriver is refused **at acquisition**, so the contention question has a
@@ -1593,6 +1614,181 @@ disk: `pyproject.toml:112` (and the absence of any loop-scope key),
 the first pass). Separation: **partially intact**, as above; Cray at PR merge
 is the independent reviewer, and Code re-verifies every citation against the
 merged tree before commit.
+
+## Amendment (2026-09-14, session 298): the check-state enumeration is closed by name — eighth state `basis-moved`, seventh `contended` recorded; a hollow goal never passes; the adoption question was acted on and stays open
+
+> **Ruled direction — Cray, typed.** PLAN-0123 SD-5 = **(c)** (2026-09-09,
+> s289): *"PLAN now, ADR text once AC-11/AC-12 have numbers"* — the ADR edit
+> **owed, not waived**
+> (`docs/plans/done/0123-goal-declaration-trigger-and-templates.md:255`,
+> `:266` — cited at its archived path; see X1). Discharge at Step 5, Cray
+> typed 2026-09-14 (s298, relayed by the dispatch): **"AC-12 = B, SD-5 = X1"**
+> — the edit is owed *now* (AC-12 has numbers; AC-11 never will), PLAN-0123
+> closes to `done/` **without** waiting for this PR, and the in-harness
+> `plan-drafter` authors it (G1 exemption:
+> `.claude/hooks/pretooluse_governance_gate_deny.py:115-129`, `:153`). **Ruled
+> order, recorded not flagged:** `basis-moved` shipped (Step 1, #1459
+> `b179825`, merged 2026-09-10T06:13:49Z) *before* this text. SD-5's own text
+> names the authority — *"Why Cray's: §8's 'ADR merged before implementation'
+> is Cray's to apply"* (`:266`) — and Cray applied CLAUDE.md §8 by ruling (c):
+> PLAN first, ADR text once the numbers exist. **Line-number basis:** every
+> `file:line` in this amendment — this ADR's own lines, PLAN-0123's, and the
+> code files' — refers to commit `c39f4e3`, before this amendment's insertions
+> and before PLAN-0123's closeout edits. In-place amendment (ADR-0016
+> precedent; this ADR's V2 / 09-02 / 09-03 form) —
+> **extends, does not reverse or renumber**: D1–D8 and V2-D1–V2-D5 stand;
+> Status stays **Accepted**. _[F1–F3 RULED — Cray, typed, 2026-09-14 (s298),
+> at review of PR #1482: **"F1/F2/F3 ตามที่แนะนำ"** ("F1/F2/F3 as
+> recommended"). **F1:** no new D number — this is the A4 amendment to the
+> enumeration. **F2:** the hollow-goal guard is sub-item A4-3, framed as V2-D4
+> applied; `declared_head` is one schema line in A4-2. **F3:** OQ-8 stays
+> OPEN, annotated.]_
+
+### What happened (measured; PLAN-0123 is the tracked record)
+
+1. **The eighth check state is live** — exactly as A4-2 states it.
+   `_goal_gate.py:177-185` (`CHECK_BASIS_MOVED`, rule in the docstring);
+   assignment in `_run_checks` `:461-478` (`_is_head_pinned` + `declared_head`
+   ≠ HEAD; only a `fail` is reclassified); handling `:880-903` (marker `:158`);
+   `_goal_state.py:331-336` (`declared_head` first-class; `schema_version`
+   stays 2, `:77`). Prose: `.claude/commands/goal.md:51-59` (R5). Design:
+   PLAN-0123 §4.4 (`:138`), AC-3 (`:166`), SD-2 = (c) (`:252`).
+2. **A hollow goal never passes.** `_goal_gate.py:846-865`: zero `check` and
+   zero `judge` → `_goal_gate:invalid_goal` (`:155`), one ping, status unchanged
+   under `enforce: false`; `blocked-pending-human` at once under `enforce: true`.
+   PLAN-0123 §4.3.1 (`:132`), AC-1 (`:164`).
+3. **Budget.** `DEFAULT_CHECK_BUDGET_S = 120` (`_goal_gate.py:116`; the pin to
+   the 180 s Stop timeout at `:118-130`); the command prose now states 120 s and
+   is pinned to the constant by test (`goal.md:37-41`; PLAN-0123 AC-2, `:165`).
+4. **The trigger was refuted offline.** PLAN-0123 §11.1 (`:283-291`, s293):
+   `corpus_calls=597 raw_matches=162 (27.1 %) deduped_fires=18 valid=9 misfire=9 reachable=3/3`
+   → `VERDICT: FAIL exit=1` on clause 2 (p=27.1 % ≥ 5 % ceiling, `:148`).
+   AC-10 **struck** — `posttooluse_progress_observer.py` byte-unchanged (`:284`);
+   AC-11 **unreachable** (`:174`). PR #1466 (merge `da0c900`, containing
+   `8b97e3e`).
+5. **Templates shipped; adoption NOT MET.** `tools/goal_template.py` (R1–R8,
+   `:19-39`; Step 2 = #1461 `6f69542` + #1463 `63ffe36`, merged
+   `2026-09-10T12:44:28Z`, PLAN-0123 `:358`; quoting defect fixed by #1472,
+   merged `2026-09-11T14:36:21Z`, `:399`). §11.2 (`:352-356`, s297):
+   `template_goals=1 renderings=2 passed=0 replaced_unpassed=0 other={cleared-unpassed: 1} real_findings=0 orphan_render_dirs=34`
+   against a read of ≥ 3 passed and ≥ 1 real finding → **NOT MET**. Re-measured
+   by Code, s298: `in_window=2 template_goals=1 renderings=2 passed=0`, with
+   the control reading `passed` on the out-of-window s291 record.
+6. **Why it reads as reach (AC-12 = B).** OQ-3 ruled *"`goal.md` gains a
+   pointer"* to the renderer (`:229`); at `c39f4e3` `goal.md` has **0** hits for
+   `goal_template` (control token `declared_head`: 2 hits, `:54-55`) and `:66-67`
+   still says the renderer's `--replace` arrives *"once Step 2 lands — until
+   then, do it by hand"*. The other entry point, the advisory, was struck (4).
+   The pointer lands in PLAN-0123's Step 5 closeout PR; no new measurement.
+
+### What in this ADR is now wrong or silent, and how each change is classified
+
+1. **The state set — D1 §1 "records per-criterion pass/fail" (`:113`), spec §2
+   step 2 "record results" (`:457`), spec §1 `"deterministic": {"C1": "pass"}`
+   (`:437`) — `superseded by new info` (extension).** No sentence was false: the
+   build has six states (`pass fail timeout skipped invalid error`,
+   `_goal_gate.py:167-172`); D8.5 added a seventh and **delegated its name to
+   the build PLAN** — PLAN-0120 named it `contended` (`:176`, `CONTENDED_EXIT =
+   75`, `:193`) and this ADR never recorded it (0 hits for `contended` /
+   `PLAN-0120` at `c39f4e3`); PLAN-0123 added the eighth. The enumeration was
+   open by D8.5's own delegation; A4-1 closes it by name.
+2. **Spec §2 step 3 "All criteria resolved + all pass → `passed`" (`:466-467`)
+   and D2 "marked `passed` by the gate when all criteria pass" (`:162-163`) —
+   `was an error` (omission).** Over an empty list "all pass" is vacuously true;
+   the build followed the text (`all([]) is True`) and a hollow goal reached
+   `passed` at its first Stop (`_goal_gate.py:846-850`; PLAN-0123 §4.3.1
+   classifies the same way — the spec, not the code). V2-D4 already answered
+   the enforce tier (evidence-missing is never a silent pass); the spec never
+   applied it to the empty case.
+3. **Consequences §Negative "`/goal` discipline is manual … Adoption pressure
+   … is OQ-8 material" (`:561-564`) and OQ-8 "Auto-declared goals"
+   (`:603-605`) — not wrong; now incomplete.** Acted on by PLAN-0123 with a
+   measured result; annotated, not closed (A4-4). Recorded for the record:
+   PLAN-0123's header quotes OQ-8 as *"adoption pressure … auto-declaring
+   goals"* (`:6`) — a **splice** of `:563` and `:603`, not OQ-8's words; the
+   bullet exists (OQ-8 has five bullets, `:587-605`; the s298 dispatch's read
+   of `:584-600` stopped three lines short of it).
+4. **s275 defect (a) "`_goal_gate.py:104` sets `DEFAULT_CHECK_BUDGET_S = 600`"
+   (`:1354-1356`) — `superseded by new info`, by its own anticipated fix:** 120
+   at `:116`, pinned by test to the hook timeout and to the prose. No text
+   changed.
+
+### Decision text — A4 (an amendment to the check-outcome enumeration; no new D number — F1)
+
+- **A4-1 — the enumeration is closed by name.** A `check` resolves to exactly
+  one of `pass`, `fail`, `timeout`, `skipped`, `invalid`, `error`, `contended`
+  (D8.5 / PLAN-0120), `basis-moved` (PLAN-0123 §4.4). Only `pass` is success.
+  `contended` and `basis-moved` are **about the basis, not the work**: never a
+  defect in the trail, never a ladder rung, never `passed`. A ninth state is an
+  amendment here on the same precedent.
+- **A4-2 — `basis-moved` is declarative, never inferred.** Assigned iff the
+  criterion's `cmd` is `git show <rev>:…` **and** the goal carries
+  `declared_head` **and** it differs from current HEAD **and** the check
+  returned `fail`. A tree-basis check that fails after HEAD moved stays `fail`
+  — the asymmetry that keeps the state from masking a regression. No
+  `declared_head` → detection OFF (fail-safe). Consequence: one annotation per
+  fingerprint, one Telegram naming the basis; all other checks green → the goal
+  stays `active` for the agent to clear or re-declare; any other real `fail` →
+  its consequence runs with `basis-moved` visible. `declared_head` is
+  first-class on `Goal` (V2 build-hazard (a) applied). HEAD-pinning is
+  pre-merge only; the renderer never emits it (R5).
+- **A4-3 — a hollow goal never passes** (V2-D4 applied to the empty case; F2).
+  Zero `check` and zero `judge`: `_goal_gate:invalid_goal`, one ping, status
+  unchanged under `enforce: false`; `blocked-pending-human` at once under
+  `enforce: true`.
+- **A4-4 — the adoption question stays OPEN, annotated** (F3). The trigger
+  (SD-1 (a)) failed its pre-committed read and does not ship; the templates
+  ship; adoption is NOT MET at n = 1 template goal and is read as reach; the
+  auto-declaring bullet was never attempted (PLAN-0123 §6, `:180`). OQ-8 and
+  V2-OQ-2 remain open.
+
+### What stands
+
+D1–D8 in full (one adjective already corrected s275); V2-D1–V2-D5; the D4
+fail-open geometry — a basis event falls beside `contended`, never under the
+FAIL ladder; the exit-code-only posture; spec §4 Axis-A non-interference,
+re-affirmed: no `pretooluse_*_deny` hook, no classifier behaviour, no
+commit-boundary change (the PostToolUse advisory was never added).
+
+### Consequences (amendment-scope)
+
+**Positive:** the s289 sequence (`C1=fail` at four Stops for a provenance
+reason, PLAN-0123 §1.2 #11) now produces zero false defects and a message that
+names the fix; `enforce: true` template goals (SD-4 (b)) cannot park on a
+provenance failure; a hollow goal cannot mint a `passed`. **Negative:** one
+more word to learn; a HEAD-pinned check whose *content* also regressed after a
+merge reads `basis-moved` — accepted, because R5 forbids the shape post-merge
+and the renderer never emits it; adoption is measured NOT MET, so the gate's
+value in ad-hoc work is still unproven; a hand-written `enforce: false` goal
+still fails silently to the agent (PLAN-0123 §10, `:273`, and SD-4's ruling
+consequence, `:259`, both citing G5) — unchanged here. **Neutral:** goal-less sessions zero-delta; the evaluator, its prompt and
+Write-narrowing untouched. **Reversibility:** delete the eighth state and the
+hollow-goal branch; `declared_head` is tolerated when absent.
+
+### Follow-on
+
+- **A4-T1** `goal.md` pointer to `tools/goal_template.py` + retire the
+  `:66-67` "once Step 2 lands" sentence — PLAN-0123 Step 5 closeout PR
+  (AC-12 = B), not this PR.
+- **A4-T2** STATUS record; PLAN-0123 → `done/` (X1: does not wait for this PR).
+- **A4-T3** *(open, not scheduled)* the `enforce: false` silent-to-agent gap.
+
+### Author≠reviewer disclosure (ADR-012 D4.3)
+
+The fact-pack (Cray's typed rulings as relayed, the s293/s297/s298 readings,
+the PR numbers and SHAs) is **Code's own** work under Cray's typed direction;
+the text was drafted by the in-harness `plan-drafter` from Code's s298
+dispatch, so drafter and fact-author are **not** independent. The drafter
+re-read on disk every `file:line` above in `_goal_gate.py`, `_goal_state.py`,
+`goal.md`, `goal_template.py`, `pretooluse_governance_gate_deny.py`, PLAN-0123
+and this ADR, and corrected the dispatch in two places (OQ-8's bullet exists
+at `:603-605`; `contended` was never recorded here either). The PR numbers,
+SHAs, merge timestamps and the s298 re-measurement quoted above were verified
+by **Code at R2** (s298), not by the drafter, who has no shell. **Cray at PR
+merge is the independent reviewer**; Code re-verifies every citation against
+the merged tree before commit. Separation: **partially intact** — drafting is
+separated from the measurement's author only at the tooling level, and the
+sole external check is Cray's review.
 
 ## References
 
