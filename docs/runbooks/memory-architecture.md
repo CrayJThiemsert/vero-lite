@@ -455,9 +455,18 @@ entirely; see Lesson #23 §3.)
   split moves blocks between files; every pointer that named one is rot the
   moment the bar moves (session 144 broke three of its own this way and had to
   repair them in the same PR).
-  Live chains: `2026-h1b/c/d/e/f/g-status.md` → `2026-h1-status.md`; and the
-  separate Current-Focus-only `2026-h1b/c-current-focus.md` →
-  `2026-h1-current-focus.md`. Same scheme, two distinct corpora.
+  **Live chains: list the directory, not this runbook** — `ls docs/status-archive/`.
+  It holds two distinct corpora on one letter scheme: the rotation chain
+  `<YYYY>-h<N>[<letter>]-status.md` and the separate Current-Focus-only chain
+  `<YYYY>-h<N>[<letter>]-current-focus.md`. The naming rule above orders the
+  `-status` chain; the scoped exception below orders the Current-Focus chain;
+  the next append target is resolved by that exception's command, every time.
+  _[This line used to enumerate the letters, and rotted exactly as the
+  corollary predicts. Its `-status` half stopped at `g` (last edited
+  `a584f3d`, 2026-07-30), missing the `h` (`c169b46`, 2026-08-23) and `i`
+  (`554c9b4`, 2026-09-14) splits. Its Current-Focus half ended at the base the
+  exception records as closed, missing `d` (`001aa10`) and `e` (`0dcb78c`).
+  Replaced by this pointer, 2026-09-14 (session 298).]_
   - ⚠️ **SCOPED EXCEPTION — the Current-Focus chain appends to the NEWEST LETTER,
     not to its base (Cray-ratified, 2026-08-06, session 212).** The rule above
     still governs the **`-status.md`** chain, whose base is the live append target
