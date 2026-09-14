@@ -1,0 +1,107 @@
+{
+  "claim_sources": [
+    "tests/tools/test_goal_template_state_isolation.py"
+  ],
+  "probes": [
+    {
+      "name": "PS1",
+      "subject": "tools/goal_template.py",
+      "old": "    override = env.get(STATE_DIR_ENV)",
+      "new": "    override = env.get(\"CLAUDE_GOAL_STATE_DIR_IGNORED\")",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_the_override_re_roots_the_state_dir",
+      "expect_claim": "test_the_override_re_roots_the_state_dir|got == elsewhere|#0",
+      "note": "The override is read under the wrong name, so it is silently ignored and the checkout's state dir comes back. This is the pre-fix renderer in function form."
+    },
+    {
+      "name": "PS2",
+      "subject": "tools/goal_template.py",
+      "old": "    return Path(override) if override else repo_root / \".claude\" / \"state\"",
+      "new": "    return Path(override) if override else repo_root / \".claude\" / \"stat\"",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_no_override_means_the_checkouts_state_dir",
+      "expect_claim": "test_no_override_means_the_checkouts_state_dir|got == _REAL_STATE|#0",
+      "note": "The default drifts. Without this, a renderer that re-rooted EVERY run would pass the override case and quietly move production goal state."
+    },
+    {
+      "name": "PS3",
+      "subject": "tools/goal_template.py",
+      "old": "    return Path(override) if override else repo_root / \".claude\" / \"state\"",
+      "new": "    return Path(override) if override is not None else repo_root / \".claude\" / \"state\"",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_an_empty_override_is_no_override",
+      "expect_claim": "test_an_empty_override_is_no_override|got == _REAL_STATE|#0",
+      "note": "An empty value becomes Path(''), which is the working directory; the default case stays green because it passes no key at all."
+    },
+    {
+      "name": "PS4",
+      "subject": "tests/conftest.py",
+      "old": "os.environ[\"CLAUDE_GOAL_STATE_DIR\"] = _GOAL_STATE_DIR",
+      "new": "os.environ.pop(\"CLAUDE_GOAL_STATE_DIR\", None)",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_the_suite_points_the_renderer_outside_the_checkout",
+      "expect_claim": "test_the_suite_points_the_renderer_outside_the_checkout|value|#0",
+      "note": "The structural half is switched off: conftest makes the temp dir and never exports it, which is the pre-fix suite."
+    },
+    {
+      "name": "PS5",
+      "subject": "tests/conftest.py",
+      "old": "_GOAL_STATE_DIR = tempfile.mkdtemp(prefix=\"vero-goal-state-\")",
+      "new": "_GOAL_STATE_DIR = tempfile.mkdtemp(prefix=\"vero-goal-state-\", dir=os.path.dirname(os.path.abspath(__file__)))",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_the_suite_points_the_renderer_outside_the_checkout",
+      "expect_claim": "test_the_suite_points_the_renderer_outside_the_checkout|not Path(value).resolve().is_relative_to(_ROOT)|#0",
+      "note": "The variable is set, but inside the checkout (tests/), so an override would still write into the repository. The presence assertion stays green."
+    },
+    {
+      "name": "PS6",
+      "subject": "tools/goal_template.py",
+      "old": "STATE_DIR = resolve_state_dir(os.environ, REPO_ROOT)",
+      "new": "STATE_DIR = resolve_state_dir({}, REPO_ROOT)",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_the_suite_points_the_renderer_outside_the_checkout",
+      "expect_claim": "test_the_suite_points_the_renderer_outside_the_checkout|module_dir == Path(value)|#0",
+      "note": "The drift guard between the two spellings of one name: conftest exports the variable correctly, but the module never reads the environment, so in-process renders keep the real root."
+    },
+    {
+      "name": "PS7",
+      "subject": "tools/goal_template.py",
+      "old": "    return f\"wsl.exe --exec bash {SCRIPT_ROOT / gid / (criterion_id + '.sh')}\"",
+      "new": "    return f\"wsl.exe --exec bash {SCRIPT_ROOT / (criterion_id + '.sh')}\"",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout",
+      "expect_claim": "test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout|len(gids) == 1|#0",
+      "note": "Instrument control for the scenario. The rendered cmd loses its gid segment, and A1 must say so rather than letting A2 to A5 run against '<none>'."
+    },
+    {
+      "name": "PS8",
+      "subject": "tools/goal_template.py",
+      "old": "SCRIPT_ROOT = STATE_DIR / \"goal-checks\"",
+      "new": "SCRIPT_ROOT = REPO_ROOT / \".claude\" / \"state\" / \"goal-checks\"",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout",
+      "expect_claim": "test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout|not real_checks.exists()|#0",
+      "note": "🔴 The s297 leak, one layer down: the override is honoured for evidence but scripts go back into the checkout. A1 stays green because the gid is still in the path."
+    },
+    {
+      "name": "PS9",
+      "subject": "tools/goal_template.py",
+      "old": "    write_scripts(draft, SCRIPT_ROOT)",
+      "new": "    write_scripts(draft, SCRIPT_ROOT / \"misplaced\")",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout",
+      "expect_claim": "test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout|placed and all(ok and inside for _, ok, inside in placed)|#0",
+      "note": "A3 is A2's positive control. Here the scripts land neither in the checkout nor where the goal names them, so A2 stays green, which is exactly why it cannot stand alone."
+    },
+    {
+      "name": "PS10",
+      "subject": "tools/goal_template.py",
+      "old": "EVIDENCE_ROOT = STATE_DIR / \"goal-evidence\"",
+      "new": "EVIDENCE_ROOT = REPO_ROOT / \".claude\" / \"state\" / \"goal-evidence\"",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout",
+      "expect_claim": "test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout|not real_evidence.exists()|#0",
+      "note": "The evidence half of the leak: scripts are isolated (A2 and A3 green), but the evidence directory is created in the checkout."
+    },
+    {
+      "name": "PS11",
+      "subject": "tools/goal_template.py",
+      "old": "    draft.evidence_dir.mkdir(parents=True, exist_ok=True)",
+      "new": "    draft.evidence_dir.parent.mkdir(parents=True, exist_ok=True)",
+      "node_id": "tests/tools/test_goal_template_state_isolation.py::test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout",
+      "expect_claim": "test_a_real_render_names_scripts_that_exist_and_none_in_the_checkout|override_evidence.is_dir()|#0",
+      "note": "A5 is A4's positive control. No evidence directory is made anywhere, so A4's absence would read green on its own."
+    }
+  ],
+  "exemptions": {}
+}

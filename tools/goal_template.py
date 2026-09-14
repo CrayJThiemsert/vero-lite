@@ -68,10 +68,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shlex
 import sys
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
@@ -103,7 +104,31 @@ from tools._evidence import (  # noqa: E402 — same reason
     verdict_line,
 )
 
-STATE_DIR = REPO_ROOT / ".claude" / "state"
+#: A test seam, not a contract — the ``CLAUDE_*`` override family (``_goal_state``
+#: honours ``CLAUDE_GOAL_PATH`` the same way). ONE variable re-roots the whole
+#: renderer: scripts, evidence, archive and the default goal file move together, so a
+#: rendered ``cmd`` can never name a script that was written somewhere else.
+STATE_DIR_ENV = "CLAUDE_GOAL_STATE_DIR"
+
+
+def resolve_state_dir(env: Mapping[str, str], repo_root: Path) -> Path:
+    """Where rendered goals live. Pure, so the unit suite can drive it without a process.
+
+    🔴 **Why it exists (measured s297).** This used to be a fixed path, and
+    ``tests/tools/test_goal_template_lifecycle.py`` renders through a subprocess that
+    no ``monkeypatch`` reaches — so every run of that file wrote four directories into
+    the checkout's own ``.claude/state/goal-checks/`` and ``goal-evidence/`` (36 → 40;
+    a monkeypatching sibling held 36 → 36), and 34 of the 36 found there belonged to no
+    goal. ``tests/conftest.py`` now sets the variable at import.
+
+    An empty value counts as unset: ``Path("")`` is the working directory, and would
+    scatter goal state wherever the process happened to start.
+    """
+    override = env.get(STATE_DIR_ENV)
+    return Path(override) if override else repo_root / ".claude" / "state"
+
+
+STATE_DIR = resolve_state_dir(os.environ, REPO_ROOT)
 EVIDENCE_ROOT = STATE_DIR / "goal-evidence"
 SCRIPT_ROOT = STATE_DIR / "goal-checks"
 HISTORY_ROOT = STATE_DIR / "goal-history"

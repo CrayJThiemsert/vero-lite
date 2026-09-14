@@ -17,6 +17,12 @@ three dispositions are what a later reader uses to tell the cases apart.
 Every case drives the real renderer as a subprocess against an isolated goal
 file and an isolated history root — the archive is the artifact under test, so
 it cannot be shared with the live one.
+
+⚠️ The rendered scripts and evidence directories are isolated too, but NOT by
+anything in this file: ``tests/conftest.py`` points ``CLAUDE_GOAL_STATE_DIR``
+outside the checkout. Until s297 nothing did, and every run of this file wrote
+four directories into the real ``.claude/state/goal-checks/`` and
+``goal-evidence/`` — see ``test_goal_template_state_isolation.py``.
 """
 
 from __future__ import annotations

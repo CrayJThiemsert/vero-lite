@@ -1,7 +1,10 @@
 """Shared pytest fixtures."""
 
+import atexit
 import os
+import shutil
 import socket
+import tempfile
 from collections.abc import Collection, Iterator, Mapping
 from typing import Any
 
@@ -67,6 +70,28 @@ def git_env_keys_to_strip(
 
 for _inherited_git_var in git_env_keys_to_strip(os.environ):
     del os.environ[_inherited_git_var]
+
+
+# --- s297: no test may render a goal into the checkout's real .claude/state/ ------
+#
+# Measured, not hypothesised. ``tools/goal_template.py`` writes every real render's
+# check scripts and evidence directory under ``.claude/state/``, and
+# ``tests/tools/test_goal_template_lifecycle.py`` drives it through a subprocess — which
+# no ``monkeypatch`` reaches. One run of that file took the checkout's ``goal-checks/``
+# from 36 to 40 directories; 34 of the 36 already there belonged to no goal. Nothing
+# reddened, because the directories are gitignored.
+#
+# At import, like the GIT_* sweep above, and for a sharper reason: the renderer resolves
+# its roots when it is IMPORTED, and a test module that imports it does so at collection,
+# before any fixture runs — so an autouse fixture (the ``_no_real_decision_log`` shape)
+# would arrive too late for in-process renders. Set unconditionally: an inherited value is
+# exactly what could point back at the real state. The name is spelled here rather than
+# imported, because importing the renderer would resolve the roots first;
+# ``tests/tools/test_goal_template_state_isolation.py`` is the drift guard between the two.
+
+_GOAL_STATE_DIR = tempfile.mkdtemp(prefix="vero-goal-state-")
+atexit.register(shutil.rmtree, _GOAL_STATE_DIR, ignore_errors=True)
+os.environ["CLAUDE_GOAL_STATE_DIR"] = _GOAL_STATE_DIR
 
 
 @pytest.fixture(autouse=True)
