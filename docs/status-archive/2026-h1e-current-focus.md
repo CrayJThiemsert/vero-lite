@@ -738,3 +738,59 @@ of this file after the append.
 > `tools/probes/` file sits in its scope; the reproducible form is in commit
 > `8b97e3e`, and `tools/README.md` is the parallel session's to write.
 > AC-12's first session after Step 2 declared **no** template goal: it counts 0.
+
+### Rotated at the s297 reconcile — the session-294 Current-Focus block [on the R1 headroom rule: STATUS opened at **63,281 B**, only **2,255 B** under R1's 65,536 B ceiling, so the window stays at TWO (295–296, 297) — the eighth consecutive reconcile of that shape. Block is **3,412 B** as carved from `git show HEAD:docs/STATUS.md`, probed ABSENT here first (block and header line both 0, against the s293 block header = 1 and a fabricated needle = 0). ⚠️ **Two Current-Focus ledger entries were DROPPED, not appended — its own and s293's, which the s295–296 reconcile had declared dropped but left in STATUS (`was an error`):** every measured token of each reads inside this file's own `### Rotated at the s293 reconcile` / `### Rotated at the s294 reconcile` header. Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 294, 2026-09-11 (`da0c900` → `a0bdc17`) — THREE PRs
+> ([#1468](https://github.com/CrayJThiemsert/vero-lite/pull/1468)–[#1470](https://github.com/CrayJThiemsert/vero-lite/pull/1470)),
+> all merged. **PLAN-0109 Phases 1–2 shipped — Ask answers over repair
+> cases — and 0 of 14 ACs are ticked.**
+>
+> ✅ **#1468 first, text only** — four defects in PLAN-0109's ruled content,
+> errata block at its top: (i) AC-11 would have deleted a TRUE sentence
+> (case rows reach the **phrase** request only; the D6 log stores the
+> question); (ii) `tenant_id` missing from the exclusions; (iii) exclusions
+> keyed per `(type, column)`; (iv) AC-11's grep half-vacuous on a line wrap.
+>
+> ✅ **#1469 — Phase 1:** `RepairCase` / `RepairCaseQuote` /
+> `RepairCaseAcceptedQuote` declared (`/meta` 7 → 10),
+> `data_adapter/db_projection.py` the single source;
+> `tools/check_ontology_orm_lockstep.py`, hooked + in CI, reads
+> `types=3 declared=21 columns=28 excluded=7 offenders=0` on the real tree;
+> battery 35/35 WITNESSED, GAPS 0.
+>
+> ✅ **#1470 — Phase 2:** a `FleetMaintenanceAdapter` subclass (allowlist
+> projection, newest-first), the §8 scenario test driving Ask end-to-end,
+> RoPA §3.4; battery 38/38 WITNESSED (4 exempt, reasons written), GAPS 0.
+> CI PASS at every head — `c8e020c` / `6469ce0` / `4690e77`, runs
+> `34576675982` / `34585659266` / `34592345816`.
+>
+> 🔴 **Cray's, measured:** object-level synonyms (`เคสซ่อม`, `ใบที่ตกลง`)
+> never reach `_describe_ontology`, while property synonyms do — (i) render
+> them in the engine (own PR; changes energy's and supply_chain's prompts —
+> Code's lean), (ii) a YAML workaround, (iii) leave it to AC-14, whose live
+> smoke needs a typed §8 go. ⚠️ Deploying #1470 puts visitor free text in
+> front of the model on the public demo (SD-D) — Cray's action.
+>
+> 🔴 **`was an error`, corrected:** the s292 block's specimen line ("4 of 6 …
+> on the only 1 of 20 worktrees running the shipped bytes"). `main`'s log
+> and worktree `blissful-lewin-02af94`'s share their first **256** lines
+> byte-identical (copied in), so **3 of the 5** fabricated requests were
+> written by `main`: `lines_main=312 lines_wt=284 shared_prefix=256` →
+> union **340** records, **13** `emitted=block`; `matched_rows` empty on
+> **304/340**. Of s294's **5** fabricated-request specimens, by source:
+> `09-08T05:06` main · `09-09T17:04` main · `09-09T23:11` main ·
+> `09-10T10:56` worktree · `09-11T05:42` worktree (the *fabricated*
+> classification is s294's; s295 re-read structure only). Detail: Active TODOs.
+>
+> 🔴 **s295, at this reconcile — both s294 template goals (PLAN-0123 AC-12's
+> first data) had defective instruments.** `tools/goal_template.py:309`
+> renders `--pattern {args.pattern!r}` into a bash single-quoted string,
+> and repr doubles the backslash: a `\+` pattern read `matched=0 PASS` on
+> `816a478`'s PLAN-0109, which contains the target at line 263 (the
+> intended pattern reads `matched=1`) — vacuous; a `\)` pattern crashed
+> (`absent: --pattern is not a valid regex`, `rc=2`, no evidence file) and
+> the gate read `fail` on all 5 evaluations. The PLAN-0109 claims themselves
+> hold on `main` (intended patterns: `matched=0`, `control_hits=9`). Fix: a
+> `fix/*` chip in a separate session; the goal file is archived to
+> `goal-history/` with `disposition: cleared-unpassed`.
