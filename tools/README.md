@@ -11,7 +11,7 @@ PLAN-0115 named the failure that this file exists to close:
 > The MUST tier ships a capability; the ALSO tier ships the reason anyone would reach for
 > it. **Shipping the tool while cutting the pointer yields a tool nobody knows to use.**
 
-**20 entries: 12 top-level scripts + 8 packages.** They fall into three groups by *who
+**22 entries: 14 top-level scripts + 8 packages.** They fall into three groups by *who
 invokes them* — and only the first group is yours to remember.
 
 ---
@@ -19,13 +19,14 @@ invokes them* — and only the first group is yours to remember.
 ## 1. Reach for these deliberately — nothing fires them for you
 
 This is the group that a wrong tool choice actually costs you. Nine of the guards in §2
-run themselves; these eleven do not.
+run themselves; these twelve do not.
 
 | Tool | What it answers | The measured failure it replaces |
 |------|-----------------|----------------------------------|
 | **`probe_battery/`** | "Did my mutations redden the assertions I predicted?" — the witnessed-RED discipline `CLAUDE.md` §8 makes binding. Has its own [`README.md`](probe_battery/README.md). | Before it, **every session rebuilt the driver in `/tmp`**; s253 measured a fresh one re-making four already-fixed defect classes at once. 🔴 **Never hand-roll this.** |
 | **`probe_coverage.py`** | "What did I never probe?" — reports which of a test module's claims no probe ever reddened. | s251: a battery printed PASS while **12 of 33 items had never been reddened**, two of them load-bearing (lesson #0047). |
 | **`tally.py`** | Breaks a record file down by a field **and proves the breakdown accounts for every record**. `--expect` refuses when the value set differs from the one you pre-declared. | s288 tallied one table from two different instruments (`grep -c -i timeout` vs the actual field); the buckets summed to **139 against 140 lines** and nothing in the reading said so. |
+| **`measure.py`** | "What does this number read, taken by a tool, against which tree?" — runs an argv (never a shell) or reduces a file, then emits one sealed `measure/v1` block: value, procedure, full `against_sha`, a predicate fixed before the run, a control that could have failed, a hash. Otherwise it refuses (R1–R8) and prints why. PLAN-0125; blocks live in `docs/logs/` and are cited as `measure:<hash>`. | `status-scribe` and `plan-drafter` have no shell, so every SHA, count and byte size they wrote was **transcribed from prose** — and no guard re-derives a written fact. s291's *"drift was 9"* was a total of 9 commits under the name of a substantive count that was 3. |
 | **`excision_scope.py`** | The blast radius of deleting a set of symbols — walks the call graph **forwards**, to callees only the doomed code reaches. | PLAN-0102's review walked the graph *backwards* only, and missed exclusively-owned callees **three separate times**. `ruff` cannot close this: it flags a dead import, never a dead private function. |
 | **`hook_copies_audit.py`** | Which copy of the Stop-arm hooks each worktree is running (sha256 per worktree). **Read-only by ruling** (SD-6, Cray typed s280) — it lists, it never prunes. | A hook change on `main` does not reach a worktree checked out before it. Enumerates by **filesystem, not `git worktree list`** — the porcelain reported **6 where 19 exist**, all marked prunable, because their gitdirs are UNC paths git cannot resolve from WSL. |
 | **`ci/wait_for_ci.py`** | "Did CI pass at THIS sha" — without ever inferring a pass from silence. | s261's four hand-rolled attempts: "no checks registered yet" read as settled-green; a redirect placed outside the `wsl bash -lc` argument; an exit code asserted from memory; and a `$(...)` inside an `until` that expanded a layer early and **could not terminate**. 🔴 A `PreToolUse` hook now denies the hand-rolled shape. |
