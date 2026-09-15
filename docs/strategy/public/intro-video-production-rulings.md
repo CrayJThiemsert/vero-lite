@@ -48,7 +48,8 @@ which is the standing convention that failure produced. Read that for the **why*
 
 ## 2. Cray's typed rulings
 
-Eight rulings across three dates. Each row names where it was typed, because the count
+Eight video rulings (R1–R8) across three dates, plus six rulings for the story-mode
+explainer (L1–L6, §2.3) typed together on a fourth. Each row names where it was typed, because the count
 has been mis-carried before: the four rulings of **2026-08-12** sit in the storyboard's
 own ruling table, while the **2026-08-10** ruling was recorded inline in the beat it
 governs. Every summary written afterwards inherited the table and dropped the fifth.
@@ -70,6 +71,21 @@ governs. Every summary written afterwards inherited the table and dropped the fi
 | R6 | **Option (A): shoot beat 4 on the PUBLISHED profile.** Tab G is dropped from the video | 2026-08-18 | The beat-4 remap in §4. Tab G is absent from the published profile **by ruling**, not by omission |
 | R7 | **The CTA stays *"reply to this email and I'll send you the link + access code"*** — chosen deliberately, because it demonstrates that access control is handled rather than hiding the Access gate | 2026-08-18 | 🔴 **No demo URL may appear on screen anywhere in the clip.** A viewer who reads a URL off the video hits the Access wall before ever talking to us — which inverts the CTA |
 | R8 | **Drop the ฿15,000 contrast from beat 4** — option (a) of three, ruled after the remap was measured | 2026-08-18 | The ladder is now **declared** rather than demonstrated. See §4.1 for what was lost, what carries it instead, and why (b) was rejected as dishonest |
+
+### 2.3 The story-mode explainer (typed 2026-09-15)
+
+A ~2-minute animated 3D explainer of the fleet's governed repair flow. It opens the video
+and a live demo; its build is PLAN-0126. Numbered L1–L6, as in that PLAN, so they are
+never confused with R1–R8 above.
+
+| # | Ruling | Typed | Consequence folded in |
+|---|---|---|---|
+| L1 | **A standalone page at `/story/`, opened in a new browser tab from the published fleet console** — not a tab in the strip. The second channel is a Claude Artifact built from the same files | 2026-09-15 | The console's link to it renders only where Tabs I and H are both declared (confirmed, typed the same day), so no published system links to a page its edge does not serve. A tab in the strip would have forced the ten-tab header to be re-measured |
+| L2 | **The explainer is also part of this video.** The total length may grow; that is handled later | 2026-09-15 | Every explainer caption obeys R1, R3, R7 and the §3 constraints. The runtime question is §5 item 5 — not ruled |
+| L3 | **Honest story only.** No automated lift of a database's foreign keys into an ontology, no model proposing specification changes, no MCP tool-calling at runtime. Grounding is shown as the Ask path: translate, execute, phrase | 2026-09-15 | The rule R8's rejected option (b) already stated: a picture may not claim what the product does not do |
+| L4 | **Two stages:** a private Artifact prototype first, then the in-app page, its drift guard and one deploy | 2026-09-15 | Stage 1 passed Cray's first look for appearance and pacing |
+| L5 | **Act 4 runs three cases:** truck-01 ฿48,000 with one vendor (illustrative; stopped at the quote gate), truck-01 ฿48,000 with three vendors (routes to the owner), and truck-03 ฿15,000 (routes to the fleet manager) | 2026-09-15 | The ฿15,000 contrast returns inside the explainer — see the dated note under §4.1. R8 is not reversed for the Tab H shot |
+| L6 | **Never delete or prune worktrees without Cray's command** | 2026-09-15 | A working rule typed in the same batch. It binds sessions, not the video; it is recorded here only so the batch is complete |
 
 ---
 
@@ -158,6 +174,13 @@ beat, accepted knowingly.
 ⚠️ **Do not reopen this as "the beat feels thin".** The thinness is the ruled trade, not a
 defect. If it is ever worth paying for, the fix is (c) — a build, not a retake.
 
+**Dated note, recorded beside R8 and not reversing it.**
+2026-09-15: the ฿15,000 contrast returns in the explainer's Act 4 as a third case (L5). R8 is not reversed for the Tab H shot.
+R8's reason was that no published tab renders the second rung. The explainer is not a tab:
+it animates the same seeded case (truck-03, ฿15,000, routed to the fleet manager) that
+§4.1 says the remap lost. So the ladder is demonstrated once in the video, in the
+explainer. The beat-4 frame on Tab H still only declares it, exactly as ruled.
+
 ---
 
 ## 5. Open — not ruled
@@ -184,6 +207,11 @@ Nothing below is decided. They are recorded so they are not rediscovered.
    that database has accumulated runs from every vertical since bring-up, while each
    published system has its own. **Crop the left column, or re-measure on the published
    host before rolling. Do not film the number as measured locally.**
+5. **The total runtime may grow with the explainer — not ruled.** L2 accepts a longer
+   video and defers the question. The explainer's own clock reads about 1:56 before any
+   founder beat. R2's ~140 s was ruled before the explainer existed, and R2 itself is not
+   reopened by this entry. It records only that the two now have to be reconciled by a
+   later ruling.
 
 ---
 
@@ -217,7 +245,9 @@ Cray go per occasion** (`CLAUDE.md` §8).
 | §3 filming constraints | 220, re-confirmed 237 | storyboard v2 (beats 2.5 and 4) + session-237 handoff §6.1 |
 | §4 remap | 237, **geometry re-measured 239** | session-237 handoff §6.1; re-taken on `oct-demo-published-fleet` at 1280×720 |
 | §4.1 the lost contrast | **239** | measured this session — no prior artifact records it |
-| §5 open items | 220 (item 1), 237 (items 2–3), **239 (item 4 + item 2's correction)** | session-220 handoff §6, session-237 handoff §5.4, session-239 measurement |
+| §5 open items | 220 (item 1), 237 (items 2–3), **239 (item 4 + item 2's correction)**, the story-visualizer session (item 5) | session-220 handoff §6, session-237 handoff §5.4, session-239 measurement; item 5 from PLAN-0126 L2 |
+| L1–L6 (§2.3) | the story-visualizer Code session, unnumbered (typed 2026-09-15; the I+H link gate confirmed the same day) | PLAN-0126 §1 — recorded there first and carried here by PLAN-0126 Step 10 (SD-6 = a) |
+| §4.1 dated note | same session (typed 2026-09-15, L5) | PLAN-0126 L5 |
 
 All sources except this file are gitignored. Rulings were transcribed from the
 originating artifact rather than from the most recent summary of it — the summaries were
