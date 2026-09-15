@@ -186,6 +186,12 @@ _MUST_DENY = {
     # family stays on the default-deny floor. The fleet system, which does publish
     # Tab H, admits it on its own written basis — see that config's row (4b).
     "/runs/run-0001/continue": "default-deny — this system publishes no Monitor",
+    # PLAN-0126's explainer. Denied HERE (oct-energy): the page tells the fleet repair
+    # story and hands off to Tabs I and H, neither of which this system publishes, and
+    # the console only links to it where both are declared. The fleet system admits
+    # `/story/` on its own written basis in its config.
+    "/story/": "PLAN-0126 — the fleet explainer; offered only where Tabs I and H are published",
+    "/story/story.js": "PLAN-0126 — as above",
     "/demo/hero/event": "D5(2) F4 — event mode excluded",
     "/demo/hero/governance": "Step 8 (Cray, 2026-08-06) — hero is bespoke per design partner",
     "/demo/hero/impact": "Step 8 (Cray, 2026-08-06) — hero is bespoke per design partner",
@@ -232,6 +238,7 @@ _UI_EXCLUDED = {
     "/runs",
     "/runs/",
     "/sleep",
+    "/story/",
     "/warm",
 }
 #: Strings the scan matches that are NOT routes. Listed rather than filtered by a
