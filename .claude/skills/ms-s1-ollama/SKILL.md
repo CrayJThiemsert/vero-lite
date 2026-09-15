@@ -80,8 +80,14 @@ bash .claude/skills/ms-s1-ollama/warm.sh gemma4:12b 10m  # explicit model + keep
    a green smoke against the *wrong* model is false confidence);
 3. warms via `/api/generate` with `keep_alive`, printing the cold-load time.
 
-Run it with **`bash script`**, never `./script` — the WSL UNC mount strips POSIX
-exec bits (repo sets `core.fileMode false`).
+Run it with **`bash script`**, never `./script` — an edit made from Windows through
+the WSL UNC mount writes the file back without its exec bit, and this repo keeps
+mode tracking **on** (`core.fileMode` is `local true`; only Windows git is told to
+ignore modes, through host env vars).
+
+⚠️ **Corrected 2026-09-15 (session 301).** This line used to say the repo turns
+mode tracking off. Measured at sessions 300 and 301, it does not.
+<!-- retired: "repo sets `core.fileMode false`" -->
 
 ### Cold-load expectations
 
