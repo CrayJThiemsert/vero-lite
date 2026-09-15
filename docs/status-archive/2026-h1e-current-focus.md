@@ -926,3 +926,40 @@ _[The Current-Focus rotation ledger's s297 entry, verbatim from `git show HEAD:d
 > specimens — one told Code to re-run a commit script that had already pushed.
 
 _[The Current-Focus rotation ledger's s298 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s298) reconcile rotates ONE block — s295–296 (**2,447 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **60,428 B**, 5,108 B under R1's 65,536 B ceiling, so the window stays at TWO (297, 298) — the ninth consecutive reconcile of that shape. ⚠️ **The s295–296 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep, so none of its measured tokens rests on a count.
+
+### Rotated at the s302 reconcile — the session-299 Current-Focus block [on the R1 headroom rule: STATUS opened at **59,549 B**, **5,987 B** under R1's 65,536 B ceiling, and the s302 block had to land, so the window stays at TWO (300–301, 302) — the twelfth consecutive reconcile of that shape. Block is **2,178 B** as carved from `git show HEAD:docs/STATUS.md`, probed ABSENT here first against a control derived from the previous reconcile's own diff (=1). The Current-Focus ledger's s299 entry follows it verbatim.]
+
+> **Session 299, 2026-09-14 (`f172208` → `69960ba`) — TWO PRs
+> ([#1486](https://github.com/CrayJThiemsert/vero-lite/pull/1486)–[#1487](https://github.com/CrayJThiemsert/vero-lite/pull/1487)), both merged. **PLAN-0125 is COMMITTED
+> (`Draft`) with all nine SDs RULED — Cray, typed:
+> `SD-1=c SD-2=c SD-3=a SD-4=a+_evidence SD-5=c SD-6=b SD-7=b SD-8=a SD-9=a`.**
+>
+> ✅ **#1487 — the PLAN, after a read-only fact-check at `f172208`.** Of 38
+> grounding rows, 31 held, 4 ⚠️ became measurable, 2 were `superseded by new
+> info` and 1 `was an error` (G31 missed `0108:94`, *"OQ-5, resolved here"*).
+> Outside the table: SD-1's premise read drift **9**, but the guard's `drift`
+> counts substantive commits — **3**; the 9 is the total, 5 of them merges.
+> SD-4 lacked option (d), `tools/_evidence.py`, which landed ~5 h after the
+> draft. `plan-drafter` revised twice (the rulings, then Code's review fixes
+> F1–F4); Code re-ran every execution value at `7b92f3d` and marked it
+> `✔ (Code, s299)`. SD-1 = (c) adds **Step 0** (AC-17…AC-19), a staged-STATUS
+> drift gate. SD-4's `head_sha` clause is recorded as **Code's** reading.
+>
+> 🔴 **A probe, not a citation.** Case E rests on git setting `GIT_INDEX_FILE`
+> for hooks. Measured in a throwaway repo: `commit -a` → `.git/index.lock`,
+> a partial commit → `next-index-*.lock`, and a scrubbed env reads the default
+> index, empty, in both. A plain commit sets the relative `.git/index`, so
+> Step 0's new git call keeps `cwd` at the root.
+>
+> 🔴 **The shipped guard beat three reviews.** R7 refused the first commit:
+> seven `docs/STATUS.md` line-number cites, three inherited from s291, missed by
+> the drafter, Code's review and the fact-check. The guard was right; each is
+> now a section or field name. Every fresh instrument that disagreed with an
+> artifact this session was the one at fault (Lesson 0056).
+>
+> ✅ **#1486 (a chip session) — the freshness guard's docstring** now reads
+> *"nine commits (three substantive)"*, line count unchanged, so the PLAN's
+> cites hold. Both merges verified by blob; no new `proceed`→`block` specimen
+> after log line 383 (eight records, all `pause`).
+
+_[The Current-Focus rotation ledger's s299 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s299) reconcile rotates ONE block — s297 (**3,243 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **58,941 B**, 6,595 B under R1's 65,536 B ceiling, and the s299 block had to land, so the window stays at TWO (298, 299) — the tenth consecutive reconcile of that shape. ⚠️ **The s297 entry left the window and was APPENDED VERBATIM** after the block in h1e.
