@@ -40,8 +40,12 @@ from tests.api.story_source import (
     references,
 )
 from tests.api.test_static_ui import MEASURED_TAB_CENSUS, _registered_view_keys
+from tests.deploy.test_published_profiles import _EXPECTED_ALLOW
 
 _FLEET_INGRESS = REPO_ROOT / "deploy/published/oct-fleet-maintenance/cloudflared/config.yml"
+
+#: The two edge rows PLAN-0126 §3.3 adds — written, not read from the config under test.
+_STORY_ROWS = {"^/story/$", "^/story/[^/]+$"}
 _APP_JS = STATIC_DIR / "assets" / "app.js"
 _FONTS_DIR = STATIC_DIR / "assets" / "fonts"
 
@@ -199,6 +203,26 @@ def test_every_story_file_is_admitted_by_a_story_ingress_row() -> None:
     assert sorted(admitted) == sorted(files)
     assert page_admitted
     assert control_admitted == 0
+
+
+def test_the_story_rows_are_anchored_and_the_expected_table_carries_them() -> None:
+    """AC-3's "anchored" and "the table says so" halves, witnessed inside this module.
+
+    The admission test above matches with cloudflared's unanchored ``re.search``. So a
+    row that lost its LEADING ``^`` still admits every story file and still refuses
+    ``/story/sub/x.js``, while the edge would admit ``/evil/story/x.js``. That test also
+    never reads ``_EXPECTED_ALLOW``. The anchoring assert runs first, so a mutation of
+    the config fails on the anchor rather than on the table comparison.
+    """
+    config_rows = set(_story_ingress_rows())
+    table_rows = {row for row in _EXPECTED_ALLOW["oct-fleet-maintenance"] if "/story" in row}
+    unanchored = sorted(r for r in config_rows if not (r.startswith("^") and r.endswith("$")))
+    print(
+        f"config_rows={sorted(config_rows)} table_rows={sorted(table_rows)} "
+        f"unanchored={unanchored}"
+    )
+    assert unanchored == [], f"story rows not anchored at both ends: {unanchored}"
+    assert table_rows == config_rows == _STORY_ROWS
 
 
 # --------------------------------------------------------------------------- #
