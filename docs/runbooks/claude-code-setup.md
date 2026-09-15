@@ -39,6 +39,7 @@ The CLI remains useful for headless/SSH contexts. For the founder's day-to-day W
 | Git for Windows | 2.45.x or later | The Code tab's Bash tool calls `/mingw64/bin/git`, **not** WSL git. |
 | WSL2 | Ubuntu 24.04 (or any) | Repository lives at `~/work/vero-lite` inside WSL. |
 | `safe.directory` config | `*` (wildcard) | Resolves the dubious ownership trap — see § 8 and Lesson #2. |
+| Windows user env `GIT_CONFIG_*` | `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.fileMode`, `GIT_CONFIG_VALUE_0=false` | Windows git cannot read exec bits through the UNC mount and reports every `100755` file as modified. This mutes Windows git only; WSL git keeps tracking modes — see Lesson #64. |
 | Windows username | Any | UNC paths use the WSL username, not the Windows one. |
 
 **Critical pre-flight check** (run once on the Windows host PowerShell, not inside the worktree):
@@ -51,6 +52,16 @@ git config --global --get-all safe.directory   # verify '*' present
 Without this, every git operation inside the Code tab fails with `fatal: detected dubious ownership in repository at '//wsl.localhost/...'`. The wildcard is the only entry that reliably matches every Claude-generated worktree subdirectory (which uses random session names).
 
 For the trade-off analysis (`*` vs exact path vs scoped wildcard), see Lesson #2 (`docs/lessons/0002-claude-code-desktop-wsl-ownership.md`).
+
+**File-mode pre-flight** (same host PowerShell — three separate commands, since Windows PowerShell 5.1 has no `&&`):
+
+```powershell
+setx GIT_CONFIG_COUNT 1
+setx GIT_CONFIG_KEY_0 core.fileMode
+setx GIT_CONFIG_VALUE_0 false
+```
+
+Then quit Claude Desktop from the tray and reopen it — Desktop caches its environment at launch (Lesson #13). Verify from a new PowerShell: `git config --show-scope --get core.fileMode` prints `command	false`. Do **not** set `core.fileMode false` in the repo's `.git/config` instead: it blinds WSL git too, and a global setting loses to the local `true` every `git init` writes. Rationale and measurements: Lesson #64 (`docs/lessons/0064-mute-the-reader-that-misreads-not-the-one-that-detects.md`).
 
 ---
 

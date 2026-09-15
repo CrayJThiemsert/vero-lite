@@ -11,8 +11,8 @@
 # IP because the IP does not depend on whatever added the DNS entry — NOT because
 # the hostname fails: `ms-s1-max` resolves fine (measured s171, corrected in
 # SKILL.md; this line still said otherwise until s241). Never treat the hostname
-# as a safety property. Run with `bash warm.sh`, not `./warm.sh` (the WSL UNC
-# mount strips exec bits). Requires `jq`.
+# as a safety property. Run with `bash warm.sh`, not `./warm.sh` (an edit from
+# Windows through the WSL UNC mount clears the exec bit). Requires `jq`.
 set -euo pipefail
 
 HOST="${OLLAMA_HOST:-http://192.168.1.133:11434}"
