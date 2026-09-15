@@ -1,0 +1,251 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_status_freshness.py"
+  ],
+  "probes": [
+    {
+      "name": "P-17.1",
+      "subject": "tools/check_status_freshness.py",
+      "old": "            f\"— exit 1\"\n        )\n        return 1\n    return 0",
+      "new": "            f\"— exit 1\"\n        )\n        return 0\n    return 0",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_a_staged_status_with_drift_gates",
+      "expect_claim": "test_a_staged_status_with_drift_gates|(got.get(\"staged\"), got.get(\"mode\"), rc) == (\"True\", \"gate\", 1)|#0",
+      "note": "The gate computes and prints its red line, then exits 0. A1 reddens on rc; A2 (drift) is untouched."
+    },
+    {
+      "name": "P-17.2",
+      "subject": "tools/check_status_freshness.py",
+      "old": "    return STATUS_REL_PATH in names",
+      "new": "    return bool(names)",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_another_staged_file_only_prints_drift",
+      "expect_claim": "test_another_staged_file_only_prints_drift|(got.get(\"staged\"), got.get(\"mode\"), rc) == (\"False\", \"print\", 0)|#0",
+      "note": "The staged-set filter widens from docs/STATUS.md to every path: a non-STATUS commit at drift 2 gates. C1 reddens; D keeps its empty set."
+    },
+    {
+      "name": "P-17.3",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        # The `--all-files` / CI shape: the ruling's \"every other commit\" arm.\n        return False",
+      "new": "        # The `--all-files` / CI shape: the ruling's \"every other commit\" arm.\n        return True",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_nothing_staged_is_the_all_files_shape",
+      "expect_claim": "test_nothing_staged_is_the_all_files_shape|(got.get(\"staged\"), got.get(\"mode\"), rc) == (\"False\", \"print\", 0)|#0",
+      "note": "An EMPTY staged set reads as staged. D1 reddens; C's set is non-empty and excludes STATUS, so C1 stays green."
+    },
+    {
+      "name": "P-17.4",
+      "subject": "tools/check_status_freshness.py",
+      "old": "    if staged and drift:",
+      "new": "    if staged:",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_a_staged_status_pointing_at_the_tip_passes",
+      "expect_claim": "test_a_staged_status_pointing_at_the_tip_passes|(got.get(\"staged\"), got.get(\"mode\"), rc) == (\"True\", \"gate\", 0)|#0",
+      "note": "The gate ignores drift and reds on 'STATUS staged' alone. B1 — the control that a current pointer passes — reddens on rc."
+    },
+    {
+      "name": "P-17.5",
+      "subject": "tools/check_status_freshness.py",
+      "old": "    lag_text = \"n/a\" if lag is None else str(lag)",
+      "new": "    lag_text = \"0\" if lag is None else str(lag)",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_nothing_staged_is_the_all_files_shape",
+      "expect_claim": "test_nothing_staged_is_the_all_files_shape|got.get(\"baseline_lag\") == \"n/a\"|#0",
+      "note": "An unresolvable origin/main prints baseline_lag=0 — a lag of zero claimed where none was measured. D1 stays green (no staged/mode/rc touched); D2 reddens."
+    },
+    {
+      "name": "P-17.6",
+      "subject": "tools/vero_bridge/_status_lint.py",
+      "old": "        \"--no-merges\",\n        \"--invert-grep\",",
+      "new": "        \"--invert-grep\",",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_a_staged_status_with_drift_gates",
+      "expect_claim": "test_a_staged_status_with_drift_gates|got.get(\"drift\") == \"2\"|#0",
+      "note": "The drift query counts the planted merge commit (reads 3). A1 stays green (still gate, rc 1); A2 reddens — the proof that 2 is the substantive count, not the range."
+    },
+    {
+      "name": "P-17.7",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        [git, \"diff\", \"--cached\", \"--name-only\", \"-z\"],",
+      "new": "        [git, \"diff\", \"--cached\", \"--name-only\", \"-z\"],\n        env={},",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_a_partial_commit_index_is_the_set_that_is_read",
+      "expect_claim": "test_a_partial_commit_index_is_the_set_that_is_read|got.get(\"staged\") == \"True\"|#0",
+      "note": "The hygiene-minded implementation: git gets a scrubbed env, so GIT_INDEX_FILE never reaches it and the default index (no STATUS) is read. E1 reddens — the silent miss under `git commit -a`."
+    },
+    {
+      "name": "P-18.1",
+      "subject": "tools/check_status_freshness.py",
+      "old": "(PLAN-0125 SD-1 = c, Cray, typed, s299); on every other commit it is printed.",
+      "new": "(PLAN-0125 SD-1 = c, Cray, typed, s299); on every other commit it is printed. Was PLAN-0125 SD-1, Cray's to rule.",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_guard_docstring_carries_the_ruling",
+      "expect_claim": "test_the_guard_docstring_carries_the_ruling|old == 0|#0",
+      "note": "The question re-inserted beside the ruling. Only `old == 0` reddens; the new sentence is still present once."
+    },
+    {
+      "name": "P-18.2",
+      "subject": "tools/check_status_freshness.py",
+      "old": "(PLAN-0125 SD-1 = c, Cray, typed, s299); on every",
+      "new": "(PLAN-0125 SD-1 = c, s299); on every",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_guard_docstring_carries_the_ruling",
+      "expect_claim": "test_the_guard_docstring_carries_the_ruling|new == 1|#0",
+      "note": "The ruling sentence broken. `old == 0` stays green (the question is still absent); `new == 1` reddens."
+    },
+    {
+      "name": "P-18.3",
+      "subject": ".pre-commit-config.yaml",
+      "old": "# Ruled: PLAN-0125 SD-1 = c, Cray, typed, s299. always_run",
+      "new": "# Ruled: PLAN-0125 SD-1 = c, Cray, typed, s299. PLAN-0125 SD-1, Cray's to rule. always_run",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_precommit_comment_carries_the_ruling",
+      "expect_claim": "test_the_precommit_comment_carries_the_ruling|old == 0|#0",
+      "note": "P-18.1's pair on the yaml comment."
+    },
+    {
+      "name": "P-18.4",
+      "subject": ".pre-commit-config.yaml",
+      "old": "# Ruled: PLAN-0125 SD-1 = c, Cray, typed, s299. always_run",
+      "new": "# Ruled: PLAN-0125 SD-1 = c, s299. always_run",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_precommit_comment_carries_the_ruling",
+      "expect_claim": "test_the_precommit_comment_carries_the_ruling|new == 1|#0",
+      "note": "P-18.2's pair on the yaml comment."
+    },
+    {
+      "name": "P-19.1",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        # The `--all-files` / CI shape: the ruling's \"every other commit\" arm.\n        return False",
+      "new": "        # The `--all-files` / CI shape: the ruling's \"every other commit\" arm.\n        return True",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_real_tree_reads_print_mode_on_a_clean_index",
+      "expect_claim": "test_the_real_tree_reads_print_mode_on_a_clean_index|got.get(\"mode\") == \"print\"|#0",
+      "note": "P-17.3's mutation against the real tree on a clean index: mode=gate, so the mode assertion — the first — reddens whatever drift reads that day."
+    },
+    {
+      "name": "P-19.2",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        return 1\n    return 0\n\n\nif __name__",
+      "new": "        return 1\n    return 7\n\n\nif __name__",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_real_tree_reads_print_mode_on_a_clean_index",
+      "expect_claim": "test_the_real_tree_reads_print_mode_on_a_clean_index|rc == 0|#0",
+      "note": "Beyond the PLAN's list (it names P-19.1 only): the print path exits non-zero while still printing mode=print. The mode assertion stays green; rc reddens."
+    },
+    {
+      "name": "P-parse.1",
+      "subject": "tests/tools/test_check_status_freshness.py",
+      "old": "        if line.startswith(TOKEN):",
+      "new": "        if line.startswith(TOKEN) and \"STAGED\" in line:",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_the_line_parser_reads_a_known_output",
+      "expect_claim": "test_the_line_parser_reads_a_known_output|got == { \"head\": \"abc1234\", \"newest\": \"def5678\", \"drift\": \"2\", \"fresh\": \"False\", \"staged\": \"True\", \"mode\": \"gate\", \"baseline_lag\": \"n/a\", }|#0",
+      "note": "Instrument control (Lesson #0056): the parser reads the gate's SECOND line, whose drift is 9. Every AC-17 / AC-19 reading passes through this parser, so it must be able to go red on a known line first."
+    },
+    {
+      "name": "P-base.1",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        return 1\n    return 0\n\n\nif __name__",
+      "new": "        return 1\n    return 7\n\n\nif __name__",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_fresh_pointer_exits_zero_and_prints_zero_drift",
+      "expect_claim": "test_fresh_pointer_exits_zero_and_prints_zero_drift|rc == 0|#0",
+      "note": "Pre-existing claim, probed so the module's coverage is complete: the print path's exit code."
+    },
+    {
+      "name": "P-base.2",
+      "subject": "tools/check_status_freshness.py",
+      "old": "drift={len(drift)} fresh={fresh} \"",
+      "new": "drift={len(drift)} fresh=X{fresh} \"",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_fresh_pointer_exits_zero_and_prints_zero_drift",
+      "expect_claim": "test_fresh_pointer_exits_zero_and_prints_zero_drift|TOKEN in out and \"drift=0\" in out and \"fresh=True\" in out|#0",
+      "note": "Pre-existing claim: the printed fresh value is corrupted while rc stays 0."
+    },
+    {
+      "name": "P-base.3",
+      "subject": "tools/check_status_freshness.py",
+      "old": "        return 1\n    return 0\n\n\nif __name__",
+      "new": "        return 1\n    return 7\n\n\nif __name__",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_drift_is_printed_not_gated",
+      "expect_claim": "test_drift_is_printed_not_gated|rc == 0|#0",
+      "note": "Pre-existing claim: drift on an unstaged commit must still exit 0."
+    },
+    {
+      "name": "P-base.4",
+      "subject": "tools/check_status_freshness.py",
+      "old": "drift={len(drift)} fresh={fresh} \"",
+      "new": "drift={len(drift) + 1} fresh={fresh} \"",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_drift_is_printed_not_gated",
+      "expect_claim": "test_drift_is_printed_not_gated|\"drift=2\" in out and \"fresh=False\" in out|#0",
+      "note": "Pre-existing claim: the printed drift is off by one while rc stays 0."
+    },
+    {
+      "name": "P-base.5",
+      "subject": "tools/vero_bridge/_status_lint.py",
+      "old": "        \"--invert-grep\",\n        f\"--grep={_STATUS_COMMIT_GREP}\",",
+      "new": "        f\"--grep={_STATUS_COMMIT_GREP}\",",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_reconcile_commits_do_not_count_as_drift",
+      "expect_claim": "test_reconcile_commits_do_not_count_as_drift|rc == 0 and \"drift=0\" in out|#0",
+      "note": "Pre-existing claim: the reconcile commit is counted as drift (reads 1)."
+    },
+    {
+      "name": "P-base.6",
+      "subject": "tools/check_status_freshness.py",
+      "old": "does NOT resolve on {BASELINE_REF} — exit 1\")\n        return 1",
+      "new": "does NOT resolve on {BASELINE_REF} — exit 1\")\n        return 0",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_unresolvable_head_commit_exits_one",
+      "expect_claim": "test_unresolvable_head_commit_exits_one|rc == 1|#0",
+      "note": "Pre-existing claim: a broken pointer prints its line and exits 0."
+    },
+    {
+      "name": "P-base.7",
+      "subject": "tools/check_status_freshness.py",
+      "old": "head={head} does NOT resolve on",
+      "new": "head={head} is not on",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_unresolvable_head_commit_exits_one",
+      "expect_claim": "test_unresolvable_head_commit_exits_one|\"0000000\" in out and \"does NOT resolve\" in out|#0",
+      "note": "Pre-existing claim: the broken-pointer message loses its words while rc stays 1."
+    },
+    {
+      "name": "P-base.8",
+      "subject": "tools/check_status_freshness.py",
+      "old": "MISSING or STATUS unreadable — exit 1\")\n        return 1",
+      "new": "MISSING or STATUS unreadable — exit 1\")\n        return 0",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_missing_head_commit_exits_one",
+      "expect_claim": "test_missing_head_commit_exits_one|rc == 1|#0",
+      "note": "Pre-existing claim: a missing head_commit exits 0."
+    },
+    {
+      "name": "P-base.9",
+      "subject": "tools/check_status_freshness.py",
+      "old": "head_commit MISSING or",
+      "new": "head_commit ABSENT or",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_missing_head_commit_exits_one",
+      "expect_claim": "test_missing_head_commit_exits_one|\"MISSING\" in out|#0",
+      "note": "Pre-existing claim: the message stops saying MISSING while rc stays 1."
+    },
+    {
+      "name": "P-base.10",
+      "subject": "tools/check_status_freshness.py",
+      "old": "MISSING or STATUS unreadable — exit 1\")\n        return 1",
+      "new": "MISSING or STATUS unreadable — exit 1\")\n        return 0",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_missing_status_file_exits_one",
+      "expect_claim": "test_missing_status_file_exits_one|rc == 1|#0",
+      "note": "Pre-existing claim: an absent STATUS file takes the same branch and exits 0."
+    },
+    {
+      "name": "P-base.11",
+      "subject": "tools/check_status_freshness.py",
+      "old": "UNAVAILABLE — skipped, NOT a pass\")\n        return 0",
+      "new": "UNAVAILABLE — skipped, NOT a pass\")\n        return 4",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_baseline_unavailable_is_a_visible_skip",
+      "expect_claim": "test_baseline_unavailable_is_a_visible_skip|rc == 0|#0",
+      "note": "Pre-existing claim: the visible skip exits non-zero."
+    },
+    {
+      "name": "P-base.12",
+      "subject": "tools/check_status_freshness.py",
+      "old": "UNAVAILABLE — skipped, NOT a pass\")",
+      "new": "UNAVAILABLE — skipped\")",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_baseline_unavailable_is_a_visible_skip",
+      "expect_claim": "test_baseline_unavailable_is_a_visible_skip|\"UNAVAILABLE\" in out and \"NOT a pass\" in out|#0",
+      "note": "Pre-existing claim: the skip stops saying it is not a pass while rc stays 0."
+    },
+    {
+      "name": "P-base.13",
+      "subject": "tools/check_status_freshness.py",
+      "old": "does NOT resolve on {BASELINE_REF} — exit 1\")\n        return 1",
+      "new": "does NOT resolve on {BASELINE_REF} — exit 1\")\n        return 0",
+      "node_id": "tests/tools/test_check_status_freshness.py::test_degenerate_head_commit_values_exit_one[not-a-sha-at-all]",
+      "expect_claim": "test_degenerate_head_commit_values_exit_one|rc == 1|#0",
+      "note": "Pre-existing parametrized claim, witnessed at ONE parameter (a non-sha head takes the unresolvable branch); the empty and whitespace values take the MISSING branch and are not run by this node."
+    }
+  ],
+  "exemptions": {}
+}
