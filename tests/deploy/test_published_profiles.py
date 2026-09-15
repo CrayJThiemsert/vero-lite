@@ -114,6 +114,10 @@ _EXPECTED_ALLOW: dict[str, set[str]] = {
     "oct-fleet-maintenance": {
         r"^/$",
         r"^/assets/.+$",
+        # The story-mode explainer (PLAN-0126 Step 7): static, read-only, opened in a
+        # new tab from the header. The basis is written beside the rows in config.yml.
+        r"^/story/$",
+        r"^/story/[^/]+$",
         r"^/health$",
         r"^/meta$",
         # ON here and OFF procurement: this is the system with personas (LOCKED-5),

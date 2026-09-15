@@ -168,10 +168,23 @@ class _StaticFilesWithCSP(StaticFiles):
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
-        if isinstance(response, FileResponse) and str(response.path).endswith("index.html"):
+        if isinstance(response, FileResponse) and self._is_root_index(response):
             response = self._profiled_index(response)
         response.headers["Content-Security-Policy"] = _OCT_CSP
         return response
+
+    def _is_root_index(self, response: FileResponse) -> bool:
+        """Only the mount's ROOT ``index.html`` is the console, so only it is profiled.
+
+        PLAN-0100 matched ``endswith("index.html")`` while the console was the only
+        index under this mount. PLAN-0126 adds a second page, ``story/index.html``, which
+        carries no ui-profile anchor — under the old match the published profile would
+        rewrite it and raise. The fail-loud guarantee was always about the CONSOLE's
+        index and still holds for it; a nested index is served plain, CSP-stamped like
+        every other file (``tests/api/test_story_page.py`` pins both halves).
+        """
+        root_index = Path(str(self.directory)).resolve() / "index.html"
+        return Path(response.path).resolve() == root_index
 
     def _profiled_index(self, response: FileResponse) -> Response:
         """Rewrite the index's profile tag, or hand back the file untouched.
