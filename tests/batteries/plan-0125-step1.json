@@ -1,0 +1,242 @@
+{
+  "claim_sources": [
+    "tests/tools/test_measure.py"
+  ],
+  "probes": [
+    {
+      "name": "P-parse.1",
+      "subject": "tests/tools/test_measure.py",
+      "old": "        if line.startswith(TOKEN + \" metric=\"):",
+      "new": "        if line.startswith(TOKEN + \" metric=\") and \"REFUSED\" in line:",
+      "node_id": "tests/tools/test_measure.py::test_the_output_parsers_read_a_known_output",
+      "expect_claim": "test_the_output_parsers_read_a_known_output|got == (\"3\", \"R5\", ['{\\n \"value\": \"3\"\\n}'])|#0",
+      "note": "Instrument control (Lesson #0056): the values parser reads only a refusal line, so a real values line yields nothing. Every AC reading below passes through it."
+    },
+    {
+      "name": "P-1.1",
+      "subject": "tools/measure.py",
+      "old": "sort_keys=True, separators=(\",\", \":\")).encode(\"utf-8\")",
+      "new": "sort_keys=False, separators=(\",\", \":\")).encode(\"utf-8\")",
+      "node_id": "tests/tools/test_measure.py::test_a_block_reverifies_and_a_tampered_one_does_not",
+      "expect_claim": "test_a_block_reverifies_and_a_tampered_one_does_not|(len(texts), block.get(\"hash\") == recomputed) == (1, True)|#0",
+      "note": "The PLAN's P-1.1: the canonicaliser stops sorting keys, so the emitter seals a different byte form from §2.2's. The test's independent seal disagrees; the verify assertion reddens."
+    },
+    {
+      "name": "P-1.2",
+      "subject": "tests/tools/test_measure.py",
+      "old": "replace(f'\"value\": \"{block[\"value\"]}\"',",
+      "new": "replace(f'\"value\":\"{block[\"value\"]}\"',",
+      "node_id": "tests/tools/test_measure.py::test_a_block_reverifies_and_a_tampered_one_does_not",
+      "expect_claim": "test_a_block_reverifies_and_a_tampered_one_does_not|tampered_verified is False|#0",
+      "note": "Beyond the PLAN's list: the tamper needle stops matching the emitter's printed form, so the 'tampered' block is the untouched one and verifies. Only a test-side mutation can reach this claim — the emitter cannot make a text it never sees verify."
+    },
+    {
+      "name": "P-1.3",
+      "subject": "tools/measure.py",
+      "old": "        return str(len(data))",
+      "new": "        return str(len(data) + 1)",
+      "node_id": "tests/tools/test_measure.py::test_a_block_reverifies_and_a_tampered_one_does_not",
+      "expect_claim": "test_a_block_reverifies_and_a_tampered_one_does_not|block.get(\"value\") == \"1234\"|#0",
+      "note": "Beyond the PLAN's list: the bytes reducer is off by one. The block is sealed over 1235 (verify stays green) and the tamper still breaks it; only value_pre=1234 reddens."
+    },
+    {
+      "name": "P-2.1",
+      "subject": "tools/measure.py",
+      "old": "    if not args.history and not args.paths:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R1]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R1 disabled: an undeclared block runs past the declaration check."
+    },
+    {
+      "name": "P-2.2a",
+      "subject": "tools/measure.py",
+      "old": "        if tracked.returncode != 0:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R2-gitignored]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R2's tracked half disabled: a gitignored log (the G19 shape) is not in `status --porcelain`, so nothing else stops it and a block is written."
+    },
+    {
+      "name": "P-2.2b",
+      "subject": "tools/measure.py",
+      "old": "        if dirty.stdout.strip():",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R2-dirty]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "Beyond the PLAN's list: R2's dirty half disabled — an uncommitted edit to a tracked file is measured and sealed against a SHA it differs from."
+    },
+    {
+      "name": "P-2.3",
+      "subject": "tools/measure.py",
+      "old": "    if args.predicate is None:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R3]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R3's absent-predicate half disabled: the emitter no longer refuses a measurement with no predicate fixed first."
+    },
+    {
+      "name": "P-2.4a",
+      "subject": "tools/measure.py",
+      "old": "    if args.control_file is None and args.control_argv is None:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R4-absent]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R4's absent-control half disabled: a measurement with no control is no longer refused."
+    },
+    {
+      "name": "P-2.4b",
+      "subject": "tools/measure.py",
+      "old": "    if control_value == value:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R4-equal]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "Beyond the PLAN's list: R4's equal-control half disabled — a control reading the measured value (it cannot discriminate) is sealed."
+    },
+    {
+      "name": "P-2.5",
+      "subject": "tools/measure.py",
+      "old": "        if check.returncode != 0:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R5]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R5's git half disabled: an endpoint that resolves to no commit reaches the procedure, which fails as `procedure` — the rule named is no longer R5."
+    },
+    {
+      "name": "P-2.6",
+      "subject": "tools/measure.py",
+      "old": "        if _basename(element) in SHELL_BASENAMES:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R6-wrap]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "The PLAN's P-2.6: the basename scan disabled, so `env bash -c` runs and is sealed. R6-paste stays refused on the whitespace clause (not run by this node)."
+    },
+    {
+      "name": "P-2.7",
+      "subject": "tools/measure.py",
+      "old": "    if not argv or _basename(argv[0]) != \"git\" or subcommand not in RERUN_ALLOWLIST:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R7]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R7 disabled: `git grep` (outside the read-only allowlist) is sealed as re-runnable."
+    },
+    {
+      "name": "P-2.8",
+      "subject": "tools/measure.py",
+      "old": "    if isinstance(tree, Refusal):\n        return tree",
+      "new": "    if False:\n        return tree",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R8]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "R8 disabled: outside a repository the emitter carries an unresolved tree forward instead of refusing."
+    },
+    {
+      "name": "P-2.9",
+      "subject": "tools/measure.py",
+      "old": "    if len(argv) == 1 and any(ch.isspace() for ch in argv[0]):",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_each_refusal_refuses_and_writes_no_block[R6-paste]",
+      "expect_claim": "test_each_refusal_refuses_and_writes_no_block|(rc, _refused_rule(out), written) == (2, rule, False)|#0",
+      "note": "The PLAN's P-2.9: the whitespace clause disabled, so a pasted command line reaches exec and fails as `procedure` — no longer R6."
+    },
+    {
+      "name": "P-2.10",
+      "subject": "tools/measure.py",
+      "old": "        if _basename(element) in SHELL_BASENAMES:",
+      "new": "        if _basename(element) in SHELL_BASENAMES or element == \"-c\":",
+      "node_id": "tests/tools/test_measure.py::test_a_clean_call_with_git_c_and_a_regex_is_not_refused",
+      "expect_claim": "test_a_clean_call_with_git_c_and_a_regex_is_not_refused|got == (0, None, 1, \"2\")|#0",
+      "note": "The s299 R2 (F3) defect restored: a standalone `-c` is refused, so the legitimate `git -c core.quotepath=false log …` clean call is refused."
+    },
+    {
+      "name": "P-3.1",
+      "subject": "tools/measure.py",
+      "old": "        return str(sum(1 for line in text.splitlines() if line.strip()))",
+      "new": "        return str(sum(1 for line in text.splitlines() if line.strip()) + 1)",
+      "node_id": "tests/tools/test_measure.py::test_reducers_agree_with_hand_computed_values",
+      "expect_claim": "test_reducers_agree_with_hand_computed_values|lines == \"3\"|#0",
+      "note": "The lines reducer is off by one: three known commits read 4."
+    },
+    {
+      "name": "P-3.2",
+      "subject": "tools/measure.py",
+      "old": "        return str(len(re.findall(pattern, text)))",
+      "new": "        return str(sum(1 for line in text.splitlines() if re.search(pattern, line)))",
+      "node_id": "tests/tools/test_measure.py::test_reducers_agree_with_hand_computed_values",
+      "expect_claim": "test_reducers_agree_with_hand_computed_values|count == \"5\"|#0",
+      "note": "The G16 unit slip: count: counts matching LINES, not occurrences — five needles on four lines read 4. Lines stays 3; absent stays 0."
+    },
+    {
+      "name": "P-3.3",
+      "subject": "tools/measure.py",
+      "old": "        return str(len(re.findall(pattern, text)))",
+      "new": "        return str(len(re.findall(pattern, text, re.IGNORECASE)))",
+      "node_id": "tests/tools/test_measure.py::test_reducers_agree_with_hand_computed_values",
+      "expect_claim": "test_reducers_agree_with_hand_computed_values|absent == \"0\"|#0",
+      "note": "A case-blind count: the absent needle NEEDLE finds the five lower-case needles. Present count stays 5 (its control `two` is case-neutral); only absent reddens."
+    },
+    {
+      "name": "P-3.4",
+      "subject": "tools/measure.py",
+      "old": "    bad = [c for c in candidates if not _HEX_REV.fullmatch(c)]",
+      "new": "    bad: list[str] = []",
+      "node_id": "tests/tools/test_measure.py::test_a_symbolic_history_endpoint_is_refused",
+      "expect_claim": "test_a_symbolic_history_endpoint_is_refused|(rc, _refused_rule(out)) == ( 2, \"R5\", )|#0",
+      "note": "R5's shape half disabled: `main` resolves in git, so the git half passes it and a moving ref is sealed as history."
+    },
+    {
+      "name": "P-3.5",
+      "subject": "tools/measure.py",
+      "old": "            shell=False,",
+      "new": "            shell=True,",
+      "node_id": "tests/tools/test_measure.py::test_the_one_process_call_site_never_runs_a_shell",
+      "expect_claim": "test_the_one_process_call_site_never_runs_a_shell|sites == [ (\"_spawn\", \"subprocess.run\", True) ]|#0",
+      "note": "The one process call site passes shell=True; the source-text read of `_spawn` reddens."
+    },
+    {
+      "name": "P-4.1",
+      "subject": "tools/measure.py",
+      "old": "    ranged = _RANGE.fullmatch(text)",
+      "new": "    class _Eval:\n        def holds(self, value: str) -> bool:\n            return bool(eval(text, {\"value\": value}))\n\n    return _Eval()\n    ranged = _RANGE.fullmatch(text)",
+      "node_id": "tests/tools/test_measure.py::test_injection_shaped_predicates_are_refused",
+      "expect_claim": "test_injection_shaped_predicates_are_refused|got == [(2, \"R3\"), (2, \"R3\")]|#0",
+      "note": "The PLAN's P-4.1: the parser replaced by eval. `__import__('os')` is truthy and `value == 9 or True` is True, so both are sealed as passing instead of refused."
+    },
+    {
+      "name": "P-4.2",
+      "subject": "tools/measure.py",
+      "old": "            return self.operand <= number <= self.upper",
+      "new": "            return self.operand <= number",
+      "node_id": "tests/tools/test_measure.py::test_predicates_in_the_grammar_are_evaluated",
+      "expect_claim": "test_predicates_in_the_grammar_are_evaluated|got == expected|#0",
+      "note": "Beyond the PLAN's list: the range form drops its upper bound, so `3 <= value <= 5` passes on 9."
+    },
+    {
+      "name": "P-proc.1",
+      "subject": "tools/measure.py",
+      "old": "    if spawned.returncode != 0 or stderr:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_a_failing_procedure_is_refused_never_reduced",
+      "expect_claim": "test_a_failing_procedure_is_refused_never_reduced|got == ( 2, \"procedure\", False, )|#0",
+      "note": "The Lesson #0007 seam opened (Cray's option a, s302, removed): `git log no-such-ref` exits 128 and its empty stdout is sealed as value=0."
+    },
+    {
+      "name": "P-scen.1",
+      "subject": "tools/measure.py",
+      "old": "_FENCE = re.compile(r\"\\n```json\\n(.*?)\\n```\", re.S)",
+      "new": "_FENCE = re.compile(r\"\\n```yaml\\n(.*?)\\n```\", re.S)",
+      "node_id": "tests/tools/test_measure.py::test_scenario_appended_blocks_parse_back_through_the_guard_parser",
+      "expect_claim": "test_scenario_appended_blocks_parse_back_through_the_guard_parser|got == (0, 0, [str(drift), str(size)], [True, True])|#0",
+      "note": "The consumer's fence parser stops recognising the emitter's blocks: the read-back refuses the write and the guard's parser sees no sealed data."
+    },
+    {
+      "name": "P-20.1",
+      "subject": "tools/README.md",
+      "old": "| **`measure.py`** |",
+      "new": "| **`measure-gone.py`** |",
+      "node_id": "tests/tools/test_measure.py::test_the_catalogue_names_the_emitter",
+      "expect_claim": "test_the_catalogue_names_the_emitter|(row, control) == (1, 0)|#0",
+      "note": "The PLAN's P-20.1: the catalogue row for measure.py is gone."
+    }
+  ],
+  "exemptions": {}
+}
