@@ -89,6 +89,54 @@ for it, is a truncated fragment such as `msert/vero-lite.git` (the tail of
 **`2>&1` is therefore a correctness requirement in this environment, not a
 style preference.**
 
+## 1.3 `wsl -e` inverts §1.1 — and three more ways the input is corrupted
+
+*(Measured 2026-09-15, session 300; re-witnessed session 301 the same day, outer caller
+Windows PowerShell 5.1 unless marked. §1.1 stands — this section bounds its scope.)*
+
+§1.1's remedy is right for the form it names, `wsl bash -lc '<STR>'`. It is **wrong** for
+`wsl -e bash -lc '<STR>'`. `wsl -e` (`--exec`) runs the program directly instead of handing
+the string to WSL's default shell, so the extra expansion layer is gone — and a `\` written to
+survive that layer now reaches bash intact:
+
+| Command | Output |
+|---|---|
+| `wsl bash -lc 'false; echo rc=$?'` | `rc=0` — fabricated (§1.1) |
+| `wsl bash -lc 'false; echo rc=\$?'` | `rc=1` · control with `true`: `rc=0` |
+| `wsl -e bash -lc 'false; echo rc=$?'` | `rc=1` · control with `true`: `rc=0` |
+| `wsl -e bash -lc 'false; echo rc=\$?'` | the literal text `rc=$?` |
+
+**Two regimes with opposite escaping.** Each is correct alone; mixing them — `\$` under
+`-e`, or a bare `$` without it — is silently wrong. `CLAUDE.md` §8 teaches the non-`-e`
+regime; the §6.1 advisory deliberately stays silent on `wsl -e` with a bare `$`
+(`_WSL_EXEC_RE` in `.claude/hooks/posttooluse_progress_observer.py`, pinned by
+`CORRECT_IDIOM_STAYS_SILENT` in `tests/handoffs/test_shell_hygiene_advisory.py`). Keep to one
+form; do not switch mid-task.
+
+Three more corruptions that happen before bash parses anything:
+
+1. **Windows PowerShell 5.1 does not escape embedded double quotes** when it builds
+   `wsl.exe`'s command line. `wsl -e bash -lc 'echo "a (b) c"'` prints `a`, exit 0 (control
+   `echo a b c` prints `a b c`). Without `-e` the error shows what arrived:
+   ``syntax error near unexpected token `('`` on the line `` `bash -lc "echo "a (b) c""' ``.
+   From Git Bash (the Bash tool) the identical `-e` call prints `a (b) c` — the defect belongs
+   to the PowerShell 5.1 caller. This is the "PowerShell → WSL" member of the quoting family
+   Lesson #0004 anticipated.
+2. **Git Bash rewrites POSIX paths into Windows paths.** From the Bash tool,
+   `wsl.exe -e ls -d /tmp` fails with `ls: cannot access 'C:/Users/crayj/AppData/Local/Temp'`;
+   `MSYS_NO_PATHCONV=1 wsl.exe -e ls -d /tmp` prints `/tmp`. Inside Git Bash, Windows drives
+   are `/c/...` and `/mnt/c` does not exist.
+3. **`wsl bash <file>` is a non-login shell.** `~/.local/bin` is not on `PATH`, so `uv` is
+   not found; `wsl bash -lc 'bash <file>'` finds `/home/crayj/.local/bin/uv`. §3.4's
+   script-file advice needs the `-lc` wrapper kept.
+
+**The form that sidesteps all of them:** write the command into a script file with the Write
+tool, redirect its output to a file inside the script (`> out.txt 2>&1`, then the real exit
+code, then a final `VERDICT:` line), and run it as `wsl bash -lc 'bash /abs/linux/path/x.sh'`.
+The outer string then carries no `$`, no embedded quote and no POSIX path for Git Bash to
+rewrite, and the login `PATH` is loaded. A missing `VERDICT:` line means the run did not
+finish — never a pass.
+
 ## 2. Why this matters
 
 Acceptance criteria phrased as "expect exit 0" or "validator returns
@@ -325,7 +373,10 @@ every call. `2>&1` stays a discipline, carried by the CLAUDE.md §8 rule.
 - **Lesson #0024** (rules must live where the enforcer looks) — the argument
   for §6.1
 - **Lesson #0004** (WSL `bash -c` variable-expansion trap) — the quoting-layer
-  sibling; §1.1 here is the exit-code instance of that same double-expansion
+  sibling; §1.1 here is the exit-code instance of that same double-expansion, and
+  §1.3 item 1 is the PowerShell → WSL member its closing paragraph anticipated
+- **Lesson #0064** (mute the reader that misreads) — the file-mode side of the same
+  Windows↔WSL boundary: Windows git misreads exec bits, the Edit tool clears them
 - Lesson #5 §3 (schema-fidelity discipline for Chat dispatches) — sister
   pattern: avoid inferred content; this lesson is the runtime-verification
   counterpart
