@@ -886,3 +886,43 @@ _[The Current-Focus rotation ledger's s295–296 entry, verbatim from `git show 
 > dirs held **36 → 36** across that full run.
 
 _[The Current-Focus rotation ledger's s297 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s297) reconcile rotates ONE block — s294 (**3,412 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **63,281 B**, 2,255 B under R1's 65,536 B ceiling, so the window stays at TWO (295–296, 297) — the eighth consecutive reconcile of that shape. ⚠️ **Two entries left the window, s293's and s294's, and were DROPPED:** every measured token of each reads inside h1e's own `### Rotated at the s293 reconcile` / `### Rotated at the s294 reconcile` header (`3,464 B`, `63,062 B`, `2,149 B`, `51,511 B`; `4,002 B`, `59,921 B`, `2,574 B`, `64,680 B`). 🔴 `was an error` (s295–296): that reconcile declared the s293 entry DROPPED and left it here.
+
+### Rotated at the s301 reconcile — the session-298 Current-Focus block [on the R1 headroom rule: STATUS opened at **57,867 B**, **7,669 B** under R1's 65,536 B ceiling, and the s300–301 block had to land, so the window stays at TWO (299, 300–301) — the eleventh consecutive reconcile of that shape. Block is **2,347 B** as carved from `git show HEAD:docs/STATUS.md`, probed ABSENT here first against a control derived from this file's own last block (=1). The Current-Focus ledger's s298 entry follows it verbatim.]
+
+> **Session 298, 2026-09-14 (`659380d` → `fad3e01`) — FOUR PRs
+> ([#1481](https://github.com/CrayJThiemsert/vero-lite/pull/1481)–[#1484](https://github.com/CrayJThiemsert/vero-lite/pull/1484)), all merged. **PLAN-0123 is CLOSED and
+> archived: AC-12 ruled B, SD-5 discharged as an ADR-0018 amendment, and the
+> AC-ledger guard now reads the marker-prefixed ACs it had never parsed.**
+>
+> ✅ **#1483 — PLAN-0123 Step 5.** Every AC re-read at `c39f4e3`: **9 of 13
+> ticked** (AC-1…8: 90 passed, eight batteries 44 witnessed, GAPS 0; AC-13
+> **5243 passed**, `db_tests=499`). Cray, typed: **`AC-12 = B`** — NOT MET read
+> as **reach**: `goal.md` never gained the pointer OQ-3 ruled, the advisory was
+> struck, and after #1472 the templates were reached for **0** times. Two
+> `was an error`s fixed: the pointer (`goal.md` step 0 + a pin test, RED-first
+> `found=0`, battery 7/7) and Step 0's never-written census lesson (**Lesson
+> #0063**). Archived with four STATUS pointers repathed; the gold-corpus hits
+> were left as data (Lesson 0060).
+>
+> ✅ **#1482 — ADR-0018 A4-1…A4-4**, drafted by the in-harness `plan-drafter`
+> (G1-exempt): the check-state list is closed by name — `contended` had never
+> been recorded either, `basis-moved` is the eighth; a hollow goal never passes
+> (`was an error`, omission); OQ-8 acted on, left OPEN. **Cray ruled F1/F2/F3
+> as recommended.**
+>
+> ✅ **#1484 (a separate chip session) — the AC-ledger guard matched only
+> `- [x] **AC-N`**, so an AC line opening with a status marker was invisible:
+> archiving PLAN-0123 dropped 9 ACs, not 13. It now parses them, and an
+> unreadable AC line in an active PLAN fails loud. Battery 10 WITNESSED, GAPS 0.
+> ✅ **#1481 — runbook R4's `Live chains:`** points at the directory, not letters.
+>
+> 🔴 **`was an error`, fixed before merge (Cray chose to).** #1483 first recorded
+> AC-13's ledger count as 89/10 — the guard reads `docs/plans/*.md` from
+> **disk**, where the untracked PLAN-0125 draft adds 16 ACs; the tracked tree is
+> **73/9**. Caught only because the chip's worktree read 73/9.
+>
+> ⚠️ A relayed "merged" did not land twice for #1483; Code merged #1482–#1484 on
+> Cray's typed word, each verified by blob. Three Stop-hook `proceed`→`block`
+> specimens — one told Code to re-run a commit script that had already pushed.
+
+_[The Current-Focus rotation ledger's s298 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s298) reconcile rotates ONE block — s295–296 (**2,447 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **60,428 B**, 5,108 B under R1's 65,536 B ceiling, so the window stays at TWO (297, 298) — the ninth consecutive reconcile of that shape. ⚠️ **The s295–296 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep, so none of its measured tokens rests on a count.
