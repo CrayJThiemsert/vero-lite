@@ -226,7 +226,9 @@ def test_non_illustrative_cases_are_seeded_and_the_illustrative_one_is_not() -> 
         f"seed_rows={len(rows)} seed_matches={seed_matches} "
         f"illustrative_matches={illustrative_matches}"
     )
-    assert (seed_matches, illustrative_matches) == (len(real_cases), 0) and seed_matches > 0
+    # One comparison, not `a and b`: a conjunction stops at its first false operand, so a
+    # single probe could only ever witness one half of it (tools/probe_coverage.py flags it).
+    assert (seed_matches > 0, seed_matches, illustrative_matches) == (True, len(real_cases), 0)
 
 
 # (j)
