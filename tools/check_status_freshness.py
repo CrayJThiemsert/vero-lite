@@ -9,16 +9,16 @@ already existed — ``tools/vero_bridge/_status_lint.py::compute_status_freshnes
 fail-closed — but it ran only when a human called the ``lint_status`` MCP tool, which
 nobody did. The number was there to be measured and was not being looked at.
 
-**What this guard gates, and what it deliberately does NOT.** It exits non-zero on
-exactly one condition: STATUS is unreadable, has no ``head_commit``, or names a sha
-that does not resolve on the baseline — a *broken* pointer, not a *stale* one. Drift
-itself is **printed, never gated**: ``fresh`` in the underlying function is
-zero-tolerance, and STATUS is reconciled *after* PRs merge, so a zero-tolerance gate
-would redden every PR that lands between reconciles — including ``main`` on the day
-this shipped. That is the over-refusing shape ``tests/tools/test_guards_hold_on_the_real_tree.py``
-exists to prevent: a guard that cries wolf gets routed around, and the real finding
-goes with it. The threshold above which drift *should* gate is a decision, not a
-constant — it is PLAN-0125 SD-1, Cray's to rule.
+**What this guard gates, and what it deliberately does NOT.** It exits non-zero when
+STATUS is unreadable, has no ``head_commit``, or names a sha that does not resolve on
+the baseline — a *broken* pointer — and when ``docs/STATUS.md`` is in the commit's
+staged set while drift is non-zero. On every other commit drift is **printed, never
+gated**: STATUS is reconciled *after* PRs merge, so gating every commit would redden
+each PR that lands between reconciles — the over-refusing shape
+``tests/tools/test_guards_hold_on_the_real_tree.py`` exists to prevent. The commit that
+edits STATUS is the one claiming to describe ``main``, so that is where the pointer
+must be current: drift gates only when ``docs/STATUS.md`` is staged
+(PLAN-0125 SD-1 = c, Cray, typed, s299); on every other commit it is printed.
 
 **Why the value is printed every run.** A verification report that prints only
 PASS/FAIL withholds the evidence it just collected (CLAUDE.md §8). ``drift=9`` is the
@@ -31,8 +31,8 @@ may not exist locally. The guard then prints ``baseline=main UNAVAILABLE`` and e
 — a *visible* skip, not a pass. The RED witness for the hard assertion lives in this
 guard's own test module, which builds a repository where ``main`` does exist.
 
-Exit codes: 0 = ``head_commit`` resolves (drift printed) or baseline unavailable
-(printed); 1 = STATUS unreadable / ``head_commit`` missing / sha does not resolve.
+Exit codes: 0 = ``head_commit`` resolves and STATUS is unstaged or at drift 0, or baseline
+unavailable (printed); 1 = a broken pointer, or STATUS staged while drift > 0.
 """
 
 from __future__ import annotations
@@ -47,6 +47,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from tools.vero_bridge._status_lint import (  # noqa: E402  (path insert above)
     BASELINE_REF,
+    STATUS_REL_PATH,
     compute_status_freshness,
 )
 
@@ -70,6 +71,70 @@ def _baseline_resolves(root: Path) -> bool:
         check=False,
     )
     return proc.returncode == 0
+
+
+def _status_is_staged(root: Path) -> bool:
+    """True iff ``docs/STATUS.md`` is in the staged set — the index against ``HEAD``.
+
+    That set is what a pre-commit hook's commit will carry: pre-commit stashes unstaged
+    changes before its hooks run. The query lists the **whole** staged set and then
+    looks for STATUS in it, rather than asking git with a pathspec, so "nothing staged"
+    and "something else staged" stay two distinguishable readings.
+
+    🔴 **The environment is inherited, never scrubbed.** ``git commit -a`` and
+    ``git commit -- <paths>`` run hooks with ``GIT_INDEX_FILE`` naming a *temporary*
+    index that holds the commit's real staged set (probed s299, PLAN-0125 §9). A git
+    child handed a minimal ``env`` would read the default index instead — empty under
+    ``-a`` — and pass every such reconcile in print mode, silently. ``cwd`` stays at the
+    repository root because a plain commit sets that variable to the relative
+    ``.git/index``.
+
+    A git that cannot read its index prints nothing, which reads as an empty set: print
+    mode, the pre-gate behaviour. A commit cannot be built from an unreadable index, so
+    that is never the commit this gate exists for.
+    """
+    git = shutil.which("git")
+    if git is None:
+        return False
+    # S603: fixed argv, no shell, nothing interpolated.
+    proc = subprocess.run(  # noqa: S603
+        [git, "diff", "--cached", "--name-only", "-z"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    names = [name for name in proc.stdout.split("\0") if name]
+    if not names:
+        # The `--all-files` / CI shape: the ruling's "every other commit" arm.
+        return False
+    return STATUS_REL_PATH in names
+
+
+def _baseline_lag(root: Path) -> int | None:
+    """Commits ``origin/main`` holds that local ``main`` does not — PRINTED, never gated.
+
+    ``BASELINE_REF`` is a local ref and this guard never fetches: a hook whose reading
+    moves with connectivity would red on the network, not on the record. A lagging
+    local ``main`` under-counts drift, so the failure direction is a miss, never a false
+    red — and printing the lag is what keeps that miss visible. ``None`` when
+    ``origin/main`` does not resolve (a fresh clone, every throwaway test repository).
+    """
+    git = shutil.which("git")
+    if git is None:
+        return None
+    # S603: fixed argv, no shell; the only interpolated value is BASELINE_REF, a constant.
+    proc = subprocess.run(  # noqa: S603
+        [git, "rev-list", "--count", f"{BASELINE_REF}..origin/{BASELINE_REF}"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    text = proc.stdout.strip()
+    if proc.returncode != 0 or not text.isdigit():
+        return None
+    return int(text)
 
 
 def main(argv: list[str]) -> int:
@@ -96,7 +161,21 @@ def main(argv: list[str]) -> int:
         print(f"{PREFIX} head={head} does NOT resolve on {BASELINE_REF} — exit 1")
         return 1
 
-    print(f"{PREFIX} head={head} newest={newest} drift={len(drift)} fresh={fresh}")
+    staged = _status_is_staged(root)
+    mode = "gate" if staged else "print"
+    lag = _baseline_lag(root)
+    lag_text = "n/a" if lag is None else str(lag)
+    print(
+        f"{PREFIX} head={head} newest={newest} drift={len(drift)} fresh={fresh} "
+        f"staged={staged} mode={mode} baseline_lag={lag_text}"
+    )
+    if staged and drift:
+        print(
+            f"{PREFIX} {STATUS_REL_PATH} is STAGED with drift={len(drift)} — point "
+            f"head_commit at main's tip before committing (PLAN-0125 SD-1 = c, Cray s299) "
+            f"— exit 1"
+        )
+        return 1
     return 0
 
 

@@ -90,15 +90,15 @@ repos:
       # Session 291: STATUS's head_commit read 793b9d9 while main stood 9 commits
       # (3 substantive) ahead, and nothing said so. The re-deriver already existed
       # (tools/vero_bridge/_status_lint.py::compute_status_freshness) but fired only
-      # on an MCP call nobody made. This guard FAILS only when head_commit is
-      # missing or does not resolve — a BROKEN pointer. Drift is PRINTED on every
-      # commit and never gated: STATUS is reconciled after merges, so a zero-
-      # tolerance gate would redden every PR in between (the over-refusing shape
-      # tests/tools/test_guards_hold_on_the_real_tree.py warns about). The gating
-      # threshold is PLAN-0125 SD-1, Cray's to rule. always_run + verbose so the
+      # on an MCP call nobody made. This guard FAILS when head_commit is missing or
+      # does not resolve (a BROKEN pointer), and when docs/STATUS.md is STAGED while
+      # drift > 0. On every other commit drift is PRINTED and never gated: STATUS is
+      # reconciled after merges, so gating every commit would redden each PR in
+      # between (the shape tests/tools/test_guards_hold_on_the_real_tree.py warns of).
+      # Ruled: PLAN-0125 SD-1 = c, Cray, typed, s299. always_run + verbose so the
       # number is SEEN on each commit, not fetched on the day someone is surprised.
       - id: status-freshness
-        name: STATUS.md freshness (head_commit resolves; drift PRINTED, not gated)
+        name: STATUS.md freshness (head_commit resolves; drift gates only a staged STATUS)
         entry: uv run --no-sync python tools/check_status_freshness.py
         language: system
         pass_filenames: false
