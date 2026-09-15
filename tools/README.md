@@ -11,14 +11,14 @@ PLAN-0115 named the failure that this file exists to close:
 > The MUST tier ships a capability; the ALSO tier ships the reason anyone would reach for
 > it. **Shipping the tool while cutting the pointer yields a tool nobody knows to use.**
 
-**22 entries: 14 top-level scripts + 8 packages.** They fall into three groups by *who
+**23 entries: 15 top-level scripts + 8 packages.** They fall into three groups by *who
 invokes them* — and only the first group is yours to remember.
 
 ---
 
 ## 1. Reach for these deliberately — nothing fires them for you
 
-This is the group that a wrong tool choice actually costs you. Nine of the guards in §2
+This is the group that a wrong tool choice actually costs you. The eleven guards in §2
 run themselves; these twelve do not.
 
 | Tool | What it answers | The measured failure it replaces |
@@ -46,13 +46,16 @@ run themselves; these twelve do not.
 
 ## 2. These fire on their own — listed so you don't rebuild one
 
-Nine `pre-commit` hooks invoke `tools/` scripts. You do not need to remember them; you
-need to not re-implement them.
+Twelve `pre-commit` hooks invoke `tools/` scripts; the eleven below have a row. You do not
+need to remember them; you need to not re-implement them. ⚠️ `status-freshness`
+(`check_status_freshness.py`) has no row yet — a catalogue gap PLAN-0125 §9 surfaces and
+leaves to the catalogue's owner.
 
 | Hook id | Script | Enforces |
 |---------|--------|----------|
 | `handoff-frontmatter` | `handoffs/precommit_handoffs.py` | Handoff frontmatter shape + refreshes `INDEX.md` (latest session dir only) |
 | `status-size-guard` | `check_status_size.py` | `docs/STATUS.md` byte ceiling (rotation policy R1) |
+| `measure-staleness` | `check_measure_staleness.py` | Every `measure` block under `docs/logs/` still re-derives — seal, `against_sha`, declared paths, and a `rerun: true` block's own procedure — and every `measure:<hash>` citation resolves. Prints every count; a **live** citation of a stale block gates, a `:historical` one never does (PLAN-0125; SD-7 = b) |
 | `archive-size-guard` | `check_archive_size.py` | `docs/status-archive/*.md` byte ceiling (R4) |
 | `status-citation-guard` | `check_status_citations.py` | No tracked artifact cites `docs/STATUS.md` by line number (R7) |
 | `plan-archive-ref-guard` | `check_plan_archive_refs.py` | No tracked artifact cites a PLAN by its pre-archive path (R8) |

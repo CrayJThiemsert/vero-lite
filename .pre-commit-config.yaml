@@ -105,6 +105,22 @@ repos:
         always_run: true
         verbose: true
 
+      # PLAN-0125 Step 2 (ADR-0038 OQ-5): re-derives every measure block under
+      # docs/logs/ — its seal, its against_sha, its declared paths, and a rerun: true
+      # block's own procedure — and resolves every measure:<hash> citation in the
+      # live surfaces. Gates a broken seal, a broken pointer, a mismatch, a re-run
+      # that fails (D1 = a, Cray s303), a dangling citation, and a LIVE citation of
+      # a stale block (SD-7 = b, Cray s299); a stale block nobody cites is printed.
+      # always_run: a citation can be written in any file and a declared path can
+      # move in any commit. verbose so the counts are SEEN on each commit.
+      - id: measure-staleness
+        name: measure blocks re-derive and their citations resolve (PLAN-0125)
+        entry: uv run --no-sync python tools/check_measure_staleness.py
+        language: system
+        pass_filenames: false
+        always_run: true
+        verbose: true
+
       # Rotation policy R4 (archive size escape): docs/status-archive/*.md stay
       # under a 256 KB cap; over ~192 KB, start a continuation file. R4 was the
       # one size-bearing rule with no mechanism (its matrix guard column read
