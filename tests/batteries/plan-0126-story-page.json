@@ -1,0 +1,326 @@
+{
+  "claim_sources": [
+    "tests/api/test_story_page.py"
+  ],
+  "probes": [
+    {
+      "name": "P-A1",
+      "subject": "tests/api/story_source.py",
+      "old": "AUTHORED_FILES = (\"index.html\", \"story.css\", \"story-data.js\", \"story.js\")",
+      "new": "AUTHORED_FILES = (\"index.html\", \"story.scss\", \"story-data.js\", \"story.js\")",
+      "node_id": "tests/api/test_story_page.py::test_story_files_reference_no_external_origin",
+      "expect_claim": "_authored_texts|not missing|#0",
+      "note": "an authored file the scan expects is missing: the helper's presence assert reddens before any scan"
+    },
+    {
+      "name": "P1a",
+      "subject": "services/api/static/story/story.js",
+      "old": "import * as THREE from './three.module.min.js?v=160';",
+      "new": "import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';",
+      "node_id": "tests/api/test_story_page.py::test_story_files_reference_no_external_origin",
+      "expect_claim": "test_story_files_reference_no_external_origin|not any(external.values())|#0",
+      "note": "reinserts the stage-1 CDN import; the external-origin assert reddens, the ref count stays >= 4"
+    },
+    {
+      "name": "P1c",
+      "subject": "tests/api/story_source.py",
+      "old": "    return _REFERENCE_PATTERNS[kind].findall(text)",
+      "new": "    return []",
+      "node_id": "tests/api/test_story_page.py::test_story_files_reference_no_external_origin",
+      "expect_claim": "test_story_files_reference_no_external_origin|total >= 4|#0",
+      "note": "the parser reads nothing: no external refs (green) and a zero count — the anti-vacuity assert reddens"
+    },
+    {
+      "name": "P1b",
+      "subject": "tests/api/story_source.py",
+      "old": "_SCHEME = r\"(?:[a-zA-Z][a-zA-Z0-9+.-]*:|//)\"",
+      "new": "_SCHEME = r\"(?:never-a-scheme:)\"",
+      "node_id": "tests/api/test_story_page.py::test_the_origin_checker_flags_a_known_cdn_import",
+      "expect_claim": "test_the_origin_checker_flags_a_known_cdn_import|flagged == [\"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js\"]|#0",
+      "note": "the checker stops recognising a scheme; the positive control on the known CDN import reddens"
+    },
+    {
+      "name": "P2a",
+      "subject": "services/api/main.py",
+      "old": "        if isinstance(response, FileResponse) and self._is_root_index(response):",
+      "new": "        if isinstance(response, FileResponse) and str(response.path).endswith(\"index.html\"):",
+      "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
+      "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|response.status_code == 200|#0",
+      "note": "restores PLAN-0100's endswith match: the story index is profiled, lacks the anchor, raises -> 500"
+    },
+    {
+      "name": "P2b",
+      "subject": "services/api/main.py",
+      "old": "        response.headers[\"Content-Security-Policy\"] = _OCT_CSP",
+      "new": "        pass",
+      "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
+      "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|csp|#0",
+      "note": "the CSP stamp is dropped; status stays 200, the csp assert reddens"
+    },
+    {
+      "name": "P2d",
+      "subject": "services/api/static/story/index.html",
+      "old": "<script type=\"module\" src=\"story.js?v=c1\"></script>",
+      "new": "<script type=\"module\" src=\"scene.js?v=c1\"></script>",
+      "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
+      "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|'type=\"module\" src=\"story.js' in response.text|#0",
+      "note": "the served page no longer loads story.js as a module; 200 and CSP hold, the module-tag assert reddens"
+    },
+    {
+      "name": "P2e",
+      "subject": "services/api/static/story/index.html",
+      "old": "  <meta charset=\"utf-8\" />",
+      "new": "  <meta charset=\"utf-8\" />\n  <meta name=\"ui-profile\" content=\"dev\" />",
+      "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
+      "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|not profile_meta|#0",
+      "note": "a profile tag appears in the story page (served plain); only the no-profile-meta assert reddens"
+    },
+    {
+      "name": "P2f",
+      "subject": "services/api/main.py",
+      "old": "        response.headers[\"Content-Security-Policy\"] = _OCT_CSP",
+      "new": "        response.headers[\"Content-Security-Policy\"] = _OCT_CSP\n        response.headers[\"Cache-Control\"] = \"no-store\"",
+      "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
+      "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|cache != \"no-store\"|#0",
+      "note": "every static response is marked no-store; status, CSP, module tag and meta hold — the cache assert reddens"
+    },
+    {
+      "name": "P2g",
+      "subject": "services/api/static/index.html",
+      "old": "<meta name=\"ui-profile\" content=\"dev\" />",
+      "new": "<meta name=\"ui-profile\" content=\"dev-anchor-removed\" />",
+      "node_id": "tests/api/test_story_page.py::test_root_index_is_still_profiled",
+      "expect_claim": "test_root_index_is_still_profiled|response.status_code == 200|#0",
+      "note": "the console index loses its anchor; PLAN-0100's fail-loud raise turns GET / into 500"
+    },
+    {
+      "name": "P2h",
+      "subject": "services/api/main.py",
+      "old": "        return Path(response.path).resolve() == root_index",
+      "new": "        return False",
+      "node_id": "tests/api/test_story_page.py::test_root_index_is_still_profiled",
+      "expect_claim": "test_root_index_is_still_profiled|published_tag|#0",
+      "note": "nothing is profiled, not even the root: 200 with the dev tag — the published-tag assert reddens"
+    },
+    {
+      "name": "P2c",
+      "subject": "services/api/main.py",
+      "old": "        if _UI_PROFILE_META_DEV not in html:",
+      "new": "        if False:",
+      "node_id": "tests/api/test_story_page.py::test_profiled_index_still_raises_without_the_anchor",
+      "expect_claim": "test_profiled_index_still_raises_without_the_anchor|pytest.raises(RuntimeError, match=\"ui-profile anchor\")|#0",
+      "note": "the fail-loud raise is disabled; DID NOT RAISE at the with-line"
+    },
+    {
+      "name": "P3d",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/$\n    service: http://app:8000\n",
+      "new": "",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_admitted_by_a_story_ingress_row",
+      "expect_claim": "test_every_story_file_is_admitted_by_a_story_ingress_row|len(rows) == 2|#0",
+      "note": "one story row removed: the row-count assert reddens first"
+    },
+    {
+      "name": "P3c",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/[^/]+$",
+      "new": "  - path: ^/story/[a-z]+$",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_admitted_by_a_story_ingress_row",
+      "expect_claim": "test_every_story_file_is_admitted_by_a_story_ingress_row|sorted(admitted) == sorted(files)|#0",
+      "note": "the sibling row rejects dotted filenames: two rows, flat dir, admitted != files"
+    },
+    {
+      "name": "P3e",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/$",
+      "new": "  - path: ^/story/x$",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_admitted_by_a_story_ingress_row",
+      "expect_claim": "test_every_story_file_is_admitted_by_a_story_ingress_row|page_admitted|#0",
+      "note": "the page row no longer admits /story/; files still admitted — the page assert reddens"
+    },
+    {
+      "name": "P3f",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/[^/]+$",
+      "new": "  - path: ^/story/.+$",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_admitted_by_a_story_ingress_row",
+      "expect_claim": "test_every_story_file_is_admitted_by_a_story_ingress_row|control_admitted == 0|#0",
+      "note": "the sibling row admits nested paths; everything real passes, the /story/sub/x.js control reddens"
+    },
+    {
+      "name": "P5a",
+      "subject": "services/api/static/story/story.js",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident ฿30,001'",
+      "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
+      "expect_claim": "test_story_text_carries_no_ruled_out_literal|not found|#0",
+      "note": "a band numeral enters a caption; the absence assert (first) reddens"
+    },
+    {
+      "name": "P5d",
+      "subject": "services/api/static/story/story.js",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident 30001'",
+      "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
+      "expect_claim": "test_story_text_carries_no_ruled_out_literal|band_numeral == band_tiers == 1|#0",
+      "note": "the bare band numeral leaks into a caption (not a listed literal): the numeral-count assert reddens"
+    },
+    {
+      "name": "P5e",
+      "subject": "services/api/static/story/story.js",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident AI AI'",
+      "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
+      "expect_claim": "test_story_text_carries_no_ruled_out_literal|ai_tokens <= 1|#0",
+      "note": "two AI tokens enter a caption; literals and numeral hold, the R3 count reddens"
+    },
+    {
+      "name": "P5c",
+      "subject": "tests/api/story_source.py",
+      "old": "AUTHORED_FILES = (\"index.html\", \"story.css\", \"story-data.js\", \"story.js\")",
+      "new": "AUTHORED_FILES = (\"index.html\", \"story.css\", \"story-data.js\")",
+      "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
+      "expect_claim": "test_story_text_carries_no_ruled_out_literal|\"tamper-evident\" in combined|#0",
+      "note": "the scan stops reading story.js (where the captions live): the presence control is what notices"
+    },
+    {
+      "name": "P5b",
+      "subject": "tests/api/test_story_page.py",
+      "old": "    \"฿30,001\",\n",
+      "new": "",
+      "node_id": "tests/api/test_story_page.py::test_the_literal_checker_flags_a_known_numeral",
+      "expect_claim": "test_the_literal_checker_flags_a_known_numeral|\"฿30,001\" in flagged|#0",
+      "note": "the baht-prefixed literal is dropped from the list; the positive control reddens"
+    },
+    {
+      "name": "P6a",
+      "subject": "services/api/static/story/index.html",
+      "old": "<script src=\"story-data.js?v=c1\"></script>",
+      "new": "<script src=\"ghost.js\"></script>\n<script src=\"story-data.js?v=c1\"></script>",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_resolves",
+      "expect_claim": "test_every_story_reference_resolves|dangling == []|#0",
+      "note": "a reference to a file that does not exist; nothing escapes static/"
+    },
+    {
+      "name": "P6c",
+      "subject": "services/api/static/story/story.css",
+      "old": "url('../assets/fonts/IBMPlexMono-Medium.woff2')",
+      "new": "url('../../main.py')",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_resolves",
+      "expect_claim": "test_every_story_reference_resolves|escaping == []|#0",
+      "note": "a reference that resolves to a REAL file outside static/: not dangling, escaping"
+    },
+    {
+      "name": "P6b",
+      "subject": "services/api/static/story/index.html",
+      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c1\" />\n",
+      "new": "",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_referenced_or_exempt",
+      "expect_claim": "test_every_story_file_is_referenced_or_exempt|orphans == []|#0",
+      "note": "story.css is no longer loaded: an orphan, no stale exemption"
+    },
+    {
+      "name": "P6d",
+      "subject": "tests/api/test_story_page.py",
+      "old": "_UNREFERENCED_STORY_FILES: dict[str, str] = {}",
+      "new": "_UNREFERENCED_STORY_FILES: dict[str, str] = {\"story.js\": \"probe\"}",
+      "node_id": "tests/api/test_story_page.py::test_every_story_file_is_referenced_or_exempt",
+      "expect_claim": "test_every_story_file_is_referenced_or_exempt|stale == []|#0",
+      "note": "an exemption for a file that IS referenced: no orphan, a stale exemption"
+    },
+    {
+      "name": "P6e",
+      "subject": "tests/api/test_story_page.py",
+      "old": "    for name in (\"index.html\", \"story.js\", \"story.css\"):",
+      "new": "    for name in (\"story.css\",):",
+      "node_id": "tests/api/test_story_page.py::test_the_story_parse_is_not_vacuous",
+      "expect_claim": "test_the_story_parse_is_not_vacuous|refs_js >= 1|#0",
+      "note": "the reference scan reads only the stylesheet: zero .js references"
+    },
+    {
+      "name": "P6f",
+      "subject": "tests/api/test_story_page.py",
+      "old": "    for name in (\"index.html\", \"story.js\", \"story.css\"):",
+      "new": "    for name in (\"story.js\",):",
+      "node_id": "tests/api/test_story_page.py::test_the_story_parse_is_not_vacuous",
+      "expect_claim": "test_the_story_parse_is_not_vacuous|refs_css >= 1|#0",
+      "note": "the reference scan reads only story.js: .js references remain, zero .css references"
+    },
+    {
+      "name": "P7b",
+      "subject": "services/api/static/assets/app.js",
+      "old": "href: '/story/'",
+      "new": "href: '/story'",
+      "node_id": "tests/api/test_story_page.py::test_console_offers_the_story_link_in_a_new_tab",
+      "expect_claim": "test_console_offers_the_story_link_in_a_new_tab|len(anchors) == 1|#0",
+      "note": "the link loses its trailing slash (an edge 404 by design): no anchor found"
+    },
+    {
+      "name": "P7c",
+      "subject": "services/api/static/assets/app.js",
+      "old": "        h('a', {\n          class: 'iconbtn', href: '/story/'",
+      "new": "        h('button', {\n          class: 'iconbtn', href: '/story/'",
+      "node_id": "tests/api/test_story_page.py::test_console_offers_the_story_link_in_a_new_tab",
+      "expect_claim": "test_console_offers_the_story_link_in_a_new_tab|re.search(r\"h\\(\\s*'a'\\s*,\\s*$\", tag_call)|#0",
+      "note": "the link is rendered as a button, not an anchor"
+    },
+    {
+      "name": "P7a",
+      "subject": "services/api/static/assets/app.js",
+      "old": "href: '/story/', target: '_blank', rel: 'noopener',",
+      "new": "href: '/story/', rel: 'noopener',",
+      "node_id": "tests/api/test_story_page.py::test_console_offers_the_story_link_in_a_new_tab",
+      "expect_claim": "test_console_offers_the_story_link_in_a_new_tab|re.search(r\"target:\\s*'_blank'\", attrs)|#0",
+      "note": "the link no longer opens a new tab"
+    },
+    {
+      "name": "P7d",
+      "subject": "services/api/static/assets/app.js",
+      "old": "target: '_blank', rel: 'noopener',",
+      "new": "target: '_blank',",
+      "node_id": "tests/api/test_story_page.py::test_console_offers_the_story_link_in_a_new_tab",
+      "expect_claim": "test_console_offers_the_story_link_in_a_new_tab|re.search(r\"rel:\\s*'noopener'\", attrs)|#0",
+      "note": "the new tab keeps an opener reference"
+    },
+    {
+      "name": "P7e",
+      "subject": "services/api/static/assets/app.js",
+      "old": "if (Object.prototype.hasOwnProperty.call(VIEWS, 'I') && Object.prototype.hasOwnProperty.call(VIEWS, 'H')) {",
+      "new": "if (true) {",
+      "node_id": "tests/api/test_story_page.py::test_console_offers_the_story_link_in_a_new_tab",
+      "expect_claim": "test_console_offers_the_story_link_in_a_new_tab|gated|#0",
+      "note": "the I+H gate is removed: energy and procurement would link to an edge 404"
+    },
+    {
+      "name": "P7f",
+      "subject": "services/api/static/assets/app.js",
+      "old": "key: 'J'",
+      "new": "key: 'K'",
+      "node_id": "tests/api/test_story_page.py::test_the_story_link_added_no_tab",
+      "expect_claim": "test_the_story_link_added_no_tab|registered == MEASURED_TAB_CENSUS|#0",
+      "note": "the tab census changes: the no-tab control reddens"
+    },
+    {
+      "name": "P7g",
+      "subject": "deploy/published/oct-fleet-maintenance/published.env",
+      "old": "UI_PUBLISHED_VIEWS=A,C,F,H,I,J",
+      "new": "UI_PUBLISHED_VIEWS=A,C,F,I,J",
+      "node_id": "tests/api/test_story_page.py::test_the_link_and_the_edge_agree_on_every_published_system",
+      "expect_claim": "test_the_link_and_the_edge_agree_on_every_published_system|any( links for _, _, links, _ in rows )|#0",
+      "note": "no published system declares both I and H: the pairing's anti-vacuity assert (first) reddens"
+    },
+    {
+      "name": "P7h",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/$",
+      "new": "  - path: ^/storyX/$",
+      "node_id": "tests/api/test_story_page.py::test_the_link_and_the_edge_agree_on_every_published_system",
+      "expect_claim": "test_the_link_and_the_edge_agree_on_every_published_system|[row for row in rows if row[2] != row[3]] == []|#0",
+      "note": "fleet declares I and H but its edge stops admitting /story/: link and edge disagree"
+    }
+  ],
+  "exemptions": {
+    "test_every_story_file_is_admitted_by_a_story_ingress_row|not subdirs|#0": "needs a DIRECTORY inside story/; the driver mutates file bytes and cannot create a directory entry",
+    "test_the_story_parse_is_not_vacuous|files|#0": "needs story/ to hold no files; the driver mutates file bytes and cannot delete directory entries (the sibling asserts in this test are witnessed by P6e/P6f)"
+  }
+}

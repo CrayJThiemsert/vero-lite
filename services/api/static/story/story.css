@@ -1,0 +1,93 @@
+/* PLAN-0126 Step 2 — the stage-1 prototype's stylesheet, moved out of index.html.
+   Tokens copied from services/api/static/assets/theme.css:50-93 — the OCT console's own
+   control-room palette. Deliberately single-theme: the explainer hands off to the real
+   product on camera, so it must look like that product, not like a second one. */
+
+/* Fonts: the console's already-shipped IBM Plex files, referenced RELATIVELY so this one
+   file resolves both when served at /story/ (../assets/fonts -> /assets/fonts) and in the
+   multi-file Artifact (PLAN-0126 SD-5 = d). No Thai face is vendored (SD-4 = b): Thai text
+   falls back to the system face, exactly as it does in the console (theme.css:82). */
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:400;font-display:swap;src:url('../assets/fonts/IBMPlexSans-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:500;font-display:swap;src:url('../assets/fonts/IBMPlexSans-Medium.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-style:normal;font-weight:600;font-display:swap;src:url('../assets/fonts/IBMPlexSans-SemiBold.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:400;font-display:swap;src:url('../assets/fonts/IBMPlexMono-Regular.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-style:normal;font-weight:500;font-display:swap;src:url('../assets/fonts/IBMPlexMono-Medium.woff2') format('woff2')}
+
+:root{
+  --bg-0:#090c12; --bg-1:#0d1119; --bg-2:#121826; --bg-3:#18202f; --bg-inset:#0a0e15;
+  --line:#1f2838; --line-strong:#2a3547;
+  --tx-0:#eef1f6; --tx-1:#aeb7c6; --tx-2:#717c8e; --tx-3:#4d5667;
+  --accent:#4d8df0; --accent-soft:rgba(77,141,240,.14); --accent-line:rgba(77,141,240,.40);
+  --ok:#46b377; --warn:#e0a23c; --crit:#e5544b; --neutral:#6b7689;
+  --warn-bg:rgba(224,162,60,.14); --warn-line:rgba(224,162,60,.40);
+  --sans:'IBM Plex Sans',system-ui,sans-serif;           /* theme.css:82 */
+  --mono:'IBM Plex Mono',ui-monospace,monospace;         /* theme.css:83 */
+  --r-sm:4px; --r-md:6px;
+  --gutter:16px;
+}
+*{box-sizing:border-box}
+/* The Artifact host's reset supplied this in stage 1; served standalone, the Sources drawer's
+   `display:flex` would otherwise beat the UA's [hidden] rule and never close. */
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg-0);color:var(--tx-0);font-family:var(--sans)}
+.stage{position:fixed;inset:0;background:var(--bg-0)}
+.stage canvas{display:block;width:100%;height:100%;touch-action:none}
+.labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.lb{position:absolute;left:0;top:0;white-space:nowrap;will-change:transform,opacity;visibility:hidden}
+.lb-zone{font:500 13px/1.2 var(--sans);color:var(--tx-1);letter-spacing:.02em}
+.lb-node{font:500 11px/1 var(--mono);color:var(--tx-1);background:rgba(13,17,25,.78);border:1px solid var(--line);padding:3px 6px;border-radius:var(--r-sm)}
+.lb-thai{font:400 12px/1.3 var(--sans);color:var(--tx-1);background:rgba(13,17,25,.78);border:1px solid var(--line);padding:4px 7px;border-radius:var(--r-sm)}
+.lb-chip{font:500 11.5px/1.3 var(--sans);color:var(--warn);background:var(--warn-bg);border:1px dashed var(--warn-line);padding:3px 7px;border-radius:var(--r-sm)}
+.lb-chip.filled{border-style:solid;color:var(--tx-0)}
+.lb-case{font:500 12px/1.2 var(--mono);color:var(--tx-0);background:var(--bg-2);border:1px solid var(--line-strong);padding:4px 7px;border-radius:var(--r-sm)}
+.lb-case[data-state="fail"]{border-color:var(--crit);color:var(--crit)}
+.lb-case[data-state="wait"]{border-color:var(--warn);color:var(--warn)}
+.lb-case[data-state="done"]{border-color:var(--ok);color:var(--ok)}
+.lb-q{font:500 13px/1.3 var(--sans);color:var(--tx-0);background:var(--bg-2);border:1px solid var(--accent-line);padding:5px 9px;border-radius:var(--r-md)}
+
+/* ---- chrome: top strip ---- */
+.chrome{position:absolute;inset:0 0 auto 0;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding-block:12px;padding-inline:var(--gutter);background:linear-gradient(var(--bg-0) 30%,rgba(9,12,18,0))}
+.brand{font:500 12px/1 var(--mono);color:var(--tx-2);letter-spacing:.08em;text-transform:uppercase;display:flex;gap:8px;align-items:center}
+.brand b{color:var(--tx-0);font-weight:500}
+.acts{flex:1 1 420px;display:flex;gap:3px;min-width:0}
+.act-btn{position:relative;flex:1 1 0;min-width:0;height:30px;border:1px solid var(--line);background:var(--bg-1);color:var(--tx-2);border-radius:var(--r-sm);font:500 11px/1 var(--mono);text-align:left;padding:0 7px;cursor:pointer;overflow:hidden;white-space:nowrap}
+.act-btn .fill{position:absolute;inset:auto 0 0 0;height:2px;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+.act-btn .nm{font-family:var(--sans);font-weight:400;margin-left:6px}
+.act-btn[aria-current="true"]{color:var(--tx-0);border-color:var(--line-strong);background:var(--bg-2)}
+.act-btn:hover{color:var(--tx-0)}
+.ctl{display:flex;gap:4px}
+.ctl button{height:30px;min-width:34px;padding:0 9px;border:1px solid var(--line);background:var(--bg-1);color:var(--tx-1);border-radius:var(--r-sm);font:500 12px/1 var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.ctl button:hover{color:var(--tx-0);border-color:var(--line-strong)}
+.ctl button[aria-pressed="true"]{color:var(--tx-0);border-color:var(--accent-line);background:var(--accent-soft)}
+.ctl svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.clock{font:500 12px/1 var(--mono);color:var(--tx-2);font-variant-numeric:tabular-nums;min-width:9ch;text-align:right}
+
+/* ---- caption ---- */
+.caption{position:absolute;left:0;bottom:0;padding-inline:var(--gutter);padding-block:0 28px;width:min(64ch,100%);display:flex;flex-direction:column;gap:8px;pointer-events:none}
+.cap-act{font:500 11px/1 var(--mono);color:var(--tx-2);letter-spacing:.12em;text-transform:uppercase}
+.cap-th{margin:0;font:500 clamp(19px,.9rem + 1vw,31px)/1.5 var(--sans);color:var(--tx-0);text-wrap:balance;text-shadow:0 1px 18px var(--bg-0),0 0 3px var(--bg-0)}
+.cap-sub{margin:0;font:400 12.5px/1.5 var(--mono);color:var(--tx-1);text-shadow:0 0 6px var(--bg-0)}
+.cap-th,.cap-sub{transition:opacity .35s ease}
+.caption.swap .cap-th,.caption.swap .cap-sub{opacity:0}
+
+/* ---- sources drawer ---- */
+.sources{position:absolute;right:var(--gutter);top:64px;width:min(380px,calc(100% - 2 * var(--gutter)));max-height:calc(100% - 180px);overflow:auto;background:var(--bg-1);border:1px solid var(--line-strong);border-radius:var(--r-md);padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.sources h2{margin:0;font:600 13px/1.3 var(--sans);color:var(--tx-0)}
+.sources .k{font:500 10.5px/1 var(--mono);color:var(--tx-2);letter-spacing:.1em;text-transform:uppercase}
+.sources ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+.sources li{display:flex;flex-direction:column;gap:2px}
+.sources code{font:400 11.5px/1.4 var(--mono);color:var(--accent);word-break:break-all}
+.sources span{font:400 12.5px/1.45 var(--sans);color:var(--tx-1)}
+.sources .not li span{color:var(--warn)}
+.hint{position:absolute;right:var(--gutter);bottom:30px;font:400 11px/1.6 var(--mono);color:var(--tx-3);text-align:right;pointer-events:none}
+.hint kbd{font:inherit;color:var(--tx-2);border:1px solid var(--line);border-radius:3px;padding:0 4px}
+
+body.clean .chrome,body.clean .sources,body.clean .hint{display:none}
+body.nocap .caption{display:none}
+@media (max-width:720px){
+  .act-btn .nm{display:none}
+  .hint{display:none}
+  .sources{top:auto;bottom:150px;max-height:40%}
+  .cap-sub{font-size:11.5px}
+}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>เพลาขาดที่ปากช่อง</title>
+  <link rel="stylesheet" href="story.css?v=c1" />
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="labels" id="labels"></div>
+  <header class="chrome" id="chrome">
+    <div class="brand"><b>vero-lite</b> story mode · fleet</div>
+    <nav class="acts" id="acts" aria-label="ฉาก"></nav>
+    <div class="ctl">
+      <button id="btn-prev" type="button" aria-label="ฉากก่อนหน้า"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <button id="btn-play" type="button" aria-label="หยุด/เล่น"><svg viewBox="0 0 24 24" id="ico-play"><path d="M8 5v14l11-7z"/></svg></button>
+      <button id="btn-next" type="button" aria-label="ฉากถัดไป"><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      <button id="btn-src" type="button" aria-pressed="false">ที่มา</button>
+      <button id="btn-clean" type="button" aria-pressed="false" title="ซ่อนแถบควบคุม (กด H เพื่อกลับ)">ถ่ายทำ</button>
+    </div>
+    <div class="clock" id="clock">0:00</div>
+  </header>
+  <section class="caption" id="caption" aria-live="polite">
+    <div class="cap-act" id="cap-act"></div>
+    <p class="cap-th" id="cap-th"></p>
+    <p class="cap-sub" id="cap-sub"></p>
+  </section>
+  <aside class="sources" id="sources" hidden></aside>
+  <div class="hint"><kbd>space</kbd> หยุด · <kbd>←</kbd><kbd>→</kbd> ฉาก · <kbd>0</kbd>–<kbd>6</kbd> ข้ามฉาก · <kbd>S</kbd> ที่มา · <kbd>H</kbd> ถ่ายทำ · <kbd>C</kbd> คำบรรยาย · ลากเพื่อหมุนเมื่อหยุด</div>
+</div>
+<script src="story-data.js?v=c1"></script>
+<script type="module" src="story.js?v=c1"></script>
+</body>
+</html>

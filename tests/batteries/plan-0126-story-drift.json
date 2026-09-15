@@ -1,0 +1,143 @@
+{
+  "claim_sources": [
+    "tests/api/test_story_drift.py"
+  ],
+  "probes": [
+    {
+      "name": "P4-proc",
+      "subject": "tests/api/test_story_drift.py",
+      "old": "_PROCEDURE_ID = \"governed_repair_approval\"",
+      "new": "_PROCEDURE_ID = \"governed_repair_approval_x\"",
+      "node_id": "tests/api/test_story_drift.py::test_steps_and_gates_equal_the_loaded_procedure",
+      "expect_claim": "_procedure|len(matches) == 1|#0",
+      "note": "the procedure lookup finds nothing: the helper's uniqueness assert reddens"
+    },
+    {
+      "name": "P4-ceil",
+      "subject": "verticals/fleet_maintenance/data_adapter/synthetic.py",
+      "old": "            \"odometer_km\": 254_300.0,\n            \"minor_repair_ceiling_thb\": 5001.0,",
+      "new": "            \"odometer_km\": 254_300.0,\n            \"minor_repair_ceiling_thb\": 5000.0,",
+      "node_id": "tests/api/test_story_drift.py::test_rule_constants_equal_sourcing_and_the_seed",
+      "expect_claim": "_real_ceiling|len(ceilings) == 1|#0",
+      "note": "truck-03's seed ceiling diverges: the one-ceiling helper assert reddens"
+    },
+    {
+      "name": "P4a",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "[\"Truck\", \"Vendor\", \"Depot\",",
+      "new": "[\"Truck\", \"Depot\",",
+      "node_id": "tests/api/test_story_drift.py::test_object_types_equal_the_ontology",
+      "expect_claim": "test_object_types_equal_the_ontology|(sorted(pinned), len(pinned)) == (sorted(real), len(real))|#0",
+      "note": "the block drops Vendor"
+    },
+    {
+      "name": "P4b",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "[\"truck_at_depot\", \"Truck\", \"Depot\"]",
+      "new": "[\"truck_at_depot\", \"Truck\", \"Vendor\"]",
+      "node_id": "tests/api/test_story_drift.py::test_link_types_equal_the_ontology",
+      "expect_claim": "test_link_types_equal_the_ontology|pinned == real|#0",
+      "note": "a link type points at the wrong object"
+    },
+    {
+      "name": "P4c0",
+      "subject": "tests/api/test_story_drift.py",
+      "old": "if prop.get(\"type\") == \"ref\" and prop.get(\"target\") in types",
+      "new": "if prop.get(\"type\") == \"reference\" and prop.get(\"target\") in types",
+      "node_id": "tests/api/test_story_drift.py::test_undeclared_refs_equal_the_refs_the_ontology_leaves_undeclared",
+      "expect_claim": "test_undeclared_refs_equal_the_refs_the_ontology_leaves_undeclared|real|#0",
+      "note": "the ref reading matches nothing: the non-empty control (first) reddens"
+    },
+    {
+      "name": "P4c",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "        [\"RepairCase\", \"Truck\"],\n",
+      "new": "",
+      "node_id": "tests/api/test_story_drift.py::test_undeclared_refs_equal_the_refs_the_ontology_leaves_undeclared",
+      "expect_claim": "test_undeclared_refs_equal_the_refs_the_ontology_leaves_undeclared|pinned == real|#0",
+      "note": "the block drops an undeclared ref; the reading still finds refs"
+    },
+    {
+      "name": "P4d",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "{\"id\": \"judge\", \"th\": \"เทียบเพดานซ่อมของคันนี้\"},\n        {\"id\": \"reshape\", \"th\": \"แปลงเป็นยอดใช้จ่าย\"},",
+      "new": "{\"id\": \"reshape\", \"th\": \"แปลงเป็นยอดใช้จ่าย\"},\n        {\"id\": \"judge\", \"th\": \"เทียบเพดานซ่อมของคันนี้\"},",
+      "node_id": "tests/api/test_story_drift.py::test_steps_and_gates_equal_the_loaded_procedure",
+      "expect_claim": "test_steps_and_gates_equal_the_loaded_procedure|( [s[\"id\"] for s in block[\"steps\"]], {k: v[\"kind\"] for k, v in block[\"gates\"].items()}, block[\"gates\"][\"quote_gate\"][\"criterion\"] in [rule.criterion for rule in|#0",
+      "note": "judge and reshape swap order"
+    },
+    {
+      "name": "P4e",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "{\"min_amount\": 5001, \"role\": \"ผจก.เดินรถ\"}",
+      "new": "{\"min_amount\": 5000, \"role\": \"ผจก.เดินรถ\"}",
+      "node_id": "tests/api/test_story_drift.py::test_tiers_equal_the_loaded_doa_ladder",
+      "expect_claim": "test_tiers_equal_the_loaded_doa_ladder|pinned == real|#0",
+      "note": "a tier floor moves by one baht"
+    },
+    {
+      "name": "P4f",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"sod\": {\"distinct_steps\": [\"intake\", \"approve\"]}",
+      "new": "\"sod\": {\"distinct_steps\": [\"intake\", \"fulfill\"]}",
+      "node_id": "tests/api/test_story_drift.py::test_sod_and_event_kind_equal_the_loaded_procedure",
+      "expect_claim": "test_sod_and_event_kind_equal_the_loaded_procedure|( block[\"id\"], block[\"event_kind\"], sorted(block[\"sod\"][\"distinct_steps\"]) in real_sod, ) == ( _PROCEDURE_ID, real_kind, True, )|#0",
+      "note": "the separation-of-duties pair names the wrong step"
+    },
+    {
+      "name": "P4g",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"three_quote_threshold_thb\": 30000,",
+      "new": "\"three_quote_threshold_thb\": 29000,",
+      "node_id": "tests/api/test_story_drift.py::test_rule_constants_equal_sourcing_and_the_seed",
+      "expect_claim": "test_rule_constants_equal_sourcing_and_the_seed|( Decimal(rules[\"three_quote_threshold_thb\"]), rules[\"min_distinct_vendors\"], float(rules[\"minor_repair_ceiling_thb\"]), ) == (sourcing.THREE_QUOTE_THRESHOLD_THB|#0",
+      "note": "the pinned threshold drifts from sourcing.py"
+    },
+    {
+      "name": "P4h",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"basis\": \"quotes_required\"",
+      "new": "\"basis\": \"three_quotes\"",
+      "node_id": "tests/api/test_story_drift.py::test_every_case_outcome_is_the_real_rules_outcome",
+      "expect_claim": "test_every_case_outcome_is_the_real_rules_outcome|mismatches == []|#0",
+      "note": "case 1's pinned basis is no longer what the real rule returns"
+    },
+    {
+      "name": "P4l",
+      "subject": "verticals/fleet_maintenance/sourcing.py",
+      "old": "THREE_QUOTE_THRESHOLD_THB = Decimal(\"30000\")",
+      "new": "THREE_QUOTE_THRESHOLD_THB = Decimal(\"50000\")",
+      "node_id": "tests/api/test_story_drift.py::test_every_case_outcome_is_the_real_rules_outcome",
+      "expect_claim": "test_every_case_outcome_is_the_real_rules_outcome|mismatches == []|#0",
+      "note": "mutates the PRODUCER, not the block: proves (h) reads the real function"
+    },
+    {
+      "name": "P4i",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"distinct_vendors\": 3, \"sole_source\": false,\n       \"illustrative\": false,",
+      "new": "\"distinct_vendors\": 3, \"sole_source\": false,\n       \"illustrative\": true,",
+      "node_id": "tests/api/test_story_drift.py::test_non_illustrative_cases_are_seeded_and_the_illustrative_one_is_not",
+      "expect_claim": "test_non_illustrative_cases_are_seeded_and_the_illustrative_one_is_not|(seed_matches > 0, seed_matches, illustrative_matches) == (True, len(real_cases), 0)|#0",
+      "note": "a seeded case is marked illustrative: it matches the seed, so illustrative_matches becomes 1"
+    },
+    {
+      "name": "P4j",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"context_pack\": \"context pack\"",
+      "new": "\"context\": \"context pack\"",
+      "node_id": "tests/api/test_story_drift.py::test_emitter_keys_equal_generate_all",
+      "expect_claim": "test_emitter_keys_equal_generate_all|( pinned, outside, _VERTICAL in _ORM_COMMITTED_DEST, _VERTICAL in _PYDANTIC_COMMITTED_DEST, ) == ( set(outputs), [], False, False, )|#0",
+      "note": "an emitter key no longer names a generate_all output"
+    },
+    {
+      "name": "P4k",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "    \"emitters\": {\n      \"pydantic\": \"Pydantic\",\n      \"orm\": \"ORM\",\n      \"sql\": \"SQL DDL\",\n      \"jsonschema\": \"JSON Schema\",\n      \"mcp\": \"MCP tools\",\n      \"typescript\": \"TypeScript\",\n      \"context_pack\": \"context pack\"\n    },",
+      "new": "    \"emitters\": {},",
+      "node_id": "tests/api/test_story_drift.py::test_the_block_is_well_formed",
+      "expect_claim": "test_the_block_is_well_formed|(counts, empties, len(block[\"cases\"]) >= 3) == ((1, 1), [], True)|#0",
+      "note": "the emitters map is emptied (still valid JSON): the well-formedness assert reddens"
+    }
+  ],
+  "exemptions": {}
+}

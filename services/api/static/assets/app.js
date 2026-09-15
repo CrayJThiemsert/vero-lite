@@ -224,6 +224,25 @@
     if (!O.isPublished() && O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
     // Story-mode launcher (PLAN-0033 C0): additive overlay, coexists with Views A–E.
     if (O.ViewStory && O.ViewStory.mountLauncher) O.ViewStory.mountLauncher(rightEl);
+    // The story-mode explainer (PLAN-0126, SD-2 = a): a standalone page that opens in a
+    // NEW TAB. An anchor, never a view key — the A–J census and the header ladder it was
+    // measured for stay untouched. Labelled "ทำไม", not "Story": the PLAN-0033 launcher
+    // above already owns that word in this header.
+    //
+    // Gated like the case notice above: on SERVER-DECLARED state, never a vertical name.
+    // The explainer's closing act hands off to Tab I (repair cases) and Tab H (approval),
+    // so it is offered exactly where both are declared. Dev renders the full census and
+    // shows it; a published system without I and H (energy, procurement) is never linked
+    // to a page its edge does not admit — tests/api/test_story_page.py holds the pairing.
+    if (Object.prototype.hasOwnProperty.call(VIEWS, 'I') && Object.prototype.hasOwnProperty.call(VIEWS, 'H')) {
+      rightEl.appendChild(
+        h('a', {
+          class: 'iconbtn', href: '/story/', target: '_blank', rel: 'noopener',
+          title: 'ทำไมเส้นทางอนุมัติงานซ่อมถึงเป็นแบบนี้ (เปิดในแท็บใหม่)',
+          style: { textDecoration: 'none' }
+        }, [icon('link'), 'ทำไม'])
+      );
+    }
     rightEl.appendChild(
       h('button', { class: 'iconbtn', id: 'globalRefresh', onClick: globalRefresh }, [icon('refresh'), 'Refresh'])
     );

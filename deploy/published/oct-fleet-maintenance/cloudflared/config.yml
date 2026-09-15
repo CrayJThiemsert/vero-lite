@@ -52,6 +52,18 @@ ingress:
   - path: ^/assets/.+$
     service: http://app:8000
 
+  # --- the story-mode explainer (PLAN-0126 Step 7) ---------------------------- #
+  # Basis: a read-only static page, opened in a new tab from the console header
+  # (Cray's ruling L1). No API route and no write sits behind either row — the
+  # page's data is a static file, and its fonts come through ^/assets/.+$ above.
+  # `[^/]+` admits the page's own sibling files and nothing deeper (story/ is kept
+  # flat, and tests/api/test_story_page.py checks that). The console links to
+  # `/story/` WITH the slash, so `^/story$` is deliberately not admitted.
+  - path: ^/story/$
+    service: http://app:8000
+  - path: ^/story/[^/]+$
+    service: http://app:8000
+
   # --- boot + chrome --------------------------------------------------------- #
   - path: ^/health$
     service: http://app:8000
