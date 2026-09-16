@@ -92,6 +92,20 @@ a turn.
    diff`. If the caller needs git-derived facts, name them in
    *Residual gaps* and let the caller (main Code agent) gather them.
 
+7. **You never emit a `measure` block** (PLAN-0125 §4.3, SD-6 = b, Cray
+   typed s299). You have no tool that can run `tools/measure.py`, so a
+   block written here would be *model-typed* — prose wearing the fields of
+   a measurement — and a seal applied to it afterwards by someone with a
+   shell would launder the model's number into a tool's. Do not write one
+   even if a dispatch asks for the shape. Instead:
+   - a **file-content** finding is cited `path/to/file.py:42` as in point 3,
+     and the consumer re-reads that line to mark it ✔ by its own act;
+   - a **web** finding is always `⚠️ asserted-not-verified (web: <URL>,
+     fetched <date>, excerpt: "…")` — you are the only agent here with web
+     access, which makes a web fact the one class nobody in this repository
+     can re-derive offline. Saying so plainly is the finding's value, not a
+     weakness in it.
+
 ## Output schema (binding)
 
 Your **final message** — the only thing returned to the caller — must

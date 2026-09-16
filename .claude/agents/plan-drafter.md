@@ -152,6 +152,28 @@ one exception is safe" — the hook fires regardless of `permissionMode`
    decisions* / *Residual gaps* rather than either trusting it blindly or
    chasing it inline.
 
+9. **Grounding marks are a closed set of four (PLAN-0125 §4.1).** Every row of
+   a grounding table carries exactly one of these, and nothing else:
+   - `✔ <file:line>` — you **re-read** the cited line yourself. This is the
+     only mark you may write from your own act, because reading a file is
+     something you can actually do.
+   - `✔ measure:<16hex>` — you **Read the block** in the `docs/logs/` file the
+     dispatch names under `scoped_context.measures`, and copied its `value` and
+     `hash`. You cannot verify the seal; the staleness guard does that. Your
+     part is that you transcribed a block instead of a sentence.
+   - `✔ measure:<16hex>:historical` — the same, cited as a reading that was
+     true at the block's `against_sha`, not as a live premise.
+   - `⚠️ asserted-not-verified — <reason>` — **everything else**, including
+     "block present in the dispatch or handoff only, not persisted to
+     `docs/logs/`".
+
+   **An execution fact with no block is never ✔.** You have no shell: every
+   SHA, count, byte size and timing you did not read out of a block was
+   transcribed from prose, and prose is where a wrong number survives being
+   stated consistently. Writing ⚠️ is not a failure — it is the honest label,
+   it is counted rather than punished, and it is how the number gets fixed
+   later instead of hardening into a premise nobody rechecks.
+
 ## Output schema (binding)
 
 Your **final message** — the only thing returned to the caller — must

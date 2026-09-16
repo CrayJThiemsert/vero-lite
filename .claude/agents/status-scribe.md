@@ -84,10 +84,14 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
 1. **Self-contained dispatch.** You start fresh with no parent transcript and
    no clock and no git. The caller's spawn payload is your entire source of
    truth for the merge facts. Expected payload fields:
-   - `head_commit` — the short SHA `docs/STATUS.md` should now point at (the
-     reconcile target; see rule 3 on which SHA this is)
-   - `recent_commits` — an ordered list (newest first) of ~10 short SHAs for
-     the `recent_commits:` frontmatter list
+   - `head_commit` — a **`measure/v1` block** emitted by `tools/measure.py
+     --recipe status-reconcile` (PLAN-0125 §4.2). Transcribe its `value`: the
+     short SHA `docs/STATUS.md` should now point at (the reconcile target; see
+     rule 3 on which SHA this is). Transcribe the `value` and nothing else —
+     the block's other fields are the guard's, not yours
+   - `recent_commits` — a **`measure/v1` block** from the same recipe, whose
+     `value` is an ordered list (newest first) of ~10 short SHAs for the
+     `recent_commits:` frontmatter list
    - `now_iso` — the timestamp string for `last_updated:` (ISO-8601 with the
      `+07:00` offset; you have no clock, so you must be given this)
    - `session` — the integer session number
@@ -98,10 +102,16 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
      carry the prior `next_action` forward and flag it in *Residual gaps*
 
    If `head_commit`, `recent_commits`, `now_iso`, or `session` is missing, do
-   **not** guess (especially never invent a SHA or a timestamp). Surface the
-   gap in *Surfaced decisions* and stop short of writing — you may still
-   produce the proposed frontmatter/narrative body in your final message for
-   the caller to materialize manually.
+   **not** guess (especially never invent a SHA or a timestamp). **The same
+   refusal applies when `head_commit` or `recent_commits` arrives as prose, as
+   a bare SHA, or as a block missing its `schema` or its `hash`** — you have no
+   git, so an execution fact is trustworthy here only because a tool emitted it
+   and sealed it (PLAN-0125 §4.2). A SHA typed into a payload by a model looks
+   exactly like one a tool measured; the block is the only thing that tells
+   them apart, so refuse rather than transcribe. Surface the gap in *Surfaced
+   decisions* and stop short of writing — you may still produce the proposed
+   frontmatter/narrative body in your final message for the caller to
+   materialize manually.
 
 2. **Surgical reads only (runbook R5 — binding; Lesson #23).** You **never
    whole-file Read `docs/STATUS.md`** — a bloated STATUS once exceeded the
@@ -162,7 +172,12 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
    696–1,175 B and one reconcile wrote **2,262 B**, putting STATUS over R1's
    ceiling). A retained prior entry that predates the cap is **left alone** — it
    rotates out on its own, and rewriting it would edit history rather than
-   record it. Content older than the window is **rotated, not
+   record it. **Neither ledger declares a `Window = …` line** — the entries
+   present are the window (PLAN-0125 SD-9 = a, Cray typed s299). Nothing reads
+   such a declaration and no rule ever prescribed it; it is a hand-typed
+   premise that costs bytes and has to be kept true by hand. If a header you
+   are editing still carries one, delete it as part of the rotation and do not
+   write a replacement. Content older than the window is **rotated, not
    deleted**: remove it from STATUS.md and emit it VERBATIM in your final
    message (*Rotated content* section) for the caller to append to
    `docs/status-archive/` (R4). **Deleting without archiving remains
