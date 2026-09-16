@@ -1,0 +1,322 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_measure_staleness.py"
+  ],
+  "probes": [
+    {
+      "name": "P-parse.1",
+      "subject": "tests/tools/test_check_measure_staleness.py",
+      "old": "        if line.startswith(PREFIX + \" files=\"):",
+      "new": "        if line.startswith(PREFIX + \" dangling\"):",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_values_parser_reads_a_known_output",
+      "expect_claim": "test_the_values_parser_reads_a_known_output|picked == (\"4\", \"1\", \"41\", 15)|#0",
+      "note": "Instrument control (Lesson #0056): the parser keys on a finding line instead of the values line, so it reads no counter at all. Every reading below passes through it."
+    },
+    {
+      "name": "P-6.0",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "            counts.blocks += 1",
+      "new": "            counts.blocks += 2",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"blocks\") == \"4\"|#0",
+      "note": "Beyond the PLAN's list: every block counts twice. blocks reads 8; the first assertion reddens before any classifier is read."
+    },
+    {
+      "name": "P-6.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if not verify_hash(data):",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"hash_bad\") == \"1\"|#0",
+      "note": "The PLAN's P-6.1: the seal is never recomputed. The tampered byte is `who`, so the block re-runs to its recorded value and reads fresh; only hash_bad reddens (0), blocks stays 4."
+    },
+    {
+      "name": "P-6.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if moved:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"stale\") == \"1\"|#0",
+      "note": "The PLAN's P-6.2: a moved declared path is ignored. The stale block is not re-runnable, so it reads fresh instead of turning into a mismatch; only stale reddens (0)."
+    },
+    {
+      "name": "P-6.3",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if got != data[\"value\"]:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"mismatch\") == \"1\"|#0",
+      "note": "The PLAN's P-6.3: a re-derived value is never compared. The re-sealed block's seal passes and it is a history block, so nothing else can catch it; only mismatch reddens (0)."
+    },
+    {
+      "name": "P-6.4",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                counts.cites += 1",
+      "new": "                counts.cites += 0",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"cites\") == \"2\"|#0",
+      "note": "The PLAN's P-6.4: tokens are resolved but not counted. dangling still reads 1, so only cites reddens (0)."
+    },
+    {
+      "name": "P-6.5",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                    counts.dangling += 1",
+      "new": "                    counts.dangling += 0",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|values.get(\"dangling\") == \"1\"|#0",
+      "note": "The PLAN's P-6.5: a token naming no block is not counted. cites stays 2 and rc stays 1 on the other gates; only dangling reddens (0)."
+    },
+    {
+      "name": "P-6.6",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    status = EXIT_FAIL if gates else EXIT_PASS",
+      "new": "    status = EXIT_PASS",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_scenario_the_five_shapes_from_the_real_emitter_are_classified",
+      "expect_claim": "test_scenario_the_five_shapes_from_the_real_emitter_are_classified|rc == 1|#0",
+      "note": "Beyond the PLAN's list: every counter is computed and printed, and the exit ignores them. Only rc reddens (0)."
+    },
+    {
+      "name": "P-7.3",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "BLOCK_GLOB = \"docs/logs/*.md\"",
+      "new": "BLOCK_GLOB = \"docs/logs/*.mdx\"",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_guard_accepts_the_real_tree",
+      "expect_claim": "test_the_guard_accepts_the_real_tree|int(values.get(\"blocks\", \"0\")) >= 5|#0",
+      "note": "The block surface stops matching on the real tree: blocks reads 0, the first assertion reddens."
+    },
+    {
+      "name": "P-8.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "CITATION_GLOBS = (\"docs/plans/*.md\", \"docs/STATUS.md\", \"docs/adr/*.md\")",
+      "new": "CITATION_GLOBS = (\"docs/plans/*.mdx\", \"docs/STATUS.md\", \"docs/adr/*.md\")",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_guard_accepts_the_real_tree",
+      "expect_claim": "test_the_guard_accepts_the_real_tree|int(values.get(\"cites\", \"0\")) >= 2|#0",
+      "note": "AC-8's real half: the PLAN surface stops matching. All five real citations live in PLAN-0125, so cites reads 0 while blocks stays 6."
+    },
+    {
+      "name": "P-7.4",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "f\"{sha}^{{commit}}\")\n    return rc == 0",
+      "new": "f\"{sha}^{{commit}}\")\n    return rc != 0",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_guard_accepts_the_real_tree",
+      "expect_claim": "test_the_guard_accepts_the_real_tree|(gated, rc) == ((\"0\", \"0\", \"0\", \"0\", \"0\"), 0)|#0",
+      "note": "The over-refusal shape: every real against_sha reads as a broken pointer in a full clone. blocks and cites stay green; the gated tuple reddens (unresolvable=6, rc=1)."
+    },
+    {
+      "name": "P-7.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.blocks == 0:",
+      "new": "    if counts.blocks == -1:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_an_empty_surface_is_refused_never_passed",
+      "expect_claim": "test_an_empty_surface_is_refused_never_passed|\"blocks=0 — EMPTY SURFACE, NOT a pass\" in out|#0",
+      "note": "The empty-surface line is never printed; the gate still fires, so only the text assertion reddens."
+    },
+    {
+      "name": "P-7.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if not counts.blocks:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_an_empty_surface_is_refused_never_passed",
+      "expect_claim": "test_an_empty_surface_is_refused_never_passed|rc == 1|#0",
+      "note": "The PLAN's P-7.1: the blocks == 0 gate is removed. The line is still printed (text stays green) and the empty surface exits 0 — the null-glob green."
+    },
+    {
+      "name": "P-8.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if moved:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_historical_citation_of_a_stale_block_does_not_gate",
+      "expect_claim": "test_a_historical_citation_of_a_stale_block_does_not_gate|values.get(\"stale\") == \"1\"|#0",
+      "note": "The precondition of the historical case: without staleness the block reads fresh, and 'historical never gates' would pass vacuously. This probe shows the stale reading is load-bearing."
+    },
+    {
+      "name": "P-8.3",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                    counts.historical += 1",
+      "new": "                    counts.historical += 0",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_historical_citation_of_a_stale_block_does_not_gate",
+      "expect_claim": "test_a_historical_citation_of_a_stale_block_does_not_gate|values.get(\"historical\") == \"1\"|#0",
+      "note": "The :historical token is classified but not counted; stale stays 1, historical reads 0."
+    },
+    {
+      "name": "P-8.4",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                elif match.group(2) is None and state == STALE:",
+      "new": "                elif state == STALE:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_historical_citation_of_a_stale_block_does_not_gate",
+      "expect_claim": "test_a_historical_citation_of_a_stale_block_does_not_gate|(values.get(\"stale_cited\"), rc) == (\"0\", 0)|#0",
+      "note": "§3.4's split is erased: a :historical token on a stale block counts as a live premise. historical still reads 1; stale_cited reads 1 and rc 1."
+    },
+    {
+      "name": "P-8.5",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                    counts.stale_cited += 1",
+      "new": "                    counts.stale_cited += 0",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_live_citation_of_a_stale_block_gates",
+      "expect_claim": "test_a_live_citation_of_a_stale_block_gates|values.get(\"stale_cited\") == \"1\"|#0",
+      "note": "SD-7's positive control: a live citation of a stale block is not counted, so the historical case's stale_cited=0 would prove nothing. Reads 0."
+    },
+    {
+      "name": "P-8.6",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "GATE_STALE_CITED = True",
+      "new": "GATE_STALE_CITED = False",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_live_citation_of_a_stale_block_gates",
+      "expect_claim": "test_a_live_citation_of_a_stale_block_gates|rc == 1|#0",
+      "note": "SD-7 = (b) quietly flipped to (a): stale_cited is still counted (1) and no longer gates. Only rc reddens."
+    },
+    {
+      "name": "P-9.0",
+      "subject": "tests/tools/test_check_measure_staleness.py",
+      "old": "root.as_uri(), str(clone))",
+      "new": "str(root), str(clone))",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_shallow_clone_is_a_visible_skip",
+      "expect_claim": "test_a_shallow_clone_is_a_visible_skip|shallow == \"true\"|#0",
+      "note": "Instrument control, measured s303: cloned from a plain path, git ignores --depth and the clone is full. The test's own shallow check reddens before any guard reading is trusted."
+    },
+    {
+      "name": "P-9.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if shallow_clone:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_shallow_clone_is_a_visible_skip",
+      "expect_claim": "test_a_shallow_clone_is_a_visible_skip|values.get(\"rerun_failed\") == \"0\"|#0",
+      "note": "D1 = a's shallow half removed: block Y's re-run cannot see first..tip in the clone and gates as rerun_failed (1) instead of a visible skip."
+    },
+    {
+      "name": "P-9.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if shallow:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_shallow_clone_is_a_visible_skip",
+      "expect_claim": "test_a_shallow_clone_is_a_visible_skip|values.get(\"unavailable\") == \"2\"|#0",
+      "note": "Step 3's shallow branch removed: block X's against_sha reads unresolvable. Y still reads unavailable through the re-run branch, so rerun_failed stays 0 and unavailable reads 1."
+    },
+    {
+      "name": "P-9.3",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.unavailable:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_shallow_clone_is_a_visible_skip",
+      "expect_claim": "test_a_shallow_clone_is_a_visible_skip|\"NOT checked in this shallow clone, NOT a pass\" in out|#0",
+      "note": "The skip becomes silent: unavailable is still counted (2) but the NOT-a-pass line is gone."
+    },
+    {
+      "name": "P-9.4",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.unresolvable:",
+      "new": "    if counts.unresolvable or counts.unavailable:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_shallow_clone_is_a_visible_skip",
+      "expect_claim": "test_a_shallow_clone_is_a_visible_skip|rc == 0|#0",
+      "note": "The visible skip becomes a gate: every counter and the text stay as they were, and rc reads 1 — the CI depth-2 red H1 predicted."
+    },
+    {
+      "name": "P-9.5",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if shallow:",
+      "new": "        if True:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_fabricated_against_sha_in_a_full_clone_gates",
+      "expect_claim": "test_a_fabricated_against_sha_in_a_full_clone_gates|values.get(\"unresolvable\") == \"1\"|#0",
+      "note": "The PLAN's full-clone control: 'unavailable' swallows a broken pointer in a full clone. unresolvable reads 0."
+    },
+    {
+      "name": "P-9.6",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.unresolvable:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_fabricated_against_sha_in_a_full_clone_gates",
+      "expect_claim": "test_a_fabricated_against_sha_in_a_full_clone_gates|rc == 1|#0",
+      "note": "A broken pointer is counted (1) and does not gate; only rc reddens."
+    },
+    {
+      "name": "P-D1.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        return Verdict(RERUN_FAILED, f\"re-run failed: {exc}\")",
+      "new": "        return Verdict(MISMATCH, f\"re-run failed: {exc}\")",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_rerun_that_fails_in_a_full_clone_gates_as_rerun_failed",
+      "expect_claim": "test_a_rerun_that_fails_in_a_full_clone_gates_as_rerun_failed|got == (\"1\", \"0\")|#0",
+      "note": "D1 = b's shape (the option Cray did not pick): a failed re-run is filed as a mismatch — still a red, under the wrong name. (rerun_failed, mismatch) reads (0, 1)."
+    },
+    {
+      "name": "P-D1.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.rerun_failed:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_rerun_that_fails_in_a_full_clone_gates_as_rerun_failed",
+      "expect_claim": "test_a_rerun_that_fails_in_a_full_clone_gates_as_rerun_failed|rc == 1|#0",
+      "note": "D1 = c's shape: rerun_failed is counted (1) and printed, and never gates. Only rc reddens."
+    },
+    {
+      "name": "P-AL.0",
+      "subject": "tests/tools/test_check_measure_staleness.py",
+      "old": "        [\"git\", \"init\", \"-q\", \"pwned-by-rerun\"],",
+      "new": "        [\"git\", \"init\", \"-q\", \"pwned-elsewhere\"],",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_block_outside_the_rerun_allowlist_is_never_executed",
+      "expect_claim": "test_a_block_outside_the_rerun_allowlist_is_never_executed|(control / \"pwned-by-rerun\" / \".git\").is_dir()|#0",
+      "note": "Positive control for the absence assertion: the control argv writes somewhere else, so the instrument that later reads 'not executed' is shown to see a write."
+    },
+    {
+      "name": "P-AL.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "        if refusal is not None:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_block_outside_the_rerun_allowlist_is_never_executed",
+      "expect_claim": "test_a_block_outside_the_rerun_allowlist_is_never_executed|not (root / \"pwned-by-rerun\").exists()|#0",
+      "note": "The guard stops applying the emitter's R6/R7 before a re-run: a re-sealed block's `git init` executes at pre-commit and writes into the repository."
+    },
+    {
+      "name": "P-AL.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "                RERUN_FAILED,\n",
+      "new": "                MISMATCH,\n",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_block_outside_the_rerun_allowlist_is_never_executed",
+      "expect_claim": "test_a_block_outside_the_rerun_allowlist_is_never_executed|values.get(\"rerun_failed\") == \"1\"|#0",
+      "note": "The refusal still prevents execution (the directory stays absent) but is filed under the wrong counter; rerun_failed reads 0."
+    },
+    {
+      "name": "P-D2.0",
+      "subject": "tests/tools/test_check_measure_staleness.py",
+      "old": "    _git(root, \"add\", TEMPLATE)",
+      "new": "    _git(root, \"add\", STATUS)",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch",
+      "expect_claim": "test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch|staged == TEMPLATE|#0",
+      "note": "Instrument control: the test stages an unchanged file, so nothing is staged. The staged-set reading reddens before the guard's reading is trusted to be the pre-commit shape."
+    },
+    {
+      "name": "P-D2.1",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "\"-z\", \"HEAD\", \"--\", *paths)",
+      "new": "\"-z\", f\"{sha}..HEAD\", \"--\", *paths)",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch",
+      "expect_claim": "test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch|got == (\"1\", \"0\")|#0",
+      "note": "D2 = a's shape (ADR-0038:582 alone): the second diff repeats the first, the staged edit is invisible, and the re-run reads the edited file. (stale, mismatch) reads (0, 1) — the misdiagnosis D2 = b exists to prevent."
+    },
+    {
+      "name": "P-D2.2",
+      "subject": "tools/check_measure_staleness.py",
+      "old": "    if counts.mismatch:",
+      "new": "    if counts.mismatch or counts.stale:",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch",
+      "expect_claim": "test_a_staged_edit_to_a_declared_path_is_stale_not_mismatch|rc == 0|#0",
+      "note": "SD-7 = (c)'s shape: every stale block gates, cited or not. (stale, mismatch) stays (1, 0); only rc reddens."
+    },
+    {
+      "name": "P-10.1",
+      "subject": ".pre-commit-config.yaml",
+      "old": "      - id: measure-staleness\n",
+      "new": "      - id: measure-staleness-hook\n",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_hook_is_wired_and_catalogued",
+      "expect_claim": "test_the_hook_is_wired_and_catalogued|wired == (1, 0)|#0",
+      "note": "AC-10: the hook id is renamed away; hook_id_count reads 0 against the no-such-hook control's 0."
+    },
+    {
+      "name": "P-20.2",
+      "subject": "tools/README.md",
+      "old": "| `measure-staleness` | `check_measure_staleness.py` |",
+      "new": "| `measure-staleness` | `check_measure_staleness_py` |",
+      "node_id": "tests/tools/test_check_measure_staleness.py::test_the_hook_is_wired_and_catalogued",
+      "expect_claim": "test_the_hook_is_wired_and_catalogued|(row, control) == (1, 0)|#0",
+      "note": "The PLAN's P-20.2: the catalogue row stops naming the guard. The hook stays wired, so only the catalogue assertion reddens."
+    }
+  ]
+}
