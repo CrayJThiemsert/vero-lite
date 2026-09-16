@@ -963,3 +963,107 @@ _[The Current-Focus rotation ledger's s298 entry, verbatim from `git show HEAD:d
 > after log line 383 (eight records, all `pause`).
 
 _[The Current-Focus rotation ledger's s299 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s299) reconcile rotates ONE block — s297 (**3,243 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`. **Headroom rule:** STATUS opened at **58,941 B**, 6,595 B under R1's 65,536 B ceiling, and the s299 block had to land, so the window stays at TWO (298, 299) — the tenth consecutive reconcile of that shape. ⚠️ **The s297 entry left the window and was APPENDED VERBATIM** after the block in h1e.
+
+### Rotated at the s303 reconcile — the session-302 and session-300–301 Current-Focus blocks [on the R1 headroom rule: STATUS opened at **61,736 B**, only **3,800 B** under R1's 65,536 B ceiling, and the s303 block (**3,414 B**) had to land, so for the first time in thirteen reconciles the window drops to ONE (303): TWO blocks leave — s302 (**3,074 B**) and s300–301 (**3,112 B**), both under the 4,096 B cap. Carved from `git show HEAD:docs/STATUS.md`, each probed ABSENT here first against a control derived from the previous reconcile's own header (=1) and a fabricated s999 header (=0); absence from the new STATUS asserted separately (=0), with the retained s303 block (=1) as the instrument's own control. The Current-Focus ledger's s301 and s302 entries follow them verbatim.]
+
+> **Session 302, 2026-09-15 (`e83422c` → `df5beb6`) — ONE PR
+> ([#1493](https://github.com/CrayJThiemsert/vero-lite/pull/1493)), merged by Cray. **PLAN-0125 Step 1
+> shipped: `tools/measure.py` emits one sealed `measure/v1` block per
+> invocation, or refuses — exit 2, no block, reason printed.**
+>
+> ✅ **#1493 (merge `df5beb6`) — the emitter.** Block fields, the R1–R8
+> refusals and the seal are in PLAN-0125 Step 1 and the PR body. One process
+> call site (`_spawn`, `shell=False`); `against_sha` is the emitter's own `git
+> rev-parse HEAD` (R8), not `_evidence.head_sha()`'s `"unknown"` fallback.
+> Verified by PR number (`MERGED`) and blob equality 7/7, with a
+> differing-blob control.
+>
+> 🔴 **`procedure_output` — Cray, typed, option (a):** refuse on a non-zero
+> exit OR any stderr; reduce stdout alone. It departs from Step 1.1's literal
+> *"merged as stdout + stderr"*: a merge would count a success-path warning as
+> one more line.
+>
+> ✅ **Evidence.** `tests/tools/test_measure.py` — 16 claims, each driving the
+> emitter as a subprocess on a throwaway repo, incl. the §8 scenario test
+> (blocks read back by `parse_blocks`, the parser Step 2's guard will import).
+> Battery `tests/batteries/plan-0125-step1.json` **26/26 WITNESSED, GAPS 0**
+> (AC-2 carries 11 cases — R2-dirty and R4-equal beyond the PLAN's 9); full
+> suite **5288 passed, 8 skipped** (`db_tests=499`); `mypy --strict tools/`
+> clean, 50 files. The first six blocks
+> (`docs/logs/2026-09-15-plan0125-fact-pack-measures.md`) are sealed against
+> `e83422c`, predicates fixed first, each value re-derived by a different git
+> command (6/6); PLAN-0125 §1 G15–G17 now cite `measure:<hash>:historical`
+> (5 cites, 0 dangling). **No AC box ticked:** AC-1…AC-4 (and Step 0's
+> AC-17…AC-19) are Cray's call; AC-5's pass read is the Step 2 guard's line.
+>
+> 🔴 **detect-secrets flags every block's 40-hex `against_sha`**
+> (`HexHighEntropyString`). #1493 added one `.secrets.baseline` entry, its
+> hash verified against `e83422c` with a different SHA as control; every
+> emission from a new HEAD needs another. Cray's call — one entry per
+> emission, or a narrow `--exclude-lines` — before Step 2's AC-11 block.
+>
+> ⚠️ **Shared-checkout hazard, measured.** At `10:15:00Z` the shared
+> checkout's HEAD moved to `main` under uncommitted Step 1 work; at
+> `10:15:01Z` a new Code session opened on that cwd with `sourceBranch: main`
+> (most likely the app's checkout). Code isolated the work in a WSL worktree,
+> `~/work/vero-lite-s302` (5 files hash-verified, kept on Cray's typed word),
+> and the two sessions agreed disjoint paths by message. A fresh worktree has
+> no `.env`: its first suite read `1 failed, 512 skipped`
+> (`TEST-DB-GUARD outcome=ABSENT`) until main's `.env` was sourced.
+>
+> ⚠️ `tools/README.md`'s header count was already stale (20 vs 21 real);
+> re-measured with a row-count control, **22 = 14 + 8**; §2's *"Nine"* is
+> left for Step 2. Two more Stop-hook `proceed`→`block` specimens (log lines
+> 421, 428); neither named a user request.
+
+> **Session 300–301, 2026-09-15 (`a59b4cd` → `75cd580`) — THREE PRs
+> ([#1489](https://github.com/CrayJThiemsert/vero-lite/pull/1489)–[#1491](https://github.com/CrayJThiemsert/vero-lite/pull/1491)), all merged. **PLAN-0125 Step 0
+> shipped: the freshness guard now REFUSES a commit that stages
+> `docs/STATUS.md` while drift > 0; every other commit still prints.**
+>
+> ✅ **s300 (no PR) — a host fix.** Windows git reads a `100755` file through
+> the UNC mount as `100644`, and Claude's Edit rewrites `755` as `644`. Every
+> `git init` writes a local `core.filemode = true` that beats global config
+> and loses to command-scope env, so Cray set three Windows user env vars
+> (`GIT_CONFIG_*` = `core.fileMode false`, host config); Code, on Cray's typed
+> go, created a user-level `~/.claude/CLAUDE.md`. After the Desktop restart,
+> s301's V1–V6 all PASS, the control included: with the vars stripped by
+> `env -u`, both ` M` lines return. WSL still reads `local true`.
+>
+> ✅ **#1489 (merge `c98f82a`) — Lesson #0064**, *mute the reader that
+> misreads, not the one that detects*: a `.git/config` `false` blinds WSL git
+> (it hid the s256 `0600` bug), and a reinit under an inherited `GIT_DIR` flips
+> it, witnessed `false → false (control) → true`. Plus Lesson #0007 §1.3
+> (`wsl -e` inverts §1.1's escaping; PowerShell 5.1 drops embedded quotes) and
+> the `claude-code-setup.md` §2 pre-flight; every reading they print was
+> re-witnessed before writing, and each matched s300.
+>
+> ✅ **#1490 (merge `7089625`)** — the `ms-s1-ollama` skill said the repo turns
+> mode tracking off; it reads `local true`. Corrected, with a `retired:` marker
+> witnessed RED in a throwaway root; the real tree went 17 → 18 retired claims.
+>
+> ✅ **#1491 (merge `75cd580`) — PLAN-0125 Step 0.** Pass reads `A gate rc=1
+> drift=2 · B gate rc=0 · C print rc=0 · D print rc=0 baseline_lag=n/a · E
+> staged=True (control staged=False)`; battery
+> `tests/batteries/plan-0125-step0.json` **27/27 WITNESSED, GAPS 0** (the
+> PLAN's 12 probes, P-19.2, a parser control, 13 for pre-existing claims); full
+> suite **5266 passed**; `mypy --strict` clean by hand. AC-17…AC-19 stay
+> UNTICKED (closeout precedent). Code merged all three on Cray's typed word,
+> each verified by number and blob.
+>
+> 🔴 **A recorded deviation and an instrument note.** (1) The guard reads the
+> WHOLE staged set, not Step 0.1's pathspec query: with the pathspec, P-17.2
+> and P-17.3 would redden the same case, so the PLAN's own probe list was
+> inexpressible (§9: the ACs bind behaviour, not the query). (2) The
+> retired-marker witness read 3 markers where Code expected 1: the instrument
+> was Code's expectation (the skill already carried two); the count moved +1.
+>
+> ⚠️ The Step 0 commit's own pre-commit line printed **`baseline_lag=2`** —
+> local `main` two commits behind `origin/main`, the lag the guard exists to
+> show. Two more Stop-hook `proceed`→`block` specimens (log lines 399 and
+> 411, `matched_rows` empty), so the candidates are now nine; neither named a
+> task, and Code treated both as no-ops.
+
+_[The Current-Focus rotation ledger's s301 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s301) reconcile rotates ONE block — s298 (**2,347 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, probed ABSENT from every `-current-focus` letter first (control: the s297 header = 1). **Headroom rule:** STATUS opened at **57,867 B**, 7,669 B under R1's 65,536 B ceiling, and the s300–301 block had to land, so the window stays at TWO (299, 300–301) — the eleventh consecutive reconcile of that shape. ⚠️ **The s298 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep.
+
+_[The Current-Focus rotation ledger's s302 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s302) reconcile rotates ONE block — s299 (**2,178 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, probed ABSENT from every `-current-focus` letter first (control: the s298 header from `e94b80e`'s own diff = 1). **Headroom rule:** STATUS opened at **59,549 B**, 5,987 B under R1's 65,536 B ceiling, and the s302 block had to land, so the window stays at TWO (300–301, 302) — the twelfth consecutive reconcile of that shape. ⚠️ **The s299 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep.
