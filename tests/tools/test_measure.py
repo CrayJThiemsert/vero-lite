@@ -738,3 +738,105 @@ def test_the_catalogue_names_the_emitter() -> None:
     text = CATALOGUE.read_text(encoding="utf-8")
     row, control = text.count("| **`measure.py`** |"), text.count("no-such-tool.py")
     assert (row, control) == (1, 0), f"AC-20: measure.py row post={row} (pre=0) control={control}"
+
+
+# --- AC-12 (Step 3): the status-reconcile recipe, real producer into real consumer ---------
+#
+# The scenario CLAUDE.md §8 asks for: the real emitter drives the real parser the staleness
+# guard imports, over a real git repository. Nothing is stubbed on either side of the seam.
+# One assertion per test, because one mutation witnesses only one assertion — the probes are
+# P-12.1 … P-12.3 in tests/batteries/plan-0125-step3.json.
+
+_PROSE_PAYLOAD = """The scribe's payload, with the two facts typed as prose instead:
+
+head_commit: abc1234
+recent_commits: [abc1234, def5678, 0123abc]
+"""
+
+
+def _recipe_blocks(root: Path) -> tuple[int, str, list[dict[str, object]]]:
+    """Run the recipe; return its status, its whole output, and every block it emitted.
+
+    The **raw list**, deliberately: an earlier draft indexed by ``metric`` first, and a
+    recipe that emitted the same block twice would have collapsed to two keys and slipped
+    past the count assertion. The count claim is about blocks, so it is read off blocks.
+    """
+    code, out = _emit(root, "--recipe", "status-reconcile", "--who", "test-scenario")
+    return code, out, [json.loads(text) for text in _blocks(out)]
+
+
+def _by_metric(blocks: list[dict[str, object]]) -> dict[str, dict[str, object]]:
+    return {str(block["metric"]): block for block in blocks}
+
+
+def test_the_recipe_emits_two_sealed_blocks(tmp_path: Path) -> None:
+    """AC-12 — two blocks from one invocation, each sealed (the seal itself is AC-1's claim)."""
+    root, _first, _tip = _history_repo(tmp_path)
+    code, out, blocks = _recipe_blocks(root)
+    sealed = sorted(str(block["metric"]) for block in blocks if verify_hash(block))
+    got = (code, len(blocks), sealed)
+    assert got == (
+        0,
+        2,
+        ["status_head_commit", "status_recent_commits"],
+    ), f"AC-12: (rc, blocks, sealed)={got!r} — expected (0, 2, both metrics sealed). out={out!r}"
+
+
+def test_the_recipes_head_value_equals_an_independent_computation(tmp_path: Path) -> None:
+    """AC-12 — the value the scribe would transcribe, against the test's own git call."""
+    root, _first, _tip = _history_repo(tmp_path)
+    _code, out, blocks = _recipe_blocks(root)
+    expected = _git(root, "rev-parse", "--short=7", "main")
+    got = _by_metric(blocks).get("status_head_commit", {}).get("value")
+    assert (
+        got == expected
+    ), f"AC-12 head_match: block value={got!r} independent={expected!r}. out={out!r}"
+
+
+def test_the_recipes_recent_value_equals_an_independent_computation(tmp_path: Path) -> None:
+    """AC-12 — the same, for the ten-commit list. The PLAN's ``-n 10`` is the test's form."""
+    root, _first, _tip = _history_repo(tmp_path)
+    _code, out, blocks = _recipe_blocks(root)
+    expected = _git(root, "log", "--format=%h", "-n", "10", "main")
+    got = _by_metric(blocks).get("status_recent_commits", {}).get("value")
+    assert (
+        got == expected
+    ), f"AC-12 recent_match: block value={got!r} independent={expected!r}. out={out!r}"
+
+
+def test_prose_where_a_block_belongs_is_not_a_block(tmp_path: Path) -> None:
+    """AC-12's control — and it carries its own positive control.
+
+    ``prose_rejected`` is a negative reading ("this text holds no block"), which an
+    always-empty parser would satisfy for free (CLAUDE.md §8). So the same parser, in the
+    same assertion, must still find the two real blocks: the positive half is what makes
+    the negative half mean something.
+    """
+    root, _first, _tip = _history_repo(tmp_path)
+    _code, out, _blocks_seen = _recipe_blocks(root)
+    prose = [block for block in parse_blocks(_PROSE_PAYLOAD) if block.data is not None]
+    real = [block for block in parse_blocks(out) if block.data is not None]
+    got = (len(prose), len(real))
+    assert got == (0, 2), (
+        f"AC-12: (prose_blocks, real_blocks)={got!r} — expected (0, 2). A parser that "
+        f"read 0 real blocks makes the prose reading vacuous. out={out!r}"
+    )
+
+
+def test_the_recipe_refuses_to_persist_its_blocks(tmp_path: Path) -> None:
+    """PLAN-0125 §6 E1 — a recipe block is payload provenance and is never written down."""
+    root, _first, _tip = _history_repo(tmp_path)
+    target = root / "docs" / "logs" / "never-written.md"
+    code, out = _emit(
+        root, "--recipe", "status-reconcile", "--who", "test-scenario", "--out", str(target)
+    )
+    got = (code, _refused_rule(out), target.exists())
+    assert got == (2, "recipe", False), f"E1: (rc, rule, file_exists)={got!r} out={out!r}"
+
+
+def test_an_unknown_recipe_is_refused_by_name(tmp_path: Path) -> None:
+    """The recipe set is closed: an unknown name refuses rather than emitting nothing quietly."""
+    root, _first, _tip = _history_repo(tmp_path)
+    code, out = _emit(root, "--recipe", "no-such-recipe", "--who", "test-scenario")
+    got = (code, _refused_rule(out), _blocks(out))
+    assert got == (2, "recipe", []), f"unknown recipe: (rc, rule, blocks)={got!r} out={out!r}"

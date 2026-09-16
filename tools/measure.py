@@ -17,7 +17,10 @@ signature: anyone with a shell can re-seal (PLAN-0125 §2.2).
 
 **One invocation, one block, no shell ever.** The procedure is an argv list or a file
 reduction. Every process this module starts goes through :func:`_spawn`, its one
-process call site (AC-3 reads that site by symbol).
+process call site (AC-3 reads that site by symbol). The one exception to *one block* is
+``--recipe`` (PLAN-0125 §4.2), which runs a fixed set of invocations back through the
+same entry point — so every refusal below applies to each of them, unchanged and
+unexempted.
 
 **Refusals** — exit 2, no block, the reason printed (PLAN-0125 §2.3):
 
@@ -63,6 +66,8 @@ Usage::
         --reduce count:measure --predicate "value == 0" --who code-s302 \\
         --control-file docs/plans/0000-template.md --control-reduce count:Goal \\
         --out docs/logs/2026-09-15-plan0125-fact-pack-measures.md
+
+    python tools/measure.py --recipe status-reconcile --who code-s304
 """
 
 from __future__ import annotations
@@ -101,6 +106,14 @@ SHELL_BASENAMES = frozenset(
 #: host-state-free, so a guard can afford to re-execute them at pre-commit.
 RERUN_ALLOWLIST = frozenset({"log", "rev-parse", "rev-list", "diff", "ls-files", "show"})
 
+#: ``--recipe`` names a fixed set of invocations instead of one hand-written procedure, so
+#: the two facts ``status-scribe`` transcribes arrive as blocks it cannot type (PLAN-0125 §4.2).
+RECIPES = frozenset({"status-reconcile"})
+
+#: The ref ``status-reconcile`` measures. The recipe resolves it to an immutable SHA before
+#: it measures anything — :func:`_recipe_invocations` records why that is not optional.
+RECIPE_REF = "main"
+
 PROCEDURE_TIMEOUT_S = 30
 
 _TEXT_REDUCERS = frozenset({"raw", "lines", "first", "int"})
@@ -124,7 +137,10 @@ _FENCE = re.compile(r"\n```json\n(.*?)\n```", re.S)
 
 @dataclass(frozen=True)
 class Refusal:
-    """Why no block was emitted. ``rule`` is ``R1``…``R8``, ``usage`` or ``procedure``."""
+    """Why no block was emitted.
+
+    ``rule`` is ``R1``…``R8``, or one of the mechanical ``usage`` / ``procedure`` / ``recipe``.
+    """
 
     rule: str
     reason: str
@@ -762,13 +778,105 @@ def _emit(block: dict[str, Any], out: Path | None) -> int:
     return EXIT_PASS if block["pass"] else EXIT_FAIL
 
 
+def _refused(refusal: Refusal) -> int:
+    """Print one refusal in the shape every reader parses, and return the one status."""
+    print(f"MEASURE: REFUSED {refusal.rule} — {refusal.reason}")
+    return EXIT_REFUSED
+
+
+def _recipe_invocations(sha: str, who: str) -> list[list[str]]:
+    """``status-reconcile``'s two invocations, over an already-resolved immutable SHA.
+
+    PLAN-0125 §4.2: ``status-scribe`` receives ``head_commit`` and ``recent_commits`` as
+    blocks and transcribes each ``value`` into STATUS's frontmatter, so each *value* is the
+    short form STATUS carries while each ``against_sha`` is the full SHA every block carries
+    (§2.2). Each control re-runs the same query without the one formatting flag the value
+    depends on — full SHAs against short ones — so a procedure that lost ``--short=7`` or
+    ``--format=%h`` reads its own control and R4 refuses it.
+
+    ✎ **s304 — the ref is resolved here because the PLAN's own recipe does not run.** §2.3
+    names ``main`` itself as the endpoint and calls the blocks ``rerun: false`` *"by
+    construction"*. Measured at ``06df94d7``: R5 refuses a symbolic endpoint outright
+    (``history endpoint(s) ['main'] are not immutable SHAs``), and §2.3's ``-n 10`` leaks
+    its detached ``10`` in as a second endpoint — ``revision_candidates``' own docstring
+    predicts that one. Resolving the ref first satisfies R5 honestly and keeps §2.3's
+    stated outcome: these invocations still do not pass ``--rerun``, so the blocks are
+    still ``rerun: false``. No refusal changes, so AC-2's nine witnesses are untouched.
+    """
+    return [
+        [
+            *("--metric", "status_head_commit", "--units", "sha", "--who", who),
+            *("--history", "--predicate", 'value != ""'),
+            *("--control-argv", f"git rev-parse {sha}", "--control-reduce", "raw"),
+            *("--reduce", "raw", "--"),
+            *("git", "rev-parse", "--short=7", sha),
+        ],
+        [
+            *("--metric", "status_recent_commits", "--units", "shas", "--who", who),
+            *("--history", "--predicate", 'value != ""'),
+            *("--control-argv", f"git log --format=%H --max-count=10 {sha}"),
+            *("--control-reduce", "raw"),
+            *("--reduce", "raw", "--"),
+            *("git", "log", "--format=%h", "--max-count=10", sha),
+        ],
+    ]
+
+
+def _recipe(raw: list[str]) -> int:
+    """``--recipe <name>`` — several blocks from one run, each through the normal path.
+
+    Every invocation the recipe builds goes back through :func:`_measure`, so R1…R8 run
+    over it exactly as they would over a hand-typed command line. The recipe adds a
+    precondition of its own and no exemption.
+    """
+    parser = _Parser(prog="measure", allow_abbrev=False)
+    parser.add_argument("--recipe", required=True)
+    parser.add_argument("--who", required=True)
+    parser.add_argument("--out", type=Path, default=None)
+    try:
+        args = parser.parse_args(raw)
+    except (_UsageError, ValueError) as exc:
+        return _refused(Refusal("usage", str(exc)))
+    if args.recipe not in RECIPES:
+        known = sorted(RECIPES)
+        return _refused(Refusal("recipe", f"unknown recipe {args.recipe!r} — known: {known}"))
+    if args.out is not None:
+        return _refused(
+            Refusal(
+                "recipe",
+                "--out: a recipe block is payload provenance for one dispatch and is "
+                "never persisted (PLAN-0125 §6 E1 — ④-lite re-derives head_commit itself)",
+            )
+        )
+    if not args.who.strip():
+        return _refused(Refusal("usage", "--who is empty"))
+    tree = resolve_tree(Path.cwd())
+    if isinstance(tree, Refusal):
+        return _refused(tree)
+    resolved = _git(tree.root, "rev-parse", "--verify", "--quiet", f"{RECIPE_REF}^{{commit}}")
+    sha = resolved.stdout.decode("utf-8", "replace").strip()
+    if resolved.returncode != 0 or not _FULL_SHA.fullmatch(sha):
+        return _refused(
+            Refusal("recipe", f"{RECIPE_REF!r} does not resolve to a commit — nothing to measure")
+        )
+    status = EXIT_PASS
+    for invocation in _recipe_invocations(sha, args.who):
+        outcome = _measure(invocation)
+        if isinstance(outcome, Refusal):
+            return _refused(outcome)
+        emitted = _emit(*outcome)
+        if emitted != EXIT_PASS:
+            status = emitted
+    return status
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    outcome = _measure(list(sys.argv[1:] if argv is None else argv))
-    if isinstance(outcome, Refusal):
-        print(f"MEASURE: REFUSED {outcome.rule} — {outcome.reason}")
-        status = EXIT_REFUSED
+    raw = list(sys.argv[1:] if argv is None else argv)
+    if "--recipe" in raw:
+        status = _recipe(raw)
     else:
-        status = _emit(*outcome)
+        outcome = _measure(raw)
+        status = _refused(outcome) if isinstance(outcome, Refusal) else _emit(*outcome)
     print(verdict_line(status))
     return status
 

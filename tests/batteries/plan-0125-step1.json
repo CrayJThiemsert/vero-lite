@@ -236,6 +236,60 @@
       "node_id": "tests/tools/test_measure.py::test_the_catalogue_names_the_emitter",
       "expect_claim": "test_the_catalogue_names_the_emitter|(row, control) == (1, 0)|#0",
       "note": "The PLAN's P-20.1: the catalogue row for measure.py is gone."
+    },
+    {
+      "name": "P-12.1",
+      "subject": "tools/measure.py",
+      "old": "    for invocation in _recipe_invocations(sha, args.who):",
+      "new": "    for invocation in _recipe_invocations(sha, args.who) + _recipe_invocations(sha, args.who)[:1]:",
+      "node_id": "tests/tools/test_measure.py::test_the_recipe_emits_two_sealed_blocks",
+      "expect_claim": "test_the_recipe_emits_two_sealed_blocks|got == ( 0, 2, [\"status_head_commit\", \"status_recent_commits\"], )|#0",
+      "note": "PLAN-0125 Step 3, AC-12. A battery's coverage denominator is its claim_sources MODULE, not a PLAN step — so the recipe's probes live here, with the module whose claims they cover, while plan-0125-step3.json covers the contract module. Written as a DUPLICATE rather than a dropped invocation: dropping one would also destroy the recent_commits value and redden three claims at once, whereas emitting the head block twice moves only the count. blocks reads 3 while both values stay exactly right. It is also why the test reads the raw block list instead of a metric-keyed dict — a dict would have collapsed the duplicate to two keys and stayed green."
+    },
+    {
+      "name": "P-12.2",
+      "subject": "tools/measure.py",
+      "old": "*(\"git\", \"rev-parse\", \"--short=7\", sha),",
+      "new": "*(\"git\", \"rev-parse\", \"--short=8\", sha),",
+      "node_id": "tests/tools/test_measure.py::test_the_recipes_head_value_equals_an_independent_computation",
+      "expect_claim": "test_the_recipes_head_value_equals_an_independent_computation|got == expected|#0",
+      "note": "AC-12: the scribe would transcribe an 8-hex SHA into a frontmatter field that carries 7. The control (the full SHA) still differs, so R4 stays satisfied and the block is still emitted and sealed: blocks stays 2 and recent_match stays green. Only the head value reddens."
+    },
+    {
+      "name": "P-12.3",
+      "subject": "tools/measure.py",
+      "old": "*(\"git\", \"log\", \"--format=%h\", \"--max-count=10\", sha),",
+      "new": "*(\"git\", \"log\", \"--format=%h\", \"--max-count=3\", sha),",
+      "node_id": "tests/tools/test_measure.py::test_the_recipes_recent_value_equals_an_independent_computation",
+      "expect_claim": "test_the_recipes_recent_value_equals_an_independent_computation|got == expected|#0",
+      "note": "AC-12: recent_commits comes back short. The control is the --format=%H query at --max-count=10, so it still differs and R4 stays satisfied; blocks stays 2 and head_match stays green. Only the recent value reddens."
+    },
+    {
+      "name": "P-12.4",
+      "subject": "tests/tools/test_measure.py",
+      "old": "    prose = [block for block in parse_blocks(_PROSE_PAYLOAD) if block.data is not None]",
+      "new": "    prose = [block for block in parse_blocks(out) if block.data is not None]",
+      "node_id": "tests/tools/test_measure.py::test_prose_where_a_block_belongs_is_not_a_block",
+      "expect_claim": "test_prose_where_a_block_belongs_is_not_a_block|got == (0, 2)|#0",
+      "note": "AC-12's control needs a control of its own (CLAUDE.md §8: an absence reading is satisfied by an instrument that finds nothing anywhere). The same parse_blocks call is pointed at text that DOES hold two blocks and returns 2 — so the 0 it returns for prose is a reading, not a constant."
+    },
+    {
+      "name": "P-E1.1",
+      "subject": "tools/measure.py",
+      "old": "    if args.out is not None:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_the_recipe_refuses_to_persist_its_blocks",
+      "expect_claim": "test_the_recipe_refuses_to_persist_its_blocks|got == (2, \"recipe\", False)|#0",
+      "note": "PLAN-0125 §6 E1 made mechanical, then removed: the recipe appends its payload blocks into docs/logs/ and exits 0. The file appears on disk, which is the shape E1 eliminated — ④-lite re-derives head_commit itself, so a persisted copy is bytes against R1 for a weaker check."
+    },
+    {
+      "name": "P-R.1",
+      "subject": "tools/measure.py",
+      "old": "    if args.recipe not in RECIPES:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_measure.py::test_an_unknown_recipe_is_refused_by_name",
+      "expect_claim": "test_an_unknown_recipe_is_refused_by_name|got == (2, \"recipe\", [])|#0",
+      "note": "The recipe set stops being closed: any --recipe name falls through to the status-reconcile invocations and emits two blocks under a name nobody defined. rc reads 0 and two blocks appear."
     }
   ],
   "exemptions": {}

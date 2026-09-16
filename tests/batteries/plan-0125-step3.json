@@ -1,0 +1,53 @@
+{
+  "claim_sources": [
+    "tests/tools/test_fact_pack_contract.py"
+  ],
+  "probes": [
+    {
+      "name": "P-13.0",
+      "subject": "tests/tools/test_fact_pack_contract.py",
+      "old": "    return \" \".join(path.read_text(encoding=\"utf-8\").split())",
+      "new": "    return path.read_text(encoding=\"utf-8\")",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_scribe_prompt_carries_the_sd9_ledger_rule",
+      "expect_claim": "test_the_scribe_prompt_carries_the_sd9_ledger_rule|got == (1, 0)|#0",
+      "note": "Instrument control: normalization removed. The SD-9 sentence is the one needle that spans a line break in the prompt as wrapped today, so it reads 0 while the other three (each on one line) stay green. This is what makes the normalization load-bearing rather than decorative."
+    },
+    {
+      "name": "P-13.1",
+      "subject": ".claude/agents/status-scribe.md",
+      "old": "--recipe status-reconcile`",
+      "new": "--recipe status-RECONCILE`",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_scribe_prompt_names_the_recipe_its_payload_arrives_from",
+      "expect_claim": "test_the_scribe_prompt_names_the_recipe_its_payload_arrives_from|got == (1, 0)|#0",
+      "note": "The PLAN's P-13.1: the scribe stops naming the recipe its payload comes from. The SD-9 sentence is untouched, so only this needle reads 0."
+    },
+    {
+      "name": "P-13.2",
+      "subject": ".claude/agents/status-scribe.md",
+      "old": "present are the window (PLAN-0125 SD-9 = a",
+      "new": "present are the WINDOW (PLAN-0125 SD-9 = a",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_scribe_prompt_carries_the_sd9_ledger_rule",
+      "expect_claim": "test_the_scribe_prompt_carries_the_sd9_ledger_rule|got == (1, 0)|#0",
+      "note": "The PLAN's P-13.2: the rule that stops `Window = …` regrowing is gone from the same file that still names the recipe, so only the SD-9 needle reads 0."
+    },
+    {
+      "name": "P-13.3",
+      "subject": ".claude/agents/plan-drafter.md",
+      "old": "**An execution fact with no block is never ✔.**",
+      "new": "**An execution fact with no block is rarely ✔.**",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_drafter_prompt_carries_the_four_mark_legend",
+      "expect_claim": "test_the_drafter_prompt_carries_the_four_mark_legend|got == (1, 0)|#0",
+      "note": "The PLAN's P-13.3: the sentence that closes the four-mark set is softened into advice. A different file from the scribe's needles, so only the drafter reading reddens."
+    },
+    {
+      "name": "P-13.4",
+      "subject": ".claude/agents/explore-research.md",
+      "old": "**You never emit a `measure` block**",
+      "new": "**You rarely emit a `measure` block**",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_research_prompt_refuses_to_emit_a_block",
+      "expect_claim": "test_the_research_prompt_refuses_to_emit_a_block|got == (1, 0)|#0",
+      "note": "The PLAN's P-13.4: SD-6 = (b)'s refusal becomes a preference, which is exactly the wording under which a model-typed block gets written anyway. Only the research reading reddens."
+    }
+  ],
+  "exemptions": {}
+}
