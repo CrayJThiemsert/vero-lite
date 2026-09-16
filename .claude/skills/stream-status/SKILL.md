@@ -52,17 +52,43 @@ page already serves and must bump anyway, so it cannot silently go stale.
    `blocked_on`, `next_action`) — then verify freshness: `git log --oneline -10` via
    WSL. STATUS routinely lags one session; if `head_commit` ≠ actual HEAD, say so and
    trust git + the artifacts, not the STATUS prose.
-2. **Per stream, read the registry sources** (scoped reads — never a wide Glob/Grep on
+2. **Check this registry for rot BEFORE trusting it — then say what you found.**
+   The table above is the one hand-maintained thing in this skill, and it has gone stale
+   silently before (PLAN-0126 was missing for two sessions; s306). Compare the PLAN numbers
+   archived on disk against the numbers this file names. Put the three commands in a script
+   file and run it via `wsl bash -lc` (user CLAUDE.md B1), with a **session-unique** output
+   name (`/tmp` is shared across live sessions):
+
+   ```
+   ls docs/plans/done/ | grep -o '^[0-9][0-9][0-9][0-9]' | sort -u > /tmp/arch-<session>.txt
+   grep -o '0[0-9][0-9][0-9]' .claude/skills/stream-status/SKILL.md | sort -u > /tmp/named-<session>.txt
+   comm -23 /tmp/arch-<session>.txt /tmp/named-<session>.txt
+   ```
+
+   Most archived PLANs are **not** stream carriers — 5 of 119 at s306 — so a long list is
+   normal and is **not itself a defect**. What is mandatory is the **readout**: name the
+   newest few unnamed PLANs in the reply, as
+   *"⚠️ registry does not name PLAN-NNNN…, archived since it was last touched — it may be
+   one vertical behind"*. **Never render a stream block as authoritative while that line is
+   unspoken.** If one of them turns out to be a real carrier, say so and offer to update the
+   table in a `docs/*` PR — do not update it silently mid-report.
+
+   *Why this step exists (ruled by Cray, typed s306, option (ก)):* a stale registry can only
+   do harm by being **read** while stale, so a check at read time bounds the whole damage.
+   The complementary half — option (ค), the maintenance rule rehomed into
+   `docs/plans/0000-template.md` where whoever archives a PLAN actually reads it — ships
+   separately; this step is what catches whatever that one misses.
+3. **Per stream, read the registry sources** (scoped reads — never a wide Glob/Grep on
    the UNC root). For PLANs: the `Status:` line, AC checkbox tally (count `[x]` vs
    `[ ]` yourself — prose claims about counts have been wrong before), and any
    BLOCKED-ON / gated markers. For STATUS TODO rows: the newest bracketed session
    annotation wins.
-3. **Recent motion:** from `git log` since the previous session's head, attribute
+4. **Recent motion:** from `git log` since the previous session's head, attribute
    merged PRs to streams by their scope/paths.
-4. **Blockers:** distinguish *gated on Cray* (an SD/OQ ruling owed) vs *gated on work*
+5. **Blockers:** distinguish *gated on Cray* (an SD/OQ ruling owed) vs *gated on work*
    vs *parked by decision* — never present a parked item as stalled (STATUS shorthand
    is not the next action).
-5. **Render ELI-CRAY (Thai)**, one block per stream: **สถานะ** (one line) → **เดินล่าสุด**
+6. **Render ELI-CRAY (Thai)**, one block per stream: **สถานะ** (one line) → **เดินล่าสุด**
    (PRs/commits since last look) → **ติดอะไร** (with the gated-on-whom distinction) →
    **ก้าวถัดไปที่เป็นรูปธรรม**. Close with a one-line cross-stream picture — but NO
    ranking and NO recommendation unless Cray asks (then hand off to
