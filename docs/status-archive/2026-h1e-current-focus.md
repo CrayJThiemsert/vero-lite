@@ -1067,3 +1067,57 @@ _[The Current-Focus rotation ledger's s299 entry, verbatim from `git show HEAD:d
 _[The Current-Focus rotation ledger's s301 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s301) reconcile rotates ONE block — s298 (**2,347 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, probed ABSENT from every `-current-focus` letter first (control: the s297 header = 1). **Headroom rule:** STATUS opened at **57,867 B**, 7,669 B under R1's 65,536 B ceiling, and the s300–301 block had to land, so the window stays at TWO (299, 300–301) — the eleventh consecutive reconcile of that shape. ⚠️ **The s298 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep.
 
 _[The Current-Focus rotation ledger's s302 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s302) reconcile rotates ONE block — s299 (**2,178 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, probed ABSENT from every `-current-focus` letter first (control: the s298 header from `e94b80e`'s own diff = 1). **Headroom rule:** STATUS opened at **59,549 B**, 5,987 B under R1's 65,536 B ceiling, and the s302 block had to land, so the window stays at TWO (300–301, 302) — the twelfth consecutive reconcile of that shape. ⚠️ **The s299 entry left the window and was APPENDED VERBATIM** after the block in h1e, not dropped on a token sweep.
+
+### Rotated at the s307 reconcile — the session-303 Current-Focus block [on the R1 headroom rule: STATUS opened at **59,417 B**, and keeping the s303 block (**3,413 B**) beside the new s304–307 block was projected at ~62.8–63.1 KB, under the ≥ 3,000 B headroom margin s303 fixed, so the window stays ONE (304–307) instead of returning to TWO. Carved from `git show HEAD:docs/STATUS.md`, probed ABSENT from every `-current-focus` letter first against a control derived from the previous reconcile's own header (=1) and a fabricated s999 header (=0); absence from the new STATUS asserted separately (=0), with the new s304–307 block (=1) as the instrument's own control. The Current-Focus ledger's s303 entry follows it verbatim.]
+
+> **Session 303, 2026-09-16 (`df5beb6` → `8b13e18`) — SEVEN PRs
+> ([#1495](https://github.com/CrayJThiemsert/vero-lite/pull/1495)–[#1501](https://github.com/CrayJThiemsert/vero-lite/pull/1501)), all merged by Cray. **PLAN-0125 Step 2's
+> staleness guard is live; PLAN-0126's fleet story explainer went draft →
+> deployed → closed out in one window.**
+>
+> ✅ **#1496 (merge `8b13e18`) — PLAN-0125 Step 2.** `check_measure_staleness.py`
+> re-seals every `measure/v1` block in `docs/logs/*.md`, re-runs every
+> `rerun: true` procedure and resolves every `measure:<16hex>` cite; pre-commit
+> hook `measure-staleness` (under `status-freshness`) gates `hash_bad`,
+> `unresolvable`, `mismatch`, `rerun_failed`, `dangling`, `stale_cited`
+> (SD-7 = b) and an empty surface — `stale` / `asserted` only print.
+>
+> 🔴 **Cray's two typed rulings, s303** (an addendum in PLAN-0125 §3.2, the
+> original kept): **D1 = (a)** a failed re-run is its own counter
+> `rerun_failed` — gating in a full repo, `unavailable` in a shallow clone;
+> **D2 = (b)** staleness runs ADR-0038's `git diff <against_sha>..HEAD`
+> verbatim **plus** `git diff HEAD`, since the re-run reads the working tree.
+> The shallow half is measured: in CI's `fetch-depth: 2` checkout that same
+> `git log <A>..<B>` exits 128 (control rc 0, 9 lines in a full worktree).
+>
+> ✅ **Evidence.** Battery `plan-0125-step2.json` **35/35 WITNESSED, claims 35,
+> GAPS 0, exempted 0**; real tree `files=1 blocks=6 hash_bad=0 unresolvable=0
+> stale=0 rerun=6 mismatch=0 rerun_failed=0 cites=5 dangling=0 stale_cited=0
+> historical=5 asserted=16 rc=0`; AC-11 `runs=10 max_ms=96 min_ms=77` against a
+> pre-fixed `max <= 2000`; `mypy --strict tools/` clean (51 files); CI PASS at
+> `ff4b838`; post-merge by blob `files=6 sha_match=6 mismatch=0`, rc=0, 36
+> green. **No PLAN-0125 AC is ticked** — AC-6…AC-11 and AC-20's Step 2 half are
+> satisfied, but the ticks wait on the Step 5 closeout and Cray's ratification.
+> ⚠️ `1 failed, 5301 passed, 8 skipped` — `test_db_guard_holds.py`'s
+> terminated-holder case (`alive_post=1` after `pg_terminate_backend`),
+> `services_touched=0`, 5/5 twice in isolation, s302's shape: a timing race.
+>
+> ✅ **PLAN-0126 — the fleet story explainer, draft to deployed in one window**
+> (#1495 draft · #1497 ratified · #1498 Three.js pinned to the minified build ·
+> #1499 Steps 0–8/10/11 · #1500 Step 9 · #1501 closeout; the other Code
+> session's work, re-measured here). `/story/` is a static three-act explainer
+> in the published console, deployed under Cray's typed per-phase go: AC-10
+> `pre=404 post=200 csp=present`, **`DEMO-STATE: PRISTINE`** (log
+> `docs/logs/2026-09-16-plan0126-fleet-story-deploy.md`); Step 9's Artifact
+> `files=11 sha_match=11 rendered=yes`; batteries page 41/41, drift 15/15,
+> scenario 10/10 WITNESSED. **PLAN-0126 AC-1 … AC-11 are CLOSED**, eleven of
+> eleven ticked (`ticked=11 unticked=0` on main).
+>
+> 🔴 **AC-3 / AC-7 took option (C)** — re-point the artifact lists at the
+> story-page tests **and** add the two missing witnesses, over relabelling
+> alone: Check 3 of `check_ac_consistency.py` wants every named test module in
+> a battery's `claim_sources`, and relabelling alone would leave two halves of
+> AC-3's claim on greens no probe ever reddened. Shipped in #1501. **Still
+> open:** #1502 moves the PLAN to `docs/plans/done/` — cite it by number (R8).
+
+_[The Current-Focus rotation ledger's s303 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s303) reconcile rotates TWO blocks — s300–301 and s302** to `2026-h1e-current-focus.md`; both are emitted VERBATIM in the scribe's return, neither is dropped on a token sweep. **Why two, where the last twelve rotated one:** STATUS opened at **61,736 B**, 3,800 B under R1's 65,536 B ceiling, and the dispatch fixed the pass read at **≥ 3,000 B of headroom once the s303 block lands**. Rotating a single block left an estimated margin under ~500 B — inside the error bar of an estimate this seat cannot check (no shell, so block sizes here are line-count arithmetic, not `wc -c`) — so the window drops to ONE for this reconcile and returns to TWO at s304. ⚠️ **The s301 and s302 entries left this ledger with the blocks they describe**, emitted verbatim with them.
