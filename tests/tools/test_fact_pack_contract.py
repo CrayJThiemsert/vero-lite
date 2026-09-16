@@ -7,8 +7,8 @@ those consumers, and their input surface is the agent prompt file — so the onl
 know the contract binds them is to read the sentence out of the file.
 
 Each needle is asserted **once**, in its own test, because one mutation witnesses only one
-assertion (CLAUDE.md §8). The probes are ``P-13.1`` … ``P-13.4`` in
-``tests/batteries/plan-0125-step3.json``; each deletes one sentence and only that needle's
+assertion (CLAUDE.md §8). The probes are ``P-13.0`` … ``P-13.6`` in
+``tests/batteries/plan-0125-step3.json``; each changes one sentence and only that
 reading reddens.
 
 Every reading is taken over **whitespace-normalized** text. A prompt file is hand-wrapped
@@ -42,6 +42,13 @@ DRAFTER_LEGEND = "An execution fact with no block is never ✔"
 #: would be model-typed prose wearing a measurement's fields.
 RESEARCH_NO_BLOCK = "You never emit a `measure` block"
 
+#: s304 (Cray typed option A): the SD-9 sentence must not turn into an instruction to delete
+#: the literal early. PLAN-0125 §6 E4 carries the deletion on the first reconcile AFTER
+#: ratification; the first cut of this prompt (#1507) told the scribe to delete it on the
+#: next one, which would have run it on AC-15's reconcile, ahead of the recorded sequence.
+SCRIBE_NO_EARLY_DELETE = "Do not delete one on your own"
+SCRIBE_EARLY_DELETE = "delete it as part of the rotation"
+
 #: The instrument control. Every test below reads it too: a counter that cannot return 0
 #: for an absent sentence cannot vouch for the 1 it returns for a present one.
 ABSENT = "no-such-contract-sentence-ever-written"
@@ -70,6 +77,22 @@ def test_the_scribe_prompt_carries_the_sd9_ledger_rule() -> None:
         f"AC-13 scribe(SD-9): (post, control)={got!r} expected (1, 0) — "
         f"needle={SCRIBE_SD9!r} in {SCRIBE}"
     )
+
+
+def test_the_scribe_prompt_does_not_retire_window_before_ratification() -> None:
+    """§6 E4's timing — the early-delete instruction is absent, read beside its replacement.
+
+    "The instruction is absent" is satisfied for free by a reader that finds nothing, so
+    the same normalized text must also yield the sentence that replaced it (CLAUDE.md §8:
+    a negative assertion carries its own positive control). Probes P-13.5 (the instruction
+    comes back) and P-13.6 (the replacement goes) each redden one half.
+    """
+    text = _normalized(SCRIBE)
+    got = (text.count(SCRIBE_NO_EARLY_DELETE), text.count(SCRIBE_EARLY_DELETE))
+    assert got == (
+        1,
+        0,
+    ), f"E4 timing: (replacement, early_delete)={got!r} expected (1, 0) — in {SCRIBE}"
 
 
 def test_the_drafter_prompt_carries_the_four_mark_legend() -> None:

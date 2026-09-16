@@ -47,6 +47,24 @@
       "node_id": "tests/tools/test_fact_pack_contract.py::test_the_research_prompt_refuses_to_emit_a_block",
       "expect_claim": "test_the_research_prompt_refuses_to_emit_a_block|got == (1, 0)|#0",
       "note": "The PLAN's P-13.4: SD-6 = (b)'s refusal becomes a preference, which is exactly the wording under which a model-typed block gets written anyway. Only the research reading reddens."
+    },
+    {
+      "name": "P-13.5",
+      "subject": ".claude/agents/status-scribe.md",
+      "old": "   it, updated to the sessions its window actually holds. Content older than",
+      "new": "   it, delete it as part of the rotation. Content older than",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_scribe_prompt_does_not_retire_window_before_ratification",
+      "expect_claim": "test_the_scribe_prompt_does_not_retire_window_before_ratification|got == ( 1, 0, )|#0",
+      "note": "s304, option A (Cray typed): the #1507 early-delete instruction comes back. The replacement sentence is untouched, so (replacement, early_delete) reads (1, 1) — only the absence half moves. This is the regression the test exists for: the scribe deleting `Window = …` on a reconcile before PLAN-0125 is ratified, ahead of §6 E4's sequence."
+    },
+    {
+      "name": "P-13.6",
+      "subject": ".claude/agents/status-scribe.md",
+      "old": "**Do not delete one on",
+      "new": "**Do not remove one on",
+      "node_id": "tests/tools/test_fact_pack_contract.py::test_the_scribe_prompt_does_not_retire_window_before_ratification",
+      "expect_claim": "test_the_scribe_prompt_does_not_retire_window_before_ratification|got == ( 1, 0, )|#0",
+      "note": "The positive control for P-13.5's absence reading: the replacement sentence stops matching, so the reader that returns 0 for the early-delete phrase is shown to return 0 for a sentence that is really gone too. The early-delete count stays 0; (replacement, early_delete) reads (0, 0) — only the presence half moves."
     }
   ],
   "exemptions": {}

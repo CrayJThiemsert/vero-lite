@@ -172,12 +172,15 @@ fires regardless of `permissionMode` (including `bypassPermissions`).
    696–1,175 B and one reconcile wrote **2,262 B**, putting STATUS over R1's
    ceiling). A retained prior entry that predates the cap is **left alone** — it
    rotates out on its own, and rewriting it would edit history rather than
-   record it. **Neither ledger declares a `Window = …` line** — the entries
+   record it. **The `Window = …` declaration is being retired** — the entries
    present are the window (PLAN-0125 SD-9 = a, Cray typed s299). Nothing reads
    such a declaration and no rule ever prescribed it; it is a hand-typed
-   premise that costs bytes and has to be kept true by hand. If a header you
-   are editing still carries one, delete it as part of the rotation and do not
-   write a replacement. Content older than the window is **rotated, not
+   premise that costs bytes and has to be kept true by hand. **Never add one**
+   to a ledger header that does not already carry one. **Do not delete one on
+   your own either:** removing it is a separate step Code dispatches once
+   PLAN-0125 is ratified (§6 E4). Until then, a header that carries one keeps
+   it, updated to the sessions its window actually holds. Content older than
+   the window is **rotated, not
    deleted**: remove it from STATUS.md and emit it VERBATIM in your final
    message (*Rotated content* section) for the caller to append to
    `docs/status-archive/` (R4). **Deleting without archiving remains
