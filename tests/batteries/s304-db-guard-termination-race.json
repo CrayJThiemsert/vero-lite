@@ -1,0 +1,47 @@
+{
+  "claim_sources": [
+    "tests/services/db/test_db_guard_holds.py"
+  ],
+  "probes": [
+    {
+      "name": "P1",
+      "subject": "tests/db_support.py",
+      "old": "    if guard.state == db_guard.ACQUIRED and not holder_alive:",
+      "new": "    if guard.state == db_guard.ACQUIRED and holder_alive:",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|pytest.raises(Exit)|#0",
+      "note": "🔴 The chokepoint half must still redden when the guard is broken — the half that had to be re-witnessed AFTER the s304 bounded wait, because the wait is the thing that now decides what `holder_alive` reads. Dropping the `not` is the exact typo that reinstates the fail-OPEN: the dead holder reads as a reason to continue, no Exit is raised, and the session sails on reporting a clean run. It reddens as DID NOT RAISE at the `with` line, which is where the raises-claim lives. Distinct from plan-0120-step1-db-guard.json P2, which reaches the same claim by inverting LIVENESS_SQL — that one makes the QUERY lie, this one makes the BRANCH lie, and only this one is downstream of the new wait."
+    },
+    {
+      "name": "P2",
+      "subject": "tests/services/db/test_db_guard_holds.py",
+      "old": "TERMINATION_DEADLINE_S = 5.0",
+      "new": "TERMINATION_DEADLINE_S = 0.0",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|alive_post == 0|#0",
+      "expect": "GREEN",
+      "note": "🟡 The RACE probe, and the one that must be read carefully — it is recorded as a MEASUREMENT, not a witness. `_await_backend_gone` always polls at least once, so a 0.0 deadline restores the pre-fix single read EXACTLY: same code path, same one round-trip, that produced the s303 failure. What it cannot do is reproduce that failure ON DEMAND, and s304 measured why rather than asserting it. On an idle box the backend is already gone by the FIRST poll: five consecutive runs of the real test printed `polls=1 waited_s=0.001` — the backend leaves pg_stat_activity in about a millisecond, so the single pre-fix read wins the race every time. Accordingly P2 came back GREEN on 5 of 5 battery attempts (a1–a5, s304), against a failure in each of the s302 and s303 full-suite runs where ~5300 tests were competing for the same server. The race needs LOAD, which is exactly why this presented as a flake and never standalone. `expect: GREEN` therefore records the measured outcome — a silent FAIL here would read as a broken battery rather than as the faithful restoration of a probabilistic defect. The deterministic witness for this claim is P3."
+    },
+    {
+      "name": "P3",
+      "subject": "tests/services/db/test_db_guard_holds.py",
+      "old": "            admin_conn.fetchval(\"SELECT pg_terminate_backend($1)\", scratch.holder_pid),",
+      "new": "            admin_conn.fetchval(\"SELECT $1::int >= 0\", scratch.holder_pid),",
+      "node_id": "tests/services/db/test_db_guard_holds.py::test_a_terminated_holder_is_detected_as_lost_not_as_clean",
+      "expect_claim": "test_a_terminated_holder_is_detected_as_lost_not_as_clean|alive_post == 0|#0",
+      "note": "🔴 The DETERMINISTIC witness for alive_post, and the probe that retires this claim's exemption in plan-0120-step1-db-guard.json. The holder is never signalled, so the bounded wait runs its full deadline and truthfully reports the backend still present: alive_post == 0 reddens every time, not sometimes. It witnesses two things at once that no earlier probe could: that the wait REPORTS rather than assumes (a loop that returned 0 on timeout would leave this green), and that it is genuinely BOUNDED (the test returns in ~5 s; a loop without a deadline would instead be killed by the outer 30 s wait_for and read as a different outcome). `alive_pre == 1` stays green because it is measured before this line, so exactly one assertion fails. The cast keeps the parameter comparable to an int so Postgres can still infer its type — the same trap plan-0120 P2's note records hitting with an uninferable parameter."
+    }
+  ],
+  "exemptions": {
+    "test_the_guard_holder_really_holds_the_advisory_lock|live_guard.state == db_guard.ACQUIRED|#0": "Out of this battery's scope and already handled: a fixture precondition, exempted on the same ground in plan-0120-step1-db-guard.json. Nothing in s304 touches acquisition.",
+    "test_the_guard_holder_really_holds_the_advisory_lock|granted > 0|#0": "Witnessed by plan-0120-step1-db-guard.json P1, which shifts the classid/objid split by one bit. Untouched by s304 — the bounded wait is downstream of the lock address.",
+    "test_a_second_connection_is_refused_the_same_key|got is False|#0": "Witnessed indirectly by plan-0120-step1-db-guard.json P7 (exclusivity) and exempted there for the same co-falsification reason. s304 changes nothing about lock exclusivity.",
+    "test_an_unheld_key_is_available_to_that_same_connection|got is True|#0": "This assertion IS a positive control — for the refusal claim above, not for anything s304 changed. Probing a control inverts its purpose; exempted on identical grounds in plan-0120-step1-db-guard.json.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|outcome == db_guard.ACQUIRED|#0": "Precondition — the scratch guard must hold before the test can terminate it. Under all three s304 probes it stays green, which is what makes their reddening attributable to the termination path rather than to a guard that never acquired.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|scratch.holder_pid is not None|#0": "Added by s304 as a type-narrowing precondition, and a precondition is what it stays: it pins that ACQUIRED implies a named backend, so that every pid-keyed measurement below reads against a real pid rather than silently against `pid IS NULL` (which matches nothing and looks calm). No mutation of the wait or the chokepoint can falsify it — only a guard that acquired without recording its pid could, and that is plan-0120's ground, not this battery's.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|alive_pre == 1|#0": "Still a claim about POSTGRES, not about us: a live backend appears in pg_stat_activity, measured through the test's own admin connection before any s304 code runs. Its job is to make alive_post meaningful — it is the positive control that stops `alive_post == 0` being satisfied by a query that can never find anything. Its green under P3 is load-bearing for exactly that reason.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|f\"outcome={db_guard.LOST}\" in reason|#0": "Witnessed by plan-0120-step1-db-guard.json P4, which relabels the refusal while still refusing. s304 does not touch the label.",
+    "test_a_terminated_holder_is_detected_as_lost_not_as_clean|f\"holder_pid={scratch.holder_pid}\" in reason|#0": "Witnessed by plan-0120-step1-db-guard.json P3, which drops the field name from the token. s304 does not touch the report.",
+    "test_a_live_holder_lets_the_chokepoint_through|outcome == db_guard.ACQUIRED|#0": "Precondition of the AC-5 positive control. That control's value is that it stays GREEN while the probes above redden — under s304 P1 in particular, where a chokepoint that raised unconditionally would be the competing explanation — so probing it would remove the evidence."
+  }
+}

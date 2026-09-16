@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from collections.abc import AsyncIterator
 
 import asyncpg
@@ -28,6 +29,22 @@ from tests import db_guard, db_support
 
 #: Comfortably above one connect + one round-trip, far below "forever".
 OUTER_TIMEOUT_S = 30.0
+
+#: How long AC-5 waits for a terminated backend to actually leave ``pg_stat_activity``.
+#: ``pg_terminate_backend`` returns true the moment SIGTERM is *delivered*, never when
+#: the backend has exited, so a loaded server legitimately still lists the pid on the
+#: very next round-trip. Measured session 303: one failure (``alive_post=1``) in a 715 s
+#: full-suite run, with this module passing twice standalone straight afterwards.
+#:
+#: Sized against the measurement, not a guess: idle, the backend is gone by the FIRST
+#: poll — five consecutive s304 runs printed ``polls=1 waited_s=0.001`` — so 5 s is a
+#: ~5000x margin over the observed exit, and still far below the 30 s outer timeout that
+#: has to stay free to catch a genuinely wedged server.
+TERMINATION_DEADLINE_S = 5.0
+
+#: Gap between polls. An idle box is done on the first read, so this costs nothing there
+#: and only spends time on the loaded run that produced the flake.
+TERMINATION_POLL_S = 0.05
 
 
 def _admin_dsn() -> str:
@@ -129,6 +146,49 @@ async def test_an_unheld_key_is_available_to_that_same_connection(
 # --------------------------------------------------------------------- AC-5
 
 
+async def _await_backend_gone(
+    admin_conn: asyncpg.Connection, pid: int, deadline_s: float
+) -> tuple[int, int, float]:
+    """Poll ``pg_stat_activity`` until ``pid`` is gone, or until ``deadline_s`` elapses.
+
+    Returns ``(alive, polls, elapsed_s)`` — values, never a verdict (CLAUDE.md §8), so
+    the caller prints what it measured rather than a bare pass.
+
+    🔴 **Why a bounded wait and not a second read.** ``pg_terminate_backend`` only
+    *delivers* SIGTERM; the backend still has to be scheduled, unwind, and remove itself
+    from the proc array that backs ``pg_stat_activity``. Under full-suite load it loses
+    that race often enough to redden a single immediate read (s303).
+
+    🔴 **And why this is the test's bug, not the guard's.** Inside that same window the
+    backend is still listed *and still holding the advisory lock* — Postgres releases it
+    on backend **exit**, not on signal delivery. So ``alive`` is the true answer at that
+    instant and the chokepoint is right to let it through; only this test, which created
+    the transient state, is reading it too early. Putting the wait here leaves the
+    guard's one-query liveness check untouched on every DB test — ``db_tests=499`` on the
+    s304 full-suite runs — where the holder died long ago and one read is the right
+    instrument.
+
+    ``time.monotonic`` rather than the wall clock: this machine's WSL2 clock steps
+    **backwards** (user CLAUDE.md F1), which could hand a wall-clock deadline a negative
+    elapsed and spin.
+
+    The loop always polls **at least once**, so ``deadline_s=0.0`` is byte-for-byte the
+    pre-fix single-read behaviour — which is what the s304 probe battery mutates it to.
+    """
+    started = time.monotonic()
+    polls = 0
+    while True:
+        alive = int(
+            await admin_conn.fetchval("SELECT count(*) FROM pg_stat_activity WHERE pid = $1", pid)
+            or 0
+        )
+        polls += 1
+        elapsed = time.monotonic() - started
+        if alive == 0 or elapsed >= deadline_s:
+            return alive, polls, elapsed
+        await asyncio.sleep(TERMINATION_POLL_S)
+
+
 async def test_a_terminated_holder_is_detected_as_lost_not_as_clean(
     admin_conn: asyncpg.Connection, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -142,12 +202,22 @@ async def test_a_terminated_holder_is_detected_as_lost_not_as_clean(
 
     The values are printed because ``alive_pre=1 alive_post=0`` is the whole evidence:
     a bare pass here would be satisfied by a chokepoint that always raises.
+
+    ``alive_post`` is a **bounded wait**, not a second read — see
+    :func:`_await_backend_gone` for the race and for why it is answered here rather than
+    in the guard. ``polls`` and ``waited_s`` print alongside it so a future reader can
+    see whether the wait was load-bearing on that run (``polls=1`` means it was not) and
+    can tell a slow exit from a hung one without re-deriving it.
     """
     scratch_url = db_guard.role_suffixed(settings.test_database_url, f"ac5{os.getpid() % 100000}")
     scratch = db_guard.TestDbGuard(scratch_url, None)
     try:
         outcome = await asyncio.to_thread(scratch.acquire)
         assert outcome == db_guard.ACQUIRED, scratch.token(0)
+        # ACQUIRED implies the holder named its own backend — pinned rather than assumed,
+        # because every measurement below is keyed by this pid and a None would otherwise
+        # make them all read against `pid IS NULL`, which matches nothing and looks calm.
+        assert scratch.holder_pid is not None, scratch.token(0)
 
         alive_pre = await asyncio.wait_for(
             admin_conn.fetchval(
@@ -160,13 +230,14 @@ async def test_a_terminated_holder_is_detected_as_lost_not_as_clean(
             admin_conn.fetchval("SELECT pg_terminate_backend($1)", scratch.holder_pid),
             OUTER_TIMEOUT_S,
         )
-        alive_post = await asyncio.wait_for(
-            admin_conn.fetchval(
-                "SELECT count(*) FROM pg_stat_activity WHERE pid = $1", scratch.holder_pid
-            ),
+        alive_post, polls, waited_s = await asyncio.wait_for(
+            _await_backend_gone(admin_conn, scratch.holder_pid, TERMINATION_DEADLINE_S),
             OUTER_TIMEOUT_S,
         )
-        print(f"alive_pre={alive_pre} alive_post={alive_post} holder_pid={scratch.holder_pid}")
+        print(
+            f"alive_pre={alive_pre} alive_post={alive_post} holder_pid={scratch.holder_pid} "
+            f"polls={polls} waited_s={waited_s:.3f}"
+        )
         assert alive_pre == 1
         assert alive_post == 0
 
