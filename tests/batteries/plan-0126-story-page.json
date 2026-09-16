@@ -317,6 +317,42 @@
       "node_id": "tests/api/test_story_page.py::test_the_link_and_the_edge_agree_on_every_published_system",
       "expect_claim": "test_the_link_and_the_edge_agree_on_every_published_system|[row for row in rows if row[2] != row[3]] == []|#0",
       "note": "fleet declares I and H but its edge stops admitting /story/: link and edge disagree"
+    },
+    {
+      "name": "P11a",
+      "subject": "services/api/static/story/story.css",
+      "old": "url('../assets/fonts/IBMPlexSans-Regular.woff2')",
+      "new": "url('/assets/fonts/IBMPlexSans-Regular.woff2')",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|not_relative == []|#0",
+      "note": "a root-relative font URL (still same-origin, so AC-1 stays green): the relative assert reddens first"
+    },
+    {
+      "name": "P11c",
+      "subject": "services/api/static/story/story.css",
+      "old": "url('../assets/fonts/IBMPlexMono-Medium.woff2')",
+      "new": "url('../assets/app.js')",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|out_of_bounds == []|#0",
+      "note": "a relative reference to a REAL file outside story/ and assets/fonts/: relative holds, the bounds assert reddens"
+    },
+    {
+      "name": "P11d",
+      "subject": "tests/api/story_source.py",
+      "old": "    return _REFERENCE_PATTERNS[kind].findall(text)",
+      "new": "    return []",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|set(owners) >= {\"index.html\", \"story.js\", \"story.css\"}|#0",
+      "note": "the parser reads nothing: no bad reference is found, the owners anti-vacuity assert reddens"
+    },
+    {
+      "name": "P11b",
+      "subject": "tests/api/test_story_page.py",
+      "old": "if ref in external or ref.startswith(\"/\")]",
+      "new": "if ref in external]",
+      "node_id": "tests/api/test_story_page.py::test_the_relative_checker_flags_a_root_relative_url",
+      "expect_claim": "test_the_relative_checker_flags_a_root_relative_url|flagged == [\"/assets/fonts/x.woff2\"]|#0",
+      "note": "the checker stops recognising a leading slash; the positive control on a root-relative font URL reddens"
     }
   ],
   "exemptions": {
