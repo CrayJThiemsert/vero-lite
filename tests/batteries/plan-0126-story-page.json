@@ -148,6 +148,24 @@
       "note": "the sibling row admits nested paths; everything real passes, the /story/sub/x.js control reddens"
     },
     {
+      "name": "P3b2",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/[^/]+$",
+      "new": "  - path: /story/[^/]+$",
+      "node_id": "tests/api/test_story_page.py::test_the_story_rows_are_anchored_and_the_expected_table_carries_them",
+      "expect_claim": "test_the_story_rows_are_anchored_and_the_expected_table_carries_them|unanchored == []|#0",
+      "note": "PLAN-0126 P3b′ (C): the sibling row loses its LEADING ^ — every story file is still admitted and /story/sub/x.js still refused (the admission test stays green), but the anchoring assert reddens"
+    },
+    {
+      "name": "P3a2",
+      "subject": "tests/deploy/test_published_profiles.py",
+      "old": "        r\"^/story/$\",\n",
+      "new": "",
+      "node_id": "tests/api/test_story_page.py::test_the_story_rows_are_anchored_and_the_expected_table_carries_them",
+      "expect_claim": "test_the_story_rows_are_anchored_and_the_expected_table_carries_them|table_rows == config_rows == _STORY_ROWS|#0",
+      "note": "PLAN-0126 P3a′ (C): _EXPECTED_ALLOW loses the page row while config.yml keeps it — the anchoring assert (first) stays green, the table comparison reddens"
+    },
+    {
       "name": "P5a",
       "subject": "services/api/static/story/story.js",
       "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
