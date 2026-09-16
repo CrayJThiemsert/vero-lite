@@ -11,6 +11,7 @@ what a checker that reads nothing reports:
   reading of the page is trusted.
 * AC-3 — a path that must NOT be admitted is shown to match no row.
 * AC-6 — the parse must find at least one reference of each kind.
+* AC-11 — the relative checker is shown to flag a root-relative font URL.
 """
 
 from __future__ import annotations
@@ -39,9 +40,17 @@ from tests.api.story_source import (
     references,
 )
 from tests.api.test_static_ui import MEASURED_TAB_CENSUS, _registered_view_keys
+from tests.deploy.test_published_profiles import _EXPECTED_ALLOW
 
 _FLEET_INGRESS = REPO_ROOT / "deploy/published/oct-fleet-maintenance/cloudflared/config.yml"
+
+#: The two edge rows PLAN-0126 §3.3 adds — written, not read from the config under test.
+_STORY_ROWS = {"^/story/$", "^/story/[^/]+$"}
 _APP_JS = STATIC_DIR / "assets" / "app.js"
+_FONTS_DIR = STATIC_DIR / "assets" / "fonts"
+
+#: A font URL that works at /story/ and 404s in the multi-file Artifact (PLAN-0126 G32).
+_KNOWN_ROOT_RELATIVE_URL = "@font-face{src:url('/assets/fonts/x.woff2') format('woff2')}"
 
 #: The stage-1 prototype's own CDN import — the exact line AC-1 exists to keep out.
 _KNOWN_CDN_IMPORT = (
@@ -194,6 +203,26 @@ def test_every_story_file_is_admitted_by_a_story_ingress_row() -> None:
     assert sorted(admitted) == sorted(files)
     assert page_admitted
     assert control_admitted == 0
+
+
+def test_the_story_rows_are_anchored_and_the_expected_table_carries_them() -> None:
+    """AC-3's "anchored" and "the table says so" halves, witnessed inside this module.
+
+    The admission test above matches with cloudflared's unanchored ``re.search``. So a
+    row that lost its LEADING ``^`` still admits every story file and still refuses
+    ``/story/sub/x.js``, while the edge would admit ``/evil/story/x.js``. That test also
+    never reads ``_EXPECTED_ALLOW``. The anchoring assert runs first, so a mutation of
+    the config fails on the anchor rather than on the table comparison.
+    """
+    config_rows = set(_story_ingress_rows())
+    table_rows = {row for row in _EXPECTED_ALLOW["oct-fleet-maintenance"] if "/story" in row}
+    unanchored = sorted(r for r in config_rows if not (r.startswith("^") and r.endswith("$")))
+    print(
+        f"config_rows={sorted(config_rows)} table_rows={sorted(table_rows)} "
+        f"unanchored={unanchored}"
+    )
+    assert unanchored == [], f"story rows not anchored at both ends: {unanchored}"
+    assert table_rows == config_rows == _STORY_ROWS
 
 
 # --------------------------------------------------------------------------- #
@@ -351,3 +380,60 @@ def test_the_link_and_the_edge_agree_on_every_published_system() -> None:
         links for _, _, links, _ in rows
     ), "no system declares I and H — the check read nothing"
     assert [row for row in rows if row[2] != row[3]] == []
+
+
+# --------------------------------------------------------------------------- #
+# AC-11 — every story reference is relative and stays inside story/ or assets/fonts/,
+#         so the multi-file Artifact's files map is derivable from the files themselves
+# --------------------------------------------------------------------------- #
+
+
+def _non_relative_references(name: str, text: str) -> list[str]:
+    """References the Artifact host cannot serve: a scheme, ``//``, or a leading ``/``."""
+    external = set(external_references(name, text))
+    return [ref for ref in references(name, text) if ref in external or ref.startswith("/")]
+
+
+def test_every_story_reference_is_relative_and_in_bounds() -> None:
+    """The page's own references name every file the multi-file Artifact must publish.
+
+    The Artifact host serves no root-relative path (PLAN-0126 SD-5 = d, G32), so a
+    ``/assets/...`` URL that works at ``/story/`` would 404 there. Each reference must
+    also land in ``story/`` or ``assets/fonts/`` — the two places the files map
+    publishes. The printed map is the Step 9 files map; the page and the licence
+    travel with it by name.
+    """
+    texts = _authored_texts()
+    story, fonts = STORY_DIR.resolve(), _FONTS_DIR.resolve()
+    refs = [(name, ref) for name, text in texts.items() for ref in references(name, text)]
+    not_relative = [
+        f"{name} -> {ref}"
+        for name, text in texts.items()
+        for ref in _non_relative_references(name, text)
+    ]
+    files_map: dict[str, str] = {}
+    out_of_bounds = []
+    for name, ref in refs:
+        path = (STORY_DIR / ref.split("?", 1)[0]).resolve()
+        if not path.is_file() or path.parent not in (story, fonts):
+            out_of_bounds.append(f"{name} -> {ref}")
+            continue
+        key = (
+            path.name if path.parent == story else path.relative_to(STATIC_DIR.resolve()).as_posix()
+        )
+        files_map[key] = path.relative_to(REPO_ROOT.resolve()).as_posix()
+    owners = sorted({name for name, _ in refs})
+    print(
+        f"refs={len(refs)} relative={len(refs) - len(not_relative)} "
+        f"out_of_bounds={out_of_bounds} owners={owners} files_map={sorted(files_map)}"
+    )
+    assert not_relative == [], f"references the Artifact host cannot serve: {not_relative}"
+    assert out_of_bounds == [], f"references outside story/ and assets/fonts/: {out_of_bounds}"
+    assert set(owners) >= {"index.html", "story.js", "story.css"}, "the scan read no references"
+
+
+def test_the_relative_checker_flags_a_root_relative_url() -> None:
+    """Positive control: the checker AC-11 trusts does find a root-relative font URL."""
+    flagged = _non_relative_references("story.css", _KNOWN_ROOT_RELATIVE_URL)
+    print(f"flagged={flagged}")
+    assert flagged == ["/assets/fonts/x.woff2"]

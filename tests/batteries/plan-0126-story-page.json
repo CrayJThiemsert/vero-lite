@@ -148,6 +148,24 @@
       "note": "the sibling row admits nested paths; everything real passes, the /story/sub/x.js control reddens"
     },
     {
+      "name": "P3b2",
+      "subject": "deploy/published/oct-fleet-maintenance/cloudflared/config.yml",
+      "old": "  - path: ^/story/[^/]+$",
+      "new": "  - path: /story/[^/]+$",
+      "node_id": "tests/api/test_story_page.py::test_the_story_rows_are_anchored_and_the_expected_table_carries_them",
+      "expect_claim": "test_the_story_rows_are_anchored_and_the_expected_table_carries_them|unanchored == []|#0",
+      "note": "PLAN-0126 P3b′ (C): the sibling row loses its LEADING ^ — every story file is still admitted and /story/sub/x.js still refused (the admission test stays green), but the anchoring assert reddens"
+    },
+    {
+      "name": "P3a2",
+      "subject": "tests/deploy/test_published_profiles.py",
+      "old": "        r\"^/story/$\",\n",
+      "new": "",
+      "node_id": "tests/api/test_story_page.py::test_the_story_rows_are_anchored_and_the_expected_table_carries_them",
+      "expect_claim": "test_the_story_rows_are_anchored_and_the_expected_table_carries_them|table_rows == config_rows == _STORY_ROWS|#0",
+      "note": "PLAN-0126 P3a′ (C): _EXPECTED_ALLOW loses the page row while config.yml keeps it — the anchoring assert (first) stays green, the table comparison reddens"
+    },
+    {
       "name": "P5a",
       "subject": "services/api/static/story/story.js",
       "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
@@ -317,6 +335,42 @@
       "node_id": "tests/api/test_story_page.py::test_the_link_and_the_edge_agree_on_every_published_system",
       "expect_claim": "test_the_link_and_the_edge_agree_on_every_published_system|[row for row in rows if row[2] != row[3]] == []|#0",
       "note": "fleet declares I and H but its edge stops admitting /story/: link and edge disagree"
+    },
+    {
+      "name": "P11a",
+      "subject": "services/api/static/story/story.css",
+      "old": "url('../assets/fonts/IBMPlexSans-Regular.woff2')",
+      "new": "url('/assets/fonts/IBMPlexSans-Regular.woff2')",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|not_relative == []|#0",
+      "note": "a root-relative font URL (still same-origin, so AC-1 stays green): the relative assert reddens first"
+    },
+    {
+      "name": "P11c",
+      "subject": "services/api/static/story/story.css",
+      "old": "url('../assets/fonts/IBMPlexMono-Medium.woff2')",
+      "new": "url('../assets/app.js')",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|out_of_bounds == []|#0",
+      "note": "a relative reference to a REAL file outside story/ and assets/fonts/: relative holds, the bounds assert reddens"
+    },
+    {
+      "name": "P11d",
+      "subject": "tests/api/story_source.py",
+      "old": "    return _REFERENCE_PATTERNS[kind].findall(text)",
+      "new": "    return []",
+      "node_id": "tests/api/test_story_page.py::test_every_story_reference_is_relative_and_in_bounds",
+      "expect_claim": "test_every_story_reference_is_relative_and_in_bounds|set(owners) >= {\"index.html\", \"story.js\", \"story.css\"}|#0",
+      "note": "the parser reads nothing: no bad reference is found, the owners anti-vacuity assert reddens"
+    },
+    {
+      "name": "P11b",
+      "subject": "tests/api/test_story_page.py",
+      "old": "if ref in external or ref.startswith(\"/\")]",
+      "new": "if ref in external]",
+      "node_id": "tests/api/test_story_page.py::test_the_relative_checker_flags_a_root_relative_url",
+      "expect_claim": "test_the_relative_checker_flags_a_root_relative_url|flagged == [\"/assets/fonts/x.woff2\"]|#0",
+      "note": "the checker stops recognising a leading slash; the positive control on a root-relative font URL reddens"
     }
   ],
   "exemptions": {
