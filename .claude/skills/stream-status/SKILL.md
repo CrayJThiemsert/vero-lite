@@ -14,14 +14,16 @@ of truth (CLAUDE.md §4). It reports; it never ranks or decides (that is
 
 | # | Stream | Where its state lives |
 |---|--------|----------------------|
-| 1 | **demo→pilot** | `docs/plans/done/0126-*.md` (the `/story/` explainer; deploy record `docs/logs/2026-09-16-plan0126-fleet-story-deploy.md`) · `docs/plans/done/0100-*.md` (the published demo surface) · `docs/plans/done/0096-*.md` §Verification (residual risks) · ADR-0032 D1 (the wedge motion) · tie to stream 4: `docs/strategy/public/intro-video-production-rulings.md` §5 |
+| 1 | **demo→pilot** | `docs/plans/done/0126-*.md` (the `/story/` explainer; deploy record `docs/logs/2026-09-16-plan0126-fleet-story-deploy.md`) · `docs/plans/done/0100-*.md` (the published demo surface) · `docs/plans/done/0096-*.md` §Verification (residual risks) · `docs/adr/0032-*.md` D1 (the wedge motion) · tie to stream 4: `docs/strategy/public/intro-video-production-rulings.md` §5 item 5 |
 | 2 | **harness/governance debt** | `docs/plans/done/0102-*.md` (retire L1) · `docs/logs/2026-08-17-s235-unscheduled-measured-items.md` §2 (assembly-cost axis), §3 (seam-scoped mutation-testing CI) · STATUS row "CLAUDE.md follow-up extraction pass" |
 | 3 | **primitives** | `docs/plans/0076-*.md` §(A) F-FACTORY · `docs/plans/done/0078-*.md` §L-3 + Out of Scope (the O-2 residue) · STATUS row "Custom Postgres image with extensions" |
-| 4 | **marketing/FDE** | `docs/strategy/private/2026-08-06-marketing-fde-plan-synthesis.md` §4 asset roadmap, §6 open questions (gitignored — reference by path only, it carries pricing; absent from any worktree or fresh clone) · `docs/logs/2026-08-17-s235-unscheduled-measured-items.md` §1 (public one-pager v2) · `docs/strategy/public/intro-video-production-rulings.md` §5 (tie to stream 1) |
+| 4 | **marketing/FDE** | `docs/strategy/private/2026-08-06-marketing-fde-plan-synthesis.md` §4 asset roadmap, §6 open questions (gitignored — reference by path only, it carries pricing; absent from any worktree or fresh clone) · `docs/logs/2026-08-17-s235-unscheduled-measured-items.md` §1 (public one-pager v2) · `docs/strategy/public/intro-video-production-rulings.md` §5 item 5 (tie to stream 1) |
 
-**This table is advisory** (ruled by Cray, typed s306; closes the "does a skill's registry
-table bind?" question STATUS carried from s210). It is an index of *where* each stream's
-state lives, never *what* that state is.
+**This table is advisory.** Cray chose "โน้ตช่วยจำ" (advisory) over binding (typed, s306),
+closing the "does a skill's registry table bind?" question STATUS carried from s210, and
+approved (typed) the cleanup that reduced it to *where* each stream's state lives, never
+*what* that state is. How that is implemented here is Code's design (#1510), not part of
+the ruling:
 
 - **Pointers only.** A cell holds a path, a section, or a `STATUS row "<title>"` — never a
   status word (`COMPLETE`, `parked`, `neither drafted`, `as they appear`). Status words are
@@ -37,11 +39,13 @@ state lives, never *what* that state is.
   whose frontmatter marks everything except its four frame decisions as not ratified. No ADR
   defines it.
 
-### Naming a shipped demo surface (ruled by Cray, typed s306)
+### Naming a shipped demo surface
 
 Name a shipped surface by **its PLAN number + the git identity of what shipped** — never an
-invented release name or tag (the repo has none). A PLAN number survives the archive move
-into `done/`; a path does not.
+invented release name or tag (the repo had none at s306). A PLAN number survives the archive
+move into `done/`; a path does not. *Attribution:* Cray ruled the PLAN-number half (typed,
+s306). The identity half was first the `?v=` counter; the s306 cleanup Cray approved (typed)
+re-bound it to "the sha", and the tree id below is Code's implementation of that.
 
 - **"story v1"** = the PLAN-0126 story page as deployed 2026-09-16: `services/api/static/story/`
   at the merged sha `ea6944fa` that `docs/logs/2026-09-16-plan0126-fleet-story-deploy.md`
@@ -60,31 +64,45 @@ into `done/`; a path does not.
    WSL. STATUS routinely lags one session; if `head_commit` ≠ actual HEAD, say so and
    trust git + the artifacts, not the STATUS prose.
 2. **Check this registry before trusting it, and say what you found.** The table is
-   advisory (above) and can lag. Run both checks from one script file via `wsl bash -lc`
-   (user CLAUDE.md B1), after `git fetch origin main`, writing output to a session-unique
-   file (`/tmp` is shared across live sessions). Both were witnessed against known-answer
-   controls at s306.
+   advisory (above) and can lag. Put the snippet in a script file and run it via
+   `wsl bash -lc` (user CLAUDE.md B1) after `git fetch origin main`, redirecting its output to
+   a file you then Read. Its own scratch file comes from `mktemp`, so live sessions don't
+   collide. Witnessed against known-answer controls at s306.
 
    ```
    set -o pipefail
+   cd "$(git rev-parse --show-toplevel)" || exit 1
    S=.claude/skills/stream-status/SKILL.md
    # (a) PLANs archived after this table last changed: the carriers it may be missing
    LAST=$(git log -1 --format=%H origin/main -- "$S")
-   git log --no-renames --diff-filter=A --name-only --format= "$LAST"..origin/main -- docs/plans/done/
-   # (b) every path and STATUS row title the table points at still resolves
+   if [ -z "$LAST" ]; then
+     echo "(a) UNAVAILABLE: no commit touches $S on origin/main (unfetched or shallow?) - NOT an empty result"
+   else
+     A=$(mktemp)
+     git log --no-renames --diff-filter=A --name-only --format= "$LAST"..origin/main -- docs/plans/done/ > "$A"
+     sed 's/^/ARCHIVED-SINCE /' "$A"
+     echo "(a) checked since ${LAST:0:8}: $(grep -c . "$A") archived"
+     rm -f "$A"
+   fi
+   # (b) every docs/...md path and STATUS row title the table points at still resolves
    sed -n '/^| [1-4] |/p' "$S" | grep -o 'docs/[A-Za-z0-9_./*-]*\.md' | sort -u |
      while read -r p; do if ls -d $p >/dev/null 2>&1; then echo "OK      $p"; else echo "MISSING $p"; fi; done
    sed -n '/^| [1-4] |/p' "$S" | grep -o 'STATUS row "[^"]*"' | sed 's/^STATUS row "//; s/"$//' |
      while read -r t; do echo "hits=$(grep -c -F "$t" docs/STATUS.md)  $t"; done
+   echo "(b) done"
    ```
 
-   Reading it: **(a)** lists only PLANs archived *after* the table's last edit, so it is
-   usually short and grows only until the table is next touched — say for each line whether
-   it is a real carrier (then offer a `docs/*` PR) or not. **(b)** must print `OK` for every
-   tracked path and `hits=` ≥ 1 for every STATUS row title; a `MISSING` or `hits=0` is a dead
-   pointer. The one expected `MISSING` is the gitignored stream-4 synthesis in a worktree or
-   fresh clone — then say stream 4 is rendered without it. **Name every finding before the
-   stream blocks.** If you skipped this step, the readout says so.
+   Reading it: **(a)** always ends with `(a) checked since <sha>: N archived` — that line is
+   the proof it ran, and `UNAVAILABLE` is not an empty result. Its `ARCHIVED-SINCE` lines are
+   only PLANs archived *after* the table's last edit, so the list is usually short and grows
+   only until the table is next touched — say for each whether it is a real carrier (then
+   offer a `docs/*` PR) or not. **(b)** must print `OK` for every `docs/…md` path and `hits=`
+   ≥ 1 for every STATUS row title; a `MISSING` or `hits=0` is a dead pointer. It does not
+   check `§` section labels, and a hit proves only that the title still exists in STATUS, not
+   that its row still says what the table expects. The one expected `MISSING` is the
+   gitignored stream-4 synthesis in a worktree or fresh clone — then say stream 4 is rendered
+   without it. **Name every finding before the stream blocks.** If you skipped this step, the
+   readout says so.
 3. **Per stream, read the registry sources** (scoped reads — never a wide Glob/Grep on
    the UNC root). For PLANs: the `Status:` line, AC checkbox tally (count `[x]` vs
    `[ ]` yourself — prose claims about counts have been wrong before), and any
