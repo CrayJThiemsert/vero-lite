@@ -3,7 +3,7 @@ last_updated: 2026-09-16T17:58+07:00
 session: 307
 current_batch: "s304–s307 (#1502, #1504–#1508), merged — PLAN-0125 Step 3's fact-pack contract is live; PLAN-0126 archived; DB-guard test race fixed; #1506 left four defects."
 current_actor: code
-blocked_on: "Cray: PLAN-0125 AC-14 read + ratification + ticks; detect-secrets vs full-hex against_sha; #1506 corrective PR; PLAN-0109 synonyms + AC-14 §8 go; specimens; orphan dirs; worktree pruning; pilot live?"
+blocked_on: "Cray: PLAN-0125 AC-14 read + ratification + ticks; detect-secrets vs full-hex against_sha; PLAN-0109 synonyms + AC-14 §8 go; specimens; orphan dirs; worktree pruning; pilot live?"
 next_action: "Code: PLAN-0125 Step 4 (SD-slot premise stamp) or Step 5 closeout on a branch — the closeout needs Cray's detect-secrets call. Cray: AC-14 read, ratification, carried calls."
 head_commit: 29709f2
 recent_commits: [29709f2c, 8159ca8f, 3c875226, 7e29e7a7, 519905a4, 0b230d3b, abd8d044, ca9aca0c, 3fc78b45, 3602470f]
@@ -48,8 +48,8 @@ recent_commits: [29709f2c, 8159ca8f, 3c875226, 7e29e7a7, 519905a4, 0b230d3b, abd
 > defects on main, each verified on `origin/main` against a control: (a) console
 > counters `c24…c51` vs `index.html` `v=c52`; (b) row 1 names PLAN-0100 (0 STATUS
 > hits); (c) row 4 lists the landing-layer PLAN, CLOSED s226 SUPERSEDED; (d) the
-> needle `0[0-9][0-9][0-9]` also counts `ADR-0032` (a `done/0032-*` exists). The
-> corrective PR awaits Cray.
+> needle `0[0-9][0-9][0-9]` also counts `ADR-0032` (a `done/0032-*` exists).
+> Corrected on `docs/s306-registry-advisory-cleanup` (Cray-approved, typed s306).
 >
 > ✅ **#1502 (s305)** PLAN-0126 ratified complete and archived (`done_hits=1
 > active_hits=0`). **#1504 (the s303 chip session)** the DB-guard race:
@@ -95,7 +95,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; the ledger's
 
 ## In-Flight Discussions
 
-- **OPEN QUESTION for Cray — does a skill's registry table *bind*?** (Code's observation, not a ruling.) s210's closing notice asserted the four-work-stream registry table in `.claude/skills/stream-status/SKILL.md` (#1062) is **canonical**, and that a carrier-artifact change must update it **in the same PR**. The table as *reference* is fine; the **same-PR obligation** is the part that would have to live in `CLAUDE.md` or an ADR to bind — §1 places `.claude/skills/` at **Tier 2.6, derived, no independent precedence** (ADR-0017 D6). **Cray's call: promote it, or keep the table advisory.**
+- **RESOLVED s306 — a skill's registry table does NOT bind.** Cray ruled (typed, s306): the four-stream registry in `.claude/skills/stream-status/SKILL.md` is **advisory** — a pointers-only index with no same-PR update obligation. That skill's step 2 is how a reader checks it, and `tools/check_plan_archive_refs.py` (R8) still reddens the archive of any PLAN the table names. Nothing moves into `CLAUDE.md` or an ADR. Opened s210; move to Recent Decisions at the next reconcile.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm — **not yet drafted**, and it needs a fresh ADR number. _[The old "≥ ADR-014" floor recorded here was **moot** — see the Active TODO below, corrected s141: ADRs now run past 0032 and `0014-WITHDRAWN.md` exists. Kept as one pointer rather than two divergent copies.]_
