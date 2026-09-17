@@ -68,7 +68,7 @@ def _real_ladder() -> list[tuple[int, str]]:
 def _real_ceiling() -> float:
     ceilings = {truck["minor_repair_ceiling_thb"] for truck in synthetic.truck_records()}
     assert len(ceilings) == 1, f"the seed trucks no longer share one ceiling: {ceilings}"
-    return ceilings.pop()
+    return float(ceilings.pop())
 
 
 # (a)
@@ -127,6 +127,19 @@ def test_steps_and_gates_equal_the_loaded_procedure() -> None:
         block["gates"]["quote_gate"]["criterion"] in [rule.criterion for rule in quote_gate.rules],
         block["gates"]["approve"]["autonomy"],
     ) == (real_steps, real_gates, True, str(approve.autonomy))
+
+
+# (d2) — s309: act 4's sub-line named `fulfill` as the step with llm_assist, by hand, while the
+# real llm_assist sits on `approve` and fulfill's is null. The page now reads the step from here.
+def test_llm_assist_steps_equal_the_loaded_procedure() -> None:
+    real = [
+        step.step_id
+        for step in _procedure().steps
+        if step.facet is not None and step.facet.llm_assist is not None
+    ]
+    pinned = _block()["procedure"]["llm_assist_steps"]
+    print(f"real={real} pinned={pinned}")
+    assert pinned == real
 
 
 # (e)
