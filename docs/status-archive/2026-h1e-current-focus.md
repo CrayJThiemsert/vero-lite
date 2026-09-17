@@ -1166,3 +1166,47 @@ _[The Current-Focus rotation ledger's s303 entry, verbatim from `git show HEAD:d
 > s307's branches are named `s304`, a mislabel; branch names are immutable.
 
 _[The Current-Focus rotation ledger's s307 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s307) reconcile rotates ONE block — s303** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return. **Why the window stays ONE, not the TWO s303 forecast:** STATUS measured **59,417 B** and the s303 block **3,413 B** (`wc -c`, Code); keeping s303 beside the new s304–307 block projects to roughly 62.8–63.1 KB, short of the ≥ 3,000 B headroom under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**40,812 B**, 69% of the file) is what keeps forcing ONE. Every byte figure here is Code's measurement; this seat has no shell and estimated none. ⚠️ **The s303 entry left this ledger with its block**, emitted verbatim with it.
+
+
+### Rotated at the s309 reconcile — Sessions 306 + 308 (2026-09-16 → 17)
+
+> **Sessions 306 + 308, 2026-09-16 → 17 (#1508's merge → #1511's merge) —
+> #1510 and #1511 merged (auto-merge, after review); #1512 and #1513 are open
+> with CI PASS, both waiting on Cray. The stream registry is advisory;
+> PLAN-0127 is drafted.**
+>
+> ✅ **#1510 (s306, auto-merged after review) — #1506's four defects corrected.** Cray
+> ruled (typed, s306) that the four-stream registry in
+> `.claude/skills/stream-status/SKILL.md` is **advisory**, resolving the s210
+> question: rows are pointers only, with a reader-side check in the skill's
+> step 2; R8 still reddens an archive move of any PLAN the table names
+> (witnessed: exit 0 → 1). 🔴 **#1506's defects came from arming auto-merge
+> before the adversarial review** — #1510 was reviewed first and landed clean.
+> **#1511** (a chip session, the window's last merge) fixed the stale codegen
+> docstrings in `cli.py` and `data_adapter.py`, and measured that the
+> COMMITTED generated modules are imported (`persistence.py`, `spec.py`,
+> `alembic/env.py`) and that procurement's hero demo builds the generated core
+> `Person` from adapter rows.
+>
+> 🔴 **Cray's typed s306 rulings.** Codegen: `plan-drafter` drafts plan (A),
+> PR-1 may open before it, and **(B) runtime adoption is NOT opened**. Story
+> page: Act 1b stays; **live structuring is not ready — a top-priority
+> discussion, never depicted**; the Act 5 label overlap is to be fixed, its
+> redeploy under a per-phase go. The story-plan decisions are unanswered
+> (In-Flight).
+>
+> ✅ **#1512 (s308, `fix/*`, head `b88d65a`) — PLAN-0127 PR-1: `emit_sql`
+> orders `CREATE TABLE` by reference dependency.** As emitted, 6 of the 7
+> ontology docs failed at statement 1 on Postgres, and no test had ever applied
+> the DDL. Pre-fix `docs=7 applied=1 failed=6` → post-fix `docs=7 applied=7
+> failed=0`; DB-free twin `docs=7 references=54 forward=0`; battery
+> `plan-0127-pr1-ddl-order` 15 claims WITNESSED + 1 GREEN control, GAPS 0;
+> 5354 passed, 8 skipped (before the last cosmetic edits; CI PASS on the head).
+>
+> ✅ **#1513 (s308, `docs/*`, head `5099742`) — PLAN-0127 `Draft`**, codegen
+> generation stability (A): five PRs, no ADR. SD-1…SD-7 are Cray's; SD-2 is
+> #1512's ordering mechanism, so countermand it before that merge. Its honesty
+> ledger: **2 of the 7 outputs (TypeScript, context pack) cannot be proven
+> correct without further Cray decisions.** Neither PR has auto-merge armed.
+
+_[The Current-Focus rotation ledger's s308 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s308) reconcile rotates ONE block — s304–307 (**2,767 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return; Code carves it from `git show HEAD:docs/STATUS.md` and probes it ABSENT from every `-current-focus` letter before appending. **Why ONE again:** STATUS opened at **59,044 B**, and keeping the s304–307 block beside the new s306 + s308 block projects past the ≥ 3,000 B headroom margin under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**41,344 B**, 70% of the file) still forces it. Every byte figure here is Code's measurement. ⚠️ **The s307 entry left this ledger with its block**, emitted verbatim with it.
