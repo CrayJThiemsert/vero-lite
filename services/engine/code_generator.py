@@ -3,7 +3,9 @@
 Implements ADR-008 D5. Each emitter is a pure-Python structured
 builder — no Jinja2 (consultation reply Q6: the project is dep-
 conservative). Outputs are deterministic given the same input doc,
-ordered by ``object_types`` insertion order from the parsed YAML.
+ordered by ``object_types`` insertion order from the parsed YAML — except
+the SQL emitter's ``CREATE TABLE`` order, which puts every table after the
+tables it references, insertion order breaking ties (``_sql_table_order``).
 
 Emitters: Pydantic + SQL (PLAN-003 commit 4), JSON Schema + MCP +
 TypeScript (commit 5), the SQLAlchemy ORM (PLAN-0031, the 6th), and the
@@ -282,19 +284,74 @@ def _sql_column_line(
     return " ".join(parts)
 
 
+def _sql_table_order(object_types: dict[str, Any]) -> list[str]:
+    """The ``CREATE TABLE`` order: every table after the tables it references.
+
+    Postgres resolves an inline ``REFERENCES x(...)`` when the ``CREATE TABLE`` runs, so a
+    table written before its target fails with ``UndefinedTableError``. Emitting in plain
+    insertion order did exactly that for 6 of the 7 ontology docs (measured s306, M2;
+    guarded by ``tests/services/db/test_generated_ddl_applies.py``). Reordering is the fix
+    rather than ``ALTER TABLE ... ADD FOREIGN KEY`` afterwards, so each column keeps its
+    inline ``REFERENCES`` — the shape ``test_cli_e2e`` and readers of the DDL rely on.
+
+    Stable: of the tables whose targets are all written, the earliest in insertion order
+    goes next, so a doc already in dependency order emits exactly as before. Two kinds of
+    target are not ordering edges:
+
+    * a **self-reference** — legal inside its own ``CREATE TABLE``;
+    * a target that is **not a local type** — a qualified ``<ns>.<Type>`` ref, whose table
+      the imported shared doc's DDL creates. The raw target string is what is matched
+      against the local type names, never the bare name ``_resolve_ref`` returns, so
+      ``core.Person`` is not an edge even beside a local ``Person``.
+
+    A cycle between distinct tables has no inline order that applies, so it raises rather
+    than write DDL that cannot.
+    """
+    depends_on: dict[str, set[str]] = {
+        obj_name: {
+            prop_def["target"]
+            for prop_def in (obj_def.get("properties") or {}).values()
+            if prop_def["type"] == "ref"
+            and prop_def["target"] != obj_name
+            and prop_def["target"] in object_types
+        }
+        for obj_name, obj_def in object_types.items()
+    }
+    ordered: list[str] = []
+    pending = list(object_types)
+    while pending:
+        ready = next((name for name in pending if depends_on[name] <= set(ordered)), None)
+        if ready is None:
+            # `pending` holds the cycle AND every table that merely waits on it, so the
+            # message names them as a set to inspect rather than as the cycle itself.
+            raise ValueError(
+                f"emit_sql: ref cycle — no CREATE TABLE order exists for object types "
+                f"{sorted(pending)}; each is in a cycle or references one. Break the cycle "
+                "in the ontology"
+            )
+        ordered.append(ready)
+        pending.remove(ready)
+    return ordered
+
+
 def emit_sql(
     doc: dict[str, Any],
     output_path: Path,
     imported: dict[str, dict[str, Any]] | None = None,
 ) -> Path:
-    """Write Postgres DDL (CREATE TABLE + CREATE INDEX) to ``output_path``."""
+    """Write Postgres DDL (CREATE TABLE + CREATE INDEX) to ``output_path``.
+
+    Tables are written in reference-dependency order (``_sql_table_order``), so the file
+    applies top to bottom.
+    """
     object_types = doc.get("object_types") or {}
     lines: list[str] = [
         "-- Generated PostgreSQL DDL from ontology YAML — do not edit by hand.",
         "",
     ]
     index_lines: list[str] = []
-    for obj_name, obj_def in object_types.items():
+    for obj_name in _sql_table_order(object_types):
+        obj_def = object_types[obj_name]
         table = _snake(obj_name)
         pk = obj_def.get("primary_key", "")
         props = obj_def.get("properties") or {}
@@ -622,7 +679,9 @@ def emit_orm(
     ``services.db.base.Base``. CHECK constraints are omitted (enum validity at the
     Pydantic layer; the parity guard covers types, not constraints) — schema-equivalent
     to the prior hand-authored ORM. Deterministic, ordered by ``object_types`` insertion
-    order, like the other six emitters.
+    order. Unlike the SQL emitter it needs no dependency order: SQLAlchemy resolves a
+    ``ForeignKey("table.col")`` string when the metadata is used, not when the class is
+    declared, and ``create_all`` sorts tables itself.
     """
     object_types = doc.get("object_types") or {}
     datetime_imports, needs_any, needs_jsonb, sqlalchemy_imports = _orm_used_imports(object_types)
