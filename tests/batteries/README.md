@@ -17,6 +17,29 @@ Run one with:
 python -m tools.probe_battery run --battery tests/batteries/<file>.json
 ```
 
+## Generated batteries: edit the generator, never the JSON
+
+`plan-0126-story-{page,drift,scenario}.json` are **output** of
+[`plan_0126_story_generator.py`](plan_0126_story_generator.py), which resolves every
+`expect_claim` from `tools.probe_coverage.enumerate_claims` instead of letting anyone type
+it. Any story change that moves a probe's anchor (a `story.js?v=` bump, for example) goes
+through the generator's specs:
+
+```bash
+python -m tests.batteries.plan_0126_story_generator --check   # VERDICT: IN-SYNC | DRIFT
+python -m tests.batteries.plan_0126_story_generator           # regenerate all three
+```
+
+`tests/api/test_story_battery_generator.py` fails CI when the generator and the committed
+JSON disagree, in either direction. Its own witnesses are in
+`s309-story-battery-generator.json`.
+
+**Why it is tracked (s309).** Until then the generator lived outside git. The copy that
+STATUS named as the only one was six probes behind the committed page battery (35 against
+41), and running it would have silently deleted the AC-11 and AC-3 witnesses. The current
+copy survived only in a session scratchpad. A tracked file with no guard would reopen the
+same gap the first time somebody edited one side.
+
 ## What is here
 
 | file | claims | RED | exempt | closes |
