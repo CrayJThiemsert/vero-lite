@@ -1,0 +1,173 @@
+{
+  "claim_sources": [
+    "tests/services/db/test_generated_ddl_applies.py",
+    "tests/services/engine/test_sql_emitter.py"
+  ],
+  "probes": [
+    {
+      "name": "D1",
+      "subject": "services/engine/code_generator.py",
+      "old": "    for obj_name in _sql_table_order(object_types):\n",
+      "new": "    for obj_name in object_types:\n",
+      "node_id": "tests/services/db/test_generated_ddl_applies.py::test_every_generated_schema_applies_to_postgres",
+      "expect_claim": "test_every_generated_schema_applies_to_postgres|failures == {}|#0",
+      "note": "🔴 AC-5, the M2 defect itself: back to plain insertion order, the real DDL stops applying to Postgres. Needs a live Postgres — a SKIPPED reading here is not a witness."
+    },
+    {
+      "name": "D2",
+      "subject": "services/engine/code_generator.py",
+      "old": "    for obj_name in _sql_table_order(object_types):\n",
+      "new": "    for obj_name in object_types:\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_generated_ddl_declares_every_table_before_it_is_referenced",
+      "expect_claim": "test_generated_ddl_declares_every_table_before_it_is_referenced|forward == {}|#0",
+      "note": "AC-12, the DB-free twin, under the same mutation. The positive control above it (references > 0) stays green, so the RED is the ordering and not an instrument that saw nothing."
+    },
+    {
+      "name": "D3",
+      "subject": "services/engine/code_generator.py",
+      "old": "    for obj_name in _sql_table_order(object_types):\n",
+      "new": "    for obj_name in object_types:\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_declares_a_referenced_table_first",
+      "expect_claim": "test_sql_emitter_declares_a_referenced_table_first|_CREATE_TABLE.findall(out.read_text()) == [\"site\", \"asset\"]|#0",
+      "note": "The fixture-level form of the same defect: Asset is listed before the Site it references."
+    },
+    {
+      "name": "T1",
+      "subject": "services/engine/code_generator.py",
+      "old": "        ready = next((name for name in pending if depends_on[name] <= set(ordered)), None)\n",
+      "new": "        ready = next((name for name in reversed(pending) if depends_on[name] <= set(ordered)), None)\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_table_order_keeps_insertion_order_between_ties",
+      "expect_claim": "test_sql_emitter_table_order_keeps_insertion_order_between_ties|_CREATE_TABLE.findall(out.read_text()) == [\"charlie\", \"bravo\", \"alpha\", \"delta\"]|#0",
+      "note": "Still a valid dependency order, no longer a stable one: ties break from the END. Only the stability test can see this."
+    },
+    {
+      "name": "T1-control",
+      "subject": "services/engine/code_generator.py",
+      "old": "        ready = next((name for name in pending if depends_on[name] <= set(ordered)), None)\n",
+      "new": "        ready = next((name for name in reversed(pending) if depends_on[name] <= set(ordered)), None)\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_generated_ddl_declares_every_table_before_it_is_referenced",
+      "expect_claim": "test_generated_ddl_declares_every_table_before_it_is_referenced|forward == {}|#0",
+      "expect": "GREEN",
+      "note": "🟢 Cross-check for T1: the reversed tie-break still declares every table before it is referenced, so AC-12 stays green. If this ever reads WITNESSED, T1's RED was about validity rather than stability. Credits nothing by design."
+    },
+    {
+      "name": "C1",
+      "subject": "services/engine/code_generator.py",
+      "old": "depends_on[name] <= set(ordered)), None)\n",
+      "new": "depends_on[name] <= set(ordered)), pending[0])\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_refuses_a_reference_cycle",
+      "expect_claim": "test_sql_emitter_refuses_a_reference_cycle|pytest.raises(ValueError, match=r\"cycle.*'Alpha', 'Bravo'\")|#0",
+      "note": "A cycle is no longer detected: the first pending table is forced out and the emitter writes DDL that cannot apply."
+    },
+    {
+      "name": "C2",
+      "subject": "services/engine/code_generator.py",
+      "old": "    applies top to bottom.\n    \"\"\"\n    object_types = doc.get(\"object_types\") or {}\n",
+      "new": "    applies top to bottom.\n    \"\"\"\n    object_types = doc.get(\"object_types\") or {}\n    output_path.write_text(\"\")\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_refuses_a_reference_cycle",
+      "expect_claim": "test_sql_emitter_refuses_a_reference_cycle|not out.exists()|#0",
+      "note": "The refusal still raises (the raises claim stays green) but a file is left behind first — the half-written-DDL case the absence assertion exists for."
+    },
+    {
+      "name": "S1",
+      "subject": "services/engine/code_generator.py",
+      "old": "            and prop_def[\"target\"] != obj_name\n",
+      "new": "",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_allows_a_self_reference",
+      "expect_claim": "test_sql_emitter_allows_a_self_reference|refused is None|#0",
+      "note": "A self-reference becomes an ordering edge, so a table waits for itself and is refused as a cycle."
+    },
+    {
+      "name": "S2",
+      "subject": "services/engine/code_generator.py",
+      "old": "        return f\"TEXT REFERENCES {_snake(type_name)}({target_pk})\"\n",
+      "new": "        return \"TEXT\"\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_allows_a_self_reference",
+      "expect_claim": "test_sql_emitter_allows_a_self_reference|\"REFERENCES employee(employee_id)\" in out.read_text()|#0",
+      "note": "The self-reference is accepted (refused is None stays green) but the FK is silently dropped from the column."
+    },
+    {
+      "name": "R1",
+      "subject": "services/engine/code_generator.py",
+      "old": "        return f\"TEXT REFERENCES {_snake(type_name)}({target_pk})\"\n",
+      "new": "        return \"TEXT\"\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_generated_ddl_declares_every_table_before_it_is_referenced",
+      "expect_claim": "test_generated_ddl_declares_every_table_before_it_is_referenced|references > 0|#0",
+      "note": "AC-12's positive control: with no REFERENCES emitted, forward == {} would pass over nothing. This is what makes that emptiness a reading."
+    },
+    {
+      "name": "Q1",
+      "subject": "services/engine/code_generator.py",
+      "old": "            and prop_def[\"target\"] in object_types\n",
+      "new": "",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_a_qualified_ref_is_not_an_ordering_edge",
+      "expect_claim": "test_sql_emitter_a_qualified_ref_is_not_an_ordering_edge|refused is None|#0",
+      "note": "core.Person becomes an ordering edge no local table can satisfy, so the doc is refused as a cycle."
+    },
+    {
+      "name": "Q2",
+      "subject": "services/engine/code_generator.py",
+      "old": "            prop_def[\"target\"]\n            for prop_def in (obj_def.get(\"properties\") or {}).values()\n            if prop_def[\"type\"] == \"ref\"\n            and prop_def[\"target\"] != obj_name\n            and prop_def[\"target\"] in object_types\n",
+      "new": "            str(prop_def[\"target\"]).rsplit(\".\", 1)[-1]\n            for prop_def in (obj_def.get(\"properties\") or {}).values()\n            if prop_def[\"type\"] == \"ref\"\n            and prop_def[\"target\"] != obj_name\n            and str(prop_def[\"target\"]).rsplit(\".\", 1)[-1] in object_types\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_sql_emitter_a_qualified_ref_is_not_an_ordering_edge",
+      "expect_claim": "test_sql_emitter_a_qualified_ref_is_not_an_ordering_edge|_CREATE_TABLE.findall(out.read_text()) == [\"purchase_order\", \"person\"]|#0",
+      "note": "Edges keyed on the BARE name: core.Person is mistaken for the local Person, so purchase_order is pushed behind it. Nothing is refused (refused is None stays green) — only the order moves."
+    },
+    {
+      "name": "I1",
+      "subject": "tests/services/engine/test_sql_emitter.py",
+      "old": "        if target != owner and declared[target] > ref.start():\n",
+      "new": "        if target != owner and declared[target] < ref.start():\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_forward_reference_instrument_control",
+      "expect_claim": "test_forward_reference_instrument_control|_forward_references(link + \"\\n\" + alert) == [\"alert_event_link -> alert\"]|#0",
+      "note": "Instrument control (Lesson #0056): the checker's direction flips and it reports no forward reference in a file that has one."
+    },
+    {
+      "name": "I2",
+      "subject": "tests/services/engine/test_sql_emitter.py",
+      "old": "        if target != owner and declared[target] > ref.start():\n",
+      "new": "        if target != owner:\n",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_forward_reference_instrument_control",
+      "expect_claim": "test_forward_reference_instrument_control|_forward_references(alert + \"\\n\" + link) == []|#0",
+      "note": "The checker stops looking at position and calls every cross-table reference forward. The known-bad reading still says one (I1's assertion stays green); the known-good file now reads one too."
+    },
+    {
+      "name": "E1",
+      "subject": "tests/services/engine/test_sql_emitter.py",
+      "old": ".glob(\"*/ontology\") if p.is_dir()",
+      "new": ".glob(\"*/ontologyX\") if p.is_dir()",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_ontology_doc_enumeration_is_complete",
+      "expect_claim": "test_ontology_doc_enumeration_is_complete|ontology_dirs|#0",
+      "note": "The enumeration root finds nothing — the case where an equality between two empty sides would pass."
+    },
+    {
+      "name": "E2",
+      "subject": "tests/support/ontology_docs.py",
+      "old": "glob(\"*/ontology/*_v0.yaml\")",
+      "new": "glob(\"energy/ontology/*_v0.yaml\")",
+      "node_id": "tests/services/engine/test_sql_emitter.py::test_ontology_doc_enumeration_is_complete",
+      "expect_claim": "test_ontology_doc_enumeration_is_complete|enumerated == [*sorted(ontology_dirs), \"core\"]|#0",
+      "note": "The shared enumeration silently narrows to one vertical. Every per-doc check would then pass over one doc and call it all of them."
+    }
+  ],
+  "exemptions": {
+    "test_sql_emitter_table_and_index_count|text.count(\"\\nCREATE TABLE \") == 2|#0": "Pre-existing claim (before PR-1), unchanged by it; the emitter-shape claims are the every-doc suite's to witness (PLAN-0127 PR-2), not this ordering battery's.",
+    "test_sql_emitter_table_and_index_count|text.count(\"\\nCREATE INDEX \") == 1|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" JSONB\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" BIGINT\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" DOUBLE PRECISION\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" TIMESTAMPTZ\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" BOOLEAN\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" DATE\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" JSON \" not in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" INT \" not in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_postgres_dialect_guards|\" FLOAT\" not in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_primary_key_and_constraints|\"asset_id TEXT PRIMARY KEY\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_primary_key_and_constraints|\"site_id TEXT PRIMARY KEY\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_primary_key_and_constraints|\"status TEXT CHECK (status IN ('active', 'retired'))\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_primary_key_and_constraints|\"REFERENCES site(site_id)\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_primary_key_and_constraints|\"CREATE INDEX idx_asset_site_ref ON asset(site_ref);\" in text|#0": "Pre-existing claim, unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_appends_the_tenant_key_to_every_table|text.count(\" tenant_id TEXT NOT NULL\") == text.count(\"\\nCREATE TABLE \")|#0": "Pre-existing claim (PLAN-0101), unchanged by PR-1; see the first exemption.",
+    "test_sql_emitter_appends_the_tenant_key_to_every_table|\"tenant_id TEXT NOT NULL DEFAULT\" not in text|#0": "Pre-existing claim (PLAN-0101), unchanged by PR-1; see the first exemption."
+  }
+}
