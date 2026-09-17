@@ -1121,3 +1121,48 @@ _[The Current-Focus rotation ledger's s302 entry, verbatim from `git show HEAD:d
 > open:** #1502 moves the PLAN to `docs/plans/done/` — cite it by number (R8).
 
 _[The Current-Focus rotation ledger's s303 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s303) reconcile rotates TWO blocks — s300–301 and s302** to `2026-h1e-current-focus.md`; both are emitted VERBATIM in the scribe's return, neither is dropped on a token sweep. **Why two, where the last twelve rotated one:** STATUS opened at **61,736 B**, 3,800 B under R1's 65,536 B ceiling, and the dispatch fixed the pass read at **≥ 3,000 B of headroom once the s303 block lands**. Rotating a single block left an estimated margin under ~500 B — inside the error bar of an estimate this seat cannot check (no shell, so block sizes here are line-count arithmetic, not `wc -c`) — so the window drops to ONE for this reconcile and returns to TWO at s304. ⚠️ **The s301 and s302 entries left this ledger with the blocks they describe**, emitted verbatim with them.
+
+### Rotated at the s308 reconcile — the session-304–307 Current-Focus block [on the R1 headroom rule: STATUS opened at **59,044 B**, and keeping the s304–307 block (**2,767 B**) beside the new s306 + s308 block would leave under the ≥ 3,000 B headroom margin s303 fixed, so the window stays ONE (306 + 308). Carved from `git show HEAD:docs/STATUS.md`, probed ABSENT from every `-current-focus` letter first against a control from the previous reconcile's own header (=1) and a fabricated s999 header (=0); absence from the new STATUS asserted separately (=0), with the new s306 + s308 block (=1) as the control. The Current-Focus ledger's s307 entry follows it verbatim.]
+
+> **Sessions 304–307, 2026-09-16 (`8b13e18` → `29709f2`) — SIX PRs (#1502,
+> #1504–#1508): four merged by Cray, #1506 and #1508 by auto-merge on green.
+> PLAN-0125 Step 3's fact-pack contract is live; PLAN-0126 is archived.**
+>
+> ✅ **#1507 (merge `3c87522`, s307) — PLAN-0125 Step 3.** `tools/measure.py
+> --recipe status-reconcile` emits the two `measure/v1` blocks a reconcile
+> carries; each invocation re-enters the normal entry point (R1…R8, no
+> exemption) and `--out` is refused, so §6 E1 is mechanical. The contract is in
+> the three writer prompts (AC-13): `status-scribe` refuses prose, a bare SHA or
+> a block missing `schema`/`hash`; `plan-drafter` has four grounding marks;
+> `explore-research` never emits a block (SD-6 = b). 🔴 **§2.3's recipe as
+> written emitted nothing** (`REFUSED R5` on `['main']`, then `['10']`); it now
+> resolves the ref to a full SHA first, values unchanged, no refusal relaxed —
+> §2.3 corrected in place, `was an error (mechanism)`: running the code caught
+> it, the pipeline did not. Batteries: step-1 32 probes / 22 claims, step-3 5
+> probes / 4 claims, both GAPS 0; AC-13 needles `pre=0 post=1` ×4; **5344
+> passed, 8 skipped, 0 failed** (`db_tests=499`); CI PASS at `7e29e7a`. Two
+> probe-battery traps recorded as lessons (per-module coverage; `ruff format`
+> staled a probe key). AC-12/AC-13 evidenced, AC-14 is Cray's typed read, AC-15
+> is this reconcile — **none ticked** (Step 5).
+>
+> ✅ **#1508 (s307) — option A, Cray typed.** The scribe prompt no longer deletes
+> `Window = …` ahead of §6 E4's after-ratification sequence: never add one, never
+> delete one on its own. New guard witnessed by P-13.5/P-13.6; step-3 battery 7
+> probes / 5 claims, GAPS 0; CI PASS at `8159ca8`.
+>
+> 🔴 **#1506 (s306) — the stream-registry refresh (+55/−6) is not clean.** Four
+> defects on main, each verified on `origin/main` against a control: (a) console
+> counters `c24…c51` vs `index.html` `v=c52`; (b) row 1 names PLAN-0100 (0 STATUS
+> hits); (c) row 4 lists the landing-layer PLAN, CLOSED s226 SUPERSEDED; (d) the
+> needle `0[0-9][0-9][0-9]` also counts `ADR-0032` (a `done/0032-*` exists).
+> Corrected by #1510 (Cray-approved, typed s306).
+>
+> ✅ **#1502 (s305)** PLAN-0126 ratified complete and archived (`done_hits=1
+> active_hits=0`). **#1504 (the s303 chip session)** the DB-guard race:
+> `pg_terminate_backend` returns on signal delivery, the lock frees at backend
+> exit — a bounded 5 s `time.monotonic` wait, `db_guard` unchanged; s307's one
+> 0-failure run is not proof the race is gone. **#1505** the notify scripts
+> 100755 → 100644, blob oids unchanged. ⚠️ The DB-guard chip session's and
+> s307's branches are named `s304`, a mislabel; branch names are immutable.
+
+_[The Current-Focus rotation ledger's s307 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s307) reconcile rotates ONE block — s303** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return. **Why the window stays ONE, not the TWO s303 forecast:** STATUS measured **59,417 B** and the s303 block **3,413 B** (`wc -c`, Code); keeping s303 beside the new s304–307 block projects to roughly 62.8–63.1 KB, short of the ≥ 3,000 B headroom under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**40,812 B**, 69% of the file) is what keeps forcing ONE. Every byte figure here is Code's measurement; this seat has no shell and estimated none. ⚠️ **The s303 entry left this ledger with its block**, emitted verbatim with it.
