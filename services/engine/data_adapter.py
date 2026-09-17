@@ -25,9 +25,14 @@ from typing import Any, Protocol, runtime_checkable
 class DataAdapter(Protocol):
     """Per-vertical data ingress contract (ADR-007 D1).
 
-    Implementations live in ``verticals/<name>/data_adapter/``. The
-    engine maps the returned raw dicts to typed entities via the
-    generated ontology models.
+    Implementations live in ``verticals/<name>/data_adapter/``. The engine
+    reads the returned rows as plain dicts and does not map them onto
+    generated ontology models. Where a row's shape matters (primary key,
+    property names), code loads the vertical's ontology YAML directly via
+    ``services.engine.ontology_meta.load_ontology_meta`` — e.g. NL query,
+    entity resolution, fleet_maintenance's DB-backed adapter. A caller that
+    wants typed values builds them itself (procurement's hero demo builds the
+    generated shared ``Person`` from its ``Person`` rows).
     """
 
     vertical_name: str
@@ -39,7 +44,7 @@ class DataAdapter(Protocol):
         filter_expr: str | None = None,
         limit: int = 1000,
     ) -> list[dict[str, Any]]:
-        """Return raw object dicts; engine maps them to typed entities via ontology."""
+        """Return raw object dicts; the engine reads them as dicts, not typed entities."""
         ...
 
     async def fetch_links(

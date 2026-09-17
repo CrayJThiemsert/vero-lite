@@ -42,7 +42,17 @@ def validate(vertical: str) -> None:
 
 @app.command()
 def generate(vertical: str) -> None:
-    """Emit the five codegen artifacts under ``verticals/<vertical>/generated/``.
+    """Emit all seven codegen artifacts for one vertical's ontology.
+
+    ``code_generator.generate_all`` writes pydantic, sql, jsonschema, mcp,
+    typescript, orm and context_pack. They land in the gitignored
+    ``verticals/<vertical>/generated/`` unless the ontology's namespace has a
+    committed runtime destination: the ORM for ``energy`` and ``core``
+    (``_ORM_COMMITTED_DEST``), the Pydantic models for ``core``
+    (``_PYDANTIC_COMMITTED_DEST``). This command only reads
+    ``verticals/<vertical>/ontology/<vertical>_v0.yaml`` and ``core`` lives at
+    ``ontology/core_v0.yaml``, so here that means one thing: ``generate energy``
+    writes its ORM to the committed ``services/db/models.py``.
 
     Validates the YAML first; refuses to emit if validation fails (so
     the operator never sees codegen output derived from a broken
