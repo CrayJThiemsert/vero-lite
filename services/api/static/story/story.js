@@ -131,7 +131,7 @@ const ACTS = [
     focus: { rail: 1, human: 1, lattice: .7, codegen: .6, ask: .55, narrative: .5, existing: .5, hero: 0 },
     cam: [[95.8, V(12, 4.5, 25), V(10, .5, 0)], [105, V(2, 7, 48), V(2, 0, 0)]],
     captions: [
-      [95, 'คนอยู่ในลูป: ทุกก้อนที่เกินเพดานต้องมีคนอนุมัติ · คนอยู่บนลูป: เห็นทุกขั้น ตรวจย้อนได้ทุกเมื่อ', 'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'],
+      [95, 'คนอยู่ในลูป: ทุกก้อนที่ถึงหรือเกินเพดานต้องมีคนอนุมัติ · คนอยู่บนลูป: เห็นทุกขั้น ตรวจย้อนได้ทุกเมื่อ', 'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'],
       [100.5, 'นั่นคือเหตุผล — ต่อจากนี้ ดูของจริง', 'ต่อไป: Tab I เคสซ่อม → Tab H การอนุมัติ'],
     ],
     sources: [['docs/strategy/public/intro-video-production-rulings.md §3', 'ใช้คำว่า tamper-evident · ไม่อ่านตัวเลขขอบวงเงิน · ไม่มี URL บนจอ']] },
@@ -743,6 +743,7 @@ function placeLabels(w, h) {
 const $ = id => document.getElementById(id);
 let t = 0, amb = 0, playing = !reduced, ended = false;
 const actsNav = $('acts');
+const tagSynth = $('tag-synth');
 const actBtns = ACTS.map((a, i) => {
   const b = document.createElement('button');
   b.type = 'button'; b.className = 'act-btn';
@@ -889,6 +890,8 @@ function frame(now) {
     b.setAttribute('aria-current', String(i === ai));
   });
   $('clock').textContent = `${fmt(t)} / ${fmt(TOTAL)}`;
+  // The opening disclosure belongs to act 0: it fades out over the second before act 1a.
+  tagSynth.style.opacity = (1 - prog(t, ACTS[1].start - 1, 1)).toFixed(2);
   if (sourcesOpen && sourcesAct !== ai) renderSources(ai);
   requestAnimationFrame(frame);
 }

@@ -291,8 +291,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P2d",
         subject=S + "index.html",
-        old='<script type="module" src="story.js?v=c2"></script>',
-        new='<script type="module" src="scene.js?v=c2"></script>',
+        old='<script type="module" src="story.js?v=c3"></script>',
+        new='<script type="module" src="scene.js?v=c3"></script>',
         test="test_story_index_is_served_unprofiled_on_the_published_profile",
         prefix='\'type="module" src="story.js\' in',
         note=(
@@ -500,7 +500,7 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P6b",
         subject=S + "index.html",
-        old='  <link rel="stylesheet" href="story.css?v=c1" />\n',
+        old='  <link rel="stylesheet" href="story.css?v=c2" />\n',
         new="",
         test="test_every_story_file_is_referenced_or_exempt",
         prefix="orphans == []",
@@ -929,8 +929,8 @@ SCEN_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P8b",
         subject=S + "index.html",
-        old='<script type="module" src="story.js?v=c2"></script>',
-        new='<script type="module" src="stori.js?v=c2"></script>',
+        old='<script type="module" src="story.js?v=c3"></script>',
+        new='<script type="module" src="stori.js?v=c3"></script>',
         test=_VISITOR,
         prefix="failed == {}",
         note="the served page references a file that 404s",
@@ -938,7 +938,7 @@ SCEN_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P8-set",
         subject=S + "index.html",
-        old='  <link rel="stylesheet" href="story.css?v=c1" />\n',
+        old='  <link rel="stylesheet" href="story.css?v=c2" />\n',
         new="",
         test=_VISITOR,
         prefix="{",
