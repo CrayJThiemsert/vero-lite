@@ -51,8 +51,8 @@
     {
       "name": "P8b",
       "subject": "services/api/static/story/index.html",
-      "old": "<script type=\"module\" src=\"story.js?v=c2\"></script>",
-      "new": "<script type=\"module\" src=\"stori.js?v=c2\"></script>",
+      "old": "<script type=\"module\" src=\"story.js?v=c3\"></script>",
+      "new": "<script type=\"module\" src=\"stori.js?v=c3\"></script>",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
       "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|failed == {}|#0",
       "note": "the served page references a file that 404s"
@@ -60,7 +60,7 @@
     {
       "name": "P8-set",
       "subject": "services/api/static/story/index.html",
-      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c1\" />\n",
+      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c2\" />\n",
       "new": "",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
       "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|{ \"/story/story.css\", \"/story/story-data.js\", \"/story/story.js\", \"/story/three.module.min.js\", } <= set(statuses)|#0",

@@ -60,8 +60,8 @@
     {
       "name": "P2d",
       "subject": "services/api/static/story/index.html",
-      "old": "<script type=\"module\" src=\"story.js?v=c2\"></script>",
-      "new": "<script type=\"module\" src=\"scene.js?v=c2\"></script>",
+      "old": "<script type=\"module\" src=\"story.js?v=c3\"></script>",
+      "new": "<script type=\"module\" src=\"scene.js?v=c3\"></script>",
       "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
       "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|'type=\"module\" src=\"story.js' in response.text|#0",
       "note": "the served page no longer loads story.js as a module; 200 and CSP hold, the module-tag assert reddens"
@@ -231,7 +231,7 @@
     {
       "name": "P6b",
       "subject": "services/api/static/story/index.html",
-      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c1\" />\n",
+      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c2\" />\n",
       "new": "",
       "node_id": "tests/api/test_story_page.py::test_every_story_file_is_referenced_or_exempt",
       "expect_claim": "test_every_story_file_is_referenced_or_exempt|orphans == []|#0",
