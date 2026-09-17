@@ -23,6 +23,7 @@ function schemaProblems(d) {
   if (!Array.isArray(o.undeclared_refs)) problems.push('ontology.undeclared_refs');
   if (!d.emitters || !Object.keys(d.emitters).length) problems.push('emitters');
   if (!Array.isArray(pr.steps) || !pr.steps.length || !pr.gates) problems.push('procedure');
+  else if (!Array.isArray(pr.llm_assist_steps) || pr.llm_assist_steps.length !== 1 || !pr.gates[pr.llm_assist_steps[0]]) problems.push('procedure.llm_assist_steps');
   if (!Array.isArray(r.tiers) || !r.tiers.length) problems.push('rules.tiers');
   if (!Array.isArray(d.cases) || !d.cases.length) problems.push('cases');
   else d.cases.forEach((c, i) => {
@@ -51,6 +52,10 @@ const STEPS = DATA.procedure.steps.map(s => {
   return { ...s, gate: g ? (g.kind === 'rule_gate' ? 1 : 2) : undefined };
 });
 const DOA_TIERS = DATA.rules.tiers;                     // persona order on the ladder
+// The step that carries llm_assist, and its autonomy, both read from the pinned block. This line
+// was hand-typed as `fulfill · …` in v1, and fulfill's llm_assist is null (s309).
+const ASSIST_STEP = DATA.procedure.llm_assist_steps[0];
+const ASSIST_SUB = `${ASSIST_STEP} · autonomy: ${DATA.procedure.gates[ASSIST_STEP].autonomy} · llm_assist: advisory`;
 const ACT4_CASES = DATA.cases;
 
 /* =====================================================================
@@ -126,7 +131,7 @@ const ACTS = [
     focus: { rail: 1, human: 1, lattice: .7, codegen: .6, ask: .55, narrative: .5, existing: .5, hero: 0 },
     cam: [[95.8, V(12, 4.5, 25), V(10, .5, 0)], [105, V(2, 7, 48), V(2, 0, 0)]],
     captions: [
-      [95, 'คนอยู่ในลูป: ทุกการใช้เงินต้องมีคนอนุมัติ · คนอยู่บนลูป: เห็นทุกขั้น ตรวจย้อนได้ทุกเมื่อ', 'ทุกขั้นถูกบันทึกแบบ tamper-evident'],
+      [95, 'คนอยู่ในลูป: ทุกก้อนที่เกินเพดานต้องมีคนอนุมัติ · คนอยู่บนลูป: เห็นทุกขั้น ตรวจย้อนได้ทุกเมื่อ', 'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'],
       [100.5, 'นั่นคือเหตุผล — ต่อจากนี้ ดูของจริง', 'ต่อไป: Tab I เคสซ่อม → Tab H การอนุมัติ'],
     ],
     sources: [['docs/strategy/public/intro-video-production-rulings.md §3', 'ใช้คำว่า tamper-evident · ไม่อ่านตัวเลขขอบวงเงิน · ไม่มี URL บนจอ']] },
@@ -365,20 +370,26 @@ const plane = new THREE.Mesh(planeGeo, reg(new THREE.MeshBasicMaterial({ color: 
 const planeEdge = new THREE.LineSegments(new THREE.EdgesGeometry(planeGeo), reg(new THREE.LineBasicMaterial({ color: COL.warn }), 'human', .3));
 for (const m of [plane, planeEdge]) { m.rotation.x = -Math.PI / 2; m.position.set(14.2, HY, 0); scene.add(m); }
 label('ระนาบคน · มองเห็นทุกขั้น', 'lb-zone', V(6.4, HY + .1, -3.1), 'human');
-function persona(text, p) {
+function persona(text, p, dy = -28) {
   const owner = { vis: 1 };
   const disc = new THREE.Mesh(new THREE.CylinderGeometry(.5, .5, .1, 36), reg(new THREE.MeshBasicMaterial({ color: COL.warn }), 'human', .35, owner));
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.64, .026, 6, 40), reg(new THREE.MeshBasicMaterial({ color: COL.warn }), 'human', .9, owner));
   ring.rotation.x = Math.PI / 2;
   disc.position.copy(p); ring.position.copy(p);
   scene.add(disc, ring);
-  label(text, 'lb-thai', p, 'human', { dy: -28, far: 62 });
+  // far 42, not 62: on act 5's wide dolly (camera ≈50 out) the ladder is narrower than its
+  // labels, so past 42 they stacked on each other (s309, measured in the browser).
+  label(text, 'lb-thai', p, 'human', { dy, far: 42 });
   return { p, ring };
 }
 const requester = persona('ช่างใหญ่ · คนขอ', V(RX.intake, HY, 0));
+// Neighbouring rungs are 1.8 world units apart — fewer pixels than one label is wide once the
+// camera pulls back — so odd rungs label BELOW the disc: a pixel gap that no distance closes.
 const ladder = Object.fromEntries(DOA_TIERS.map((tier, i) =>
-  [tier.role, persona(tier.role, V(RX.approve - 1.8 + i * 1.8, HY + i * .45, -1.2 + i * .6))]));
-label('สายอนุมัติตามวงเงิน', 'lb-zone', V(RX.approve, HY + 1.7, -.6), 'human');
+  [tier.role, persona(tier.role, V(RX.approve - 1.8 + i * 1.8, HY + i * .45, -1.2 + i * .6), i % 2 ? 30 : -28)]));
+// Anchored to the top rung in PIXELS (dy), not placed in world space: a world offset shrinks with
+// camera distance, so the old HY + 1.7 slid onto the top persona's label in acts 4 and 5.
+label('สายอนุมัติตามวงเงิน', 'lb-zone', ladder[DOA_TIERS[DOA_TIERS.length - 1].role].p, 'human', { dy: -56, far: 42 });
 const beam = new THREE.Mesh(new THREE.CylinderGeometry(.06, .06, 1, 10), reg(new THREE.MeshBasicMaterial({ color: COL.ok }), 'human', 1));
 beam.visible = false;
 scene.add(beam);
@@ -484,7 +495,7 @@ const CAMK = {
         sole_source_justified: 'ไม่มีเจ้าอื่นให้เทียบ แต่มีคนเขียนเหตุผลลงบันทึก ผ่านด่านแรก — แต่เงินยังไม่ออก' }[p.sourcing.basis];
       ACT4.captions.push([at(gate1At), passText, `quote_gate · basis: ${p.sourcing.basis}`]);
       ACT4.captions.push([at(gate1At + D.hold + D.toGate2), `รอ${p.tier.role}อนุมัติ — ช่างใหญ่ที่เปิดเคส อนุมัติเคสของตัวเองไม่ได้`, `approve · doa_tier → ${p.tier.role} · separation of duties`]);
-      ACT4.captions.push([at(gate1At + D.hold + D.toGate2 + D.wait), 'คนอนุมัติ แล้วระบบจึงลงมือ — โมเดลช่วยร่างสรุปให้ แต่อำนาจอนุมัติเป็นของคนเสมอ', 'fulfill · autonomy: gated · llm_assist: advisory']);
+      ACT4.captions.push([at(gate1At + D.hold + D.toGate2 + D.wait), 'คนอนุมัติ แล้วระบบจึงลงมือ — โมเดลช่วยร่างสรุปให้ แต่อำนาจอนุมัติเป็นของคนเสมอ', ASSIST_SUB]);
     }
     if (p.illustrative) ACT4.sources.push([`ACT4_CASES · ${p.truck} ${baht(p.amountThb)} · ${p.distinctVendors} เจ้า`, 'ภาพประกอบกฎ — ไม่ใช่ run ที่อยู่ใน seed (เคสใน seed เทียบราคาครบสามเจ้าแล้ว synthetic.py:291-295)']);
   }

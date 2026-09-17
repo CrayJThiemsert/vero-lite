@@ -64,7 +64,8 @@
         "quote_gate": {"kind": "rule_gate", "criterion": "three_quote"},
         "approve": {"kind": "doa_tier", "autonomy": "gated"}
       },
-      "sod": {"distinct_steps": ["intake", "approve"]}
+      "sod": {"distinct_steps": ["intake", "approve"]},
+      "llm_assist_steps": ["approve"]
     },
     "rules": {
       "three_quote_threshold_thb": 30000,

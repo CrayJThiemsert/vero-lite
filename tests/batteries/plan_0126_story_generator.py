@@ -55,6 +55,7 @@ CFG = "deploy/published/oct-fleet-maintenance/cloudflared/config.yml"
 APP_JS = "services/api/static/assets/app.js"
 MAIN = "services/api/main.py"
 STORY_SOURCE = "tests/api/story_source.py"
+TAMPER_SUB = "ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้"
 
 
 @dataclass(frozen=True)
@@ -290,8 +291,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P2d",
         subject=S + "index.html",
-        old='<script type="module" src="story.js?v=c1"></script>',
-        new='<script type="module" src="scene.js?v=c1"></script>',
+        old='<script type="module" src="story.js?v=c2"></script>',
+        new='<script type="module" src="scene.js?v=c2"></script>',
         test="test_story_index_is_served_unprofiled_on_the_published_profile",
         prefix='\'type="module" src="story.js\' in',
         note=(
@@ -430,8 +431,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P5a",
         subject=S + "story.js",
-        old="'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-        new="'ทุกขั้นถูกบันทึกแบบ tamper-evident ฿30,001'",
+        old=f"'{TAMPER_SUB}'",
+        new=f"'{TAMPER_SUB} ฿30,001'",
         test="test_story_text_carries_no_ruled_out_literal",
         prefix="not found",
         note="a band numeral enters a caption; the absence assert (first) reddens",
@@ -439,8 +440,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P5d",
         subject=S + "story.js",
-        old="'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-        new="'ทุกขั้นถูกบันทึกแบบ tamper-evident 30001'",
+        old=f"'{TAMPER_SUB}'",
+        new=f"'{TAMPER_SUB} 30001'",
         test="test_story_text_carries_no_ruled_out_literal",
         prefix="band_numeral ==",
         note=(
@@ -451,8 +452,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P5e",
         subject=S + "story.js",
-        old="'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-        new="'ทุกขั้นถูกบันทึกแบบ tamper-evident AI AI'",
+        old=f"'{TAMPER_SUB}'",
+        new=f"'{TAMPER_SUB} AI AI'",
         test="test_story_text_carries_no_ruled_out_literal",
         prefix="ai_tokens <= 1",
         note="two AI tokens enter a caption; literals and numeral hold, the R3 count reddens",
@@ -481,8 +482,8 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P6a",
         subject=S + "index.html",
-        old='<script src="story-data.js?v=c1"></script>',
-        new='<script src="ghost.js"></script>\n<script src="story-data.js?v=c1"></script>',
+        old='<script src="story-data.js?v=c2"></script>',
+        new='<script src="ghost.js"></script>\n<script src="story-data.js?v=c2"></script>',
         test="test_every_story_reference_resolves",
         prefix="dangling == []",
         note="a reference to a file that does not exist; nothing escapes static/",
@@ -778,6 +779,35 @@ DRIFT_PROBES: tuple[Spec, ...] = (
         note="the separation-of-duties pair names the wrong step",
     ),
     Spec(
+        name="P4m",
+        subject=DATA,
+        old='"llm_assist_steps": ["approve"]',
+        new='"llm_assist_steps": ["fulfill"]',
+        test="test_llm_assist_steps_equal_the_loaded_procedure",
+        prefix="pinned == real",
+        note="the v1 defect restored in the block: the sub-line would name fulfill again",
+    ),
+    Spec(
+        name="P4n",
+        subject="verticals/fleet_maintenance/procedures.yaml",
+        old=(
+            "          decision_condition: { gate_kind: none }   "
+            "# mechanical write of the approved decision\n"
+            "          llm_assist: null"
+        ),
+        new=(
+            "          decision_condition: { gate_kind: none }   "
+            "# mechanical write of the approved decision\n"
+            '          llm_assist: "probe: an advisory note on the receipt"'
+        ),
+        test="test_llm_assist_steps_equal_the_loaded_procedure",
+        prefix="pinned == real",
+        note=(
+            "mutates the PRODUCER: fulfill gains an llm_assist, so the test must read the real "
+            "YAML"
+        ),
+    ),
+    Spec(
         name="P4g",
         subject=DATA,
         old='"three_quote_threshold_thb": 30000,',
@@ -899,8 +929,8 @@ SCEN_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P8b",
         subject=S + "index.html",
-        old='<script type="module" src="story.js?v=c1"></script>',
-        new='<script type="module" src="stori.js?v=c1"></script>',
+        old='<script type="module" src="story.js?v=c2"></script>',
+        new='<script type="module" src="stori.js?v=c2"></script>',
         test=_VISITOR,
         prefix="failed == {}",
         note="the served page references a file that 404s",

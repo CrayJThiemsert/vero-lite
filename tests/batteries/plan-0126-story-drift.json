@@ -85,6 +85,24 @@
       "note": "the separation-of-duties pair names the wrong step"
     },
     {
+      "name": "P4m",
+      "subject": "services/api/static/story/story-data.js",
+      "old": "\"llm_assist_steps\": [\"approve\"]",
+      "new": "\"llm_assist_steps\": [\"fulfill\"]",
+      "node_id": "tests/api/test_story_drift.py::test_llm_assist_steps_equal_the_loaded_procedure",
+      "expect_claim": "test_llm_assist_steps_equal_the_loaded_procedure|pinned == real|#0",
+      "note": "the v1 defect restored in the block: the sub-line would name fulfill again"
+    },
+    {
+      "name": "P4n",
+      "subject": "verticals/fleet_maintenance/procedures.yaml",
+      "old": "          decision_condition: { gate_kind: none }   # mechanical write of the approved decision\n          llm_assist: null",
+      "new": "          decision_condition: { gate_kind: none }   # mechanical write of the approved decision\n          llm_assist: \"probe: an advisory note on the receipt\"",
+      "node_id": "tests/api/test_story_drift.py::test_llm_assist_steps_equal_the_loaded_procedure",
+      "expect_claim": "test_llm_assist_steps_equal_the_loaded_procedure|pinned == real|#0",
+      "note": "mutates the PRODUCER: fulfill gains an llm_assist, so the test must read the real YAML"
+    },
+    {
       "name": "P4g",
       "subject": "services/api/static/story/story-data.js",
       "old": "\"three_quote_threshold_thb\": 30000,",

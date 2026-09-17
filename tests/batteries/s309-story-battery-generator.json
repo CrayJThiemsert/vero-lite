@@ -4,11 +4,11 @@
     {
       "name": "G1-anchor-rot",
       "subject": "services/api/static/story/index.html",
-      "old": "<script type=\"module\" src=\"story.js?v=c1\"></script>",
-      "new": "<script type=\"module\" src=\"story.js?v=c9\"></script>",
+      "old": "  <meta charset=\"utf-8\" />",
+      "new": "  <meta charset=\"UTF-8\" />",
       "node_id": "tests/api/test_story_battery_generator.py::test_the_committed_story_batteries_equal_their_generator",
       "expect_claim": "test_the_committed_story_batteries_equal_their_generator|generated.errors == []|#0",
-      "note": "the story v2a shape: story.js?v= is bumped and the generator is not updated; P2d and P8b no longer address the page, and the refusal assert reddens first"
+      "note": "the page moves under a spec (P2e's anchor) and the generator is not updated: the refusal assert reddens first. Anchored on the charset tag, not a ?v= token: s309's own story v2a bump killed the first version of this probe (lint: anchor occurs 0 times)"
     },
     {
       "name": "G2-file-set",
