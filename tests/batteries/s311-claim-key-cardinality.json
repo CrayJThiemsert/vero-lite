@@ -1,0 +1,44 @@
+{
+  "claim_sources": [
+    "tests/tools/test_probe_coverage_cardinality.py"
+  ],
+  "probes": [
+    {
+      "name": "P1",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if self.cardinality <= 1:",
+      "new": "        if True:",
+      "node_id": "tests/tools/test_probe_coverage_cardinality.py::test_repeated_claims_carry_their_group_size",
+      "expect_claim": "test_repeated_claims_carry_their_group_size|keys == [\"test_repeats|row is not None|#0/2\", \"test_repeats|row is not None|#1/2\"]|#0",
+      "note": "🔴 Retires the stamp entirely: every key takes the bare branch, so the twins come back as `#0` and `#1` — exactly today's addresses, and exactly the recycling defect this change exists to close. Reddens the group-size assertion at its own line. Chosen over deleting the `/{cardinality}` f-string because this form also proves the BRANCH is what selects the suffix, not the format: a mutation of the f-string alone would leave `if` reachable and could be satisfied by a different spelling of the same key."
+    },
+    {
+      "name": "P2",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if self.cardinality <= 1:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_coverage_cardinality.py::test_a_lone_claim_keys_exactly_as_it_did_before",
+      "expect_claim": "test_a_lone_claim_keys_exactly_as_it_did_before|claim.stable_key == \"test_lone|a == 1|#0\"|#0",
+      "note": "🔴 The other direction, and the one that guards the migration's size. A lone claim takes the suffix branch and keys `#0/1`, so every one of the ~1261 committed addresses that sits alone in its group would have to be rewritten. It reddens the backward-compatibility assertion and nothing else, which is what makes the two halves of the branch separately witnessed: P1 shows the suffix is reachable, P2 shows it is GUARDED. Under P2 the group-size assertion stays green, so neither probe can be credited for the other's claim."
+    },
+    {
+      "name": "P3",
+      "subject": "tools/probe_coverage.py",
+      "old": "cardinality=totals[pair]",
+      "new": "cardinality=1",
+      "node_id": "tests/tools/test_probe_coverage_cardinality.py::test_the_deleted_twins_key_resolves_before_the_deletion",
+      "expect_claim": "test_the_deleted_twins_key_resolves_before_the_deletion|\"test_repeats|row is not None|#0/2\" in {c.stable_key for c in enumerate_claims(path)}|#0",
+      "note": "🔴 Witnesses the POSITIVE CONTROL itself, which is the only way the absence probed by P4 means anything. Severing the stamping pass from the counting pass makes every claim report as a singleton, so `#0/2` is never produced and the control reddens. That this probe exists is the point: an absence assertion whose control is never seen RED is an absence nobody has shown can fail — the vacuity CLAUDE.md §8 names. Distinct from P1, which leaves `cardinality` correct and breaks only the key's rendering; this one makes the COUNT wrong."
+    },
+    {
+      "name": "P4",
+      "subject": "tools/probe_coverage.py",
+      "old": "cardinality=totals[pair]",
+      "new": "cardinality=max(totals[pair], 2)",
+      "node_id": "tests/tools/test_probe_coverage_cardinality.py::test_deleting_one_twin_kills_the_deleted_claims_key",
+      "expect_claim": "test_deleting_one_twin_kills_the_deleted_claims_key|\"test_repeats|row is not None|#0/2\" not in {c.stable_key for c in enumerate_claims(path)}|#0",
+      "note": "🔴 The centre. A floor of 2 makes the post-deletion SURVIVOR — genuinely alone in its group — key as `#0/2`, which is the deleted twin's own address: the silent rebind, rebuilt on purpose so the assertion that forbids it is seen RED. The floor is chosen over a constant 2 so the control in P3's node stays green under this same mutation (twins already count 2), which is what pins the reddening to the deletion case rather than to the stamp being broken in general."
+    }
+  ],
+  "exemptions": {}
+}
