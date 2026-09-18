@@ -1210,3 +1210,58 @@ _[The Current-Focus rotation ledger's s307 entry, verbatim from `git show HEAD:d
 > correct without further Cray decisions.** Neither PR has auto-merge armed.
 
 _[The Current-Focus rotation ledger's s308 entry, verbatim from `git show HEAD:docs/STATUS.md`:]_ 🔴 **THIS (s308) reconcile rotates ONE block — s304–307 (**2,767 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return; Code carves it from `git show HEAD:docs/STATUS.md` and probes it ABSENT from every `-current-focus` letter before appending. **Why ONE again:** STATUS opened at **59,044 B**, and keeping the s304–307 block beside the new s306 + s308 block projects past the ≥ 3,000 B headroom margin under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**41,344 B**, 70% of the file) still forces it. Every byte figure here is Code's measurement. ⚠️ **The s307 entry left this ledger with its block**, emitted verbatim with it.
+
+
+### Rotated at the s310 reconcile — the s309 Current-Focus block and its rotation-ledger entry
+
+_[The s309 Current-Focus block (3,161 B measured), carved verbatim from `git show HEAD:docs/STATUS.md` and probed ABSENT from every `-current-focus` letter before appending. Rotated because STATUS opened at 62,738 B against R1's 65,536 B ceiling and could not hold s309 beside the new s310 block.]_
+
+> **Session 309, 2026-09-17 → 18 (#1514's merge → #1519's merge) —
+> #1516–#1519 merged; #1512, #1513 and #1515 (s308) confirmed merged. The
+> PLAN-0126 battery generator is tracked and guarded; story v2a + the act-0
+> disclosure shipped; PLAN-0127 ratified; PLAN-0128 drafted. main `539f4f0e`,
+> 0 open PRs.**
+>
+> ✅ **#1512, #1513, #1515 (s308) — recorded OPEN last reconcile; all merged.**
+> #1512 (`fix/*`) is PLAN-0127 PR-1: `emit_sql` orders `CREATE TABLE` by
+> reference dependency, `docs=7 applied=1 failed=6` → `applied=7 failed=0`.
+> #1515 (`docs/*`) **ratified PLAN-0127** — Status `Accepted`, SD-1…SD-7
+> ruled by Cray, AC-5/AC-11/AC-12 ticked, new Step 1b (SD-7 = b).
+>
+> ✅ **#1516 (`chore/*`) — the story battery generator is TRACKED** at
+> `tests/batteries/plan_0126_story_generator.py`, guarded by
+> `tests/api/test_story_battery_generator.py` and its battery (9 claims, 9
+> witnessed, GAPS 0). 🔴 The copy STATUS named as the only one was stale —
+> **35** page probes against the committed **41**, so the next `story.js?v=`
+> bump would have deleted the AC-11 and AC-3 witnesses silently; the copy s305
+> used survived only in a Windows temp scratchpad. It fired twice this session:
+> `VERDICT: DRIFT`, naming every moved probe, before each regenerate.
+>
+> ✅ **#1517 + #1518 (`fix/*`) — story v2a and the act-0 disclosure**, each
+> under a typed Cray go. The Act 5 label overlap; "ทุกการใช้เงิน" →
+> "ทุกก้อนที่ถึงหรือเกินเพดาน" (judge counts a quote **at or above** the
+> ceiling as a breach); the act-4 sub-line named `fulfill` where the real
+> `llm_assist` is on `approve` — now read from the pinned block, with a new
+> drift test + probes P4m/P4n; the tamper-evident gloss; and the opening
+> "ข้อมูลสาธิต (synthetic) — กลไกจริง", which lives in the stage so ถ่ายทำ mode
+> keeps it (`display:block` while the chrome reads `display:none`).
+> Browser-measured at 1280×720: act 5 overlapping samples **110/110 → 0/110**,
+> labels visible in the final frame **5 → 0**, act 4 **49/337 → 0/336**.
+> 🔴 The reviewer's `far ≤ 42` alone was **measured insufficient** (20 samples
+> remained); the ladder's odd rungs also had to label below the disc.
+>
+> ✅ **#1519 (`docs/*`) — PLAN-0128 `Draft`, probe-battery claim tags**, by
+> `plan-drafter` on Cray's typed routing. A `# claim: <id>` line above an
+> assert makes `stable_key` `@<id>`, so an address survives a text edit and
+> cannot silently re-target; all four dispatch directions are rejected in
+> writing. It argues PLAN-0115 AC-5 is **kept, not reopened**, and its Step 3
+> retires #1516's generator + guard + battery.
+>
+> 🔴 **The guard's own battery nearly rotted:** G1 anchored on `story.js?v=c1`,
+> which v2a bumped; the definition lint caught it (`anchor occurs 0 times`) and
+> it was re-anchored on the charset tag (the story `?v=` CI gap it exposed is
+> its own TODO below). Gate on every code PR: ruff + `mypy` clean;
+> **5359 passed, 8 skipped**, `db_tests=500`; lint **OK (50 batteries, 625
+> probes)**.
+
+_[The Current-Focus rotation ledger's s309 entry, verbatim:]_ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md) — `2026-h1d-current-focus.md` is CLOSED to appends at **190,011 B** (✎ s295, `was an error`: 189,622 B was its size at s280; s281's append `0dcb78c` closed it at 190,011 B). Window = **309** — ONE. 🔴 **THIS (s309) reconcile rotates ONE block — s306 + s308 (**2,438 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return; Code carves it from `git show HEAD:docs/STATUS.md` and probes it ABSENT from every `-current-focus` letter before appending. **Why ONE again:** STATUS opened at **60,669 B**, and keeping the s306 + s308 block beside the new s309 block projects past the ≥ 3,000 B headroom margin under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**42,992 B**, 71% of the file) still forces it. **Measured after the edit:** the scribe's first block ran ~3,824 B and left STATUS at **63,148 B** — headroom **2,388 B**, under the ≥ 3,000 B margin — so Code trimmed it to **3,162 B**, closing STATUS at **62,484 B** with **3,052 B** of headroom. Every byte figure here is Code's measurement. ⚠️ **The s308 entry left this ledger with its block**, emitted verbatim with it.]_
