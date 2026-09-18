@@ -85,7 +85,7 @@ Not something you invoke while working.
 | `loop/` | The PLAN-0010 scheduled-task autonomy loop — inbox poller, message schema, status digest |
 | `notify/` | `notify/telegram.sh`, `notify/line.sh` — env-var-driven push, called by the notification hooks |
 | `ci/boot_smoke.py` | Boots the app's **lifespan** in CI, not just its import (an image that could not import shipped for ten days while every test stayed green) |
-| `ci/cache_bust_diff_check.py` | Fails CI when a changed static asset ships behind an unchanged `?v=` token |
+| `ci/cache_bust_diff_check.py` | Fails CI when a changed static asset ships behind an unchanged `?v=` token. Scope is **discovered** — every `index.html` under `services/api/static/`, console and `/story/` alike — and locked by a committed expectation in its test, because a hard-coded scope is how `/story/` shipped unguarded |
 
 ---
 

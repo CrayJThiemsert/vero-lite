@@ -1,0 +1,191 @@
+{
+  "claim_sources": [
+    "tests/tools/test_cache_bust_diff_check.py"
+  ],
+  "probes": [
+    {
+      "name": "S1",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        posixpath.normpath(posixpath.join(index_dir, href)): token",
+      "new": "        href: token",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_s309_story_shape_is_red",
+      "expect_claim": "test_s309_story_shape_is_red|findings.stale == [f\"{_STORY_JS} (still ?v=c1)\"]|#0",
+      "note": "🔴 THE s309 blind spot, reproduced. References stop resolving to repo paths, so the story page's keys stay 'story.js' while git reports 'services/api/static/story/story.js' — the changed asset matches nothing and the gate goes quiet. This is byte-for-byte the verdict measured on fix/story-v2a (e0d1d041): 0 bumped, 0 unversioned, 0 stale, over a PR that changed story.js. If this probe cannot redden, /story/ is still outside the gate."
+    },
+    {
+      "name": "S2",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        posixpath.normpath(posixpath.join(index_dir, href)): token",
+      "new": "        posixpath.basename(href): token",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_a_story_asset_resolves_against_its_own_page_not_the_console",
+      "expect_claim": "test_a_story_asset_resolves_against_its_own_page_not_the_console|findings.stale == [f\"{_STORY_CSS} (still ?v=c1)\"]|#0",
+      "note": "🔴 The collision, which is the reason the join exists rather than a filename key. story.css is BOTH static/assets/story.css (console, ?v=c25) and static/story/story.css (story page, ?v=c1). Keyed by basename the console's entry wins the setdefault, the story file matches no key at all, and the change is reported nowhere. Distinct mutation from S1: S1 drops the directory, S2 actively conflates two real files."
+    },
+    {
+      "name": "S3",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "    return sorted(p.relative_to(repo_root).as_posix() for p in static.rglob(INDEX_NAME))",
+      "new": "    return sorted(p.relative_to(repo_root).as_posix() for p in static.glob(INDEX_NAME))",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_discovered_surfaces_match_the_committed_expectation",
+      "expect_claim": "test_discovered_surfaces_match_the_committed_expectation|found == _EXPECTED_SURFACES|#0",
+      "note": "One character — rglob to glob — and the walk stops descending, finding the console index and nothing else. That is the pre-s310 scope exactly, and it must redden the committed-scope lock rather than pass quietly."
+    },
+    {
+      "name": "S4",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "    return sorted(p.relative_to(repo_root).as_posix() for p in static.rglob(INDEX_NAME))",
+      "new": "    return [\"services/api/static/index.html\", \"services/api/static/story/index.html\"]",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_an_empty_tree_discovers_no_surfaces",
+      "expect_claim": "test_an_empty_tree_discovers_no_surfaces|discover_indexes(Path(\"/nonexistent-repo-root-for-this-test\")) == []|#0",
+      "note": "The positive control for S3. discover_indexes returns the right answer for the wrong reason — a hard-coded list — and S3's assertion stays perfectly green, which is precisely the failure mode the s310 rewrite removed. Only the empty-tree case can tell the two apart, so without this probe the scope lock proves nothing about discovery."
+    },
+    {
+      "name": "S5",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        if old_refs.get(path) == new_token:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_pr_1190_shape_is_red",
+      "expect_claim": "test_pr_1190_shape_is_red|findings.stale == [f\"{_VIEWS_CSS} (still ?v=c43)\"]|#0",
+      "note": "The inherited PLAN-0107 AC-14 case, re-witnessed after the rewrite. The stale comparison stops happening and every changed asset is called bumped, which is the shape PR #1190 shipped. Carried forward deliberately: a rewrite that keeps the tests but loses their RED-ability is the defect this module was written to remove."
+    },
+    {
+      "name": "S6",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            if posixpath.dirname(path) in versioned_dirs:",
+      "new": "            if False:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_an_unversioned_story_asset_is_reported_not_failed",
+      "expect_claim": "test_an_unversioned_story_asset_is_reported_not_failed|findings.unversioned == [_THREE_JS]|#0",
+      "note": "three.module.min.js is a real story asset with no token to bump. The reported-not-failed outcome is what keeps that visible rather than assumed; disabled, the report silently omits it and the run still exits 0."
+    },
+    {
+      "name": "S7",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            if posixpath.dirname(path) in versioned_dirs:",
+      "new": "            if True:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_nested_asset_dirs_stay_silent",
+      "expect_claim": "test_nested_asset_dirs_stay_silent|findings == Findings()|#0",
+      "note": "The positive control an absence assertion is worthless without (CLAUDE.md §8). 'findings == Findings()' is satisfied by a check that reports NOTHING, so the claim that assets/fonts/ stays silent means something only once a mutation that makes it speak has been shown to redden this exact node."
+    },
+    {
+      "name": "S8",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        if path in revisions:",
+      "new": "        if path in ():",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_an_index_html_is_not_itself_a_versioned_asset",
+      "expect_claim": "test_an_index_html_is_not_itself_a_versioned_asset|findings == Findings()|#0",
+      "note": "The story index lives INSIDE the directory it versions, a case the single-pair predecessor never had. Without the exclusion it reports itself as unversioned on every story-page edit — noise attached to the single most common story change there is."
+    },
+    {
+      "name": "S9",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        posixpath.normpath(posixpath.join(index_dir, href)): token",
+      "new": "        posixpath.basename(href): token",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_every_shipped_reference_resolves_to_a_file_that_exists",
+      "expect_claim": "test_every_shipped_reference_resolves_to_a_file_that_exists|missing == []|#0",
+      "note": "The filesystem oracle, witnessed at the right assertion. Under basename keying the two asserts ABOVE it stay green — refs is still non-empty and 27 >= 25 still holds — so the only thing that moves is the on-disk check, which is what rules out 'something unrelated broke'. Chosen for exactly that property."
+    },
+    {
+      "name": "S10",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "    index_dir = posixpath.dirname(index_path)",
+      "new": "    index_dir = STATIC_ROOT",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_the_shipped_story_page_is_in_scope_and_versions_its_three_assets",
+      "expect_claim": "test_the_shipped_story_page_is_in_scope_and_versions_its_three_assets|resolved == { _STORY_CSS, _STORY_DATA_JS, _STORY_JS, }|#0",
+      "note": "Joining against the static root instead of the index's own directory — the plausible wrong fix, since it works for the console and silently misplaces every story asset one directory up. Named separately from S9 because an aggregate count of 28 is satisfied by the console alone and cannot tell whether /story/ is in scope."
+    },
+    {
+      "name": "S11",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        posixpath.normpath(posixpath.join(index_dir, href)): token",
+      "new": "        posixpath.basename(href): token",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_the_two_shipped_surfaces_version_disjoint_assets",
+      "expect_claim": "test_the_two_shipped_surfaces_version_disjoint_assets|console & story == set()|#0",
+      "note": "Positive control for the other empty-set assertion. 'the intersection is empty' is trivially true of two empty sets, so it is evidence only once a mutation that CREATES a real overlap — both pages claiming story.css — has reddened it. This is what licenses check()'s setdefault merge."
+    },
+    {
+      "name": "S12",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            if posixpath.dirname(path) in versioned_dirs:",
+      "new": "            if False:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_an_asset_with_no_version_reference_is_reported_not_failed",
+      "expect_claim": "test_an_asset_with_no_version_reference_is_reported_not_failed|findings.unversioned == [_FAVICON]|#0",
+      "note": "The favicon precedent on the console side. Same mutation as S6, different surface and different claim — one probe credits exactly one claim, so the console and story halves of the reported-not-failed outcome each need their own."
+    },
+    {
+      "name": "S13",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            findings.bumped.append(path)",
+      "new": "            findings.bumped.append(posixpath.basename(path))",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_the_same_console_edit_with_the_bump_is_green",
+      "expect_claim": "test_the_same_console_edit_with_the_bump_is_green|findings.bumped == [_VIEWS_CSS]|#0",
+      "note": "The report must name FULL paths, not filenames — with two surfaces in scope a bare 'story.css' names two different files and the message is ambiguous exactly where the collision lives. The assert above this one (stale == []) stays green under the mutation, so the reddening is attributable."
+    },
+    {
+      "name": "S14",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        if old_refs.get(path) == new_token:",
+      "new": "        if new_refs.get(path) == new_token:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_a_surface_added_in_this_pr_counts_as_all_bumped",
+      "expect_claim": "test_a_surface_added_in_this_pr_counts_as_all_bumped|findings.bumped == [_STORY_JS]|#0",
+      "note": "The comparison reads the new revision against itself, so every asset is trivially 'unchanged' and a brand-new page is reported entirely stale — the gate refusing the very PR that adds a page, which is when it first has anything to say."
+    },
+    {
+      "name": "S15",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            findings.bumped.append(path)",
+      "new": "            findings.bumped.append(posixpath.basename(path))",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_the_same_story_edit_with_the_bump_is_green",
+      "expect_claim": "test_the_same_story_edit_with_the_bump_is_green|findings.bumped == [_STORY_JS]|#0",
+      "note": "S13's control on the story surface — the non-vacuity partner of S1. Without a green here, S1's 'stale == [...]' could be produced by a check that flags every changed story asset regardless of its token, which would be red for the wrong reason and unusable in CI."
+    },
+    {
+      "name": "S16",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "            if posixpath.dirname(path) in versioned_dirs:",
+      "new": "            if True:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_non_asset_changes_are_ignored",
+      "expect_claim": "test_non_asset_changes_are_ignored|findings == Findings()|#0",
+      "note": "Third empty-Findings assertion, third positive control. A Python edit in the same PR gets dragged into the asset verdict — the widened scope's most likely over-reach, and the one that would make the gate noisy enough to be ignored."
+    },
+    {
+      "name": "S17",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "        if old_refs.get(path) == new_token:",
+      "new": "        if new_refs.get(path) == new_token:",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_a_brand_new_asset_counts_as_bumped",
+      "expect_claim": "test_a_brand_new_asset_counts_as_bumped|findings.bumped == [\"services/api/static/assets/view-brand-new.js\"]|#0",
+      "note": "S14's shape for a new ASSET rather than a new page: first token = first bump. Absent from the old revision, present in the new; self-comparison calls it stale and CI would block the commit that introduces a file."
+    },
+    {
+      "name": "S18",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "STATIC_ROOT = \"services/api/static\"",
+      "new": "STATIC_ROOT = \"services/api/statics\"",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_the_static_root_is_where_the_pages_actually_are",
+      "expect_claim": "test_the_static_root_is_where_the_pages_actually_are|(_REPO_ROOT / STATIC_ROOT).is_dir()|#0",
+      "note": "Instrument control (Lesson #0056). A mistyped root discovers nothing, and nothing-found is silent BY NATURE — the walk raises no error, the gate just has no surfaces. main() turns that into an explicit ERROR; this pins the typo itself at the one place a unit test can see it."
+    },
+    {
+      "name": "S19",
+      "subject": "tools/ci/cache_bust_diff_check.py",
+      "old": "_REFERENCE_RE = re.compile(r\"([A-Za-z0-9._/-]+)\\?v=([A-Za-z0-9._-]+)\")",
+      "new": "_REFERENCE_RE = re.compile(r\"([A-Za-z0-9._/-]+)\\?v=([0-9]+)\")",
+      "node_id": "tests/tools/test_cache_bust_diff_check.py::test_every_shipped_reference_resolves_to_a_file_that_exists",
+      "expect_claim": "test_every_shipped_reference_resolves_to_a_file_that_exists|refs|#0",
+      "note": "The token grammar loses the leading letter, so 'c51' stops matching and both shipped pages resolve to nothing. Witnesses the non-vacuity floor: 'every reference resolves to a real file' is vacuously true when there are no references, which is why 'assert refs' sits above the on-disk check and needs its own mutation."
+    }
+  ],
+  "exemptions": {
+    "test_pr_1190_shape_is_red|findings.bumped == []|#0": "Trailing companion of the stale assertion witnessed by S5, in a node where the stale assert runs first. Any mutation that moves `bumped` for this input moves `stale` too, so the run stops at the earlier line and one-mutation-one-assertion cannot credit this one. Its content is not unwitnessed: S13 witnesses that `bumped` is populated with full paths, and S15 the same on the story surface.",
+    "test_pr_1190_shape_is_red|findings.unversioned == []|#0": "Same position, one line further down: two asserts precede it in the node. The unversioned list is independently witnessed by S12 (it must be populated for the favicon) and by S7 (it must NOT be populated for a nested dir), which together pin both directions.",
+    "test_the_same_console_edit_with_the_bump_is_green|findings.stale == []|#0": "Runs before the `bumped` assert S13 witnesses, and states the same fact the pair exists to establish — that a bumped asset is not stale. A mutation emptying `stale` here leaves the node green; a mutation filling it reddens this line but then S13's claim is what the probe would have to declare. Registered rather than double-counted.",
+    "test_s309_story_shape_is_red|findings.bumped == []|#0": "Trailing companion of the s309 claim S1 witnesses. S1's mutation empties both lists, so the stale assert on the line above fails first and the driver correctly refuses to credit two claims from one reddening.",
+    "test_the_same_story_edit_with_the_bump_is_green|findings.stale == []|#0": "The story-surface twin of the console exemption above — precedes the `bumped` assert witnessed by S15 and asserts the same pairing from the other side.",
+    "test_a_story_asset_resolves_against_its_own_page_not_the_console|_CONSOLE_STORY_CSS not in findings.bumped + findings.unversioned|#0": "The collision's reverse direction: the console's story.css must not appear when only the story page's changed. Every mutation that conflates the two files (S2, S9, S11) makes the changed path match NOTHING rather than matching the wrong entry, so this line stays green while the assert above it reddens. INEXPRESSIBLE under one substitution: producing the opposite conflation needs the console's entry injected into a story lookup, which no single old/new pair on this module expresses.",
+    "test_an_asset_with_no_version_reference_is_reported_not_failed|findings.stale == []|#0": "Trailing companion of the favicon claim witnessed by S12. It restates the three-outcome separation — unversioned is not stale — which S6/S12 (must report) and S7/S16 (must not) already pin from both sides.",
+    "test_an_unversioned_story_asset_is_reported_not_failed|findings.stale == []|#0": "The story-surface twin of the line above, in the same trailing position behind the claim S6 witnesses.",
+    "test_a_brand_new_asset_counts_as_bumped|findings.stale == []|#0": "Trailing companion of the claim S17 witnesses; S17's mutation moves the asset from `bumped` to `stale`, so the assert above reddens first.",
+    "test_a_surface_added_in_this_pr_counts_as_all_bumped|findings.stale == []|#0": "Trailing companion of the claim S14 witnesses, same shape as the line above on the new-page rather than new-asset case.",
+    "test_every_shipped_reference_resolves_to_a_file_that_exists|len(resolved) >= 25|#0": "INEXPRESSIBLE, and deliberately registered rather than dropped (CLAUDE.md §8). It is a well-formedness floor on the fixture-free read, and every mutation that pushes the count below 25 also empties at least one page's reference map — which reddens `assert refs` two lines above it first. Witnessing this line alone would need a mutation that drops SOME references while leaving both pages non-empty, which no single old/new substitution on a shared regex expresses. The floor's purpose is served: S19 proves the count can collapse, and S9 proves a wrong count is not silently accepted as correct."
+  }
+}
