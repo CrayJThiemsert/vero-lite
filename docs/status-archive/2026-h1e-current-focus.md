@@ -1265,3 +1265,62 @@ _[The s309 Current-Focus block (3,161 B measured), carved verbatim from `git sho
 > probes)**.
 
 _[The Current-Focus rotation ledger's s309 entry, verbatim:]_ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md) — `2026-h1d-current-focus.md` is CLOSED to appends at **190,011 B** (✎ s295, `was an error`: 189,622 B was its size at s280; s281's append `0dcb78c` closed it at 190,011 B). Window = **309** — ONE. 🔴 **THIS (s309) reconcile rotates ONE block — s306 + s308 (**2,438 B**, under the 4,096 B cap)** to `2026-h1e-current-focus.md`, emitted VERBATIM in the scribe's return; Code carves it from `git show HEAD:docs/STATUS.md` and probes it ABSENT from every `-current-focus` letter before appending. **Why ONE again:** STATUS opened at **60,669 B**, and keeping the s306 + s308 block beside the new s309 block projects past the ≥ 3,000 B headroom margin under R1's 65,536 B ceiling that s303 fixed. Active TODOs (**42,992 B**, 71% of the file) still forces it. **Measured after the edit:** the scribe's first block ran ~3,824 B and left STATUS at **63,148 B** — headroom **2,388 B**, under the ≥ 3,000 B margin — so Code trimmed it to **3,162 B**, closing STATUS at **62,484 B** with **3,052 B** of headroom. Every byte figure here is Code's measurement. ⚠️ **The s308 entry left this ledger with its block**, emitted verbatim with it.]_
+
+
+### Rotated at the s311 reconcile — 2026-09-18
+
+_[CF block (session 310), verbatim:]_
+
+> **Session 310, 2026-09-18 (#1520's merge → #1521's merge) — one PR: #1521
+> closes the story `?v=` CI gap s309 carried as a TODO. The cache-bust check
+> now DISCOVERS its own scope and LOCKS it. main `faf1aa2c`, 0 open PRs.**
+>
+> ✅ **#1521 (`fix/*`) — `tools/ci/cache_bust_diff_check.py` guards every static
+> page, not just the console's.** Its scope was hard-coded to ONE pair
+> (`ASSET_PREFIX = services/api/static/assets/`, `INDEX_PATH =
+> services/api/static/index.html`), so the story page (PLAN-0126) — which ships
+> at `services/api/static/story/` with its own `index.html` — sat entirely
+> outside the gate. That is the gap s309 measured and could not close from
+> inside its own scope. Scope is now **discovered** (every `index.html` under
+> `services/api/static/`) and **locked** against a committed expectation in the
+> test, so a page added later either enters the gate or reddens the lock and
+> cannot quietly do neither. **Cray ruled discover-then-lock** over a plain list
+> of (asset dir, index) pairs: a list fixes `/story/` and leaves the next page
+> to repeat it.
+>
+> References resolve to repo-relative paths through each index's own directory,
+> which is what lets one implementation serve both layouts (the console writes
+> `assets/app.js`, the story page writes bare `story.js`). Load-bearing, not
+> cosmetic: `story.css` exists **twice** — `static/assets/story.css` at `?v=c25`
+> and `static/story/story.css` at `?v=c1` — so a filename key resolves the story
+> page's asset against the console's token. `?v=cNN` is a per-file counter, not
+> a build number, so both values are correct and unrelated.
+>
+> 🔴 **A left-boundary lookbehind drafted against that same collision was
+> measured redundant** — identical output on both shipped indexes and on seven
+> adversarial strings, because greedy leftmost matching already captures the
+> maximal path — and was dropped rather than shipped with a test that could
+> never redden (§8, vacuous oracle). `token_for` went with it as dead code.
+>
+> Evidence: **24 tests** (18 unit + 6 scenario that stub neither side of the
+> seam — each builds a real two-surface repo, commits, edits, commits again and
+> runs the CI command as a subprocess, asserting the process's own exit code);
+> battery `tests/batteries/s310-cache-bust-story-surface.json` →
+> **PROBE-BATTERY: PASS**, **PROBE-COVERAGE: COMPLETE**, **19 of 30** claims
+> witnessed RED, 11 exempted with written reasons, GAPS 0 — including positive
+> controls for all three empty-`Findings` assertions and for discovery itself
+> (a hard-coded list passes the scope lock; only the empty-tree case tells them
+> apart). `ruff`, `ruff format` and `mypy --strict tools/` clean; CI `gate` pass
+> **9m54s** at `d961c5e`. (+862/−88 across 5 files.)
+>
+> 🟢 **The gate proved itself on its own PR.** Merging main into the branch
+> pulled in s309's story v2a, so the merge commit's `HEAD^1..HEAD` diff *was*
+> the story change: the check reported `2 surface(s), 28 versioned reference(s)`
+> and those 3 assets bumped (`c1→c2`, `c1→c2`, `c1→c3`). The old check printed
+> `0 bumped, 0 unversioned, 0 stale` for the same diff.
+>
+> ⚠️ **A harness gap surfaced, not yet fixed:** `status-scribe` cannot write
+> from a worktree. `.claude/hooks/pretooluse_status_scribe_write_deny.py`
+> resolves its allowlist against the **main** repo root, so every absolute path
+> to `docs/STATUS.md` from `.claude/worktrees/<name>/` fails it. This reconcile
+> was authored by the scribe and applied by Code by hand. Raised as a TODO.
