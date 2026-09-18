@@ -82,6 +82,7 @@ class Claim:
     kind: str
     multi: bool
     occurrence: int = 0
+    cardinality: int = 1
 
     @property
     def stable_key(self) -> str:
@@ -92,8 +93,25 @@ class Claim:
         one key, and a coverage report built on it would call the pair covered when only
         the first was ever witnessed — a coverage lie of exactly the kind #0047 is
         about. ``occurrence`` disambiguates repeats within one owner, in source order.
+
+        ``occurrence`` ALONE is also wrong, and for a reason that took until session 310
+        to measure: it is a rank re-derived from the current source, and ranks recycle.
+        With two identical asserts in one owner, deleting the first leaves the survivor
+        at ``#0`` — so the *deleted* claim's key silently addresses it, and the battery
+        goes on crediting a claim nobody declared. No rule over the current source can
+        refuse that, because the fact which would (that the first assert used to exist)
+        is no longer in the source. The same recycling happens to two asserts that
+        differ only past the 160-character ``source`` cut.
+
+        So a repeated claim's key carries its group's SIZE beside its rank. Deleting one
+        member changes the size, every key in that group stops resolving, and
+        ``_validate`` refuses before the first mutation — drift causes re-work, never
+        inheritance. A claim alone in its group keys exactly as it did before, so every
+        address that was never at risk is byte-identical.
         """
-        return f"{self.owner}|{self.source}|#{self.occurrence}"
+        if self.cardinality <= 1:
+            return f"{self.owner}|{self.source}|#{self.occurrence}"
+        return f"{self.owner}|{self.source}|#{self.occurrence}/{self.cardinality}"
 
     def render(self) -> str:
         flag = "  ⚠️ CONJUNCTION — one mutation can witness only one operand" if self.multi else ""
@@ -182,13 +200,20 @@ def enumerate_claims(path: Path) -> list[Claim]:
                 )
 
     ordered = sorted(claims, key=lambda c: (c.module, c.lineno))
+    # Two passes, because a claim's key needs its group's SIZE and that is not known
+    # until every member has been seen. One pass could only ever stamp the rank, which
+    # is the recycling defect `stable_key` documents.
+    totals: dict[tuple[str, str], int] = {}
+    for claim in ordered:
+        pair = (claim.owner, claim.source)
+        totals[pair] = totals.get(pair, 0) + 1
     seen: dict[tuple[str, str], int] = {}
     stamped: list[Claim] = []
     for claim in ordered:
         pair = (claim.owner, claim.source)
         index = seen.get(pair, 0)
         seen[pair] = index + 1
-        stamped.append(replace(claim, occurrence=index))
+        stamped.append(replace(claim, occurrence=index, cardinality=totals[pair]))
     return stamped
 
 

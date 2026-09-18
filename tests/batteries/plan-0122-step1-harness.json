@@ -46,7 +46,7 @@
       "old": "    with urllib.request.urlopen(request, timeout=timeout_s) as response:  # noqa: S310",
       "new": "    with urllib.request.urlopen(request, timeout=None) as response:  # noqa: S310",
       "node_id": "tests/benchmark/test_stop_classifier_harness_parity.py::test_both_transports_time_out_in_the_same_window",
-      "expect_claim": "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#1",
+      "expect_claim": "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#1/2",
       "note": "With no timeout the harness never gives up, so the raises-guard on the HARNESS call is what reddens - measured, not predicted: the timing assertion two lines later is never reached. #1 is the harness call; #0 is production and stays green."
     },
     {
@@ -115,7 +115,7 @@
     "test_harness_timeout_follows_the_production_constant|pre == shipped|#0": "Green by construction under P2b as re-aimed (the probe copies the shipped value, so this conjunct holds). Reddening it needs a mutation returning something other than the shipped number, which is the same defect P2b already witnesses from the other side.",
     "test_harness_timeout_follows_the_production_constant|pre != post|#0": "Co-falsified with : any mutation that stops the harness tracking the constant collapses both, and the driver credits only the assertion that fails first. Present as the anti-vacuity guard - without it, a resolver returning 3.0 unconditionally would satisfy the other two.",
     "test_harness_timeout_follows_the_production_constant|resolve_timeout(12.5) == 12.5|#0": "The explicit-flag path. No probe in this battery touches it because AC-2 is about the DEFAULT following production; a flag that stops working is a separate defect with no bearing on parity.",
-    "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#0": "The production side of the pair. No mutation of the harness can redden it, and mutating production is out of scope for a harness battery.",
+    "test_both_transports_time_out_in_the_same_window|pytest.raises(gave_up)|#0/2": "The production side of the pair. No mutation of the harness can redden it, and mutating production is out of scope for a harness battery.",
     "test_both_transports_time_out_in_the_same_window|1.0 <= prod_t <= 2.5|#0": "Production timing - same reason as above. It is the reference the harness figure is compared against.",
     "test_both_transports_time_out_in_the_same_window|1.0 <= harness_t <= 2.5|#0": "Co-falsified with the harness raises-guard (#1), which P2c witnesses: if the call does not raise, the timing line is never reached. Measured, not assumed - P2c was first declared against THIS claim and the driver reported a MISFIRE naming the earlier line."
   }
