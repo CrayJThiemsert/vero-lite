@@ -60,8 +60,8 @@
     {
       "name": "P2d",
       "subject": "services/api/static/story/index.html",
-      "old": "<script type=\"module\" src=\"story.js?v=c1\"></script>",
-      "new": "<script type=\"module\" src=\"scene.js?v=c1\"></script>",
+      "old": "<script type=\"module\" src=\"story.js?v=c3\"></script>",
+      "new": "<script type=\"module\" src=\"scene.js?v=c3\"></script>",
       "node_id": "tests/api/test_story_page.py::test_story_index_is_served_unprofiled_on_the_published_profile",
       "expect_claim": "test_story_index_is_served_unprofiled_on_the_published_profile|'type=\"module\" src=\"story.js' in response.text|#0",
       "note": "the served page no longer loads story.js as a module; 200 and CSP hold, the module-tag assert reddens"
@@ -168,8 +168,8 @@
     {
       "name": "P5a",
       "subject": "services/api/static/story/story.js",
-      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident ฿30,001'",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้ ฿30,001'",
       "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
       "expect_claim": "test_story_text_carries_no_ruled_out_literal|not found|#0",
       "note": "a band numeral enters a caption; the absence assert (first) reddens"
@@ -177,8 +177,8 @@
     {
       "name": "P5d",
       "subject": "services/api/static/story/story.js",
-      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident 30001'",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้ 30001'",
       "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
       "expect_claim": "test_story_text_carries_no_ruled_out_literal|band_numeral == band_tiers == 1|#0",
       "note": "the bare band numeral leaks into a caption (not a listed literal): the numeral-count assert reddens"
@@ -186,8 +186,8 @@
     {
       "name": "P5e",
       "subject": "services/api/static/story/story.js",
-      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident'",
-      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident AI AI'",
+      "old": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้'",
+      "new": "'ทุกขั้นถูกบันทึกแบบ tamper-evident — ถ้ามีใครแก้ย้อนหลัง ตรวจจับได้ AI AI'",
       "node_id": "tests/api/test_story_page.py::test_story_text_carries_no_ruled_out_literal",
       "expect_claim": "test_story_text_carries_no_ruled_out_literal|ai_tokens <= 1|#0",
       "note": "two AI tokens enter a caption; literals and numeral hold, the R3 count reddens"
@@ -213,8 +213,8 @@
     {
       "name": "P6a",
       "subject": "services/api/static/story/index.html",
-      "old": "<script src=\"story-data.js?v=c1\"></script>",
-      "new": "<script src=\"ghost.js\"></script>\n<script src=\"story-data.js?v=c1\"></script>",
+      "old": "<script src=\"story-data.js?v=c2\"></script>",
+      "new": "<script src=\"ghost.js\"></script>\n<script src=\"story-data.js?v=c2\"></script>",
       "node_id": "tests/api/test_story_page.py::test_every_story_reference_resolves",
       "expect_claim": "test_every_story_reference_resolves|dangling == []|#0",
       "note": "a reference to a file that does not exist; nothing escapes static/"
@@ -231,7 +231,7 @@
     {
       "name": "P6b",
       "subject": "services/api/static/story/index.html",
-      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c1\" />\n",
+      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c2\" />\n",
       "new": "",
       "node_id": "tests/api/test_story_page.py::test_every_story_file_is_referenced_or_exempt",
       "expect_claim": "test_every_story_file_is_referenced_or_exempt|orphans == []|#0",
