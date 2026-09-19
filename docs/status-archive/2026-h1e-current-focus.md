@@ -1324,3 +1324,42 @@ _[CF block (session 310), verbatim:]_
 > resolves its allowlist against the **main** repo root, so every absolute path
 > to `docs/STATUS.md` from `.claude/worktrees/<name>/` fails it. This reconcile
 > was authored by the scribe and applied by Code by hand. Raised as a TODO.
+
+
+> **Session 311, 2026-09-18 (#1521's merge → #1526's merge) — three PRs:
+> PLAN-0128 redrafted because two of its OWN design premises measured FALSE
+> (#1524), then `Accepted` with Step 4 struck (#1526); the `#k/N` cardinality
+> stamp closes a claim-key hazard that was live on 11 committed addresses
+> (#1525). main `4fc89d3f`, 0 open PRs.**
+>
+> 🔴 **#1524 (`docs/*`) — PLAN-0128 §2 redrafted on its own refuted premises.**
+> Tag placement moved from a **line ABOVE the claim** to a **trailing tag on the
+> claim's anchor line**: line-above reproduces H1 *inside* the tag design —
+> deleting only the assert line leaves the comment sitting above the sibling,
+> which *is* a claim, so the orphan refusal never fires. And the claim that a
+> **transplanted tag is caught as `MISFIRE` was WITHDRAWN** — nothing catches it.
+> §2.5 became append-in-place; AC-1/AC-4/AC-9 re-specified; grounding rows
+> G27–G32 added.
+>
+> ✅ **#1525 (`fix/*`) — `Claim.stable_key` now stamps `#k/N`, the SIZE of the
+> `(owner, source)` group, beside the rank — but only when the group holds more
+> than one claim,** so a lone claim's key stays byte-identical and nothing
+> re-addresses for free. The hazard was **live on 11 committed addresses**:
+> `occurrence` is a rank re-derived from current source, so deleting the first
+> of two twins silently left the *deleted* claim's key addressing the survivor.
+> 11 keys rewritten across 2 battery files; new
+> `tests/tools/test_probe_coverage_cardinality.py` +
+> `tests/batteries/s311-claim-key-cardinality.json`. Evidence: **5381 passed /
+> 0 failed**; battery `PROBE-BATTERY: PASS`, 4 claims, 4 witnessed RED, GAPS 0;
+> battery lint `51 batteries/644 probes` → `52/648` — and it read **`BROKEN
+> (2 of 51)`** while the code was new and the keys were still old, **`OK`** once
+> they were rewritten, so cause and repair were witnessed together.
+>
+> ✅ **#1526 (`docs/*`) — PLAN-0128 is `Accepted`; Step 4 and AC-11 are
+> STRUCK,** so step order is now 1 → 2 → 3 → 5 and **Step 1
+> (`feat/probe-claim-tags`) is unblocked and unstarted.** SD-a (i) was Cray's
+> typed pick; **SD-b…SD-f were decided by Code under Cray's typed delegation and
+> confirmed by Cray** — not five typed picks. SD-b **(i)** additive coexistence,
+> migrate on rot (this DEPARTS from the drafter's bulk-migration
+> recommendation); SD-c **(i)** `CLAUDE.md` §8 unchanged; SD-d **(i)** no ADR;
+> SD-e **(i)** `<battery-stem>/<probe-name>`; SD-f **(i)** coexistence.
