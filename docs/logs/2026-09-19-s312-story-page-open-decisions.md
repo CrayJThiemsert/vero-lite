@@ -53,7 +53,7 @@ preserves has no other tracked home. That tension is recorded here rather than p
 | Step 4 — deploy | ⏳ **Cray runs the ship script**, per-phase typed go |
 | Step 5 — story v3 (primer, exec cut; G2–G5) | ⏳ waits on the live-structuring discussion |
 | Last — G7 (rehome R9) | ⏳ Cray's call; blocks nothing |
-| `.tag-synth` clean-mode position | ⏳ Cray has seen the screenshot, has not ruled |
+| `.tag-synth` clean-mode position | ✅ **RULED s312** — move it up under `body.clean`; shipped in PR #1529 |
 
 Separately closed and **not** to be reopened: the story `?v=` CI gap, closed by #1521 (s310) —
 `tools/ci/cache_bust_diff_check.py` now discovers every `index.html` under
@@ -233,12 +233,25 @@ tracked file carries the question". Verified against the code at s312.*
 than sitting at it. The clean toggle is real and reachable two ways:
 `story.js:810` (`btn-clean`) and `story.js:818` (keyboard `h`).
 
-Moving the tag up under `body.clean` is a **one-line CSS change**. Cray has seen the screenshot
-and **has not ruled**.
+✅ **RULED by Cray (typed, s312, 2026-09-19): move it up under `body.clean`.** Shipped in PR #1529
+as `body.clean .tag-synth{top:var(--gutter)}` — one scoped rule, normal mode untouched.
 
-⚠️ **Sequencing:** this affects the **first filmed frame**. Ruling it *before* the Step 4 deploy
-costs nothing; ruling it after means a second deploy run, which is the one step Code cannot
-perform.
+⚠️ **"A one-line CSS change" was true of the CSS and false of the change.** Bumping
+`story.css?v=c2 → c3` rots two *committed* battery anchors that quote the link tag verbatim —
+`P6b` in `plan-0126-story-page.json` and `P8-set` in `plan-0126-story-scenario.json` — the s309
+anchor-rot class exactly. The real change is five files: the CSS, the `?v=` bump, two spec-table
+literals in `plan_0126_story_generator.py`, and the two regenerated batteries. **Never hand-edit
+the JSON; regenerate.** Measured either side: lint `BROKEN (2 of 52)` naming exactly those two
+probes, then `OK (52 batteries, 648 probes)` — counts unchanged, so nothing was lost or invented.
+
+Verified in the browser, because no test pins a layout rule and a test reading `story.css` back to
+itself would be vacuous: `body.clean` absent → computed `top: 64px`; present → `16px`; delta 48px;
+`.chrome` `flex` → `none`; no inline `top` at any point. Exercised through both entry points and
+reversed cleanly.
+
+*Sequencing, as recorded before the ruling:* this affects the **first filmed frame**, so ruling it
+before the Step 4 deploy cost nothing, where ruling it after would have meant a second deploy run —
+the one step Code cannot perform.
 
 ---
 

@@ -87,6 +87,9 @@ button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .hint kbd{font:inherit;color:var(--tx-2);border:1px solid var(--line);border-radius:3px;padding:0 4px}
 
 body.clean .chrome,body.clean .sources,body.clean .hint{display:none}
+/* The disclosure stays visible in ถ่ายทำ/clean mode by design (index.html). Its 64px top
+   clears the chrome; with the chrome hidden that gap is empty, so sit it on the gutter. */
+body.clean .tag-synth{top:var(--gutter)}
 body.nocap .caption{display:none}
 @media (max-width:720px){
   .act-btn .nm{display:none}

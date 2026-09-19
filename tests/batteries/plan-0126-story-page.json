@@ -231,7 +231,7 @@
     {
       "name": "P6b",
       "subject": "services/api/static/story/index.html",
-      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c2\" />\n",
+      "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c3\" />\n",
       "new": "",
       "node_id": "tests/api/test_story_page.py::test_every_story_file_is_referenced_or_exempt",
       "expect_claim": "test_every_story_file_is_referenced_or_exempt|orphans == []|#0",
