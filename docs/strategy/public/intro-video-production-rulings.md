@@ -48,18 +48,21 @@ which is the standing convention that failure produced. Read that for the **why*
 
 ## 2. Cray's typed rulings
 
-Eight video rulings (R1–R8) across three dates, plus six rulings for the story-mode
-explainer (L1–L6, §2.3) typed together on a fourth. Each row names where it was typed, because the count
+Nine video rulings (R1–R9) across four dates, plus six rulings for the story-mode
+explainer (L1–L6, §2.3) typed together on a fifth. Each row names where it was typed, because the count
 has been mis-carried before: the four rulings of **2026-08-12** sit in the storyboard's
 own ruling table, while the **2026-08-10** ruling was recorded inline in the beat it
 governs. Every summary written afterwards inherited the table and dropped the fifth.
+**R9 was mis-carried worse than any of them** — it was tracked in no repository file at
+all between s241 and s312, while this file went on reasoning from the bound R9 had
+voided. See §7.
 
 ### 2.1 Content and framing
 
 | # | Ruling | Typed | Consequence folded in |
 |---|---|---|---|
 | R1 | **Beat 2.5 carries the vendor-documentation sentence ONLY — no numbers on camera.** Beat 2.5 cites the model vendor's own documentation that determinism is not guaranteed, and cites nothing else. Reserve evidence stays off-camera for the live demo if challenged | 2026-08-10 | Enforced by the storyboard's own risk register, whose failure condition reads *"a number enters beat 2.5 or 4"* |
-| R2 | **~140 s runtime, with objections IN the video** | 2026-08-12 | Creates **beat 4.5**. ⚠️ Ruled **against** the drafted recommendation (~110 s, objections travelling in the attached one-pager). The dissent is recorded in the storyboard and **closed** — do not re-litigate |
+| R2 | **~140 s runtime, with objections IN the video** | 2026-08-12 | Creates **beat 4.5**. ⚠️ Ruled **against** the drafted recommendation (~110 s, objections travelling in the attached one-pager). The dissent is recorded in the storyboard and **closed** — do not re-litigate. 🔴 **The runtime half is RELAXED by R9 (2026-08-20): there is no duration bound.** The objections-in-the-video half stands unchanged, and beat 4.5 with it |
 | R3 | **"Barely say AI"** | 2026-08-12 | Beat 1 dismisses it once; beat 2.5 pivots |
 | R4 | **Beat 4 gains the Verify-chain shot (Tab H)** | 2026-08-12 | Originally "4 shots, not 3". ⚠️ **The shot count is superseded — see §4.** The ruling's intent (the Verify chain must appear on camera) stands unchanged |
 | R5 | **Founder on camera for BOTH beats 1 and 5** | 2026-08-12 | Two camera setups |
@@ -71,12 +74,13 @@ governs. Every summary written afterwards inherited the table and dropped the fi
 | R6 | **Option (A): shoot beat 4 on the PUBLISHED profile.** Tab G is dropped from the video | 2026-08-18 | The beat-4 remap in §4. Tab G is absent from the published profile **by ruling**, not by omission |
 | R7 | **The CTA stays *"reply to this email and I'll send you the link + access code"*** — chosen deliberately, because it demonstrates that access control is handled rather than hiding the Access gate | 2026-08-18 | 🔴 **No demo URL may appear on screen anywhere in the clip.** A viewer who reads a URL off the video hits the Access wall before ever talking to us — which inverts the CTA |
 | R8 | **Drop the ฿15,000 contrast from beat 4** — option (a) of three, ruled after the remap was measured | 2026-08-18 | The ladder is now **declared** rather than demonstrated. See §4.1 for what was lost, what carries it instead, and why (b) was rejected as dishonest |
+| R9 | **The clip is no longer bound to a runtime — R9 relaxes R2.** Cray's reason, typed: *the content has to fit before the clock does.* Two halves, both binding: (i) ~140 s is **not** a target, and the per-beat time ranges in the storyboard are **descriptive pacing estimates**; (ii) 🔴 **nothing on camera may state a runtime** — beat 1 carries none | 2026-08-20 | Amends **R2**'s runtime half only. ⚠️ Part (ii) is an **active filming constraint**, not merely a relaxation: a stated duration is a reshoot. Every "R2's 140 s" argument elsewhere in this file is void — see the ⚠️ notes in §4.1 and §5 |
 
 ### 2.3 The story-mode explainer (typed 2026-09-15)
 
 A ~2-minute animated 3D explainer of the fleet's governed repair flow. It opens the video
 and a live demo; its build is PLAN-0126. Numbered L1–L6, as in that PLAN, so they are
-never confused with R1–R8 above.
+never confused with R1–R9 above.
 
 | # | Ruling | Typed | Consequence folded in |
 |---|---|---|---|
@@ -162,7 +166,7 @@ who ruled **(a) — drop it**:
 
 | | Option | Outcome |
 |---|---|---|
-| ✅ **(a)** | Drop the contrast; let the persona role lists carry the ladder | **RULED.** Buys back runtime R2 is short of |
+| ✅ **(a)** | Drop the contrast; let the persona role lists carry the ladder | **RULED.** Buys back runtime R2 is short of. ⚠️ *That rationale is void since R9 (2026-08-20) — there is no runtime to be short of. The ruling stands on its own grounds: (b) was rejected as dishonest, and that is unaffected* |
 | **(b)** | Assert it in the VO over Tab A's anomaly rings | **Rejected — dishonest.** The frame shows no tier, so the VO would claim what the screen does not. Additionally false in the picture: Tab A shows **three** anomalies, and two of the three exceed the band floor |
 | **(c)** | Build it — surface the routed tier per anomaly | **Rejected for the shoot**, not forever. A code change, not a filming decision |
 
@@ -192,6 +196,12 @@ Nothing below is decided. They are recorded so they are not rediscovered.
    narration-rate benchmark exists. R2's 140 s leaves **less** slack than the 110 s that
    was drafted, so this is the largest unknown in the plan — it may force the 7-beat
    structure back to 6.
+   ⚠️ **Corrected at session 312 — the slack argument is void.** R9 (2026-08-20) removed
+   the duration bound, so there is no budget to run short of and no length pressure on the
+   beat count. What survives is the **measurement** gap: the VO still has never been
+   stopwatched, and every storyboard runtime is still an estimate. That matters now for
+   *pacing and for planning the shoot*, not for fitting a target. **R9 part (ii) also
+   applies here:** whatever the VO measures, it may not be said on camera.
 2. **`Advisory proposal (stubbed)` renders three times** on Tab H's gate panel, and
    *(stubbed)* reads as unfinished on camera. ⚠️ **Corrected at session 239 — this is not
    a duplicate render.** The gate states *"3 candidates reached this gate; the reasons
@@ -207,11 +217,20 @@ Nothing below is decided. They are recorded so they are not rediscovered.
    that database has accumulated runs from every vertical since bring-up, while each
    published system has its own. **Crop the left column, or re-measure on the published
    host before rolling. Do not film the number as measured locally.**
-5. **The total runtime may grow with the explainer — not ruled.** L2 accepts a longer
-   video and defers the question. The explainer's own clock reads about 1:56 before any
-   founder beat. R2's ~140 s was ruled before the explainer existed, and R2 itself is not
-   reopened by this entry. It records only that the two now have to be reconciled by a
-   later ruling.
+5. ~~**The total runtime may grow with the explainer — not ruled.**~~ **RESOLVED at session
+   312 — it was already ruled, and this entry was written without that fact.** L2 accepts a
+   longer video and defers the question; the explainer's own clock reads about 1:56 before
+   any founder beat. The entry then said R2 *"is not reopened by this entry"* and that the
+   two *"have to be reconciled by a later ruling"*.
+   🔴 **That later ruling already existed when this was written.** **R9 (2026-08-20)**
+   relaxed R2's duration bound — twenty-six days *before* L2 (2026-09-15) and before this
+   entry. There is no conflict to reconcile: a longer video is simply allowed, so L2 defers
+   nothing. **Why this was invisible:** R9 was tracked nowhere at the time (see §7), so this
+   file could only reason from the bound R9 had already voided.
+   ⚠️ **What is genuinely still open** is narrower, and stays open: how long the explainer
+   should run *for the viewer* — a pacing and retention judgement, not a budget one — and
+   how it sits against the founder beats. **R9 part (ii) binds the answer either way: the
+   figure may not be spoken on camera.**
 
 ---
 
@@ -242,6 +261,7 @@ Cray go per occasion** (`CLAUDE.md` §8).
 | R2–R5 | 220 (typed 2026-08-12) | storyboard v2 ruling table |
 | R6, R7 | 237 (typed 2026-08-18) | session-237 handoff §5.3 |
 | R8 | 239 (typed 2026-08-18) | **this file** — ruled in-session once §4.1's loss was measured; recorded here first, not rehomed |
+| **R9** | **241 (typed 2026-08-20)** | 🔴 **Tracked NOWHERE for 71 sessions — rehomed here at s312.** It survived only in the gitignored storyboard (`docs/strategy/private/2026-08-10-intro-video-STORYBOARD-v2.md`: frontmatter + the *"REWRITTEN at session 241"* note, 11 sites). #1261 (s247) reverted the uncommitted edit that would have recorded it, and **Cray ruled that acceptable at the time (typed, s247)** — recorded, not hidden, at `docs/status-archive/2026-h1d-current-focus.md`. **Reopened and rehomed on Cray's typed go (s312)**, because this file was reasoning from a bound R9 had already voided (§4.1, §5 items 1 and 5) and a tracked PLAN needs a citable R9 |
 | §3 filming constraints | 220, re-confirmed 237 | storyboard v2 (beats 2.5 and 4) + session-237 handoff §6.1 |
 | §4 remap | 237, **geometry re-measured 239** | session-237 handoff §6.1; re-taken on `oct-demo-published-fleet` at 1280×720 |
 | §4.1 the lost contrast | **239** | measured this session — no prior artifact records it |

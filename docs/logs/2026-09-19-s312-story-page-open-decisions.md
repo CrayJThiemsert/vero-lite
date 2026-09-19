@@ -52,7 +52,7 @@ preserves has no other tracked home. That tension is recorded here rather than p
 | Step 3 — sole-source 4th case (G1) | ⏳ **blocked on Cray** (types the L5 amendment + the case's position) |
 | Step 4 — deploy | ⏳ **Cray runs the ship script**, per-phase typed go |
 | Step 5 — story v3 (primer, exec cut; G2–G5) | ⏳ waits on the live-structuring discussion |
-| Last — G7 (rehome R9) | ⏳ Cray's call; blocks nothing |
+| Last — G7 (rehome R9) | ✅ **RULED s312 — DONE**; R9 rehomed to `docs/strategy/public/intro-video-production-rulings.md` §2.2 + §7 |
 | `.tag-synth` clean-mode position | ✅ **RULED s312** — move it up under `body.clean`; shipped in PR #1529 |
 
 Separately closed and **not** to be reopened: the story `?v=` CI gap, closed by #1521 (s310) —
@@ -214,11 +214,34 @@ invalidates one of them. Sequencing is Cray's call; it is recorded here so it is
 - ⚠️ A pre-Act-0 scene re-times ≈25 absolute timestamps plus the `[0-6]` keys (`story.js:805`)
   and the `index.html:30` hint.
 
-### Last — G7 (rehome R9) ⏳ OPEN
+### Last — G7 (rehome R9) ✅ RULED s312 — DONE
 
 A **reopening** of s247's "Cray ruled it acceptable". New info: the tracked rulings file reasons
-from the void 140 s bound, and a tracked PLAN needs a citable R9. **Cray's call; it blocks
-nothing on the page.**
+from the void 140 s bound, and a tracked PLAN needs a citable R9.
+
+✅ **Cray ruled (typed, s312, 2026-09-19): rehome it.** R9 now lives at
+`docs/strategy/public/intro-video-production-rulings.md` §2.2, with its provenance in §7.
+
+**What R9 actually says** — and it is more than the one-line summary this plan carried. Cray,
+typed 2026-08-20 (s241), reason given as *"the content has to fit before the clock does"*:
+
+1. the clip is **no longer bound to a runtime** — ~140 s is not a target, and the storyboard's
+   per-beat times are **descriptive pacing estimates**;
+2. 🔴 **nothing on camera may state a runtime.** This half is an **active filming constraint**,
+   not a relaxation — a stated duration is a reshoot — and it was the part at risk of being
+   lost entirely.
+
+**What the gap had already cost, measured s312.** R9 was tracked in **no** repository file
+between s241 and s312, so the rulings file went on reasoning from a bound Cray had voided, in
+three places — §4.1's "buys back runtime R2 is short of", §5 item 1's slack argument, and §5
+item 5, which said the explainer-vs-runtime conflict *"have to be reconciled by a later
+ruling"* when **that ruling already existed and predated the entry by twenty-six days**. All
+three are now corrected in place with markers, per that file's own amendment convention; no
+ruling text was rewritten. The inventory line and the L-series disambiguation, which both
+counted "R1–R8", are corrected too.
+
+⚠️ R9 remains **gitignored at its origin** (the storyboard, 11 sites). The rehome copies the
+ruling into a tracked file; it does not move the storyboard.
 
 ---
 
