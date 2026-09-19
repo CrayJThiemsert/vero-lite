@@ -500,7 +500,7 @@ PAGE_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P6b",
         subject=S + "index.html",
-        old='  <link rel="stylesheet" href="story.css?v=c2" />\n',
+        old='  <link rel="stylesheet" href="story.css?v=c3" />\n',
         new="",
         test="test_every_story_file_is_referenced_or_exempt",
         prefix="orphans == []",
@@ -938,7 +938,7 @@ SCEN_PROBES: tuple[Spec, ...] = (
     Spec(
         name="P8-set",
         subject=S + "index.html",
-        old='  <link rel="stylesheet" href="story.css?v=c2" />\n',
+        old='  <link rel="stylesheet" href="story.css?v=c3" />\n',
         new="",
         test=_VISITOR,
         prefix="{",
