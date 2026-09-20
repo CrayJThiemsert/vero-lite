@@ -17,28 +17,36 @@ Run one with:
 python -m tools.probe_battery run --battery tests/batteries/<file>.json
 ```
 
-## Generated batteries: edit the generator, never the JSON
+## The story batteries are addressed by claim tags
 
-`plan-0126-story-{page,drift,scenario}.json` are **output** of
-[`plan_0126_story_generator.py`](plan_0126_story_generator.py), which resolves every
-`expect_claim` from `tools.probe_coverage.enumerate_claims` instead of letting anyone type
-it. Any story change that moves a probe's anchor (a `story.js?v=` bump, for example) goes
-through the generator's specs:
+`plan-0126-story-{page,drift,scenario}.json` address every claim by a **tag** — a
+trailing `# claim: <id>` the author declares on the claim's anchor line — so an
+`expect_claim` reads `@plan-0126-story-page/P1a` rather than the assertion's text. A tag
+survives any edit that does not delete the statement, which is what makes the address
+stable; the full grammar and the driver's refusals are in
+[`tools/probe_battery/README.md`](../../tools/probe_battery/README.md).
+
+To migrate a battery that still uses text keys, or to repair one whose text key has
+rotted, run the tool rather than typing a key:
 
 ```bash
-python -m tests.batteries.plan_0126_story_generator --check   # VERDICT: IN-SYNC | DRIFT
-python -m tests.batteries.plan_0126_story_generator           # regenerate all three
+python -m tools.probe_battery tag tests/batteries/<file>.json --dry-run  # measure first
+python -m tools.probe_battery tag tests/batteries/<file>.json            # then write
 ```
 
-`tests/api/test_story_battery_generator.py` fails CI when the generator and the committed
-JSON disagree, in either direction. Its own witnesses are in
-`s309-story-battery-generator.json`.
+Add `--reflow` when the tool reports an append that would exceed the project's
+`line-length`: it writes the tag and lets `ruff format` explode the statement, then
+re-verifies every tag. **Do not explode the statements by hand first** — that rewrites
+the source text the battery's keys are derived from, and the run then refuses every one
+of them as an unaddressable key.
 
-**Why it is tracked (s309).** Until then the generator lived outside git. The copy that
-STATUS named as the only one was six probes behind the committed page battery (35 against
-41), and running it would have silently deleted the AC-11 and AC-3 witnesses. The current
-copy survived only in a session scratchpad. A tracked file with no guard would reopen the
-same gap the first time somebody edited one side.
+**Why there is no longer a generator (s309 → PLAN-0128 Step 3).** These three batteries
+used to be *output* of a tracked `plan_0126_story_generator.py`, guarded by
+`tests/api/test_story_battery_generator.py` and witnessed by
+`s309-story-battery-generator.json`. The generator existed because a hand-typed
+`expect_claim` rots silently — the problem tags now solve at the source. All three files
+were retired together in PLAN-0128 Step 3: the guard imported the generator and the s309
+battery's every subject *was* the generator, so none could outlive the others.
 
 ## What is here
 

@@ -133,7 +133,10 @@ def _cmd_tag(args: argparse.Namespace) -> int:
     quotes.
     """
     code, report = tag_battery(
-        Path(args.battery), Path(args.project_root).resolve(), dry_run=args.dry_run
+        Path(args.battery),
+        Path(args.project_root).resolve(),
+        dry_run=args.dry_run,
+        reflow=args.reflow,
     )
     print(report, file=sys.stderr if code else sys.stdout)
     return code
@@ -195,6 +198,16 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "compute the plan and print it — including `overlong=<n> of addressed=<n>`, "
             "PLAN-0128 SD-e's measurement — without writing anything"
+        ),
+    )
+    tag_parser.add_argument(
+        "--reflow",
+        action="store_true",
+        help=(
+            "when an append would exceed the project's line-length, write it anyway and "
+            "let `ruff format` explode the statement, instead of refusing. Requires the "
+            "touched modules to be format-clean first; re-verifies every tag afterwards "
+            "and restores on any failure"
         ),
     )
     tag_parser.set_defaults(func=_cmd_tag)
