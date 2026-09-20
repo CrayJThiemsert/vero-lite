@@ -48,8 +48,9 @@ which is the standing convention that failure produced. Read that for the **why*
 
 ## 2. Cray's typed rulings
 
-Nine video rulings (R1–R9) across four dates, plus six rulings for the story-mode
-explainer (L1–L6, §2.3) typed together on a fifth. Each row names where it was typed, because the count
+Nine video rulings (R1–R9) across four dates, plus **seven** rulings for the story-mode
+explainer (**L1–L7**, §2.3): L1–L6 typed together on a fifth date, and **L7 typed separately on
+2026-09-20**. Each row names where it was typed, because the count
 has been mis-carried before: the four rulings of **2026-08-12** sit in the storyboard's
 own ruling table, while the **2026-08-10** ruling was recorded inline in the beat it
 governs. Every summary written afterwards inherited the table and dropped the fifth.
@@ -76,11 +77,13 @@ voided. See §7.
 | R8 | **Drop the ฿15,000 contrast from beat 4** — option (a) of three, ruled after the remap was measured | 2026-08-18 | The ladder is now **declared** rather than demonstrated. See §4.1 for what was lost, what carries it instead, and why (b) was rejected as dishonest |
 | R9 | **The clip is no longer bound to a runtime — R9 relaxes R2.** Cray's reason, typed: *the content has to fit before the clock does.* Two halves, both binding: (i) ~140 s is **not** a target, and the per-beat time ranges in the storyboard are **descriptive pacing estimates**; (ii) 🔴 **nothing on camera may state a runtime** — beat 1 carries none | 2026-08-20 | Amends **R2**'s runtime half only. ⚠️ Part (ii) is an **active filming constraint**, not merely a relaxation: a stated duration is a reshoot. Every "R2's 140 s" argument elsewhere in this file is void — see the ⚠️ notes in §4.1 and §5 |
 
-### 2.3 The story-mode explainer (typed 2026-09-15)
+### 2.3 The story-mode explainer (L1–L6 typed 2026-09-15; L7 typed 2026-09-20)
 
 A ~2-minute animated 3D explainer of the fleet's governed repair flow. It opens the video
-and a live demo; its build is PLAN-0126. Numbered L1–L6, as in that PLAN, so they are
-never confused with R1–R9 above.
+and a live demo; its build is PLAN-0126. Numbered L1–L7, as in that PLAN, so they are
+never confused with R1–R9 above. ⚠️ **L1–L6 were typed in one batch; L7 was typed five days
+later** in a different session and is **not** part of that batch — the heading carries both
+dates so a later summary cannot flatten them into one.
 
 | # | Ruling | Typed | Consequence folded in |
 |---|---|---|---|
@@ -90,6 +93,7 @@ never confused with R1–R9 above.
 | L4 | **Two stages:** a private Artifact prototype first, then the in-app page, its drift guard and one deploy | 2026-09-15 | Stage 1 passed Cray's first look for appearance and pacing |
 | L5 | **Act 4 runs three cases:** truck-01 ฿48,000 with one vendor (illustrative; stopped at the quote gate), truck-01 ฿48,000 with three vendors (routes to the owner), and truck-03 ฿15,000 (routes to the fleet manager) | 2026-09-15 | The ฿15,000 contrast returns inside the explainer — see the dated note under §4.1. R8 is not reversed for the Tab H shot |
 | L6 | **Never delete or prune worktrees without Cray's command** | 2026-09-15 | A working rule typed in the same batch. It binds sessions, not the video; it is recorded here only so the batch is complete |
+| L7 | **The phrase "คู่ค้าต้นแบบ" — and any on-screen statement that vero-lite has no live customer yet — does not appear on screen.** Ruled after the alternative was argued: that saying it first is better than being found out. Cray ruled no, and ruled that it be locked here so the question stops returning | 2026-09-20 | Enforced by the §3 constraint row. **This is a constraint on the SCREEN, not on what is said in a conversation** — the commercial status may be stated freely when talking to a person. Two supports: (i) `services/api/static/story/index.html:14` already carries `ข้อมูลสาธิต (synthetic) — กลไกจริง`, so **data** honesty is disclosed and L7 is about a different claim — **commercial status**; (ii) it is R9's shape — a fact stated on camera that **expires** is a reshoot, and this one expires on the day the first design partner signs, which is the day the clip is most wanted |
 
 ---
 
@@ -108,6 +112,7 @@ broken up by emphasis markers is a rule the next grep will miss.
 | Say tamper-evident, never immutable | The audit chain detects retroactive edits; it does not prevent them. ✅ Confirmed at session 237: the live UI says `tamper-evident` itself, so where the two disagree, the **marketing artifact is the one that is wrong**, not the product |
 | Say "เส้นทางที่ถูกกำกับ", never "vero-lite ไม่ให้โมเดลตัดสินอะไรเลย" | Overclaims. The legacy reactive path **does** execute a model-suggested handler — behind a human gate. The honest claim is that the model never holds the authority, not that it never acts |
 | No benchmark numbers anywhere | The 12/12 anti-hallucination result is real, but it is 12 questions over an 11-row synthetic set. On camera it would read as a product benchmark. This is R1's enforcement, generalised |
+| Never say คู่ค้าต้นแบบ on screen, and never state on screen that there is no live customer yet | L7's enforcement. The page already discloses that the data is synthetic; the commercial status is a separate claim, it expires the day a design partner signs, and a fact on camera that expires is a reshoot. Saying it to a person in conversation is unaffected |
 
 ---
 
@@ -268,6 +273,7 @@ Cray go per occasion** (`CLAUDE.md` §8).
 | §5 open items | 220 (item 1), 237 (items 2–3), **239 (item 4 + item 2's correction)**, the story-visualizer session (item 5) | session-220 handoff §6, session-237 handoff §5.4, session-239 measurement; item 5 from PLAN-0126 L2 |
 | L1–L6 (§2.3) | the story-visualizer Code session, unnumbered (typed 2026-09-15; the I+H link gate confirmed the same day) | PLAN-0126 §1 — recorded there first and carried here by PLAN-0126 Step 10 (SD-6 = a) |
 | §4.1 dated note | same session (typed 2026-09-15, L5) | PLAN-0126 L5 |
+| **L7** (§2.3) + its §3 constraint row | **313 (typed 2026-09-20)** | **this file — recorded here on the day it was typed, not rehomed.** It was ruled as `D-E` in `docs/logs/2026-09-19-s312-story-page-open-decisions.md`, where the question had been open since s306, and Cray ruled in the same breath that it be **locked here** rather than left in a log. A `git grep` for the phrase across this file and that log, run before the ruling, returned only the open D-E row itself — so L7 decides a genuinely open question and supersedes nothing |
 
 All sources except this file are gitignored. Rulings were transcribed from the
 originating artifact rather than from the most recent summary of it — the summaries were
