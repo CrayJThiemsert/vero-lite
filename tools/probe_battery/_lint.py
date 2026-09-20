@@ -41,7 +41,7 @@ from tools.probe_battery._battery import (
     _overlaps,
     _validate,
 )
-from tools.probe_coverage import Claim
+from tools.probe_coverage import Claim, ClaimTagError
 
 
 @dataclass(frozen=True)
@@ -89,6 +89,14 @@ def _claim_findings(battery: Battery, path: Path) -> list[Finding]:
         _validate(battery, index)
     except BatteryDefinitionError as exc:
         findings.append(Finding(path, "", f"claims: {exc}"))
+    except ClaimTagError as exc:
+        # A tag this repo refuses (duplicate id, malformed id, unattached / interior
+        # placement). It must arrive as a Finding, not a traceback: this hook is
+        # `always_run`, so a raise here would take down the lint for every OTHER battery
+        # in the same commit — the `:204-213` dogfooding lesson, applied to a third
+        # exception class. The commit that strands a tag is the commit that hears about
+        # it.
+        findings.append(Finding(path, "", f"claim tag: {exc}"))
     except (OSError, SyntaxError) as exc:
         findings.append(Finding(path, "", f"claim source unparseable: {exc}"))
 

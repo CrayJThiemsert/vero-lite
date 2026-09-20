@@ -103,16 +103,22 @@ def _cmd_keys(args: argparse.Namespace) -> int:
     only other listing path, ``python -m tools.probe_coverage``, prints the line-numbered
     ``claim_id``. Making a battery author derive one form from the other by hand is how
     s253 ended up hand-rolling its own key beside the one it had imported.
+
+    A claim declaring a trailing ``# claim: <id>`` prints as ``@<id>`` and is marked
+    ``(tagged)``, so the listing shows at a glance which addresses survive an edit to the
+    assertion's own text and which are still derived from it.
     """
     total = 0
     for raw in args.paths:
         path = Path(raw)
         claims = enumerate_claims(path)
         total += len(claims)
-        print(f"--- {path} ({len(claims)} claims) ---")
+        tagged = sum(1 for c in claims if c.tag is not None)
+        print(f"--- {path} ({len(claims)} claims, {tagged} tagged) ---")
         for claim in claims:
             flag = "  ⚠️ CONJUNCTION" if claim.multi else ""
-            print(f"  {claim.stable_key}")
+            mark = "  (tagged)" if claim.tag is not None else ""
+            print(f"  {claim.stable_key}{mark}")
             print(f"      L{claim.lineno}  [{claim.kind}]  {claim.source}{flag}")
     print(f"\ntotal claims: {total}")
     return 0

@@ -27,7 +27,7 @@ Each refusal traces to a measured s253 defect.
 |---|---|---|
 | 1 | Keyed on `returncode == 0`, output discarded — a crash counted as a witnessed RED | Outcome comes from pytest's junit **failure record**, never an exit code |
 | 2 | One reddened test marked **all** its claims witnessed | A `WITNESSED` probe credits **exactly one** claim — the one it pre-declared |
-| 3 | Hand-rolled `owner::source` keys while `Claim.stable_key` sat unused on the imported object | Claims are addressed **only** by `stable_key`; there is no alternate keying path |
+| 3 | Hand-rolled `owner::source` keys while `Claim.stable_key` sat unused on the imported object | Claims are addressed **only** by `stable_key` — the `@<id>` tag when one is declared, the text key otherwise. **One claim, one key**, and a tagged claim is addressable **only** by its tag. There is no alternate keying path: `expect_claim` is the one field, the claim index the one lookup, and `Probe.from_json` refuses the reference-shaped fields (`prefix`, `ref`, `claim_ref`, `owner`, `source`) a second form would need |
 | 4 | A self-check that intersected exemptions with an already-exemption-filtered set — empty by construction | The overlap check reads the **pre-filter declared** set, so it can actually be non-empty |
 
 It is an **instrument, not a gate** (ADR-0038 D2-C1 refused a mechanical gate). It automates
@@ -73,10 +73,68 @@ python -m tools.probe_battery keys tests/services/test_thing.py
 |---|---|
 | `claim_sources` | modules whose claims form the coverage **denominator** |
 | `old` / `new` | the edit, applied to `subject`. `old` must occur **exactly once** |
-| `node_id` | the pytest node the probe runs |
-| `expect_claim` | the one `stable_key` predicted to redden — a **pre-committed read** |
+| `node_id` | the pytest node the probe runs. A parametrised test can be scoped to one case (`…::test_x[case-id]`) — a mutation that reddens every parametrisation has a blast radius wider than one assertion, which is refused |
+| `expect_claim` | the one `stable_key` predicted to redden — a **pre-committed read**. `@<id>` for a tagged claim, `owner\|source\|#occurrence` otherwise |
 | `expect` | optional; defaults to `WITNESSED`. Set another outcome for a negative control |
-| `exemptions` | `stable_key` → the written reason no probe can reach it |
+| `exemptions` | `stable_key` → the written reason no probe can reach it. Tag keys work here unchanged: `"@<id>": "reason"` |
+
+🔴 **No other address field is accepted.** `prefix`, `ref`, `claim_ref`, `owner` and
+`source` are **refused** by `Probe.from_json`, not ignored — a pointer beside the key is a
+resolver, and a resolver has no structural answer to a deleted claim.
+
+### Tagging a claim
+
+A **tag** is a trailing comment on the claim's **anchor line** — the physical line that
+ends its logical line. `<id>` matches `[A-Za-z0-9][A-Za-z0-9_./-]*`, so it can never
+contain `|` or `#` and can never be mistaken for a text key. The claim's `stable_key` then
+becomes `@<id>`.
+
+```python
+def test_x():
+    assert result.error == "missing"      # claim: E1      <- one-line: its own line
+
+    assert f(
+        a,
+        b,
+    ) == 1                                # claim: E2      <- multi-line: the CLOSING line
+
+    with pytest.raises(
+        ValueError,
+    ):                                    # claim: E3      <- raises: the `):` header line
+        boom()
+```
+
+**Why a tag is stronger than a text key.** A text key is derived from the assertion's own
+text, so an edit can delete the assertion and leave an address that still resolves — to a
+*different* claim. A tag cannot: deleting the statement deletes the line its tag sits on,
+and deleting the assertion's text while keeping the comment strands a tag on a line that
+ends no claim, which enumeration refuses.
+
+**Three refusals, all loud at `enumerate_claims`** (so the always-run lint and the driver
+both meet them, the driver before its first mutation):
+
+1. a **duplicate** id inside one module;
+2. a **malformed** id — empty, outside the grammar, trailing text that is not a further
+   `#` comment, or two markers in one comment;
+3. an **unattached** tag — a line that is not exactly one claim's anchor. That includes a
+   comment on its own line (the tag-above-the-claim form is **refused**, not silently
+   ignored), an **interior** line of a multi-line claim, and a line ending two claims.
+
+⚠️ **Interior placement is refused because it leaks.** `source` is sliced from the node's
+own span, so a trailing tag falls outside it — but a tag on an interior line is *inside*
+it and would change the text key of the very claim it names.
+
+⚠️ **A prose comment may not spell the marker.** The reader scans every COMMENT token, so
+a comment *about* tagging is parsed as a tag and refused as malformed — taking the whole
+module's enumeration down. Put such prose in a docstring or a string literal, which are
+STRING tokens and invisible to the reader. (Measured the hard way: the first draft of
+`test_probe_coverage_claim_tags.py` refused itself.)
+
+⚠️ **Give a tagged module its own test file when a battery will address it.** The
+denominator is *every* claim in `claim_sources`, so adding claims to a module another
+battery already scopes exactly opens gaps in that battery — and reaching COMPLETE in yours
+would need junk exemptions over claims you never meant to cover. Precedent:
+`test_probe_coverage_cardinality.py`, `test_probe_coverage_claim_tags.py`.
 
 **3 — run it.**
 
