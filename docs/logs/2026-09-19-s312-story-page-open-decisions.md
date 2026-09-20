@@ -78,6 +78,16 @@ values against today's page: page `43`, drift `14`, scenario `11`.** Step 2 (D-B
 below each **add probes**, so executing story content work and PLAN-0128 Step 3 in the wrong order
 invalidates one of them. Sequencing is Cray's call; it is recorded here so it is not rediscovered.
 
+✅ **RULED by Cray (typed, s313, 2026-09-20): PLAN-0128 Step 3 goes FIRST, then v2b.**
+The reason is mechanical, and it runs the other way from "finish the story first": AC-10's
+proof is a pre/post **equality** of witnessed counts — the address changes, the evidence does
+not — so Step 3 must run while the counts still match what AC-10 pins. Build v2b first and
+those pinned values no longer describe the page, which means editing an **`Accepted`** PLAN,
+which is **G1-gated**. Going Step 3 first also means v2b's new probes are authored with tags
+from the start, so nothing is migrated twice. ⚠️ Step 3 is PR-3: the PLAN's own status line
+fixes the order as **Step 1 → Step 2 → Step 3**, so "Step 3 first" means executing PLAN-0128
+through to PR-3, not Step 3 in isolation.
+
 ---
 
 ## A1. Cray's typed items (2026-09-17)
@@ -207,8 +217,15 @@ the thinking went.
 - ~~Bundle v2a + v2b into one deploy if decided within the week; otherwise v2a goes first.~~
   ⚠️ **SUPERSEDED BY NEW INFO at s313, not an error.** The clause assumed a small v2b. With
   D-C + D-D ruled as above, bundling holds the deploy — including the `.tag-synth` fix, which
-  changes the **first filmed frame** and is already on `main`. **Bundle-or-split is now an open
-  call for Cray**, alongside the ordering against PLAN-0128 Step 3.
+  changes the **first filmed frame** and is already on `main`.
+  ✅ **RULED by Cray (typed, s313, 2026-09-20): BUNDLE — v2a + v2b ship in ONE deploy round.**
+  Ruled with the cost in view: `.tag-synth` stays off the live system for the whole of
+  PLAN-0128 PR-1→PR-3 **plus** the v2b build. 🔴 **The one thing that reopens this is a
+  filming date.** If a shoot is booked before v2b lands, split it — deploying v2a alone is
+  the cheapest deploy this system has ever had, measured s313 from the live sha `ea6944fa`
+  to `main`: **7 files reach the image, 0 files under `deploy/published/…`**, so
+  `cloudflared/config.yml` is unchanged ⇒ no host `git pull`, no connector recreate, only
+  `app` recreated.
 
 ### Step 3 — sole-source 4th case (G1) ⏳ OPEN
 
