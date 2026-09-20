@@ -27,9 +27,14 @@ per-session *data* fed to it.
    stays closed.
 2. A witnessed probe credits **exactly one** claim — the one it pre-declared. A run stops
    at the first failing assertion, so one mutation can only ever witness one claim.
-3. Claims are addressed **only** by :attr:`~tools.probe_coverage.Claim.stable_key`. There
-   is no alternate keying path in this API, because s253 imported the object carrying
-   ``stable_key`` and then hand-rolled a colliding key beside it.
+3. Claims are addressed **only** by :attr:`~tools.probe_coverage.Claim.stable_key` — the
+   ``@<id>`` tag when one is declared, the text key otherwise; there is no alternate
+   keying path. s253 imported the object carrying ``stable_key`` and then hand-rolled a
+   colliding key beside it, so the refusal is structural: ``expect_claim`` is the only
+   field and the claim index the only lookup. A tag key and a text key are two
+   *derivations* of one key, not two paths — which is why every refusal below covers both
+   without a line of new code — and :meth:`Probe.from_json` refuses the reference-shaped
+   fields a second form would need.
 4. Every run ends in :func:`~tools.probe_coverage.render_report`, and the one self-check
    the driver prints is computed from **pre-filter** inputs — see :func:`_overlaps`.
 
@@ -207,6 +212,13 @@ class Probe:
     expect: Outcome = Outcome.WITNESSED
     note: str = ""
 
+    #: Fields a *reference* address form would use — ``{owner, prefix}`` resolved at load,
+    #: or a pointer beside the key. Refused outright, because the value of one field and
+    #: one lookup is exactly that there is nowhere for a second address form to appear.
+    #: Until PLAN-0128 an unknown field was silently ignored, so a battery could carry one
+    #: of these and read as if it worked.
+    _REFERENCE_FIELDS = ("prefix", "ref", "claim_ref", "owner", "source")
+
     @classmethod
     def from_json(cls, data: Mapping[str, object]) -> Probe:
         missing = [
@@ -214,6 +226,14 @@ class Probe:
         ]
         if missing:
             raise BatteryDefinitionError(f"probe is missing required field(s): {missing}")
+        reference = [k for k in cls._REFERENCE_FIELDS if k in data]
+        if reference:
+            raise BatteryDefinitionError(
+                f"probe {data.get('name', '<unnamed>')!r} carries reference-shaped "
+                f"field(s) {reference}: a claim is addressed by 'expect_claim' alone. "
+                f"To address a claim that survives edits to its own text, declare a "
+                f"trailing '# claim: <id>' on the claim's anchor line and use '@<id>'."
+            )
         return cls(
             name=str(data["name"]),
             subject=Path(str(data["subject"])),
@@ -303,11 +323,17 @@ Runner = Callable[[Probe, Path, int], RunRecord | None]
 def _index_claims(battery: Battery) -> dict[str, tuple[Claim, Path]]:
     """Map every claim's ``stable_key`` to the claim and the file it came from.
 
-    Refuses on a cross-module key collision. ``stable_key`` is ``owner|source|#n`` and
-    ``occurrence`` is stamped *within* one module, so two modules that share a test name
-    and an assertion text would share a key — and a coverage report built on it would
-    call both covered when only one was ever witnessed. That is the exact coverage lie
-    ``stable_key`` was introduced to prevent, so it fails loudly rather than at review.
+    Refuses on a cross-module key collision. A text ``stable_key`` is ``owner|source|#n``
+    and ``occurrence`` is stamped *within* one module, so two modules that share a test
+    name and an assertion text would share a key — and a coverage report built on it
+    would call both covered when only one was ever witnessed. That is the exact coverage
+    lie ``stable_key`` was introduced to prevent, so it fails loudly rather than at
+    review.
+
+    A **tag** key (``@<id>``) collides for a different reason and gets its own wording:
+    ``enumerate_claims`` already refuses a duplicate id *within* one module, so a tag
+    collision reaching here is always cross-module, and the repair is to rename one id
+    rather than to split the battery.
     """
     index: dict[str, tuple[Claim, Path]] = {}
     for source in battery.claim_sources:
@@ -315,6 +341,12 @@ def _index_claims(battery: Battery) -> dict[str, tuple[Claim, Path]]:
             key = claim.stable_key
             if key in index:
                 other = index[key][1]
+                if key.startswith("@"):
+                    raise BatteryDefinitionError(
+                        f"claim tag {key!r} is declared in both {other} and {source}. A "
+                        f"tag id addresses exactly one claim across the whole battery — "
+                        f"rename one of them."
+                    )
                 raise BatteryDefinitionError(
                     f"claim key {key!r} occurs in both {other} and {source}. Cross-module "
                     f"keys collide because `occurrence` is stamped per module — run these "
@@ -526,6 +558,20 @@ def _resolve_declared(probe: Probe, index: Mapping[str, tuple[Claim, Path]]) -> 
     Falls back to the pre-run claim when the key no longer resolves — a mutation that
     rewrote the declared assertion's own text. That is a probe whose prediction can no
     longer be checked, and it will be reported as a MISFIRE rather than silently credited.
+
+    **What a tag changes here** (PLAN-0128 §2.2). For a **tagged** claim the live lookup
+    succeeds even when the probe's own mutation rewrote the assertion's text, because
+    ``@<id>`` is not derived from that text — so the fallback above is reached only by
+    *untagged* claims, and a tagged claim is always classified against the line it
+    actually occupies after the mutation. The code needs no change for that: the key is
+    the key either way.
+
+    One behaviour worth stating rather than discovering: a mutation that strands the tag
+    — deleting the assertion's text but not its ``# claim:`` comment — makes
+    ``enumerate_claims`` raise :class:`~tools.probe_coverage.ClaimTagError`, which is a
+    ``ValueError`` and so is **not** caught by the fallback below. It propagates, the run
+    stops, and the restore still runs. That is the intended reading: a stranded tag is a
+    malformed module, not a claim whose prediction merely became uncheckable.
     """
     claim, claim_path = index[probe.expect_claim]
     try:

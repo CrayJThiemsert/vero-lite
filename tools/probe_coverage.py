@@ -44,16 +44,51 @@ The ``__main__`` path lists a module's claims by ``claim_id`` so a battery autho
 the denominator before running anything; ``python -m tools.probe_battery keys <module>``
 lists the same claims by :attr:`Claim.stable_key`, which is the address a probe must
 declare.
+
+**One claim, one key** (PLAN-0128). :attr:`Claim.stable_key` is ``@<id>`` when the claim
+declares a trailing ``# claim: <id>`` comment on its anchor line, and
+``owner|source|#occurrence`` otherwise; a tagged claim is addressable **only** by its
+tag. The tag is not derived from the source it names, which is what makes it survive an
+edit that a text key cannot: there is no edit that removes the assertion and leaves an
+address still resolving to something. Three tag forms are refused at enumeration, loudly
+— a duplicate id in one module, a malformed id, and a tag on a line that is not exactly
+one claim's anchor (including an interior line of a multi-line claim, and the
+comment-on-its-own-line form).
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import io
+import re
 import sys
+import tokenize
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass, replace
 from pathlib import Path
+
+
+class ClaimTagError(ValueError):
+    """A ``# claim:`` tag that enumeration refuses.
+
+    Raised from :func:`enumerate_claims`, so every reader of a claim set meets it: the
+    ``always_run`` lint turns it into a Finding at commit time, and the probe driver hits
+    it **before its first mutation** rather than midway through a restore.
+
+    A ``ValueError`` subclass on purpose — a caller that already handles bad input
+    generically keeps working, while a caller that wants to name tag trouble separately
+    can.
+    """
+
+
+#: The one tag form. Narrow by design: ``<id>`` cannot contain ``|``, ``#`` or
+#: whitespace, so a tag key (``@<id>``) can never be confused with a text key
+#: (``owner|source|#occurrence``).
+_TAG_MARKER = "# claim:"
+
+#: ``<id>`` grammar (PLAN-0128 §2.1). Anchored by :meth:`re.Pattern.fullmatch`.
+_TAG_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./-]*")
 
 #: Printed verbatim when every claim is either reddened by a probe or exempted with a
 #: reason. A caller greps for this token — an echoed exit code is corruptible, a printed
@@ -83,10 +118,25 @@ class Claim:
     multi: bool
     occurrence: int = 0
     cardinality: int = 1
+    tag: str | None = None
 
     @property
     def stable_key(self) -> str:
         """A key that survives edits to the module AND never collides.
+
+        **When the claim declares a tag, the key IS the tag** — ``@<id>``, from a
+        trailing ``# claim: <id>`` on the claim's anchor line. The text derivation below
+        is what an untagged claim still uses. One field, one lookup, two derivations: a
+        tag key and a text key are the same kind of thing, so every refusal that keys on
+        ``stable_key`` covers both with no second code path.
+
+        A tag is stronger than any text key can be, because it is not *derived from the
+        current source* at all: no edit can delete the assertion and leave an address
+        that still resolves. Deleting the statement deletes the line the tag sits on;
+        deleting only the assertion's text strands a ``# claim:`` on a line that ends no
+        claim, which :func:`enumerate_claims` refuses. The text derivations below can
+        only ever narrow the window in which a stale address still resolves — they
+        cannot close it.
 
         ``owner|source`` alone is the obvious line-independent address and it is WRONG:
         a test that asserts ``run_row is not None`` twice would collapse two claims into
@@ -108,14 +158,24 @@ class Claim:
         ``_validate`` refuses before the first mutation — drift causes re-work, never
         inheritance. A claim alone in its group keys exactly as it did before, so every
         address that was never at risk is byte-identical.
+
+        🔴 **Tagging one claim never moves another claim's key.** ``occurrence`` and
+        ``cardinality`` are stamped over *every* claim, tagged or not, so a tagged claim
+        still occupies its slot in its text group. Tag the first of two identical asserts
+        and the survivor stays ``#1/2`` — it does **not** become ``#0`` or ``#1``. Were it
+        otherwise, adding a tag would silently re-point a *different* claim's address,
+        which is the whole class of defect tags exist to remove.
         """
+        if self.tag is not None:
+            return f"@{self.tag}"
         if self.cardinality <= 1:
             return f"{self.owner}|{self.source}|#{self.occurrence}"
         return f"{self.owner}|{self.source}|#{self.occurrence}/{self.cardinality}"
 
     def render(self) -> str:
         flag = "  ⚠️ CONJUNCTION — one mutation can witness only one operand" if self.multi else ""
-        return f"{self.claim_id}  [{self.kind}]  {self.source}{flag}"
+        tag = f"  @{self.tag}" if self.tag is not None else ""
+        return f"{self.claim_id}{tag}  [{self.kind}]  {self.source}{flag}"
 
 
 def _owner_of(tree: ast.Module) -> dict[int, str]:
@@ -155,12 +215,142 @@ def _is_raises_call(node: ast.expr) -> bool:
     return isinstance(func, ast.Name) and func.id in {"raises", "warns"}
 
 
+def _parse_tag(comment: str, row: int, path: Path) -> str | None:
+    """The ``<id>`` a COMMENT token declares, or ``None`` when it declares no tag.
+
+    A COMMENT token may legitimately hold other comments before the tag
+    (``# noqa: E501  # claim: E1``), so the marker is looked for *anywhere* in the token
+    and whatever precedes it is left alone. Two markers in one token is malformed: which
+    one addresses the claim would be a coin flip.
+    """
+    hits = [i for i in range(len(comment)) if comment.startswith(_TAG_MARKER, i)]
+    if not hits:
+        return None
+    if len(hits) > 1:
+        raise ClaimTagError(
+            f"{path}:{row}: two '{_TAG_MARKER}' markers in one comment — "
+            f"exactly one tag per claim: {comment.strip()!r}"
+        )
+    rest = comment[hits[0] + len(_TAG_MARKER) :].strip()
+    if not rest:
+        raise ClaimTagError(f"{path}:{row}: '{_TAG_MARKER}' with an empty id")
+    parts = rest.split(None, 1)
+    ident, trailing = parts[0], (parts[1] if len(parts) > 1 else "")
+    if trailing and not trailing.startswith("#"):
+        raise ClaimTagError(
+            f"{path}:{row}: text after the claim id that is not a further '#' comment: "
+            f"{trailing!r} — an id cannot contain whitespace"
+        )
+    if not _TAG_ID.fullmatch(ident):
+        raise ClaimTagError(
+            f"{path}:{row}: malformed claim id {ident!r} — "
+            f"must match {_TAG_ID.pattern} (no '|', no '#', no whitespace)"
+        )
+    return ident
+
+
+def _anchors_and_tags(source: str, path: Path) -> tuple[list[int], dict[int, str]]:
+    """``(anchor rows, {row: tag id})``, both read from ONE token stream.
+
+    The anchor row of a logical line is the row of the NEWLINE token that ends it —
+    ``tokenize`` emits NL, not NEWLINE, for the continuation rows inside brackets, so
+    this is the statement's last physical line for an ``assert`` and the ``:`` line for
+    a ``with`` header, with no per-node special-casing.
+
+    Tags are read from COMMENT **tokens**, never from a regex over raw lines: a
+    ``# claim:`` inside a string literal or a docstring is a STRING token and is
+    therefore invisible here, which is the point.
+    """
+    newline_rows: list[int] = []
+    tags: dict[int, str] = {}
+    for token in tokenize.generate_tokens(io.StringIO(source).readline):
+        if token.type == tokenize.NEWLINE:
+            newline_rows.append(token.start[0])
+        elif token.type == tokenize.COMMENT:
+            row = token.start[0]
+            ident = _parse_tag(token.string, row, path)
+            if ident is not None:
+                tags[row] = ident
+    return newline_rows, tags
+
+
+def _attach_tags(ordered: list[Claim], source: str, path: Path) -> list[Claim]:
+    """Attach each declared tag to the one claim its anchor line ends, or refuse.
+
+    Three refusals, all loud (§2.1): a duplicate id inside one module; a tag on a line
+    that is not exactly one claim's anchor (**unattached**, which is what the rejected
+    line-above form now is, so nobody can write it by habit and silently lose the
+    address); and a tag on an **interior** line of a multi-line claim, which would be
+    inside the span ``ast.get_source_segment`` slices and so would change the text key of
+    the very claim it names.
+    """
+    newline_rows, tags = _anchors_and_tags(source, path)
+    if not tags:
+        return ordered
+
+    # Anchor of a claim = the first logical-line end at or after the claim's first row.
+    # A claim occupies every row between the two, so no other statement can end inside it.
+    anchor_of: list[int] = []
+    for claim in ordered:
+        later = [row for row in newline_rows if row >= claim.lineno]
+        anchor_of.append(later[0] if later else claim.lineno)
+
+    by_anchor: dict[int, list[int]] = {}
+    for index, row in enumerate(anchor_of):
+        by_anchor.setdefault(row, []).append(index)
+
+    seen_ids: dict[str, int] = {}
+    for row in sorted(tags):
+        ident = tags[row]
+        if ident in seen_ids:
+            raise ClaimTagError(
+                f"{path}: duplicate claim id {ident!r} on lines {seen_ids[ident]} and "
+                f"{row} — an id addresses exactly one claim"
+            )
+        seen_ids[ident] = row
+
+    attached: dict[int, str] = {}
+    for row in sorted(tags):
+        targets = by_anchor.get(row, [])
+        if len(targets) == 1:
+            attached[targets[0]] = tags[row]
+            continue
+        if len(targets) > 1:
+            raise ClaimTagError(
+                f"{path}:{row}: this line ends {len(targets)} claims, so a tag on it is "
+                f"ambiguous — put each claim on its own line"
+            )
+        inside = next(
+            (c for c, a in zip(ordered, anchor_of, strict=True) if c.lineno <= row < a),
+            None,
+        )
+        if inside is not None:
+            raise ClaimTagError(
+                f"{path}:{row}: tag on an interior line of the claim starting at line "
+                f"{inside.lineno} ({inside.source!r}) — it would leak into that claim's "
+                f"source text. Put it on the anchor line (the line that ends the "
+                f"statement)."
+            )
+        raise ClaimTagError(
+            f"{path}:{row}: unattached tag — this line is no claim's anchor line. A tag "
+            f"is a TRAILING comment on the line that ends the claim; a tag on its own "
+            f"line, or above the claim, addresses nothing."
+        )
+
+    return [
+        replace(claim, tag=attached[index]) if index in attached else claim
+        for index, claim in enumerate(ordered)
+    ]
+
+
 def enumerate_claims(path: Path) -> list[Claim]:
     """Every claim in ``path``, in source order.
 
     Raises ``SyntaxError`` on an unparsable module rather than returning an empty list —
     a silent zero here would read as "nothing to cover", which is the false green this
-    whole module exists to prevent.
+    whole module exists to prevent. Raises :class:`ClaimTagError` on a tag this module
+    refuses (§2.1), for the same reason: a tag nobody can resolve must not pass as "no
+    tag".
     """
     source = path.read_text(encoding="utf-8")
     tree = ast.parse(source, filename=str(path))
@@ -214,7 +404,10 @@ def enumerate_claims(path: Path) -> list[Claim]:
         index = seen.get(pair, 0)
         seen[pair] = index + 1
         stamped.append(replace(claim, occurrence=index, cardinality=totals[pair]))
-    return stamped
+    # Tags are attached AFTER stamping, and stamping runs over every claim regardless:
+    # a tagged claim keeps its slot, so tagging one member of a text group cannot move
+    # any other member's key (see `stable_key`).
+    return _attach_tags(stamped, source, path)
 
 
 def render_report(

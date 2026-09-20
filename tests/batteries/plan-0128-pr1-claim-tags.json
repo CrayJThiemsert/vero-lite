@@ -1,0 +1,292 @@
+{
+  "claim_sources": [
+    "tests/tools/test_probe_coverage_claim_tags.py",
+    "tests/tools/test_probe_battery_claim_tags.py",
+    "tests/tools/test_probe_battery_claim_tags_scenario.py"
+  ],
+  "probes": [
+    {
+      "name": "1a",
+      "subject": "tools/probe_coverage.py",
+      "old": "_TAG_MARKER = \"# claim:\"",
+      "new": "_TAG_MARKER = \"# CLAIM-DISABLED:\"",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tagged_claim_is_keyed_by_its_tag",
+      "expect_claim": "@pr1/tag-is-the-key",
+      "note": "break the tag read: no comment is a tag any more, so the claim keys by text"
+    },
+    {
+      "name": "1b",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if self.tag is not None:\n            return f\"@{self.tag}\"",
+      "new": "        if True:\n            return f\"@{self.tag}\"",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tagged_claim_is_keyed_by_its_tag",
+      "expect_claim": "@pr1/sibling-keeps-text-key",
+      "note": "prefix @ unconditionally; the tagged claim's key is unchanged, so 1a's assertion stays green and only the UNTAGGED sibling's reddens"
+    },
+    {
+      "name": "1c",
+      "subject": "tools/probe_coverage.py",
+      "old": "            text = ast.get_source_segment(source, node.test) or \"<unrendered>\"",
+      "new": "            text = \"\\n\".join(source.splitlines()[node.lineno - 1 : node.end_lineno or node.lineno])",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tagged_claim_is_keyed_by_its_tag",
+      "expect_claim": "@pr1/tag-not-in-source",
+      "note": "derive source from physical lines instead of the node span: the trailing tag enters the text, which is G27's measured leak"
+    },
+    {
+      "name": "1d",
+      "subject": "tools/probe_coverage.py",
+      "old": "            text = ast.get_source_segment(source, node.test) or \"<unrendered>\"",
+      "new": "            text = \"\\n\".join(source.splitlines()[node.lineno - 1 : node.end_lineno or node.lineno])",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tag_on_the_anchor_line_of_a_multi_line_claim_is_attached_to_it",
+      "expect_claim": "@pr1/multiline-no-leak",
+      "note": "the same leak, on the multi-line assert whose anchor is its closing line; the two attachment assertions above it stay green"
+    },
+    {
+      "name": "1e",
+      "subject": "tools/probe_coverage.py",
+      "old": "                text = ast.get_source_segment(source, item.context_expr) or \"<unrendered>\"",
+      "new": "                text = \"\\n\".join(source.splitlines()[node.lineno - 1 : node.end_lineno or node.lineno])",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tag_on_the_anchor_line_of_a_multi_line_claim_is_attached_to_it",
+      "expect_claim": "@pr1/raises-no-leak",
+      "note": "the raises branch of the same leak; 1d's assertion stays green because the assert branch is untouched"
+    },
+    {
+      "name": "1f",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if len(targets) == 1:\n            attached[targets[0]] = tags[row]\n            continue",
+      "new": "        if len(targets) == 1:\n            if ordered[targets[0]].lineno == row:\n                attached[targets[0]] = tags[row]\n            continue",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tag_on_the_anchor_line_of_a_multi_line_claim_is_attached_to_it",
+      "expect_claim": "@pr1/multiline-assert-attaches",
+      "note": "attach only to one-line statements, CONSUMING the comment without refusing: the multi-line assert loses its tag"
+    },
+    {
+      "name": "1g",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if len(targets) == 1:\n            attached[targets[0]] = tags[row]\n            continue",
+      "new": "        if len(targets) == 1:\n            if ordered[targets[0]].kind == \"assert\":\n                attached[targets[0]] = tags[row]\n            continue",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tag_on_the_anchor_line_of_a_multi_line_claim_is_attached_to_it",
+      "expect_claim": "@pr1/raises-header-attaches",
+      "note": "the with-header branch only: the multi-line ASSERT still attaches, so 1f's assertion stays green and the raises one reddens"
+    },
+    {
+      "name": "4a",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if ident in seen_ids:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_duplicated_tag_is_refused",
+      "expect_claim": "@pr1/duplicate-id-refused",
+      "note": "drop the duplicate-id refusal; G31 records that Jest and insta both rebuilt H1 on exactly this hole"
+    },
+    {
+      "name": "4b",
+      "subject": "tools/probe_coverage.py",
+      "old": "        raise ClaimTagError(\n            f\"{path}:{row}: unattached tag",
+      "new": "        continue\n        raise ClaimTagError(\n            f\"{path}:{row}: unattached tag",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_an_unattached_tag_is_refused[line-above]",
+      "expect_claim": "@pr1/unattached",
+      "note": "silently ignore a tag that addresses nothing. Scoped to ONE parametrisation: the mutation reddens all three, and the driver refuses a blast radius wider than one assertion (measured, this battery's first run)."
+    },
+    {
+      "name": "4c",
+      "subject": "tools/probe_coverage.py",
+      "old": "        if inside is not None:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_tag_on_an_interior_line_is_refused_because_it_would_leak_into_source",
+      "expect_claim": "@pr1/interior-refused",
+      "note": "drop the interior check; 4b's assertion stays green because the unattached branch below still fires for other shapes"
+    },
+    {
+      "name": "4d",
+      "subject": "tools/probe_coverage.py",
+      "old": "    if not _TAG_ID.fullmatch(ident):",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_malformed_tag_id_is_refused",
+      "expect_claim": "@pr1/malformed-id-refused",
+      "note": "accept an id outside the grammar; the pipe case is the one that matters, because a text key contains one"
+    },
+    {
+      "name": "4e",
+      "subject": "tools/probe_coverage.py",
+      "old": "        elif token.type == tokenize.COMMENT:",
+      "new": "        elif token.type in (tokenize.COMMENT, tokenize.STRING):",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_a_claim_tag_inside_a_string_is_a_string_not_a_tag",
+      "expect_claim": "@pr1/string-literal-is-not-a-tag",
+      "note": "read STRING tokens as if they were comments — the regex-over-raw-lines defect, expressed inside the token stream"
+    },
+    {
+      "name": "5a",
+      "subject": "tools/probe_coverage.py",
+      "old": "        totals[pair] = totals.get(pair, 0) + 1",
+      "new": "        totals[pair] = 1",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_tagging_one_twin_leaves_the_other_at_occurrence_1",
+      "expect_claim": "@pr1/twin-keeps-its-slot",
+      "note": "collapse every group to size 1, so the untagged twin's key drops its /2 — the survivor's ADDRESS moves because its sibling was tagged, which is the defect tags exist to prevent"
+    },
+    {
+      "name": "7a",
+      "subject": "tools/probe_coverage.py",
+      "old": "    gaps = [c for c in ordered if resolve(c) not in reddened and resolve(c) not in exemptions]",
+      "new": "    gaps = []",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_gaps_are_named_across_tagged_and_untagged_claims",
+      "expect_claim": "@pr1/gaps-count-untagged",
+      "note": "the denominator stops naming anything; a tagged claim credited by its tag would then close a module whose untagged claims were never probed"
+    },
+    {
+      "name": "7b",
+      "subject": "tools/probe_coverage.py",
+      "old": "        tag = f\"  @{self.tag}\" if self.tag is not None else \"\"",
+      "new": "        tag = \"\"",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_gaps_are_named_across_tagged_and_untagged_claims",
+      "expect_claim": "@pr1/covered-line-carries-tag",
+      "note": "drop the tag from the rendered line; 7a's count assertion stays green, so this is about the report being READABLE, not about the count"
+    },
+    {
+      "name": "7c",
+      "subject": "tools/probe_coverage.py",
+      "old": "    gaps = [c for c in ordered if resolve(c) not in reddened and resolve(c) not in exemptions]",
+      "new": "    gaps = [c for c in ordered if not resolve(c).startswith(\"@\") or resolve(c) not in reddened]",
+      "node_id": "tests/tools/test_probe_coverage_claim_tags.py::test_gaps_are_named_across_tagged_and_untagged_claims",
+      "expect_claim": "@pr1/gaps-control",
+      "note": "count a claim as covered only when its key is a TAG: the first read still sees two gaps (green), and only the control — crediting an UNTAGGED key moves the count to 1 — reddens. First attempt mutated `covered` instead and went GREEN, because `gaps` reads `reddened` directly."
+    },
+    {
+      "name": "3a",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "        reference = [k for k in cls._REFERENCE_FIELDS if k in data]",
+      "new": "        reference = []",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_a_probe_carrying_a_reference_field_is_refused[prefix]",
+      "expect_claim": "@pr1/ref-field-refused",
+      "note": "drop the reference-field refusal. Scoped to ONE parametrisation: the mutation reddens all five, and a blast radius wider than one assertion is refused."
+    },
+    {
+      "name": "3b",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "            expect_claim=str(data[\"expect_claim\"]),",
+      "new": "            expect_claim=str(data[\"expect_claim\"]).lstrip(\"@\"),",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_a_probe_carrying_a_reference_field_is_refused[prefix]",
+      "expect_claim": "@pr1/ref-field-control",
+      "note": "mangle the address on the way in: the refusal above still fires (green), and only the control — the address is read VERBATIM — reddens."
+    },
+    {
+      "name": "2a",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    unknown = sorted({p.expect_claim for p in battery.probes} - set(index))",
+      "new": "    unknown = []",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_a_deleted_tagged_assert_is_refused_even_when_a_same_prefix_sibling_remains",
+      "expect_claim": "@pr1/dead-tag-refused-before-mutation",
+      "note": "stop refusing an address that resolves to nothing — this is H1 itself, and without the refusal the battery would run against a claim nobody declared."
+    },
+    {
+      "name": "6a",
+      "subject": "tools/probe_coverage.py",
+      "old": "    exempt = [c for c in ordered if resolve(c) not in reddened and resolve(c) in exemptions]",
+      "new": "    exempt = []",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_an_exemption_keyed_by_tag_is_honoured_and_reported",
+      "expect_claim": "@pr1/tag-exemption-counted",
+      "note": "a tag-keyed exemption stops being counted"
+    },
+    {
+      "name": "6b",
+      "subject": "tools/probe_coverage.py",
+      "old": "        lines.append(f\"      reason: {exemptions[resolve(claim)]}\")",
+      "new": "        lines.append(\"      reason: (omitted)\")",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_an_exemption_keyed_by_tag_is_honoured_and_reported",
+      "expect_claim": "@pr1/tag-exemption-reason-printed",
+      "note": "the count survives but the REASON does not; #0047 §3 is that a reason nobody reads is not a reason, so 6a's count assertion stays green and only this reddens"
+    },
+    {
+      "name": "4f",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        findings.append(Finding(path, \"\", f\"claim tag: {exc}\"))",
+      "new": "        findings.append(Finding(path, \"\", f\"{exc}\"))",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_the_lint_reports_a_tag_error_as_a_finding",
+      "expect_claim": "@pr1/tag-error-is-a-finding",
+      "note": "drop the 'claim tag:' label: the refusal text survives, so the SECOND assertion stays green and only the labelling one reddens"
+    },
+    {
+      "name": "4g",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        findings.append(Finding(path, \"\", f\"claim tag: {exc}\"))",
+      "new": "        findings.append(Finding(path, \"\", \"claim tag: (details withheld)\"))",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_the_lint_reports_a_tag_error_as_a_finding",
+      "expect_claim": "@pr1/tag-finding-says-which-refusal",
+      "note": "keep the label, drop WHICH refusal fired: 4f's assertion stays green, and the finding becomes one a reader cannot act on"
+    },
+    {
+      "name": "6d",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "        orphan = sorted(set(battery.exemptions) - set(index))",
+      "new": "        orphan = []",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_an_orphaned_tag_exemption_is_a_finding",
+      "expect_claim": "@pr1/orphan-tag-exemption-found",
+      "note": "an exemption naming a claim that is gone stops being reported, so it goes on reading as deliberate coverage while covering nothing"
+    },
+    {
+      "name": "6e",
+      "subject": "tools/probe_battery/_lint.py",
+      "old": "                    f\"{len(orphan)} exemption(s) name a claim that no longer exists, so \"",
+      "new": "                    f\"{len(orphan)} stale exemption(s), so \"",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_an_orphaned_tag_exemption_is_a_finding",
+      "expect_claim": "@pr1/orphan-wording",
+      "note": "the key is still named (6d's assertion stays green) but the sentence that tells a reader WHY it matters is gone"
+    },
+    {
+      "name": "8a",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    return live.get(probe.expect_claim, claim), claim_path",
+      "new": "    return claim, claim_path",
+      "node_id": "tests/tools/test_probe_battery_claim_tags_scenario.py::test_a_tagged_claim_survives_a_line_shift_in_its_own_module",
+      "expect_claim": "@pr1/shift-still-passes",
+      "note": "drop the live re-lookup: the tagged claim keeps its PRE-mutation line, the failure is reported two lines lower, and the run becomes a MISFIRE"
+    },
+    {
+      "name": "8b",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "        lines.append(f\"      claim : {res.probe.expect_claim}\")",
+      "new": "        lines.append(\"      claim : (withheld)\")",
+      "node_id": "tests/tools/test_probe_battery_claim_tags_scenario.py::test_a_tagged_claim_is_witnessed_through_the_real_driver",
+      "expect_claim": "@pr1/scenario-tag-is-the-address",
+      "note": "the report stops naming the address it credited; the verdict and the count stay green, so only the legibility assertion reddens"
+    },
+    {
+      "name": "8c",
+      "subject": "tools/probe_coverage.py",
+      "old": "_TAG_MARKER = \"# claim:\"",
+      "new": "_TAG_MARKER = \"# CLAIM-DISABLED:\"",
+      "node_id": "tests/tools/test_probe_battery_claim_tags_scenario.py::test_a_tagged_claim_is_witnessed_through_the_real_driver",
+      "expect_claim": "@pr1/scenario-tag-passes",
+      "note": "break the tag read for the INNER driver run: @fast addresses nothing, the inner battery refuses before its first mutation, and the outer assertion on its verdict reddens"
+    },
+    {
+      "name": "2b",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    unknown = sorted({p.expect_claim for p in battery.probes} - set(index))",
+      "new": "    unknown = []",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_the_lint_refuses_a_deleted_tagged_claim_with_a_same_prefix_sibling",
+      "expect_claim": "@pr1/lint-names-the-dead-tag",
+      "note": "the same refusal 2a removes, read at the LINT instead of at the driver: this is the surface that runs on every commit, so it is where a stranded tag is actually caught"
+    },
+    {
+      "name": "6c",
+      "subject": "tools/probe_battery/_battery.py",
+      "old": "    return tuple(sorted(declared & set(battery.exemptions)))",
+      "new": "    return ()",
+      "node_id": "tests/tools/test_probe_battery_claim_tags.py::test_a_battery_that_both_probes_and_exempts_one_tag_is_an_overlap",
+      "expect_claim": "@pr1/tag-overlap-reported",
+      "note": "the driver's own self-check stops reporting a key that is BOTH probed and exempted — a contradiction it computes from pre-filter inputs so it can be non-empty at all"
+    }
+  ],
+  "exemptions": {
+    "@pr1/claim-id-unchanged": "The claim_id FORM is a PLAN-0115 invariant this PR does not change; it is asserted here as the premise that tagging left it alone. Any mutation that moves it also moves the keys asserted above it in the same test, which redden first (the run stops at the first failed assert). Exempted on the s288 fixture-premise precedent rather than probed with a contrived mutation.",
+    "@pr1/twin-control": "Positive control for @pr1/twin-keeps-its-slot: it asserts the UNTAGGED copy of the same module still holds #0/2, which is what makes the assertion above it a statement about tagging rather than about the stamping changing. Every mutation that reddens it reddens the tagged assertion first, in the same test.",
+    "@pr1/docstring-is-not-a-tag": "Under 4e — the mutation this assertion's sibling is probed by — the docstring fixture raises ClaimTagError (an unattached tag inside the docstring), which the driver classifies CRASHED and refuses to credit (_outcome.py:462-468). The string-literal case is the assertion-level witness for the same tokenize-vs-regex claim; this one is its second fixture and is exempted with that reason, per AC-4.",
+    "@pr1/h1-oracle": "The closed-incident oracle: a four-line local reconstruction of the RETIRED (owner, prefix) rule, applied to the post-deletion fixture to show it would have resolved to the survivor. No mutation of the current code can redden it, because the rule it replays is no longer in the code — that is exactly what makes it an independent oracle rather than a second reading of the thing under test. Exempted on the PLAN-0115 AC-6 precedent.",
+    "@pr1/lint-live-tag": "Positive control for @pr1/lint-names-the-dead-tag: the SAME battery over the pre-deletion module reports nothing. Its reddening mutation is one that makes the lint over-report, which reddens test_a_healthy_battery_produces_no_findings in the s288 suite first — a module outside this battery's claim_sources, so a probe here could not credit it one-assertion-per-mutation.",
+    "@pr1/shift-still-credited": "Under 8a — the probe its sibling assertion is witnessed by — the verdict assertion above it reddens first and the run stops there. One mutation witnesses one assertion.",
+    "@pr1/shift-is-not-a-misfire": "The negative half of the same read, and it carries its positive control in the two assertions above it (PASS + witnessed RED: 1). Under 8a those redden first.",
+    "@pr1/scenario-tag-credited": "Under 8c the verdict assertion above it reddens first, in the same test.",
+    "@pr1/transplant-both-red-is-a-misfire": "PLAN-0128 §9 asked for the driver's classification of a hand-transplanted tag to be MEASURED and recorded, and explicitly closes no AC on the answer. This assertion records what the real driver printed; a mutation that changed it would be changing the measurement, not falsifying a claim the PR makes.",
+    "@pr1/transplant-credited-at-new-site": "Same as above: the recorded half of §9's measurement — the classifier IS fooled. It is the residual §2.3 states, written down as a fixture someone can run.",
+    "@pr1/transplant-stranded-claim-is-a-gap": "Same as above, and the more useful half: what refuses a transplant is the coverage denominator, not the site comparison. Recorded, not repaired."
+  }
+}
