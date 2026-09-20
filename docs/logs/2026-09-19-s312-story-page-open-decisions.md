@@ -1,6 +1,7 @@
 # Story page (PLAN-0126 v1) — the reviewed plan and its open decisions
 
 **Date:** 2026-09-19 · **Session:** 312 · **Event type:** rehome (preservation of an untracked artifact)
+**Amended:** 2026-09-20 · **Session:** 313 · **Event type:** records the five D-decisions Cray ruled, and corrects two claims this file carried
 **Author:** Claude Code (Tier 2)
 **Commit:** the commit this file lands in
 **Source, gitignored:** `.claude/handoffs/session-306/2026-09-17-1601-code-session306-CLOSE-registry-advisory-MERGED-codegen-planA-READY.md` §Appendix A (lines 179–277)
@@ -27,6 +28,15 @@ This file is that tracked home. **It preserves; it does not decide.** Every ruli
 Cray's, unchanged, and every "Code recommendation" is the recommendation as written at s306,
 not a new one.
 
+⚠️ **Amended at s313 (2026-09-20) — the sentence above still holds, and here is why.** This
+file now carries Cray's **typed rulings on D-A…D-E** (Step 2) rather than only the open
+questions. That is still preservation: the rulings are Cray's words, recorded on the day they
+were typed, into the file that was already their home. Code decided nothing. Two things in the
+file were also **corrected against the tree**, each marked in place rather than rewritten —
+Step 4's "Cray runs the ship script", and Step 2's bundling clause. The s306 recommendation
+column is kept beside the rulings on purpose: what was recommended, and whether the ruling
+followed it, is part of the record.
+
 ### What this file is NOT
 
 It is **not** a PLAN and must not be read as one. `CLAUDE.md` §6 routes a new PLAN through
@@ -48,9 +58,9 @@ preserves has no other tracked home. That tension is recorded here rather than p
 | Step 0a — STATUS reconcile | ✅ done (#1527, s311) |
 | Step 0b — book the live-structuring discussion | ⏳ Cray picks the time; Code prepares inputs |
 | Step 1 — story v2a (fixes only) | ✅ **shipped** (#1517, #1518) — on `main`, **not deployed** |
-| Step 2 — content decisions D-A…D-E → v2b | ⏳ **blocked on Cray** |
+| Step 2 — content decisions D-A…D-E → v2b | ✅ **ALL FIVE RULED s313 (typed 2026-09-20)** — see Step 2 below; the build is not started |
 | Step 3 — sole-source 4th case (G1) | ⏳ **blocked on Cray** (types the L5 amendment + the case's position) |
-| Step 4 — deploy | ⏳ **Cray runs the ship script**, per-phase typed go |
+| Step 4 — deploy | ⏳ per-phase typed go (`CLAUDE.md` §8). ⚠️ **"Cray runs the ship script" is CORRECTED at s313** — it describes one refusal, not a rule. See the note under Step 4 |
 | Step 5 — story v3 (primer, exec cut; G2–G5) | ⏳ waits on the live-structuring discussion |
 | Last — G7 (rehome R9) | ✅ **RULED s312 — DONE**; R9 rehomed to `docs/strategy/public/intro-video-production-rulings.md` §2.2 + §7 |
 | `.tag-synth` clean-mode position | ✅ **RULED s312** — move it up under `body.clean`; shipped in PR #1529 |
@@ -160,20 +170,45 @@ invalidates one of them. Sequencing is Cray's call; it is recorded here so it is
 - Mechanics: bump `story.js?v=` only; regenerate the batteries that embed it (page P2d,
   scenario P8b) and P5a/d/e if the tamper-evident sub changes; no timing change.
 
-### Step 2 — Cray content decisions → `feat/*` "story v2b" ⏳ OPEN
+### Step 2 — Cray content decisions → `feat/*` "story v2b" ✅ ALL FIVE RULED s313
 
-| Decision | Options | Code recommendation (s306) |
-|---|---|---|
-| **D-A** money captions | corrected "แต่ละบาท…" (A2) / "฿48,000 ยังไม่มีใครอนุมัติให้จ่าย จนกว่าจะเทียบราคาครบสามเจ้า" / none | first two; **drop "แถวเดียว"** |
-| **D-B** emergency-waiver line | include + drift pin (new `rules.emergency_waiver` block key + test + probe) / defer to v3 / no | **include with the pin** |
-| **D-C** Scene 2 (item 1) | short caption + Cray narrates / longer caption | **short + narrate.** Honest framing: "ระบบอ่านกติกาจากไฟล์นี้ตอนทำงานจริง + guard กันโค้ด DB เบี่ยง"; **do not** claim the 7 are consumed for fleet (option (B) was not opened, so they stay reference files) |
-| **D-D** gloss "ดูได้ในระบบ:" (item 7) | pin every receipt literal first (test vs procedures/code), then gloss / gloss only | **pin first** (the `fulfill` defect proves why) |
-| **D-E** say "คู่ค้าต้นแบบ" on screen | yes / no | **no** |
+**Ruled by Cray, typed, 2026-09-20 (session 313), one decision at a time.** Each premise the
+s306 recommendation rested on was **re-measured against the live tree first** (`CLAUDE.md` §6:
+an inherited premise a decision rests on is a claim, not context). All five premises held;
+two turned out **stronger** than s306 recorded, and one measurement changed a recommendation.
+The s306 column is kept because a recommendation that was followed is still evidence about how
+the thinking went.
+
+| Decision | Cray's ruling (typed s313) | Code recommendation (s306) | What s313 measured |
+|---|---|---|---|
+| **D-A** money captions | ✅ **BOTH** the corrected "แต่ละบาท…" **and** "฿48,000 ยังไม่มีใครอนุมัติให้จ่าย จนกว่าจะเทียบราคาครบสามเจ้า". **"แถวเดียว" and "ทุกบาทตอบได้" are dropped** | first two; drop "แถวเดียว" | ✅ **confirmed — prior intact, and stronger.** `cloudflared/config.yml:257` still states the `.csv` route is deliberately absent (control: the `/story/` routes are present at `:62`), so "แถวเดียว" is undemonstrable on the published demo. And `services/api/static/assets/view-export.js:148-160` renders the KPI as `pct(traceable)` with the literal empty-state string `'no spend filed to this month — not 100%'` — **the product's own copy already refuses the 100 % claim**, which s306 argued from the product's behaviour rather than from this string |
+| **D-B** emergency-waiver line | ✅ **include, with the drift pin.** The wording *"…ไม่งั้นขึ้นรายงาน"* is **rewritten** — it is factually wrong | include with the pin | ✅ **confirmed — prior intact, exactly.** The mechanism is real and complete at `verticals/fleet_maintenance/procedures.yaml:375-379` (`relaxes: [three_bid]`, `escalate_to: "เจ้าของกิจการ"`, `ratification_window_days: 7`), while the story side pins **none** of it: `story-data.js` = 0 hits and `test_story_{page,drift,scenario}.py` = 0/0/0 for `waiver\|ratification\|window_days` |
+| **D-C** Scene 2 (item 1) | ✅ **expand the 35 s caption slightly** (not a new caption) **AND make `cap-sub` clickable in every act**, opening that act's Sources drawer | short + narrate | ⚠️ **the recommendation's framing was re-aimed.** The page does **not** currently overclaim: the 35 s caption says the system *generates* seven things, and `story.js:106`'s drawer note already reads *"ของ fleet ทั้ง 7 เป็นไฟล์อ้างอิง (gitignored) — commit เฉพาะของ energy/core"*. So item 1 is a **legibility** problem, not an honesty one. Cost, measured: `.caption` is `pointer-events:none` (`story.css:70`) and captions render via `textContent` (`story.js:851-852`), so a clickable **caption** would change the render model — `cap-sub` was chosen because it already carries the source pointer and generalises to all acts for one listener |
+| **D-D** gloss "ดูได้ในระบบ:" (item 7) | ✅ **derive + pin + gloss, combined** — derive the drawer's numbers from `DATA`, **pin the result across the seam** against `procedures.yaml` / the ontology (witnessed RED by mutating the vertical), then write the CFO gloss. **Includes `ASSIST_SUB`** | pin first | 🔴 **s313 found a live specimen that changes the answer.** `tests/api/test_story_drift.py:39` reads **`story-data.js` only** — nothing reads `story.js`'s drawer prose, so `:85` ("object type 10 ชนิด · link type 7 เส้น · ref อีก 4 เส้น"), `:94` ("3 ตาราง"), `:105` ("emitter ทั้ง 7") and `:125` (the six step names) are a **second, unpinned copy of numbers that ARE pinned on the block side**. And the repo's one derive example is only ⅔ derived: `story.js:58` interpolates `ASSIST_STEP` and `autonomy` from `DATA` but leaves **`llm_assist: advisory` hand-typed** — the very field whose wrong value was the v1 defect. `advisory` appears **nowhere** in `story-data.js` and is pinned by **no** test. ⇒ derive and pin are **not redundant**: derive kills drift, pin kills wrong-field selection and leftover literals |
+| **D-E** say "คู่ค้าต้นแบบ" on screen | ✅ **no — and locked as a ruling** (`intro-video-production-rulings.md` L7 + §3), so the question stops returning | no | ✅ **not previously decided** — `git grep` over the rulings file and this one returned only the D-E row itself. `index.html:14` already discloses `ข้อมูลสาธิต (synthetic) — กลไกจริง`, which covers **data** honesty; "คู่ค้าต้นแบบ" is a **commercial-status** disclosure, a different claim. The deciding argument is R9's shape: a fact stated on camera that **expires** is a reshoot, and "ยังไม่มีลูกค้าจริง" expires on the day it is least convenient |
+
+**What the five rulings changed about the work itself — record this before planning:**
+
+- 🔴 **v2b is no longer "a few caption edits".** D-C and D-D together are a genuine build:
+  a new affordance on `cap-sub` (CSS + one listener), four derive sites in `story.js`, a
+  cross-seam test that does not exist yet, its probes, and a mutation to witness each
+  assertion RED. **The line below about bundling was written when v2b looked like text
+  edits, and no longer describes the trade.**
+- 🔴 **D-B and D-D each add probes**, so PLAN-0128's AC-10 pins (page `43`, drift `14`,
+  scenario `11`) will move. Editing those values in an **`Accepted`** PLAN is **G1-gated**.
+  The sequencing question at the head of this file is therefore sharper, not softer.
+- **D-C and D-D interact and were ruled in that order deliberately:** making `cap-sub` a
+  door into the Sources drawer raises how often the drawer is read, which raises the cost
+  of the unpinned copies D-D then removes.
 
 - ⚠️ Adding Act 5 captions **extends Act 5** (`start: 95, end: 105`; final camera key at 105):
   list the `end`, camera-key and act-nav changes explicitly, and design the overlap fix against
-  the new timeline.
-- Bundle v2a + v2b into one deploy if decided within the week; otherwise v2a goes first.
+  the new timeline. *(Re-measured s313: `story.js:130` still reads `start: 95, end: 105`.)*
+- ~~Bundle v2a + v2b into one deploy if decided within the week; otherwise v2a goes first.~~
+  ⚠️ **SUPERSEDED BY NEW INFO at s313, not an error.** The clause assumed a small v2b. With
+  D-C + D-D ruled as above, bundling holds the deploy — including the `.tag-synth` fix, which
+  changes the **first filmed frame** and is already on `main`. **Bundle-or-split is now an open
+  call for Cray**, alongside the ordering against PLAN-0128 Step 3.
 
 ### Step 3 — sole-source 4th case (G1) ⏳ OPEN
 
@@ -191,9 +226,39 @@ invalidates one of them. Sequencing is Cray's call; it is recorded here so it is
   - record `:prev`;
   - edge pre/post reads on the **versioned** URL, with `cf-cache-status` recorded.
 - Story-only change → no host `git pull` or connector recreate. **Establish this by the §2 diff,
-  not by assumption.**
-- 🔴 **Cray runs the ship script** (the auto-mode classifier refuses Code's `ssh ms-s1`).
-  **Per-phase typed go** — `CLAUDE.md` §8 host-state rule.
+  not by assumption.** ✅ **Established at s313, locally, before any host contact:** from the sha
+  the host record says is live (`ea6944fa`) to `main` (`6e9bd2fe`) the diff is **7 files the image
+  carries** — the four `story/` files plus `cli.py`, `code_generator.py`, `data_adapter.py` — and
+  **0 files under `deploy/published/oct-fleet-maintenance/`**, so `cloudflared/config.yml` is
+  unchanged ⇒ **no host `git pull`, no `--force-recreate cloudflared`**; only `app` is recreated.
+  `merge-base --is-ancestor` = 0, so a fast-forward is available. (79 commits sit between the two
+  shas; only these 7 files reach the image.)
+- **Per-phase typed go** — `CLAUDE.md` §8 host-state rule. This is the standing requirement and it
+  is unchanged.
+- ⚠️ **CORRECTED at s313 — "Cray runs the ship script" was a workaround transcribed as a rule.**
+  It is kept here rather than deleted, because the correction is the useful part:
+  - **No governance source requires it.** `CLAUDE.md` §8 and `DEPLOY.md` §0 both require a typed
+    **go**; neither names who may **run** the command. No repository hook denies `ssh` — the
+    `PreToolUse`/`Bash` hooks in `.claude/settings.json` are `pretooluse_git_deny`,
+    `pretooluse_loop_detect` and `pretooluse_ci_wait_deny` only. The project's own classifier row
+    **C5** states the opposite of a ban: *"An explicit Cray go for the action IN THIS EXCERPT
+    means the row does not fire."*
+  - **Code has demonstrably run `ssh ms-s1` itself.** `docs/logs/2026-08-26-s256-ms-s1-readonly-deploy-census.md`
+    records *"one `.ps1` piped over `ssh -o BatchMode=yes ms-s1`"* running `git` and `docker` on
+    the host.
+  - **Exactly one refusal is on record** — the 2026-09-16 deploy, where the **harness** auto-mode
+    permission classifier (not a repo gate) refused both the §3 ship script **and the first
+    read-only host read**, the same class of read Code had run at s256. Something in the harness
+    tightened between 2026-08-26 and 2026-09-16.
+  - ⚠️ **Not established:** who ran §3 at s239 / s246 / s256. Those records name no operator; only
+    the 2026-09-16 record does, which is consistent with it being the exception — but that is an
+    inference, not a measurement, and it is marked as one here.
+  - **Cheapest way to settle it:** give the go for **§2 (read-only) alone**, which the deploy needs
+    first regardless. If Code's host read runs, §3 very likely runs too; if it is refused, Cray runs
+    §3 as before, at zero cost. 🔴 **Not probed at s313** — `DEPLOY.md` §0 gates read-only commands
+    too, and testing the classifier means sending a command to the host.
+- 🔴 **What genuinely needs Cray either way:** the per-phase typed go, and the **Cloudflare Access
+  PIN** for the edge pre/post reads — `DEPLOY.md` §7 states no automated step can satisfy it.
 - Artifact: republish to the same private URL (read it first; the URL is in Tier-0 memory
   `project_story_visualizer_rulings.md`). Record the new tree id.
 - Reconcile STATUS afterwards.
