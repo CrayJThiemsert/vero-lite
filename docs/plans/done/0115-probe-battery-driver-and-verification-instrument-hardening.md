@@ -223,6 +223,14 @@ named for every absence/zero claim.
   claims only via `Claim.stable_key`; on a fixture module with two identical
   asserts in one owner, crediting one leaves the other visibly uncovered
   (driver-level restatement of `tests/tools/test_probe_coverage.py:183`).
+  - **PLAN-0128 pointer (Step 5 closeout, s315; SD-d ruled (i): no ADR).** PLAN-0128
+    extended the *derivation* of `Claim.stable_key`, not the address and not this
+    refusal: a claim whose anchor line carries a trailing `# claim: <id>` is keyed
+    `@<id>`, an untagged claim keeps `owner|source|#occurrence` — **one claim, one
+    key**: a tagged claim is addressable *only* by its tag. `expect_claim` is still the
+    only field, `stable_key` the only lookup, and this AC's fixture stays green with one
+    twin tagged (PLAN-0128 AC-5; its file is archived to `docs/plans/done/` by the same
+    closeout).
 - [x] **AC-6 (report is mandatory; self-checks are non-tautological).** Every
   battery run terminates in a `render_report` call and prints its verdict
   token; and the s253 tautology is replayed as a closed-incident oracle: an

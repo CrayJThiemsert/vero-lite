@@ -27,14 +27,16 @@ per-session *data* fed to it.
    stays closed.
 2. A witnessed probe credits **exactly one** claim — the one it pre-declared. A run stops
    at the first failing assertion, so one mutation can only ever witness one claim.
-3. Claims are addressed **only** by :attr:`~tools.probe_coverage.Claim.stable_key` — the
-   ``@<id>`` tag when one is declared, the text key otherwise; there is no alternate
-   keying path. s253 imported the object carrying ``stable_key`` and then hand-rolled a
-   colliding key beside it, so the refusal is structural: ``expect_claim`` is the only
-   field and the claim index the only lookup. A tag key and a text key are two
-   *derivations* of one key, not two paths — which is why every refusal below covers both
-   without a line of new code — and :meth:`Probe.from_json` refuses the reference-shaped
-   fields a second form would need.
+3. **One claim, one key** (PLAN-0128). Claims are addressed **only** by
+   :attr:`~tools.probe_coverage.Claim.stable_key`, which is ``@<id>`` when a trailing
+   ``# claim: <id>`` is declared on the claim's anchor line and
+   ``owner|source|#occurrence`` otherwise; a tagged claim is addressable **only** by its
+   tag, and there is no alternate keying path. s253 imported the object carrying
+   ``stable_key`` and then hand-rolled a colliding key beside it, so the refusal is
+   structural: ``expect_claim`` is the only field and the claim index the only lookup. A
+   tag key and a text key are two *derivations* of one key, not two paths — which is why
+   every refusal below covers both without a line of new code — and
+   :meth:`Probe.from_json` refuses the reference-shaped fields a second form would need.
 4. Every run ends in :func:`~tools.probe_coverage.render_report`, and the one self-check
    the driver prints is computed from **pre-filter** inputs — see :func:`_overlaps`.
 
