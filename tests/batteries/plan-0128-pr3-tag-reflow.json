@@ -1,0 +1,142 @@
+{
+  "name": "plan-0128-pr3-tag-reflow",
+  "claim_sources": [
+    "tests/tools/test_probe_battery_tag_reflow.py"
+  ],
+  "probes": [
+    {
+      "name": "R1",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    still_wide = _overwide(paths, plan.limit)",
+      "new": "    still_wide = [\"forced\"]",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit",
+      "expect_claim": "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|main([\"--project-root\", str(root), \"tag\", str(battery), \"--reflow\"]) == 0|#0",
+      "why": "force _apply_reflow to report the tree still over-wide: the tool restores and returns 2, so the happy path's exit-code assertion reddens."
+    },
+    {
+      "name": "R2",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        f\"adopted={plan.adopted} resolved_same={same} resolved_differ={differ}\"",
+      "new": "        f\"adopted={plan.adopted} resolved_same={same} resolved_differ={differ + 1}\"",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit",
+      "expect_claim": "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|\"resolved_differ=0\" in printed|#0",
+      "why": "print a non-zero differ while the run still succeeds: only the equivalence assertion reddens, the exit-code one stays green."
+    },
+    {
+      "name": "R3",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "reflowed={len(plan.overlong)}",
+      "new": "reflowed={0}",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit",
+      "expect_claim": "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|\"reflowed=1\" in printed|#0",
+      "why": "report zero reflowed statements: the reflow-was-announced assertion reddens while the equivalence assertion above it stays green."
+    },
+    {
+      "name": "R4",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        if current in new_key:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_the_battery_key_is_rewritten_to_the_tag",
+      "expect_claim": "test_the_battery_key_is_rewritten_to_the_tag|main([\"--project-root\", str(root), \"tag\", str(battery), \"--reflow\"]) == 0|#0",
+      "why": "leave the battery's probe keys pointing at the dead text key: the tool's own post-write lint finds the orphan, restores, and returns 2."
+    },
+    {
+      "name": "R5",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    if not plan.overlong:\n        return None\n    if not reflow:",
+      "new": "    if not plan.overlong:\n        return None\n    if False:",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_without_reflow_the_refusal_warns_against_exploding_by_hand",
+      "expect_claim": "test_without_reflow_the_refusal_warns_against_exploding_by_hand|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 2|#0",
+      "why": "drop the without-reflow refusal: an over-long tag is written and the run succeeds, so the assertion that it refuses reddens."
+    },
+    {
+      "name": "R6",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "Re-run with --reflow to let",
+      "new": "Re-run with the flag to let",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_without_reflow_the_refusal_warns_against_exploding_by_hand",
+      "expect_claim": "test_without_reflow_the_refusal_warns_against_exploding_by_hand|\"--reflow\" in printed|#0",
+      "why": "remove the only mention of the flag from the refusal: the run still exits 2, so only the assertion that the remedy is named reddens."
+    },
+    {
+      "name": "R7",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "refuses every one of them as an unaddressable key.",
+      "new": "refuses every one of them as an unknown key.",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_without_reflow_the_refusal_warns_against_exploding_by_hand",
+      "expect_claim": "test_without_reflow_the_refusal_warns_against_exploding_by_hand|\"unaddressable key\" in printed|#0",
+      "why": "reword the dead-end warning: the flag is still named, so the sibling assertion stays green and only this one reddens."
+    },
+    {
+      "name": "R8",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    blocked = _overlong_refusal(plan, project_root, reflow)\n    if blocked is not None:\n        return 2, blocked\n\n    originals = _apply_appends(plan)",
+      "new": "    originals = _apply_appends(plan)\n    blocked = _overlong_refusal(plan, project_root, reflow)\n    if blocked is not None:\n        return 2, blocked\n",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_without_reflow_the_refusal_warns_against_exploding_by_hand",
+      "expect_claim": "test_without_reflow_the_refusal_warns_against_exploding_by_hand|{p: _sha(p) for p in before} == before|#0",
+      "why": "refuse AFTER writing instead of before: exit code and message are unchanged, so the only assertion that can catch it is the sha one."
+    },
+    {
+      "name": "R9",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    unformatted = _unformatted(_touched(plan), project_root)",
+      "new": "    unformatted = []",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing",
+      "expect_claim": "test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing|main([\"--project-root\", str(root), \"tag\", str(battery), \"--reflow\"]) == 2|#0",
+      "why": "drop the format-clean precondition: the run proceeds and succeeds, so the assertion that an unformatted module is refused reddens."
+    },
+    {
+      "name": "R10",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "clean already, so that any formatting change afterwards is ",
+      "new": "clean beforehand, so that any formatting change afterwards is ",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing",
+      "expect_claim": "test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing|\"format` clean already\" in printed|#0",
+      "why": "reword the precondition refusal: it still exits 2, so only the assertion naming the reason reddens."
+    },
+    {
+      "name": "R11",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    blocked = _overlong_refusal(plan, project_root, reflow)\n    if blocked is not None:\n        return 2, blocked\n\n    originals = _apply_appends(plan)",
+      "new": "    originals = _apply_appends(plan)\n    blocked = _overlong_refusal(plan, project_root, reflow)\n    if blocked is not None:\n        return 2, blocked\n",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing",
+      "expect_claim": "test_reflow_refuses_a_module_that_is_not_already_formatted_and_writes_nothing|{p: _sha(p) for p in before} == before|#0",
+      "why": "the same refuse-after-writing mutation, scoped to the precondition case: its own sha assertion is a separate claim in a separate test."
+    },
+    {
+      "name": "R12",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        if report.findings:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_restores_everything_when_it_strands_a_probe_anchor",
+      "expect_claim": "test_reflow_restores_everything_when_it_strands_a_probe_anchor|main([\"--project-root\", str(tmp_path), \"tag\", str(battery), \"--reflow\"]) == 2|#0",
+      "why": "ignore the post-write lint: the stranded anchor no longer refuses and the run returns 0, reddening the assertion that it refuses."
+    },
+    {
+      "name": "R13",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    for path, text in originals.items():\n        path.write_text(text, encoding=\"utf-8\")",
+      "new": "    for path, text in list(originals.items())[:0]:\n        path.write_text(text, encoding=\"utf-8\")",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_restores_everything_when_it_strands_a_probe_anchor",
+      "expect_claim": "test_reflow_restores_everything_when_it_strands_a_probe_anchor|{p: _sha(p) for p in before} == before|#0",
+      "why": "make _restore skip the source files: the run still exits 2, so only the assertion that it put the bytes back reddens."
+    },
+    {
+      "name": "R14",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    still_wide = _overwide(paths, plan.limit)",
+      "new": "    still_wide = [\"forced\"]",
+      "node_id": "tests/tools/test_probe_battery_tag_reflow.py::test_reflow_restores_everything_when_it_strands_a_probe_anchor",
+      "expect_claim": "test_reflow_restores_everything_when_it_strands_a_probe_anchor|main([\"--project-root\", str(tmp_path), \"tag\", str(battery), \"--reflow\"]) == 0|#0",
+      "why": "the same forced reflow error, scoped to the stranded-anchor test's positive control: the refusal assertions above it still pass, the control reddens."
+    }
+  ],
+  "exemptions": {
+    "project|len(WIDE) == 41|#0": "fixture premise, not a claim about the tool: it pins the width arithmetic the other cases depend on. The s288 precedent for premise assertions.",
+    "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|\"@tag-reflow/p-one\" in _keys(module)|#0": "OVER-DETERMINED. A tag that fails to resolve is caught by the tool's own post-write resolution check, which restores and returns 2 — so every single-subject mutation reddens the exit-code assertion first. This assertion is the positive control that the self-check ran on the committed result.",
+    "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|widest <= 60|#0": "OVER-DETERMINED by _overwide: a tree left over-wide is refused and restored before this line is reached, reddening the exit-code assertion first. Reddening it alone would need a two-subject mutation (skip the format AND the width check), which the one-probe-one-assertion rule forbids.",
+    "test_reflow_tags_an_overlong_anchor_and_leaves_every_line_within_the_limit|lines_after > lines_before|#0": "OVER-DETERMINED, same mechanism as `widest <= 60`: a run that never reflowed leaves the line over-wide, which _overwide catches first. It is kept as the positive control that the fixture really did overrun — without it a fixture that quietly stopped overrunning would satisfy the whole test.",
+    "test_the_battery_key_is_rewritten_to_the_tag|data[\"probes\"][0][\"expect_claim\"] == \"@tag-reflow/p-one\"|#0": "OVER-DETERMINED by R4's mutation: a battery left pointing at the dead text key fails the tool's own lint, which restores and returns 2, so the exit-code assertion reddens first.",
+    "test_reflow_restores_everything_when_it_strands_a_probe_anchor|\"@tag-reflow/p-one\" in _keys(module)|#0": "OVER-DETERMINED by the positive control's exit-code assertion (R14): a run that does not reach 0 cannot have tagged the claim."
+  }
+}

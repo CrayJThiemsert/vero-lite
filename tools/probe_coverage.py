@@ -90,6 +90,12 @@ _TAG_MARKER = "# claim:"
 #: ``<id>`` grammar (PLAN-0128 §2.1). Anchored by :meth:`re.Pattern.fullmatch`.
 _TAG_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_./-]*")
 
+#: Where :attr:`Claim.source` is cut. A claim longer than this keeps a PREFIX of its
+#: expression, which therefore does not parse on its own — anything comparing two
+#: sources has to know that (``_tag._equivalent_source`` does). Named here rather than
+#: inlined at the two cut sites so there is one derivation of the number, not three.
+SOURCE_CUT = 160
+
 #: Printed verbatim when every claim is either reddened by a probe or exempted with a
 #: reason. A caller greps for this token — an echoed exit code is corruptible, a printed
 #: verdict is not.
@@ -403,7 +409,7 @@ def enumerate_claims(path: Path) -> list[Claim]:
                     module=stem,
                     owner=owners.get(node.lineno, "<module>"),
                     lineno=node.lineno,
-                    source=" ".join(text.split())[:160],
+                    source=" ".join(text.split())[:SOURCE_CUT],
                     kind="assert",
                     multi=isinstance(node.test, ast.BoolOp) and isinstance(node.test.op, ast.And),
                 )
@@ -419,7 +425,7 @@ def enumerate_claims(path: Path) -> list[Claim]:
                         module=stem,
                         owner=owners.get(node.lineno, "<module>"),
                         lineno=node.lineno,
-                        source=" ".join(text.split())[:160],
+                        source=" ".join(text.split())[:SOURCE_CUT],
                         kind="raises",
                         multi=False,
                     )
