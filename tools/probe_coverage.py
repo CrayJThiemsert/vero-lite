@@ -64,7 +64,7 @@ import io
 import re
 import sys
 import tokenize
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -274,6 +274,46 @@ def _anchors_and_tags(source: str, path: Path) -> tuple[list[int], dict[int, str
     return newline_rows, tags
 
 
+def is_valid_tag_id(ident: str) -> bool:
+    """Whether ``ident`` is a well-formed ``# claim:`` id (§2.1).
+
+    Public because the ``tag`` subcommand chooses ids itself and must refuse a bad one
+    **in its plan phase**, before writing. Asking the same question of the same pattern
+    the enumerator enforces is the point: a tool that invented its own notion of a legal
+    id could write a file its own reader then refuses.
+    """
+    return _TAG_ID.fullmatch(ident) is not None
+
+
+def anchor_row_for(claim_lineno: int, newline_rows: Sequence[int]) -> int:
+    """The row a tag for the claim starting at ``claim_lineno`` must sit on.
+
+    The anchor is the first logical-line end at or after the claim's first row. A claim
+    occupies every row between the two, so no other statement can end inside it.
+
+    🔴 **This is the single derivation of "which line is the anchor", and it is public
+    for exactly one reason:** the ``tag`` subcommand *writes* a tag onto a line that
+    :func:`enumerate_claims` must then *read* it from. Two implementations of this rule
+    that agreed today would be free to drift tomorrow, and the failure would be silent —
+    a tag written one line off enumerates as ``unattached`` (loud) or, worse, on an
+    interior line, where it leaks into the very ``source`` it names. One function,
+    both callers.
+    """
+    later = [row for row in newline_rows if row >= claim_lineno]
+    return later[0] if later else claim_lineno
+
+
+def claims_with_anchor_rows(path: Path) -> list[tuple[Claim, int]]:
+    """Every claim in ``path``, paired with the row a tag for it must occupy.
+
+    The writer's entry point, built from the same token stream the reader uses (see
+    :func:`anchor_row_for`). Raises whatever :func:`enumerate_claims` raises.
+    """
+    claims = enumerate_claims(path)
+    newline_rows, _ = _anchors_and_tags(path.read_text(encoding="utf-8"), path)
+    return [(claim, anchor_row_for(claim.lineno, newline_rows)) for claim in claims]
+
+
 def _attach_tags(ordered: list[Claim], source: str, path: Path) -> list[Claim]:
     """Attach each declared tag to the one claim its anchor line ends, or refuse.
 
@@ -288,12 +328,8 @@ def _attach_tags(ordered: list[Claim], source: str, path: Path) -> list[Claim]:
     if not tags:
         return ordered
 
-    # Anchor of a claim = the first logical-line end at or after the claim's first row.
-    # A claim occupies every row between the two, so no other statement can end inside it.
-    anchor_of: list[int] = []
-    for claim in ordered:
-        later = [row for row in newline_rows if row >= claim.lineno]
-        anchor_of.append(later[0] if later else claim.lineno)
+    # One derivation, shared with the `tag` subcommand's writer — see `anchor_row_for`.
+    anchor_of = [anchor_row_for(claim.lineno, newline_rows) for claim in ordered]
 
     by_anchor: dict[int, list[int]] = {}
     for index, row in enumerate(anchor_of):

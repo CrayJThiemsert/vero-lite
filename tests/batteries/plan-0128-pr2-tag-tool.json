@@ -1,0 +1,143 @@
+{
+  "name": "plan-0128-pr2-tag-tool",
+  "claim_sources": [
+    "tests/tools/test_probe_battery_tag.py"
+  ],
+  "probes": [
+    {
+      "name": "9a",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "            lines[item.row - 1] = f\"{lines[item.row - 1]}{TAG_PREFIX}{item.ident}\"",
+      "new": "            lines[item.lineno - 1] = f\"{lines[item.lineno - 1]}{TAG_PREFIX}{item.ident}\"",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence",
+      "expect_claim": "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 0|#0",
+      "why": "append to the statement's FIRST physical line instead of its anchor: the multi-line claim's tag lands inside the span ast.get_source_segment slices, the post-write enumeration raises ClaimTagError, the tool restores and returns 2. AC-9 predicted this reddens (i); measured, the rc assertion precedes (i) and reddens first — the run stops at the first failed assert."
+    },
+    {
+      "name": "9b",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    if reasons:\n        raise TagPlanError(reasons)",
+      "new": "    if reasons:\n        battery_path.write_text(battery_path.read_text(encoding=\"utf-8\") + \"!\", encoding=\"utf-8\")\n        raise TagPlanError(reasons)",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_refuses_when_a_key_is_unaddressable_and_writes_nothing",
+      "expect_claim": "test_tag_refuses_when_a_key_is_unaddressable_and_writes_nothing|{p: _sha(p) for p in before} == before|#0",
+      "why": "write despite the unaddressable-key refusal. The exit code stays 2 on purpose, so the rc assertion stays GREEN and the sha assertion is the one that reddens — which is the claim this probe is about: 'refused' and 'wrote nothing' are two different statements and only the second is what refuse-before-writing means."
+    },
+    {
+      "name": "9c",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        if claim.tag is not None:\n            planned.append(",
+      "new": "        if claim.tag is not None and False:\n            planned.append(",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_adopts_an_existing_tag_instead_of_appending_a_second",
+      "expect_claim": "test_tag_adopts_an_existing_tag_instead_of_appending_a_second|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 0|#0",
+      "why": "always append instead of adopting: a second marker joins the line, _parse_tag refuses two markers in one comment, the tool restores and returns 2. AC-9 predicted the adopted= assertion reddens; measured, the rc assertion precedes it (AC-9's own note that no proof line is printed is what makes that so). 9m witnesses the adopted= count on its own."
+    },
+    {
+      "name": "9m",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        return sum(1 for p in self.planned if p.adopted)",
+      "new": "        return sum(1 for p in self.planned if not p.adopted)",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_adopts_an_existing_tag_instead_of_appending_a_second",
+      "expect_claim": "test_tag_adopts_an_existing_tag_instead_of_appending_a_second|\"adopted=1\" in printed|#0",
+      "why": "report adopted= from the count of planned APPENDS instead of adoptions. The run still succeeds, so this reddens the adopted= assertion and nothing earlier."
+    },
+    {
+      "name": "9d",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    for key, suffix in _addressed_keys(battery):",
+      "new": "    for key, suffix in [(k, f\"c{i}\") for i, k in enumerate(index)]:",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence",
+      "expect_claim": "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|len(anchor_rows) == 3|#0",
+      "why": "tag EVERY claim of the module rather than only the addressed ones. AC-9 predicted this reddens (ii); measured, (i)'s count of tagged lines precedes (ii) and reddens first — any extra tag changes that count, so (ii) cannot be reached while (i) stays green. (ii) is exempted with that reason."
+    },
+    {
+      "name": "9e",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        return sum(1 for p in self.planned if p.adopted)",
+      "new": "        return sum(1 for p in self.planned if not p.adopted)",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence",
+      "expect_claim": "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|\"battery=pr2-tag-tool.json addressed=3 tagged=3 adopted=0 \" \"resolved_same=3 resolved_differ=0\" in printed|#0",
+      "why": "same mutation as 9m against the no-adoption case: the printed proof line reads adopted=3. Everything before the proof line stays green, which is AC-9's stated control that this assertion is about the printed value and not the writing."
+    },
+    {
+      "name": "9k",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        path.write_text(\"\\n\".join(lines), encoding=\"utf-8\")",
+      "new": "        path.write_text(\"\\n\".join(lines) + \"\\n\", encoding=\"utf-8\")",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence",
+      "expect_claim": "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|len(tagged_lines) == len(original_lines)|#0",
+      "why": "append a trailing newline on write, so the file gains a line. The tags still land on their anchors and still enumerate, so this reddens the line-count half of (i) and nothing else — append-never-insert is exactly the property it pins."
+    },
+    {
+      "name": "9f",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "            lines[item.row - 1] = f\"{lines[item.row - 1]}{TAG_PREFIX}{item.ident}\"",
+      "new": "            _line = lines[item.row - 1]\n            _cut = _line.find(\"  #\")\n            lines[item.row - 1] = (\n                f\"{_line[:_cut]}{TAG_PREFIX}{item.ident}{_line[_cut:]}\"\n                if _cut >= 0\n                else f\"{_line}{TAG_PREFIX}{item.ident}\"\n            )",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_appends_after_an_existing_trailing_comment",
+      "expect_claim": "test_tag_appends_after_an_existing_trailing_comment|line.endswith(\"# noqa: E501 \" + MARKER + \" pr2-tag-tool/p-one\")|#0",
+      "why": "place the tag BEFORE an existing trailing comment. The tag still resolves (the marker is found anywhere in the COMMENT token), so the run succeeds and only the ordering assertion reddens — AC-9's stated control that this claim is about order, not resolution."
+    },
+    {
+      "name": "9g",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "        if width > limit:",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing",
+      "expect_claim": "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 2|#0",
+      "why": "skip the width check entirely: the over-long append is written instead of refused, so the exit-2 assertion reddens."
+    },
+    {
+      "name": "9h",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    return value if isinstance(value, int) else _RUFF_DEFAULT_LINE_LENGTH",
+      "new": "    return 60",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing",
+      "expect_claim": "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 0|#0",
+      "why": "ignore pyproject.toml and hard-code the limit. 60 rather than ruff's 88 on purpose: it leaves the refusal case reading exactly width=70 limit=60, so every assertion up to the positive control stays GREEN and the control — the same project at line-length 100, which must now succeed — is the one that reddens. A hard-coded 88 would redden the earlier rc assertion instead and witness 9g's claim over again."
+    },
+    {
+      "name": "9n",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "            overlong.append(f\"overlong: {path}:{row} width={width} limit={limit}\")",
+      "new": "            overlong.append(f\"overlong: {path}:{row} width={width + 1} limit={limit}\")",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing",
+      "expect_claim": "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|\"width=70 limit=60\" in printed|#0",
+      "why": "print a width one past the measured one. The refusal still happens and still says 'overlong:', so this isolates the printed VALUE from the fact of refusing — the report prints what it measured or the number is decoration."
+    },
+    {
+      "name": "9i",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    if dry_run:",
+      "new": "    if False:",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_dry_run_prints_the_sd_e_measurement_and_writes_nothing",
+      "expect_claim": "test_dry_run_prints_the_sd_e_measurement_and_writes_nothing|\"overlong=0 of addressed=1\" in printed|#0",
+      "why": "make --dry-run fall through to the writing path. The run still exits 0, so the assertion that reddens is the missing measurement line."
+    },
+    {
+      "name": "9j",
+      "subject": "tools/probe_battery/_tag.py",
+      "old": "    if dry_run:",
+      "new": "    if dry_run:\n        battery_path.write_text(battery_path.read_text(encoding=\"utf-8\") + \"!\", encoding=\"utf-8\")",
+      "node_id": "tests/tools/test_probe_battery_tag.py::test_dry_run_prints_the_sd_e_measurement_and_writes_nothing",
+      "expect_claim": "test_dry_run_prints_the_sd_e_measurement_and_writes_nothing|{p: _sha(p) for p in before} == before|#0",
+      "why": "let --dry-run write. The exit code and the printed measurement both stay correct, so the sha assertion is the only one that can redden — which is the whole claim of a dry run."
+    }
+  ],
+  "exemptions": {
+    "test_tag_refuses_when_a_key_is_unaddressable_and_writes_nothing|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 2|#0": "OVER-DETERMINED, and this is measured rather than argued. Two independent mechanisms produce this exit code for an unaddressable key: the plan-phase refusal, and the tool's own re-lint of its result. Probe 9l removed the first outright (`if reasons:` -> `if not reasons:`) and the run went GREEN — rc was still 2, because the re-lint refused the battery whose key resolves to nothing. A single-subject mutation therefore cannot redden this assertion, and 9l was deleted rather than re-aimed at a claim it did not witness. What the assertion still buys is real and is witnessed next door: 9b keeps the exit code at 2 and reddens the SHA assertion, proving the plan-phase refusal is what stops the WRITE — which is the property 'refuse before writing' actually names.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|tagged_lines[anchor_rows[2]].strip().startswith(\") == 3\")|#0": "Reached only when three tags exist and the third is the multi-line claim's closing line. Every mutation that moves a tag off its anchor makes the enumeration refuse, so the tool restores and the rc assertion (9a) reddens first. 9a is this claim's witness one assertion earlier.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|before == after|#0": "The byte-identity half of (i). A mutation that touches a non-anchor line is the same edit as 9k's trailing-newline mutation, which reddens the line-count assertion immediately above it; there is no single-subject mutation that corrupts an interior line while leaving the count intact.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|original_lines[i] != tagged_lines[i]|#0": "A POSITIVE CONTROL for the assertion above, not an independent claim: it proves the byte-identity check is not vacuous by showing the anchor lines did change. Making it redden requires leaving an anchor untagged, which reddens the count assertion (9d's claim) first.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|[c.tag for c in untouched] == [None]|#0": "(ii), the unaddressed-claim claim. AC-9 predicted 9d would redden it while (i) stayed green; measured, any mutation that tags an extra claim also changes (i)'s count of tagged lines, which is asserted first. Recorded as an AC-9 correction rather than reordered, because the count is the stronger assertion of the two.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|[p[\"expect_claim\"] for p in data[\"probes\"]] == [ \"@pr2-tag-tool/p-one\", \"@pr2-tag-tool/p-one\", \"@pr2-tag-tool/p-multi\", ]|#0": "(iii). AC-9 exempts this explicitly and states the reason: the tool re-lints its own result and restores on any finding, so a battery left addressing dead text keys never reaches this assertion — the rc assertion reddens first.",
+    "test_tag_appends_to_anchor_lines_rewrites_the_battery_and_prints_its_equivalence|list(data[\"exemptions\"]) == [\"@pr2-tag-tool/exempt-1\"]|#0": "The exemption half of (iii), same reason as the line above: AC-9's stated re-lint-then-restore exemption.",
+    "test_tag_adopts_an_existing_tag_instead_of_appending_a_second|anchor_after == [anchor_before]|#0": "Adoption's byte-identity claim. Any mutation that writes to an adopted line produces a doubled marker, which the enumeration refuses, so the rc assertion (9c) reddens first.",
+    "test_tag_adopts_an_existing_tag_instead_of_appending_a_second|anchor_after[0].count(MARKER) == 1|#0": "The no-second-marker claim, same path as the line above and unreachable for the same reason — a doubled marker is a refusal, not a surviving second tag.",
+    "test_tag_appends_after_an_existing_trailing_comment|main([\"--project-root\", str(root), \"tag\", str(battery)]) == 0|#0": "9f's GREEN control: the run must still succeed for the ordering assertion to mean anything about order rather than about failure. A probe reddening it would be witnessing 'the tool broke', which 9a and 9c already witness.",
+    "test_tag_appends_after_an_existing_trailing_comment|\"@pr2-tag-tool/p-one\" in _keys(module)|#0": "The resolution half of the trailing-comment case, and AC-9 names it as the control that stays green under 9f. It is reached only when the ordering assertion above it passes.",
+    "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|len(wide) == 41|#0": "A FIXTURE-PREMISE assertion, not a claim about the tool: it pins the fixture's own width so the width arithmetic below cannot drift silently. The s288 precedent exempts fixture premises with this reason (tests/batteries/s288-battery-definition-lint.json).",
+    "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|\"overlong:\" in printed|#0": "The fact-of-refusing half. 9n isolates the printed VALUE from it deliberately, and a mutation reddening this one instead is 9g's claim — the tool not refusing at all.",
+    "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|{p: _sha(p) for p in before} == before|#0": "The writes-nothing half of the width refusal. The only mutation that writes here is 9g's skipped width check, which reddens the rc assertion two lines earlier.",
+    "test_tag_refuses_an_append_that_would_exceed_line_length_and_writes_nothing|\"@pr2-tag-tool/p-one\" in _keys(module)|#0": "The positive control's own consequence: reached only after the control run succeeds, which is 9h's claim.",
+    "test_dry_run_prints_the_sd_e_measurement_and_writes_nothing|main([\"--project-root\", str(root), \"tag\", str(battery), \"--dry-run\"]) == 0|#0": "9i and 9j both keep the dry run exiting 0 on purpose, so this is their shared GREEN control rather than a claim either can witness."
+  }
+}

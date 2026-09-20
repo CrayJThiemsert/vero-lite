@@ -136,6 +136,48 @@ battery already scopes exactly opens gaps in that battery — and reaching COMPL
 would need junk exemptions over claims you never meant to cover. Precedent:
 `test_probe_coverage_cardinality.py`, `test_probe_coverage_claim_tags.py`.
 
+### Migrating a text-keyed battery
+
+`tag` does the whole migration for one battery at once. Never transplant a tag by hand:
+what refuses a hand transplant is the **coverage denominator**, not the site comparison —
+the classifier *is* fooled — and it only refuses while nothing else addresses the
+stranded claim (PLAN-0128 §9).
+
+```bash
+python -m tools.probe_battery tag tests/batteries/my-battery.json --dry-run   # measure
+python -m tools.probe_battery tag tests/batteries/my-battery.json             # apply
+```
+
+For every key the battery addresses (probe `expect_claim`s ∪ exemption keys) it resolves
+the claim, **adopts** a tag already on that anchor line or appends
+`  # claim: <battery-stem>/<probe-name>` (`…/exempt-<k>` for an exemption), rewrites the
+battery's keys to `@<id>`, then re-enumerates and re-lints its own result.
+
+It **computes the whole plan first and refuses before writing** — on an unaddressable
+key, an id already used in that module, or an append that would exceed the project's
+`ruff` `line-length` (read from `pyproject.toml`, not assumed). On a refusal every file
+is byte-identical; after a write, a failed re-enumeration restores from the in-memory
+originals.
+
+The proof line is the evidence a PR body quotes:
+
+```
+battery=<name> addressed=<n> tagged=<n> adopted=<m> resolved_same=<n> resolved_differ=0
+```
+
+`resolved_same` counts keys whose `(owner, source, occurrence)` is unchanged after
+tagging. With tags every *key string* changes by construction, so "keys are equal" would
+be meaningless — claim **identity** is what is proved. **`resolved_differ` is the leak
+detector**: a tag that reached a claim's `source` changes that tuple, and the tool
+refuses and restores rather than committing it.
+
+⚠️ **`--dry-run` reports over-long lines instead of refusing them**, and always prints
+`overlong=<n> of addressed=<n>` — including at zero, because a missing line and a zero
+read the same to anyone grepping for the figure. That is the reading SD-e is decided on:
+*if `overlong` exceeds half of `addressed`, the default id scheme is wrong, not the
+asserts.* Measured over the three PLAN-0126 story batteries: **25 of 69 (36%)** — page
+14/43, drift 7/15, scenario 4/11. The scheme holds; drift's 47% is the margin to watch.
+
 **3 — run it.**
 
 ```bash
