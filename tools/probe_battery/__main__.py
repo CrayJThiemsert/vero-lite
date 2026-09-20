@@ -1,4 +1,4 @@
-"""CLI for the probe-battery driver: ``run``, ``restore``, ``status``.
+"""CLI for the probe-battery driver: ``run``, ``restore``, ``keys``, ``tag``, ``status``.
 
 ``restore`` is not a convenience. SIGKILL runs no Python, so the only recovery path after
 one is the persisted manifest — and ``run`` refuses to start while an unrestored manifest
@@ -28,6 +28,7 @@ from tools.probe_battery._snapshot import (
     restore_pending,
     state_root,
 )
+from tools.probe_battery._tag import tag_battery
 from tools.probe_coverage import enumerate_claims
 
 
@@ -124,6 +125,20 @@ def _cmd_keys(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_tag(args: argparse.Namespace) -> int:
+    """Migrate a text-keyed battery onto claim tags (PLAN-0128 §2.5).
+
+    The report goes to stdout on success and to stderr on a refusal, because a refusal's
+    text is diagnostic and a success's text is the *evidence* — the proof line a PR body
+    quotes.
+    """
+    code, report = tag_battery(
+        Path(args.battery), Path(args.project_root).resolve(), dry_run=args.dry_run
+    )
+    print(report, file=sys.stderr if code else sys.stdout)
+    return code
+
+
 def _cmd_status(args: argparse.Namespace) -> int:
     base = state_root(Path(args.project_root).resolve())
     pending = find_unrestored(base)
@@ -171,6 +186,18 @@ def main(argv: list[str] | None = None) -> int:
     keys_parser = sub.add_parser("keys", help="list a module's claims by stable_key")
     keys_parser.add_argument("paths", nargs="+", help="test modules to enumerate")
     keys_parser.set_defaults(func=_cmd_keys)
+
+    tag_parser = sub.add_parser("tag", help="migrate a text-keyed battery onto claim tags")
+    tag_parser.add_argument("battery", help="path to the battery JSON file")
+    tag_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help=(
+            "compute the plan and print it — including `overlong=<n> of addressed=<n>`, "
+            "PLAN-0128 SD-e's measurement — without writing anything"
+        ),
+    )
+    tag_parser.set_defaults(func=_cmd_tag)
 
     status_parser = sub.add_parser("status", help="show unrestored runs")
     status_parser.set_defaults(func=_cmd_status)
