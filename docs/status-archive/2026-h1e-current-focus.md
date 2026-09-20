@@ -1363,3 +1363,55 @@ _[CF block (session 310), verbatim:]_
 > migrate on rot (this DEPARTS from the drafter's bulk-migration
 > recommendation); SD-c **(i)** `CLAUDE.md` §8 unchanged; SD-d **(i)** no ADR;
 > SD-e **(i)** `<battery-stem>/<probe-name>`; SD-f **(i)** coexistence.
+
+
+### Rotated at the s313 reconcile — the session-312 Current-Focus block and its rotation-ledger entry [on the R1 headroom rule: STATUS opened at **63,406 B**, only **2,130 B** under R1's 65,536 B ceiling, and the s313 block (**3,362 B** as its own contiguous `>` run) had to land, so the window stays ONE (313). 🔴 **The s312 entry declared the 4-session nominal "AVAILABLE and the next reconcile's call"; this reconcile REFUTES that by measurement** — keeping s312 left **2,130 B** against **~4,870 B** of additions, short **~2,740 B**, while rotating freed **5,263 B**. The cause is unchanged and is not window width: **Active TODOs at 41,250 B = 64.7%** and the ratified `CRAY'S DIRECTION (s276)` split still unbuilt. Block **3,031 B** and its ledger entry **2,232 B** (itself over the ~900 B per-entry cap), both carved from `git show HEAD:docs/STATUS.md`, never from the scribe's return. 🔴 **The ledger entry's absence probe first read PRESENT, and the NEEDLE was wrong, not the claim:** its carve prefix is the generic ledger opening every entry shares, and it matched as a substring inside an earlier rotation header — the R6 clause-2 rewrite, in mirror image (s278's needle was too narrow and read 0 on present content; this one was too wide and read 1 on absent content). Re-probed on seven s312-only tokens: each **0 across every archive letter** and **1 in STATUS**, against a positive control (=1) and a fabricated needle (=0). Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 312, 2026-09-19 (#1527's merge → #1530's merge) — six PRs, and the
+> theme is one thing: decisions that were MADE but could not be READ. main
+> `15d1daa3`, 0 open PRs.**
+>
+> 🔴 **The measurement that reframed the session.** Cray asked whether to clear
+> the carried items first; measuring them found **all 11 were Cray-blocked —
+> Code could move none.** Two artifacts then proved to exist in **no tracked
+> file**: the whole story plan (5 sessions, carried by *name only*) and **R9, a
+> typed ruling, unreachable for 71 sessions** while `intro-video-production-rulings.md`
+> went on reasoning from the bound R9 had voided — including an entry saying a
+> later ruling was needed **when that ruling predated it by 26 days**.
+>
+> ✅ **#1528 + #1530 (`docs/*`) — both rehomed.** s306 Appendix A §A1/§A2/§A3
+> verbatim → `docs/logs/2026-09-19-s312-story-page-open-decisions.md`; R9 →
+> `intro-video-production-rulings.md` §2.2 + §7, with the three void-bound
+> arguments corrected **in place with dated markers** (that file's own amendment
+> convention — no ruling text rewritten). R9 carries a **second half the plan's
+> summary never did**: 🔴 *nothing on camera may state a runtime* — an active
+> filming constraint, not a relaxation.
+>
+> ✅ **#1529 (`fix/*`) — `body.clean .tag-synth{top:var(--gutter)}`** on Cray's
+> typed ruling. Not a one-line change: the `?v=c2→c3` bump rotted **two committed
+> battery anchors** (P6b, P8-set — the s309 anchor-rot class), so the generator's
+> spec literals moved and the JSON was **regenerated, never hand-edited**. Lint
+> read `BROKEN (2 of 52)` naming exactly those two, then `OK (52/648)` —
+> **counts identical either side.** The oracle was the **browser**, since no test
+> pins a layout rule and one reading the CSS back to itself would be vacuous:
+> `64px → 16px`, delta 48, both entry points, reversing cleanly.
+>
+> ✅ **#1531 (`docs/*`) — the engine took a conversation-derived case with ZERO
+> engine changes, and governance refused it anyway.** From the s312 workshop
+> fixture: `load_procedures("adspend")` ACCEPTED, `services_diff=0` before and
+> after, per-entity `threshold_field`, and a DOA base on a **different field**
+> from the monitored measure. Rule-driven suites swept it in for free —
+> `docs=8 applied=8 failed=0` against real Postgres. Then the **AT-2 census
+> refused**: *"the AT-2 signature baseline moved … Re-argue it (do not just
+> update this list)."* 🔴 All three refusals hit **authoring form, never the
+> case's shape** — and two were prose numerals (ADR-0025 D4), which is the real
+> obstacle on the conversation→YAML path, because customers speak in numbers.
+>
+> ✅ **#1532 (`docs/*`) — live structuring has a tracked home** (it was defined
+> in **no** repository file) plus **lesson #0065**: `CLAUDE.md` §4's tracked-surface
+> clause binds *gates and tripwires*, and this session's three losses were a
+> **ruling**, a **plan** and an **open decision** — the clause does not reach them.
+
+_[its own Current-Focus rotation-ledger entry (s312), verbatim:]_
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md) — `2026-h1d-current-focus.md` is CLOSED to appends at **190,011 B**. Window = **312** — ONE. 🔴 **THIS (s312) reconcile rotates ONE block — s311, 2,496 B as carved** (under the 4,096 B cap; carved from `git show HEAD:docs/STATUS.md`, never retyped) to `2026-h1e-current-focus.md`. ⚠️ **But the reason is DIFFERENT from the last four, and that matters.** R1 did **not** force it this time: this reconcile **moved the 5,802 B fabricated-`reason` specimen ledger out to `docs/logs/`** on Cray's typed go — the move STATUS itself had been asking for since s308 — so headroom went **495 B → 5,118 B**, the first time in five reconciles it is not measured in hundreds. Keeping s311 beside s312 was **affordable** (it would have left ~2,622 B) and was **declined deliberately**, not by default: Active TODOs is still **45,573 B / 70.1%** of the file and the ratified `CRAY'S DIRECTION (s276)` split is still unbuilt, so the recovered bytes are banked against that rather than spent on window width. 🔴 **Restoring the window toward R2's 4-session nominal is now AVAILABLE and is the next reconcile's call** — it was not available at s308–s311. ✅ **Code-measured, END-STATE not mid-point:** STATUS **65,041 → 63,406 B, headroom 495 → 2,130**. The structural moves alone reached 60,418 B (CF block −2,496 +3,033; specimen row −5,801 +641); the narrative updates this session actually needed — the s312 CF block, this ledger, the RD row, two In-Flight rows and Next Steps — spent **2,988 B** of that back. ⚠️ Recorded because a first estimate quoted the mid-point as the result. `h1e` 120,084 → 122,583 B; `2026-h1-status.md` 110,312 → 111,043 B (the pruned **s298** RD row, R4 move-never-drop — it was nearly dropped outright and recovered from `git show HEAD:`). Every slice was verified **present exactly once in its target AND absent from STATUS as two separate readings** — a presence-only check passes on a pre-existing copy.]_
