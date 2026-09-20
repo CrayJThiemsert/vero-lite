@@ -1415,3 +1415,58 @@ _[CF block (session 310), verbatim:]_
 _[its own Current-Focus rotation-ledger entry (s312), verbatim:]_
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the ledger's OWN window plus a ~900 B per-entry cap, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md) — `2026-h1d-current-focus.md` is CLOSED to appends at **190,011 B**. Window = **312** — ONE. 🔴 **THIS (s312) reconcile rotates ONE block — s311, 2,496 B as carved** (under the 4,096 B cap; carved from `git show HEAD:docs/STATUS.md`, never retyped) to `2026-h1e-current-focus.md`. ⚠️ **But the reason is DIFFERENT from the last four, and that matters.** R1 did **not** force it this time: this reconcile **moved the 5,802 B fabricated-`reason` specimen ledger out to `docs/logs/`** on Cray's typed go — the move STATUS itself had been asking for since s308 — so headroom went **495 B → 5,118 B**, the first time in five reconciles it is not measured in hundreds. Keeping s311 beside s312 was **affordable** (it would have left ~2,622 B) and was **declined deliberately**, not by default: Active TODOs is still **45,573 B / 70.1%** of the file and the ratified `CRAY'S DIRECTION (s276)` split is still unbuilt, so the recovered bytes are banked against that rather than spent on window width. 🔴 **Restoring the window toward R2's 4-session nominal is now AVAILABLE and is the next reconcile's call** — it was not available at s308–s311. ✅ **Code-measured, END-STATE not mid-point:** STATUS **65,041 → 63,406 B, headroom 495 → 2,130**. The structural moves alone reached 60,418 B (CF block −2,496 +3,033; specimen row −5,801 +641); the narrative updates this session actually needed — the s312 CF block, this ledger, the RD row, two In-Flight rows and Next Steps — spent **2,988 B** of that back. ⚠️ Recorded because a first estimate quoted the mid-point as the result. `h1e` 120,084 → 122,583 B; `2026-h1-status.md` 110,312 → 111,043 B (the pruned **s298** RD row, R4 move-never-drop — it was nearly dropped outright and recovered from `git show HEAD:`). Every slice was verified **present exactly once in its target AND absent from STATUS as two separate readings** — a presence-only check passes on a pre-existing copy.]_
+
+
+### Rotated at the s314 reconcile — the session-313 Current-Focus block and its rotation-ledger entry [on the R1 headroom rule: STATUS opened at **63,362 B**, **2,174 B** under R1's 65,536 B ceiling, and the s314 block had to land, so the window stays ONE (314) — the **third consecutive** reconcile at ONE (312, 313, 314). Keeping s313 would have needed ~4,556 B against 2,174 B of headroom, short ~2,382 B; rotating it and its ledger entry freed **4,202 B**. The cause is unchanged and is not window width: **Active TODOs at 41,250 B = 65.1%** and the ratified `CRAY'S DIRECTION (s276)` split still unbuilt. Both slices carved from `git show HEAD:docs/STATUS.md`, never from the scribe's return (R6 clause 1). Each probed ABSENT here first on a token unique to it — the generic ledger opening is NOT usable as a needle, as the s313 reconcile measured when it matched an earlier rotation header as a substring and wrongly refused — against a positive control (=1) and a fabricated needle (=0). Presence below asserted as a COUNT (want 1), absence from STATUS separately (want 0).]
+
+> **Session 313, 2026-09-20 (#1534, #1536, #1535 — all merged) — every premise a
+> decision was about to consume was re-measured against the live tree first, and
+> that changed answers. main `8b8a4ebf`, 0 open PRs.**
+>
+> ✅ **#1534 (`docs/*`) — Cray's five story D-decisions recorded, each with its
+> measurement.** D-A both money captions · D-B the waiver line *with* the pin ·
+> D-C expand the 35 s caption **and** make `cap-sub` clickable in every act · D-D
+> **derive AND pin** across the seam + gloss · D-E no "คู่ค้าต้นแบบ" on screen. All
+> five s306 recommendations held, and 🔴 **one measurement changed the answer**:
+> D-D became *derive and pin*, not *pin first* — the repo's own flagship derive
+> example measured only ⅔ derived; D-C was re-aimed from honesty to legibility.
+> D-E is **locked as ruling L7** (`intro-video-production-rulings.md` §2.3/§3/§7).
+>
+> ✅ **#1535 (`feat/*`) — PLAN-0128 Step 1 shipped whole: a claim is addressed by
+> a tag on its own anchor line.** 9 files, +1404/−18 — tags in the enumerator and
+> the driver, four source files, **three NEW test modules**, a 30-probe battery,
+> README docs. Re-read from the banked run, `plan-0128-pr1-claim-tags.json`:
+> **claims 41 · RED 30 · exempted 11 · GAPS 0 · stale ids 0 · COVERAGE COMPLETE ·
+> BATTERY PASS**; `BATTERY-DEFINITIONS: OK (53 batteries, 678 probes)`; **5410
+> passed, 8 skipped**; ruff clean over **791 files**; `CI_WAIT: PASS sha=1e293e2`.
+>
+> 🔴 **§9's open question is SETTLED by measurement, and it beats BOTH readings
+> §2.3 recorded.** Through the real driver: reddening **both** claims gives
+> `MISFIRE` (pytest stops at the first — the de-tagged original, whose site
+> disagrees with the declared line); reddening **only the transplanted-to** claim
+> gives `WITNESSED` — the classifier **is** fooled as §2.3 feared — but `GAPS: 1`
+> → `PROBE-BATTERY: FAIL`, the stranded original addressed by nothing. ⇒ **what
+> refuses a transplant is the coverage denominator, not the site comparison.**
+> ⚠️ Conditional — nothing else addresses that claim; homed in the fixture's docstring.
+>
+> 🔴 **The AC's artifact paths had to be departed from, and Cray ruled it.**
+> AC-1…AC-7 followed literally opened **6 gaps** in
+> `s288-battery-definition-lint.json` (19/19 → 25/19) and **23** in a PR-1 battery
+> over `test_probe_coverage.py`, 20 pre-existing. Cray ruled **(ก)** own modules,
+> then accounted for it: the four modules the tests were cut out of are
+> **byte-identical to HEAD** (`changed_lines=0`), the lint battery back to 19/19.
+>
+> ✅ **#1536 (`docs/*`) — two sequencing rulings Cray typed, which a close-out
+> grep found in ZERO tracked files:** *Step 3 before v2b*, *bundle v2a + v2b into
+> one deploy*. 🔴 **Second consecutive session** with a typed ruling living
+> nowhere tracked (s312: R9, 71 sessions) — a second data point for #0065's open
+> question: should §4's tracked-surface clause widen past *gate/tripwire*?
+>
+> ⚠️ **Also:** five probes were wrong before any code was, and **each was repaired
+> by DERIVING the correct mutation, never by relaxing the assertion**; Code's read
+> was wrong twice, **the artifact right both times**. Deploy pre-flight ran local:
+> **7 files reach the image, 0 under `deploy/published/`**; **nothing touched MS-S1.**
+
+_[its own Current-Focus rotation-ledger entry (s313), verbatim:]_
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **313** — ONE. 🔴 **THIS (s313) reconcile rotates the s312 block (3,031 B as its own `>` run) AND the s312 ledger entry (2,232 B, far over cap) together**, carved from `git show HEAD:docs/STATUS.md`. ⚠️ **The s312 entry called the 4-session nominal "AVAILABLE, the next reconcile's call" — measurement REFUTES it:** keeping s312 leaves **2,130 B** headroom against **~4,870 B** of additions, short **~2,740 B**; rotating frees **5,263 B**. Cause unchanged: **Active TODOs 41,250 B = 64.7%** and the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; that split is.]_
