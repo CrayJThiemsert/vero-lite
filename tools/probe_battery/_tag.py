@@ -30,24 +30,47 @@ committed by this tool. Under trailing placement the leak is already impossible 
 construction (:func:`tools.probe_coverage.anchor_row_for` is shared with the reader); the
 check is what keeps that true if either side ever moves.
 
-Why the tool does not let ``ruff format`` reflow an over-long tagged line for it: a
-Black-compatible formatter puts the trailing comment after the closing bracket of the
-exploded statement — still a valid anchor — but that is asserted, not measured here, and
-a tool depending on it would be writing a tree it cannot lint. It refuses and prints the
-width instead, and the author shortens the id or explodes the statement by hand.
+**Over-long appends, and why ``--reflow`` exists (PLAN-0128 Step 3).** An append that
+would push its anchor line past the project's ``line-length`` is refused by default: the
+tool will not write a tree it cannot lint. The refusal used to advise *"explode the
+statement so its anchor line is shorter, then re-run"* — **which is a dead end, measured**:
+exploding a statement changes ``ast.get_source_segment``'s text, and that text *is* the
+battery's declared key, so the re-run refuses every exploded claim as an
+``unaddressable key``. The order has to be the other way round — tag first, reflow second
+— because surviving a reflow is exactly what a tag is *for*.
+
+``--reflow`` does that, and the assumption the refusal rested on is now measured rather
+than asserted: a Black-compatible formatter puts the trailing comment after the closing
+bracket of the exploded statement, which is still the anchor :func:`anchor_row_for`
+returns. Over nine real shapes — one-line asserts with and without a message, tuple
+comparisons, already-exploded statements, a set-literal comparison — every tag landed on
+the anchor line, none leaked into ``source``, and the widest resulting line fell from 137
+to 92 against a limit of 100.
+
+The flag keeps every guarantee the default path gives. It refuses before writing unless
+each touched module is *already* ``ruff format`` clean (otherwise a post-write formatting
+change could not be attributed to the tags); afterwards it re-enumerates, requires every
+line to be within the limit, and requires every tag to resolve to the claim its text key
+named. That last comparison is by **AST**, not by text: a reflow rewrites whitespace and
+adds a trailing comma, neither of which appears in the parse tree, while any real change
+to the expression does. Anything that fails restores every file and exits 2.
 """
 
 from __future__ import annotations
 
+import ast
 import json
+import subprocess
+import sys
 import tomllib
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 from tools.probe_battery._battery import Battery, BatteryDefinitionError
 from tools.probe_battery._lint import lint_battery_file
 from tools.probe_coverage import (
+    SOURCE_CUT,
     Claim,
     ClaimTagError,
     claims_with_anchor_rows,
@@ -272,24 +295,164 @@ def _restore(originals: Mapping[Path, str], battery_path: Path, battery_text: st
         battery_path.write_text(battery_text, encoding="utf-8")
 
 
-def _resolved_same(plan: TagPlan) -> tuple[int, int]:
+def _touched(plan: TagPlan) -> list[Path]:
+    """Every module the plan appends to, deduplicated, in a stable order."""
+    seen: dict[Path, None] = {}
+    for item in plan.planned:
+        if not item.adopted:
+            seen.setdefault(item.path, None)
+    return list(seen)
+
+
+def _ruff(args: Sequence[str], project_root: Path) -> subprocess.CompletedProcess[str]:
+    """Invoke ruff through the running interpreter, not through ``PATH``.
+
+    ``PATH`` may hold a different ruff — or none — than the environment the project's
+    ``line-length`` was read from, and a formatter mismatch here rewrites source.
+    """
+    # S603: the argv is this interpreter, two literals, and paths the plan resolved from
+    # the battery's own `claim_sources` — no shell, and no value from outside the repo.
+    return subprocess.run(  # noqa: S603
+        [sys.executable, "-m", "ruff", *args],
+        capture_output=True,
+        text=True,
+        cwd=project_root,
+        check=False,
+    )
+
+
+def _unformatted(paths: Iterable[Path], project_root: Path) -> list[Path]:
+    """Which of ``paths`` ``ruff format`` would change. Empty means all clean."""
+    out: list[Path] = []
+    for path in paths:
+        done = _ruff(["format", "--check", str(path)], project_root)
+        if done.returncode != 0:
+            out.append(path)
+    return out
+
+
+def _overwide(paths: Iterable[Path], limit: int) -> list[str]:
+    """Lines still past ``limit``, as printable readings. Empty means the tree lints."""
+    out: list[str] = []
+    for path in paths:
+        for number, text in enumerate(path.read_text(encoding="utf-8").split("\n"), start=1):
+            if len(text) > limit:
+                out.append(
+                    f"overlong after reflow: {path}:{number} " f"width={len(text)} limit={limit}"
+                )
+    return out
+
+
+def _overlong_refusal(plan: TagPlan, project_root: Path, reflow: bool) -> str | None:
+    """Why this plan may not be written yet, or ``None`` when it may.
+
+    Both refusals happen BEFORE the first byte is written, which is what lets the caller
+    return them without any restore.
+    """
+    if not plan.overlong:
+        return None
+    if not reflow:
+        return (
+            "refused, nothing written — an append would exceed the line limit:\n  "
+            + "\n  ".join(plan.overlong)
+            + "\n  Re-run with --reflow to let `ruff format` explode these statements "
+            "after the tag is written. Do NOT explode them by hand first: that rewrites "
+            "the source text this battery's keys are derived from, and the re-run then "
+            "refuses every one of them as an unaddressable key."
+        )
+    unformatted = _unformatted(_touched(plan), project_root)
+    if unformatted:
+        return (
+            "refused, nothing written — --reflow requires every module it will format to "
+            "be `ruff format` clean already, so that any formatting change afterwards is "
+            "attributable to the tags this run wrote:\n  "
+            + "\n  ".join(str(p) for p in unformatted)
+        )
+    return None
+
+
+def _apply_reflow(plan: TagPlan, project_root: Path) -> str | None:
+    """Format the touched modules. Returns a refusal reason, or ``None`` on success.
+
+    Called only after the tags are written, so every return here obliges the caller to
+    restore — the tree at this point holds appends the formatter has not yet reflowed.
+    """
+    paths = _touched(plan)
+    done = _ruff(["format", *(str(p) for p in paths)], project_root)
+    if done.returncode != 0:
+        return f"`ruff format` failed during --reflow:\n  {(done.stderr or done.stdout).strip()}"
+    still_wide = _overwide(paths, plan.limit)
+    if still_wide:
+        return "--reflow ran but the tree is still not lintable:\n  " + "\n  ".join(still_wide)
+    return None
+
+
+def _without_layout(text: str) -> str:
+    """Strip exactly what a reflow is free to rewrite: whitespace and commas."""
+    return text.replace(" ", "").replace(",", "")
+
+
+def _equivalent_source(before: str, after: str) -> tuple[bool, bool]:
+    """``(equivalent, compared_as_prefix)`` — is ``after`` ``before`` after a reflow?
+
+    Compared by parse tree, because a reflow rewrites exactly the two things a parse tree
+    does not record — whitespace, and the trailing comma ``ruff format`` adds when it
+    explodes a sequence. Any real change to the expression *does* reach the tree, so this
+    stays a refutation and not a rubber stamp.
+
+    **Except when the claim is long.** :attr:`Claim.source` is cut at
+    :data:`tools.probe_coverage.SOURCE_CUT` characters, so a long claim keeps a *prefix*
+    of its expression, which does not parse — and a reflow shifts where that cut falls,
+    so the two sides are prefixes of the same expression taken at different points.
+    Measured on ``test_story_drift.py``: two claims sit at exactly the cut, neither
+    parses, and one of them is reflowed. There the test is containment once layout is
+    removed, and the caller is told so — a weaker comparison that nobody is told about is
+    how a check quietly stops meaning anything. A parse failure on a source that was
+    *not* cut is a real refusal, not a licence to fall back.
+    """
+    if before == after:
+        return True, False
+    try:
+        parsed_before = ast.dump(ast.parse(before, mode="eval"))
+        parsed_after = ast.dump(ast.parse(after, mode="eval"))
+    except SyntaxError:
+        if len(before) < SOURCE_CUT and len(after) < SOURCE_CUT:
+            return False, False
+        lhs, rhs = _without_layout(before), _without_layout(after)
+        return bool(lhs) and (lhs.startswith(rhs) or rhs.startswith(lhs)), True
+    return parsed_before == parsed_after, False
+
+
+def _resolved_same(plan: TagPlan, reflowed: bool = False) -> tuple[int, int, int]:
     """``(same, differ)`` over the post-write resolution of every tagged key.
 
     The claim behind ``@<id>`` must still be the claim the text key named — same owner,
     same ``source``, same occurrence. A tag that entered ``source`` changes the tuple,
     which is how a leak is caught without trusting placement.
+
+    After a ``--reflow`` the ``source`` text is *expected* to change, so there the third
+    field is compared by :func:`_equivalent_source` instead of byte-for-byte. Owner and
+    occurrence are compared exactly either way — a reflow may not move a claim to another
+    test, nor change which occurrence within it the tag addresses.
     """
     live: dict[Path, dict[str, Claim]] = {}
-    same = differ = 0
+    same = differ = truncated = 0
     for item in plan.planned:
         if item.path not in live:
             live[item.path] = {c.stable_key: c for c in enumerate_claims(item.path)}
         claim = live[item.path].get(f"@{item.ident}")
-        if claim is not None and (claim.owner, claim.source, claim.occurrence) == item.identity:
-            same += 1
-        else:
+        owner, source, occurrence = item.identity
+        if claim is None or (claim.owner, claim.occurrence) != (owner, occurrence):
             differ += 1
-    return same, differ
+            continue
+        if reflowed:
+            equivalent, as_prefix = _equivalent_source(source, claim.source)
+            truncated += as_prefix
+        else:
+            equivalent = claim.source == source
+        same += equivalent
+        differ += not equivalent
+    return same, differ, truncated
 
 
 def proof_line(plan: TagPlan, same: int, differ: int) -> str:
@@ -304,47 +467,69 @@ def proof_line(plan: TagPlan, same: int, differ: int) -> str:
     )
 
 
-def tag_battery(battery_path: Path, project_root: Path, dry_run: bool = False) -> tuple[int, str]:
-    """``(exit code, report)``. Writes nothing when ``dry_run`` or when anything refuses."""
+def _load_plan(battery_path: Path, project_root: Path) -> tuple[TagPlan | None, str | None]:
+    """``(plan, None)``, or ``(None, reason)`` when the battery will not load or plan.
+
+    Every refusal here precedes the first write, so the caller owes no restore.
+    """
     try:
         data = json.loads(battery_path.read_text(encoding="utf-8"))
         battery = Battery.from_json(data, base=project_root)
     except (OSError, json.JSONDecodeError) as exc:
-        return 2, f"cannot read battery file {battery_path}: {exc}"
+        return None, f"cannot read battery file {battery_path}: {exc}"
     except BatteryDefinitionError as exc:
-        return 2, f"battery definition error: {exc}"
+        return None, f"battery definition error: {exc}"
 
     try:
-        plan = plan_tags(battery, battery_path, project_root)
+        return plan_tags(battery, battery_path, project_root), None
     except TagPlanError as exc:
-        return 2, "refused, nothing written:\n  " + "\n  ".join(exc.reasons)
+        return None, "refused, nothing written:\n  " + "\n  ".join(exc.reasons)
     except (ClaimTagError, SyntaxError, OSError) as exc:
-        return 2, f"refused, nothing written: {exc}"
+        return None, f"refused, nothing written: {exc}"
+
+
+def _dry_run_report(plan: TagPlan) -> str:
+    """What the run WOULD do, plus PLAN-0128 SD-e's binding measurement."""
+    lines = list(plan.overlong)
+    # Printed even at zero: a missing line and a zero line are the same reading to
+    # anyone grepping for it, and only one of them is true.
+    lines.append(f"overlong={len(plan.overlong)} of addressed={plan.addressed}")
+    lines.append(
+        f"battery={plan.battery_name} addressed={plan.addressed} "
+        f"would_tag={plan.to_append} would_adopt={plan.adopted} (dry run, nothing written)"
+    )
+    return "\n".join(lines)
+
+
+def tag_battery(
+    battery_path: Path,
+    project_root: Path,
+    dry_run: bool = False,
+    reflow: bool = False,
+) -> tuple[int, str]:
+    """``(exit code, report)``. Writes nothing when ``dry_run`` or when anything refuses."""
+    plan, unreadable = _load_plan(battery_path, project_root)
+    if plan is None:
+        return 2, unreadable or "refused, nothing written"
 
     if dry_run:
-        lines = list(plan.overlong)
-        # SD-e's binding measurement. Printed even at zero: a missing line and a zero
-        # line are the same reading to anyone grepping for it, and only one is true.
-        lines.append(f"overlong={len(plan.overlong)} of addressed={plan.addressed}")
-        lines.append(
-            f"battery={plan.battery_name} addressed={plan.addressed} "
-            f"would_tag={plan.to_append} would_adopt={plan.adopted} (dry run, nothing written)"
-        )
-        return 0, "\n".join(lines)
+        return 0, _dry_run_report(plan)
 
-    if plan.overlong:
-        return 2, (
-            "refused, nothing written — an append would exceed the line limit:\n  "
-            + "\n  ".join(plan.overlong)
-            + "\n  Shorten the id by tagging that claim by hand, or explode the statement "
-            "so its anchor line is shorter, then re-run."
-        )
+    will_reflow = bool(plan.overlong) and reflow
+    blocked = _overlong_refusal(plan, project_root, reflow)
+    if blocked is not None:
+        return 2, blocked
 
     originals = _apply_appends(plan)
     battery_text: str | None = None
     try:
         battery_text = _rewrite_battery(battery_path, plan)
-        same, differ = _resolved_same(plan)
+        if will_reflow:
+            problem = _apply_reflow(plan, project_root)
+            if problem is not None:
+                _restore(originals, battery_path, battery_text)
+                return 2, f"refused and RESTORED — {problem}"
+        same, differ, truncated = _resolved_same(plan, reflowed=will_reflow)
         if differ:
             _restore(originals, battery_path, battery_text)
             return 2, (
@@ -361,4 +546,12 @@ def tag_battery(battery_path: Path, project_root: Path, dry_run: bool = False) -
         _restore(originals, battery_path, battery_text)
         return 2, f"refused and RESTORED — re-enumeration failed after writing: {exc}"
 
-    return 0, proof_line(plan, same, differ)
+    line = proof_line(plan, same, differ)
+    if will_reflow:
+        # Its own line, never appended to the proof line: AC-9 (iv) reads that line whole,
+        # and AC-10 quotes it ending at `resolved_differ=`.
+        line += (
+            f"\nreflowed={len(plan.overlong)} statement(s) via `ruff format`; "
+            f"{truncated} key(s) compared as a truncated prefix"
+        )
+    return 0, line

@@ -91,7 +91,9 @@ async def story_client() -> AsyncIterator[AsyncClient]:
 
 def _authored_texts() -> dict[str, str]:
     missing = [name for name in AUTHORED_FILES if not (STORY_DIR / name).is_file()]
-    assert not missing, f"authored story files missing: {missing}"
+    assert (
+        not missing
+    ), f"authored story files missing: {missing}"  # claim: plan-0126-story-page/P-A1
     return {name: authored_text(name) for name in AUTHORED_FILES}
 
 
@@ -107,17 +109,23 @@ def test_story_files_reference_no_external_origin() -> None:
     external = {name: external_references(name, text) for name, text in texts.items()}
     total = sum(len(refs) for refs in all_refs.values())
     print(f"files={len(texts)} refs={total} external={sum(len(v) for v in external.values())}")
-    assert not any(external.values()), f"external references: {external}"
+    assert not any(
+        external.values()
+    ), f"external references: {external}"  # claim: plan-0126-story-page/P1a
     assert (
         total >= 4
-    ), f"only {total} references parsed across {sorted(texts)} — the scan read nothing"
+    ), (
+        f"only {total} references parsed across {sorted(texts)} — the scan read nothing"
+    )  # claim: plan-0126-story-page/P1c
 
 
 def test_the_origin_checker_flags_a_known_cdn_import() -> None:
     """Positive control: the checker AC-1 trusts does find the stage-1 CDN import."""
     flagged = external_references("story.js", _KNOWN_CDN_IMPORT)
     print(f"flagged={flagged}")
-    assert flagged == ["https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"]
+    assert flagged == [
+        "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+    ]  # claim: plan-0126-story-page/P1b
 
 
 # --------------------------------------------------------------------------- #
@@ -139,11 +147,11 @@ async def test_story_index_is_served_unprofiled_on_the_published_profile(
         f"status={response.status_code} csp={'match' if csp else 'MISMATCH'} "
         f"profile_meta={'present' if profile_meta else 'absent'} cache_control={cache!r}"
     )
-    assert response.status_code == 200
-    assert csp
-    assert 'type="module" src="story.js' in response.text
-    assert not profile_meta
-    assert cache != "no-store"
+    assert response.status_code == 200  # claim: plan-0126-story-page/P2a
+    assert csp  # claim: plan-0126-story-page/P2b
+    assert 'type="module" src="story.js' in response.text  # claim: plan-0126-story-page/P2d
+    assert not profile_meta  # claim: plan-0126-story-page/P2e
+    assert cache != "no-store"  # claim: plan-0126-story-page/P2f
 
 
 async def test_root_index_is_still_profiled(
@@ -154,8 +162,8 @@ async def test_root_index_is_still_profiled(
     response = await story_client.get("/")
     published_tag = '<meta name="ui-profile" content="published" />' in response.text
     print(f"status={response.status_code} published_tag={published_tag}")
-    assert response.status_code == 200
-    assert published_tag
+    assert response.status_code == 200  # claim: plan-0126-story-page/P2g
+    assert published_tag  # claim: plan-0126-story-page/P2h
 
 
 def test_profiled_index_still_raises_without_the_anchor(
@@ -166,7 +174,7 @@ def test_profiled_index_still_raises_without_the_anchor(
     page = tmp_path / "index.html"
     page.write_text("<!doctype html><title>no anchor</title>", encoding="utf-8")
     mount = _StaticFilesWithCSP(directory=tmp_path, html=True)
-    with pytest.raises(RuntimeError, match="ui-profile anchor"):
+    with pytest.raises(RuntimeError, match="ui-profile anchor"):  # claim: plan-0126-story-page/P2c
         mount._profiled_index(FileResponse(page))
 
 
@@ -198,11 +206,15 @@ def test_every_story_file_is_admitted_by_a_story_ingress_row() -> None:
         f"rows={rows} files={len(files)} admitted={len(admitted)} "
         f"page_admitted={page_admitted} control_admitted={control_admitted}"
     )
-    assert len(rows) == 2, f"expected the two story rows, found {rows}"
-    assert not subdirs, f"story/ must stay flat (the `[^/]+` row admits nothing deeper): {subdirs}"
-    assert sorted(admitted) == sorted(files)
-    assert page_admitted
-    assert control_admitted == 0
+    assert (
+        len(rows) == 2
+    ), f"expected the two story rows, found {rows}"  # claim: plan-0126-story-page/P3d
+    assert not subdirs, (
+        f"story/ must stay flat (the `[^/]+` row admits nothing deeper): {subdirs}"
+    )  # claim: plan-0126-story-page/exempt-1
+    assert sorted(admitted) == sorted(files)  # claim: plan-0126-story-page/P3c
+    assert page_admitted  # claim: plan-0126-story-page/P3e
+    assert control_admitted == 0  # claim: plan-0126-story-page/P3f
 
 
 def test_the_story_rows_are_anchored_and_the_expected_table_carries_them() -> None:
@@ -221,8 +233,10 @@ def test_the_story_rows_are_anchored_and_the_expected_table_carries_them() -> No
         f"config_rows={sorted(config_rows)} table_rows={sorted(table_rows)} "
         f"unanchored={unanchored}"
     )
-    assert unanchored == [], f"story rows not anchored at both ends: {unanchored}"
-    assert table_rows == config_rows == _STORY_ROWS
+    assert (
+        unanchored == []
+    ), f"story rows not anchored at both ends: {unanchored}"  # claim: plan-0126-story-page/P3b2
+    assert table_rows == config_rows == _STORY_ROWS  # claim: plan-0126-story-page/P3a2
 
 
 # --------------------------------------------------------------------------- #
@@ -251,17 +265,19 @@ def test_story_text_carries_no_ruled_out_literal() -> None:
     )
     # The absence assertion runs FIRST, so a mutation that swaps tamper-evident for
     # immutable fails on the literal it introduced (PLAN-0126 probe P5c).
-    assert not found, f"ruled-out literals on the page: {found}"
-    assert band_numeral == band_tiers == 1, "the band numeral may appear only as its tier row"
-    assert ai_tokens <= 1, "R3 — barely say AI"
-    assert "tamper-evident" in combined
+    assert not found, f"ruled-out literals on the page: {found}"  # claim: plan-0126-story-page/P5a
+    assert (
+        band_numeral == band_tiers == 1
+    ), "the band numeral may appear only as its tier row"  # claim: plan-0126-story-page/P5d
+    assert ai_tokens <= 1, "R3 — barely say AI"  # claim: plan-0126-story-page/P5e
+    assert "tamper-evident" in combined  # claim: plan-0126-story-page/P5c
 
 
 def test_the_literal_checker_flags_a_known_numeral() -> None:
     """Positive control: the same function finds a band numeral written for the screen."""
     flagged = _ruled_out_literals("ด่านอนุมัติเกิน ฿30,001 ไปที่เจ้าของกิจการ")
     print(f"flagged={flagged}")
-    assert "฿30,001" in flagged
+    assert "฿30,001" in flagged  # claim: plan-0126-story-page/P5b
 
 
 # --------------------------------------------------------------------------- #
@@ -287,8 +303,8 @@ def test_every_story_reference_resolves() -> None:
         if STATIC_DIR.resolve() not in path.parents
     ]
     print(f"refs={len(resolved)} dangling={dangling} escaping={escaping}")
-    assert dangling == []
-    assert escaping == []
+    assert dangling == []  # claim: plan-0126-story-page/P6a
+    assert escaping == []  # claim: plan-0126-story-page/P6c
 
 
 def test_every_story_file_is_referenced_or_exempt() -> None:
@@ -304,8 +320,8 @@ def test_every_story_file_is_referenced_or_exempt() -> None:
         name for name in _UNREFERENCED_STORY_FILES if (STORY_DIR / name).resolve() in referenced
     ]
     print(f"shipped_js_css={len(shipped)} orphans={orphans} stale_exemptions={stale}")
-    assert orphans == []
-    assert stale == []
+    assert orphans == []  # claim: plan-0126-story-page/P6b
+    assert stale == []  # claim: plan-0126-story-page/P6d
 
 
 def test_the_story_parse_is_not_vacuous() -> None:
@@ -315,9 +331,9 @@ def test_the_story_parse_is_not_vacuous() -> None:
     refs_css = sum(1 for _, _, path in resolved if path.suffix == ".css")
     files = [p for p in STORY_DIR.iterdir() if p.is_file()]
     print(f"refs_js={refs_js} refs_css={refs_css} files={len(files)} vendored={VENDORED_FILES}")
-    assert refs_js >= 1
-    assert refs_css >= 1
-    assert files
+    assert refs_js >= 1  # claim: plan-0126-story-page/P6e
+    assert refs_css >= 1  # claim: plan-0126-story-page/P6f
+    assert files  # claim: plan-0126-story-page/exempt-2
 
 
 # --------------------------------------------------------------------------- #
@@ -329,7 +345,11 @@ def test_console_offers_the_story_link_in_a_new_tab() -> None:
     """An anchor to /story/ with target _blank and rel noopener — never a view key."""
     source = strip_js_comments(_APP_JS.read_text(encoding="utf-8"))
     anchors = [m.start() for m in re.finditer(r"href:\s*'/story/'", source)]
-    assert len(anchors) == 1, f"expected one href: '/story/' in app.js, found {len(anchors)}"
+    assert (
+        len(anchors) == 1
+    ), (
+        f"expected one href: '/story/' in app.js, found {len(anchors)}"
+    )  # claim: plan-0126-story-page/P7b
     open_brace = source.rindex("{", 0, anchors[0])
     close_brace = source.index("}", anchors[0])
     attrs = source[open_brace : close_brace + 1]
@@ -340,17 +360,21 @@ def test_console_offers_the_story_link_in_a_new_tab() -> None:
         and re.search(r"hasOwnProperty\.call\(VIEWS,\s*'H'\)", gate)
     )
     print(f"tag_call={tag_call.strip()!r} attrs={attrs!r} gated_on_I_and_H={gated}")
-    assert re.search(r"h\(\s*'a'\s*,\s*$", tag_call), "the link must be an anchor element"
-    assert re.search(r"target:\s*'_blank'", attrs)
-    assert re.search(r"rel:\s*'noopener'", attrs)
-    assert gated, "the link must be gated on the SERVER-DECLARED view set holding I and H"
+    assert re.search(
+        r"h\(\s*'a'\s*,\s*$", tag_call
+    ), "the link must be an anchor element"  # claim: plan-0126-story-page/P7c
+    assert re.search(r"target:\s*'_blank'", attrs)  # claim: plan-0126-story-page/P7a
+    assert re.search(r"rel:\s*'noopener'", attrs)  # claim: plan-0126-story-page/P7d
+    assert gated, (
+        "the link must be gated on the SERVER-DECLARED view set holding I and H"
+    )  # claim: plan-0126-story-page/P7e
 
 
 def test_the_story_link_added_no_tab() -> None:
     """Control: the A-J census the header ladder was measured for is unchanged."""
     registered = _registered_view_keys()
     print(f"registered={sorted(registered)}")
-    assert registered == MEASURED_TAB_CENSUS
+    assert registered == MEASURED_TAB_CENSUS  # claim: plan-0126-story-page/P7f
 
 
 def test_the_link_and_the_edge_agree_on_every_published_system() -> None:
@@ -378,8 +402,8 @@ def test_the_link_and_the_edge_agree_on_every_published_system() -> None:
     print(f"systems={rows}")
     assert any(
         links for _, _, links, _ in rows
-    ), "no system declares I and H — the check read nothing"
-    assert [row for row in rows if row[2] != row[3]] == []
+    ), "no system declares I and H — the check read nothing"  # claim: plan-0126-story-page/P7g
+    assert [row for row in rows if row[2] != row[3]] == []  # claim: plan-0126-story-page/P7h
 
 
 # --------------------------------------------------------------------------- #
@@ -427,13 +451,25 @@ def test_every_story_reference_is_relative_and_in_bounds() -> None:
         f"refs={len(refs)} relative={len(refs) - len(not_relative)} "
         f"out_of_bounds={out_of_bounds} owners={owners} files_map={sorted(files_map)}"
     )
-    assert not_relative == [], f"references the Artifact host cannot serve: {not_relative}"
-    assert out_of_bounds == [], f"references outside story/ and assets/fonts/: {out_of_bounds}"
-    assert set(owners) >= {"index.html", "story.js", "story.css"}, "the scan read no references"
+    assert (
+        not_relative == []
+    ), (
+        f"references the Artifact host cannot serve: {not_relative}"
+    )  # claim: plan-0126-story-page/P11a
+    assert (
+        out_of_bounds == []
+    ), (
+        f"references outside story/ and assets/fonts/: {out_of_bounds}"
+    )  # claim: plan-0126-story-page/P11c
+    assert set(owners) >= {
+        "index.html",
+        "story.js",
+        "story.css",
+    }, "the scan read no references"  # claim: plan-0126-story-page/P11d
 
 
 def test_the_relative_checker_flags_a_root_relative_url() -> None:
     """Positive control: the checker AC-11 trusts does find a root-relative font URL."""
     flagged = _non_relative_references("story.css", _KNOWN_ROOT_RELATIVE_URL)
     print(f"flagged={flagged}")
-    assert flagged == ["/assets/fonts/x.woff2"]
+    assert flagged == ["/assets/fonts/x.woff2"]  # claim: plan-0126-story-page/P11b

@@ -48,7 +48,7 @@ def _ladder() -> list[tuple[int, str]]:
         if p.procedure_id == "governed_repair_approval"
     )
     approve = next(step for step in procedure.steps if step.step_id == "approve")
-    assert approve.governance_content is not None
+    assert approve.governance_content is not None  # claim: plan-0126-story-scenario/exempt-1
     return [(int(t.min_amount), str(t.approver_role)) for t in approve.governance_content.tiers]
 
 
@@ -59,15 +59,17 @@ async def test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_ru
 
     # 1. The console loads, and it carries the link the visitor clicks.
     console = await visitor.get("/")
-    assert console.status_code == 200
-    assert "assets/app.js" in console.text
+    assert console.status_code == 200  # claim: plan-0126-story-scenario/P8-root
+    assert "assets/app.js" in console.text  # claim: plan-0126-story-scenario/P8-appjs
     app_js = await visitor.get("/assets/app.js")
-    assert "href: '/story/'" in app_js.text
+    assert "href: '/story/'" in app_js.text  # claim: plan-0126-story-scenario/P8-link
 
     # 2. The explainer page itself, under the console CSP.
     page = await visitor.get("/story/")
-    assert page.status_code == 200
-    assert page.headers.get("content-security-policy") == _OCT_CSP
+    assert page.status_code == 200  # claim: plan-0126-story-scenario/P8-page
+    assert (
+        page.headers.get("content-security-policy") == _OCT_CSP
+    )  # claim: plan-0126-story-scenario/P8-csp
 
     # 3. Every reference the SERVED page makes loads from the same mount.
     served: dict[str, str] = {"/story/": page.text}
@@ -91,14 +93,21 @@ async def test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_ru
     failed = {path: status for path, status in statuses.items() if status != 200}
     three = served.get("/story/three.module.min.js", "")
     print(f"served_refs={len(statuses)} failed={failed} three_bytes={len(three.encode())}")
-    assert failed == {}
-    assert {
-        "/story/story.css",
-        "/story/story-data.js",
-        "/story/story.js",
-        "/story/three.module.min.js",
-    } <= set(statuses), f"the served page never referenced a file it needs: {sorted(statuses)}"
-    assert len(three.encode()) > 100_000, "the served Three.js is not a real library build"
+    assert failed == {}  # claim: plan-0126-story-scenario/P8b
+    assert (
+        {
+            "/story/story.css",
+            "/story/story-data.js",
+            "/story/story.js",
+            "/story/three.module.min.js",
+        }
+        <= set(statuses)
+    ), (
+        f"the served page never referenced a file it needs: {sorted(statuses)}"
+    )  # claim: plan-0126-story-scenario/P8-set
+    assert (
+        len(three.encode()) > 100_000
+    ), "the served Three.js is not a real library build"  # claim: plan-0126-story-scenario/P8-three
 
     # 4. The data the visitor received is the real rules' data.
     block = extract_block(served["/story/story-data.js"])
@@ -123,7 +132,9 @@ async def test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_ru
         }
         assert (
             case["expected"] == real
-        ), f"served case {case['truck']} {case['amount_thb']}: {case['expected']} != {real}"
+        ), (
+            f"served case {case['truck']} {case['amount_thb']}: {case['expected']} != {real}"
+        )  # claim: plan-0126-story-scenario/P8a
         checked += 1
     print(f"cases_checked={checked}")
-    assert checked >= 3
+    assert checked >= 3  # claim: plan-0126-story-scenario/P8-count
