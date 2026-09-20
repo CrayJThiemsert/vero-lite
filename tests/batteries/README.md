@@ -11,6 +11,26 @@ Convention, from session 278: **a battery whose result is cited to close an acce
 criterion is committed here**, named `<plan-slug>-<step-or-scope>.json`. Precedent for
 committing a battery beside its subject: `benchmarks/intake_extraction/probe_battery.json`.
 
+Convention, from PLAN-0128: **one claim, one key.** A probe's `expect_claim` is
+`tools.probe_coverage.Claim.stable_key`, which is `@<id>` when a trailing `# claim: <id>`
+is declared on the claim's anchor line and `owner|source|#occurrence` otherwise; **a
+tagged claim is addressable only by its tag.** Prefer a tag for anything a battery
+addresses. A text key is derived from the assertion's current bytes, so an edit to the
+assertion — even one that only reflows it — silently re-points or strands the address; a
+tag is declared by the author and survives every edit short of deleting the statement.
+Existing text keys stay sound and migrate when they rot (SD-b), which the always-run
+`check_battery_definitions` guard makes loud. To migrate one, run the tool rather than
+typing a key:
+
+```bash
+python -m tools.probe_battery tag tests/batteries/<file>.json --dry-run  # measure first
+python -m tools.probe_battery tag tests/batteries/<file>.json            # then write
+```
+
+Add `--reflow` when it reports an append that would exceed the project's `line-length`.
+**Do not explode the statements by hand first** — that rewrites the source text the keys
+are derived from, and the re-run then refuses every one of them as an unaddressable key.
+
 Run one with:
 
 ```bash

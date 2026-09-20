@@ -24,20 +24,22 @@
     {
       "name": "C3-bindblind",
       "subject": "tools/check_ac_consistency.py",
-      "old": "if _BINDING_SENTENCE in text and ticked:",
+      "old": "if _BINDING_SENTENCE in text.lower() and ticked:",
       "new": "if False:",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found",
       "expect_claim": "test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found|len(gaps) == 1 and gaps[0].ac is None and \"names no batteries\" in gaps[0].reason|#0",
-      "note": "🔴 Reopens the silent-exemption door: omit the header line and every tick goes unchecked."
+      "note": "🔴 Reopens the silent-exemption door: omit the header line and every tick goes unchecked.",
+      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. The mutation is unchanged; only the text locating it moved."
     },
     {
       "name": "C3-unscoped",
       "subject": "tools/check_ac_consistency.py",
-      "old": "if _BINDING_SENTENCE in text and ticked:",
-      "new": "if _BINDING_SENTENCE in text:",
+      "old": "if _BINDING_SENTENCE in text.lower() and ticked:",
+      "new": "if _BINDING_SENTENCE in text.lower():",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_an_unstarted_plan_with_no_ticks_is_not_accused",
       "expect_claim": "test_an_unstarted_plan_with_no_ticks_is_not_accused|guard.find_battery_gaps(tmp_path) == []|#0",
-      "note": "🔴 The measured false positive: unscoped, this fired on PLAN-0121 at 0 of 8 ticked. C3-bindblind stays green under it, so the two claims are separately witnessed."
+      "note": "🔴 The measured false positive: unscoped, this fired on PLAN-0121 at 0 of 8 ticked. C3-bindblind stays green under it, so the two claims are separately witnessed.",
+      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. The mutation is unchanged; only the text locating it moved."
     },
     {
       "name": "C3-vacuous",
@@ -56,6 +58,33 @@
       "node_id": "tests/tools/test_check_ac_consistency.py::test_an_ac_with_no_test_artifact_is_not_a_gap",
       "expect_claim": "test_an_ac_with_no_test_artifact_is_not_a_gap|guard.find_battery_gaps(tmp_path) == []|#0",
       "note": "🔴 Accuses an AC that legitimately names no test module — PLAN-0120's AC-10 runs commands."
+    },
+    {
+      "name": "C3-reviewblind",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        if _CLOSES_REVIEW.search(line) and not _CLOSES_PROBE.search(line):",
+      "new": "        if False:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_review_closed_ac_is_not_held_to_the_coverage_rule",
+      "expect_claim": "test_a_review_closed_ac_is_not_held_to_the_coverage_rule|guard.find_battery_gaps(tmp_path) == []|#0",
+      "why": "remove the review-closed exemption outright: a docs AC's uncovered artifact is reported again and the exemption's own test reddens."
+    },
+    {
+      "name": "C3-reviewwide",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        if _CLOSES_REVIEW.search(line) and not _CLOSES_PROBE.search(line):",
+      "new": "        if _CLOSES_REVIEW.search(line):",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_ac_claiming_both_a_probe_and_a_review_is_held_to_the_probe",
+      "expect_claim": "test_an_ac_claiming_both_a_probe_and_a_review_is_held_to_the_probe|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(1, True)]|#0",
+      "why": "drop the probe-wins precedence: an AC claiming BOTH a probe and a review is exempted, so the assertion that it is still held to the probe reddens."
+    },
+    {
+      "name": "C3-reviewnarrow",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "_CLOSES_REVIEW = re.compile(r\"closes on\\b[^.]{0,120}?\\b(?:review|read|ruling)\\b\", re.I)",
+      "new": "_CLOSES_REVIEW = re.compile(r\"closes on\\b[^.]{0,120}?\\breview\\b\", re.I)",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review[read]",
+      "expect_claim": "test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review|guard.find_battery_gaps(tmp_path) == []|#0",
+      "why": "narrow the matcher to `review` only — the matcher a reader would write from PLAN-0128's two examples alone. The counted-variety case (PLAN-0125's AC-14 closes on a READ) stops being exempt and its assertion reddens. Scoped to the [read] case: unscoped, the narrowing reddens both parametrised cases and the driver refuses the credit (measured — MISFIRE)."
     }
   ],
   "exemptions": {
@@ -83,6 +112,7 @@
     "test_the_live_repo_ledger_agrees|mismatches == []|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
     "test_the_live_repo_ledger_agrees|guard.active_plans(REPO_ROOT)|#0": "⚠️ NOT WITNESSED, and recorded as such rather than claimed as covered. This is a Check 1 / Check 2 claim shipped at s241, when no battery was committed for this module; Check 3 does not touch that code and this change does not close that gap. Listing it honestly is the point of the tests/batteries/ convention — the alternative is a coverage report that reads COMPLETE over a denominator quietly excluding two thirds of the module.",
     "test_a_bare_filename_artifact_matches_a_full_path_claim_source|guard.find_battery_gaps(tmp_path) == []|#0": "🟢 Co-falsified with C3-overfire in the only expressible direction. Bare-filename and full-path artifacts are normalised by the SAME basename split; mutating the source side reddens this and the covered-is-clean claim together, and mutating the artifact side reddens only the latter. Recorded rather than faked (CLAUDE.md §8). C3-overfire witnesses the shared normalisation.",
-    "test_the_live_repo_has_no_battery_gaps|guard.find_battery_gaps(REPO_ROOT) == []|#0": "🟢 The live-tree instance of the covered-is-clean claim: any mutation that manufactures a false gap on the real repo also manufactures one on the tmp tree, so C3-overfire reddens both and no mutation separates them. Its value is as a standing assertion that the guard agrees with the tree it ships in."
+    "test_the_live_repo_has_no_battery_gaps|guard.find_battery_gaps(REPO_ROOT) == []|#0": "🟢 The live-tree instance of the covered-is-clean claim: any mutation that manufactures a false gap on the real repo also manufactures one on the tmp tree, so C3-overfire reddens both and no mutation separates them. Its value is as a standing assertion that the guard agrees with the tree it ships in.",
+    "test_a_probe_closed_ac_with_an_uncovered_artifact_is_still_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(1, True)]|#0": "OVER-DETERMINED, and this is measured rather than argued. For a probe-closed AC to become exempt TWO independent conditions must both flip: _CLOSES_REVIEW must match its text (it does not - the clause says `witnessed probe`, naming none of review/read/ruling) AND _CLOSES_PROBE must not match (it does). A single-subject mutation breaks at most one, so the assertion stays green: probe C3-reviewprobeword widened _CLOSES_REVIEW to swallow `probe` and came back GREEN, and it was DELETED rather than re-aimed. The only mutation that reddens it - exempting every AC unconditionally - reddens five tests at once, which the driver refuses to credit by design. What the assertion still buys is real and is witnessed next door: C3-reviewwide removes the `not _CLOSES_PROBE` half alone and reddens the sibling assertion, proving that half is live."
   }
 }

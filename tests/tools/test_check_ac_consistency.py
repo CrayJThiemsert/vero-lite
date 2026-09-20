@@ -435,6 +435,92 @@ def test_a_second_test_module_missing_from_the_denominator_is_still_found(
     assert [(g.ac, "test_uncovered.py" in g.reason) for g in gaps] == [(1, True)]
 
 
+def _plan_with_closing(flag: str, artifact: str, closing: str) -> str:
+    """One AC carrying an artifact clause AND a stated closing condition."""
+    return (
+        "**Status:** Draft\n"
+        + "**Batteries:** `tests/batteries/*.json`\n\n"
+        + _BINDS
+        + "\n\n"
+        + f"- [{flag}] **AC-1 [check] — a criterion.** *Artifact:* `{artifact}`. {closing}\n"
+    )
+
+
+def test_a_review_closed_ac_is_not_held_to_the_coverage_rule(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🟢 A docs/ruling AC claims no probe, so there is no denominator it can be missing
+    from. Its witness is the review it names, which the PR carries."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_closing("x", "tools/some_module.py", "**Closes on review of the docs PR.**"),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something_else.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_a_probe_closed_ac_with_an_uncovered_artifact_is_still_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The rule the exemption above must not dissolve. Without this, an exemption that
+    matched every AC would make the whole check silently vacuous — the s278 shape
+    returning through the door just opened for docs ACs."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_closing("x", "tests/a/test_uncovered.py", "**Closes on a witnessed probe.**"),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something_else.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "test_uncovered.py" in g.reason) for g in gaps] == [(1, True)]
+
+
+def test_an_ac_claiming_both_a_probe_and_a_review_is_held_to_the_probe(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 Precedence, stated rather than left to matcher order: an AC that claims probe
+    evidence is held to it even when it also mentions a review."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_closing(
+            "x",
+            "tests/a/test_uncovered.py",
+            "**Closes on a witnessed probe**, and closes on review of the PR too.",
+        ),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something_else.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "test_uncovered.py" in g.reason) for g in gaps] == [(1, True)]
+
+
+@pytest.mark.parametrize(
+    "closing",
+    [
+        # Short ids on purpose: a probe addresses ONE parametrised case by node_id, and
+        # the driver refuses to credit a mutation that reddens two (measured here — both
+        # cases fell to the same narrowing and it came back MISFIRE, correctly).
+        pytest.param("**Closes on Cray's read alone; nothing mechanical substitutes.**", id="read"),
+        pytest.param("**Closes on a ruling, recorded in the PR body.**", id="ruling"),
+    ],
+)
+def test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review(
+    guard: ModuleType, tmp_path: Path, closing: str
+) -> None:
+    """🟢 The counted variety, not the guessed one. Measured s315 across every AC in
+    `docs/plans/` and `done/`: PLAN-0125's AC-14 closes on *"Cray's read alone"* and
+    names no review at all, so a `review`-only matcher would sleep through it the day
+    it is ticked — which is precisely the defect this exemption was added beside."""
+    _write(
+        tmp_path,
+        "docs/plans/0120-x.md",
+        _plan_with_closing("x", "tools/some_module.py", closing),
+    )
+    _battery(tmp_path, "b.json", "tests/a/test_something_else.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
 def test_the_live_repo_has_no_battery_gaps(guard: ModuleType) -> None:
     """The guard must agree with the tree it ships in."""
     assert guard.find_battery_gaps(REPO_ROOT) == []

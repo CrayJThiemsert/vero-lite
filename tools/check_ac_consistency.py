@@ -169,10 +169,39 @@ _BATTERIES = re.compile(r"^\*\*Batteries:\*\*\s+`([^`]+)`", re.M)
 
 #: The sentence that makes probe evidence binding for a PLAN's ticks. A PLAN that
 #: writes it and then names no batteries is the case Check 3 must not sleep through.
-_BINDING_SENTENCE = "no AC box is ticked before its probe"
+#:
+#: 🔴 **Matched case-INSENSITIVELY, and that is load-bearing.** Written here in the
+#: lower case it takes mid-sentence, but a PLAN quoting the house rule naturally starts
+#: a sentence with it — *"No AC box is ticked before its probe."* — and a case-sensitive
+#: `in` then reads False on a PLAN that states the rule verbatim. Measured s315:
+#: PLAN-0128 wrote it capitalised three times, carried **11 ticked ACs** and three
+#: committed batteries, and Check 3 skipped the file entirely; the un-backticked
+#: `**Batteries:**` header hid it once, and this comparison hid it again, so neither
+#: gap could surface the other. Compare against ``text.lower()``.
+_BINDING_SENTENCE = "no ac box is ticked before its probe"
 
 #: The artifact clause of one AC line, up to whatever follows it.
 _ARTIFACT_SEG = re.compile(r"\*Artifacts?:\*(.*?)(?:\*Pass read:\*|\*Probe|$)", re.S)
+
+#: An AC that closes on a person's reading rather than on a probe. Check 3 asks
+#: "is this ticked AC's artifact inside some battery's denominator of claims?" — a
+#: question that only means something when the AC *claims* probe evidence. A docs or
+#: ruling AC claims none, names documentation surfaces rather than tests, and is
+#: satisfied by a human reading the PR; demanding it appear in a coverage denominator
+#: is the same category error the tool-module escape below already recognises, one
+#: step further out.
+#:
+#: 🔴 **`read` and `ruling` are in here because the variety was counted, not guessed.**
+#: Measured s315 over every AC in `docs/plans/` and `docs/plans/done/`: PLAN-0128's
+#: AC-10 and AC-12 say *"Closes on … review …"*, but PLAN-0125's AC-14 says
+#: *"Closes on Cray's read alone; nothing mechanical substitutes"* and names no review
+#: at all. A matcher written from the first two would have gone on sleeping through
+#: the third the day it was ticked.
+_CLOSES_REVIEW = re.compile(r"closes on\b[^.]{0,120}?\b(?:review|read|ruling)\b", re.I)
+
+#: …and a probe-closed AC may still mention a review in passing, so an explicit probe
+#: claim wins. An AC saying both is claiming probe evidence and is held to it.
+_CLOSES_PROBE = re.compile(r"closes on\b[^.]{0,120}?\bwitnessed probe\b", re.I)
 
 #: A ``path.py`` or ``path.py::test_name`` token inside backticks.
 _ARTIFACT_NODE = re.compile(r"`([A-Za-z0-9_./-]+\.py(?:::\w+)?)`")
@@ -233,6 +262,12 @@ def _uncovered_artifacts(plan_name: str, text: str, sources: set[str]) -> list[B
         seg = _ARTIFACT_SEG.search(line)
         if seg is None:
             continue  # an AC with no test artifact (a command-run AC) is not a gap
+        if _CLOSES_REVIEW.search(line) and not _CLOSES_PROBE.search(line):
+            # A docs/ruling AC claims no probe evidence, so there is no denominator it
+            # could be missing from. It is NOT unwitnessed: its witness is the review
+            # it names, which the PR carries. The AC must SAY so — an AC that claims a
+            # probe, or says nothing about how it closes, is still held to the rule.
+            continue
         modules = [t.split("/")[-1].split("::")[0] for t in _ARTIFACT_NODE.findall(seg.group(1))]
         covered_by_a_test = any(m.startswith("test_") and m in sources for m in modules)
         for module in modules:
@@ -299,7 +334,7 @@ def find_battery_gaps(root: Path) -> list[BatteryGap]:
             # evidence, and failing it would block work before there is anything to
             # cover — the check exists to catch an unjustified tick, not an unstarted
             # plan. Measured s278: unscoped, this fired on PLAN-0121 at 0 of 8 ticked.
-            if _BINDING_SENTENCE in text and ticked:
+            if _BINDING_SENTENCE in text.lower() and ticked:
                 out.append(
                     BatteryGap(
                         plan=plan.name,

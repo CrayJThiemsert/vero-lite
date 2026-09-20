@@ -69,7 +69,7 @@ Separately closed and **not** to be reopened: the story `?v=` CI gap, closed by 
 `tools/ci/cache_bust_diff_check.py` now discovers every `index.html` under
 `services/api/static/` and locks the scope against a committed expectation.
 
-⚠️ **Cross-stream interaction, measured s312 against the tracked PLAN** (`docs/plans/0128-probe-battery-claim-tags-and-generator-retirement.md` `:206`, `:210`, `:161`):
+⚠️ **Cross-stream interaction, measured s312 against the tracked PLAN** (`docs/plans/done/0128-probe-battery-claim-tags-and-generator-retirement.md` `:206`, `:210`, `:161`):
 PLAN-0128 Step 3 migrates the three PLAN-0126 story batteries onto author-declared claim tags,
 adds tag lines to `tests/api/test_story_page.py` / `test_story_drift.py` / `test_story_scenario.py`,
 and deletes `tests/batteries/plan_0126_story_generator.py`, `tests/api/test_story_battery_generator.py`
@@ -365,7 +365,7 @@ the one step Code cannot perform.
 - Archived PLAN: `docs/plans/done/0126-fleet-story-mode-explainer.md` (Accepted; all seven SDs ruled)
 - Deploy procedure: `deploy/published/oct-fleet-maintenance/DEPLOY.md`
 - Prior deploy record, same system: `docs/logs/2026-09-16-plan0126-fleet-story-deploy.md`
-- Cross-stream: `docs/plans/0128-probe-battery-claim-tags-and-generator-retirement.md` Step 3 / AC-10
+- Cross-stream: `docs/plans/done/0128-probe-battery-claim-tags-and-generator-retirement.md` Step 3 / AC-10
 - Operator-grade detail (gitignored): the s306, s309 and s311 CLOSE handoffs under
   `.claude/handoffs/session-306/`, `session-309/`, `session-311/`
 - Story surface: `services/api/static/story/` · tests `tests/api/test_story_{page,drift,scenario}.py`

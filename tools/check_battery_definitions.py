@@ -19,6 +19,16 @@ editing the code a battery points at, never the battery file. A hook scoped to
 ``tests/batteries/*.json`` would have stayed silent through both. This is the same
 one-side-of-a-pair reasoning the alembic-registration and retired-claim guards carry.
 
+**One claim, one key** (PLAN-0128). What a probe must address is
+``tools.probe_coverage.Claim.stable_key``, which is ``@<id>`` when a trailing
+``# claim: <id>`` is declared on the claim's anchor line and ``owner|source|#occurrence``
+otherwise; a tagged claim is addressable **only** by its tag. That distinction is this
+guard's whole subject: a *text* key is derived from the assertion's current bytes, which
+is why ``ruff format`` could kill one silently in s287, while a *tag* is declared by the
+author and survives any edit short of deleting the statement. So a battery that still
+carries text keys is the one this guard will red first — and the repair is
+``python -m tools.probe_battery tag <battery.json>``, never a hand-typed key.
+
 **Scope, stated so a green is not over-read.** Passing here means every probe can
 address its claim and its anchor resolves. It does **not** mean any probe would
 redden — that needs the real run, and no offline check can answer it.
