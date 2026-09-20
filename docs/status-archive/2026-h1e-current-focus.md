@@ -1470,3 +1470,64 @@ _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; the 
 _[its own Current-Focus rotation-ledger entry (s313), verbatim:]_
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **313** — ONE. 🔴 **THIS (s313) reconcile rotates the s312 block (3,031 B as its own `>` run) AND the s312 ledger entry (2,232 B, far over cap) together**, carved from `git show HEAD:docs/STATUS.md`. ⚠️ **The s312 entry called the 4-session nominal "AVAILABLE, the next reconcile's call" — measurement REFUTES it:** keeping s312 leaves **2,130 B** headroom against **~4,870 B** of additions, short **~2,740 B**; rotating frees **5,263 B**. Cause unchanged: **Active TODOs 41,250 B = 64.7%** and the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; that split is.]_
+
+### Rotated at the s315 reconcile — the session-314 Current-Focus block and its rotation-ledger entry [the window stays ONE (315) — the **fourth consecutive** reconcile at ONE (312, 313, 314, 315), and again a measurement rather than a default: STATUS opened at **63,808 B**, only **1,728 B** under R1's 65,536 B ceiling, and the size guard's own words were *"Passing, but prune harder next reconcile"*. Keeping s314 alongside s315 put the file ~800 B OVER its own starting size; rotating it and its ledger entry landed it at **62,610 B, 1,198 B smaller while adding a session**. The cause is unchanged and is not window width: **Active TODOs at ~65% of the file** and the ratified `CRAY'S DIRECTION (s276)` split still unbuilt — four consecutive stated ONEs is the evidence that the split should now be scheduled. Both slices carved from `git show HEAD:docs/STATUS.md`, never from the scribe's return (R6 clause 1). Each probed ABSENT here first against a positive control (=1) and a fabricated needle (=0); absence from the new STATUS asserted separately (=0).]
+
+_[the session-314 Current-Focus block, verbatim:]_
+
+> **Session 314, 2026-09-20 (#1537, #1538 — both merged) — nine
+> instrument-vs-artifact disagreements, and the artifact was right every time.
+> main `c41b345e`, 0 open PRs.**
+>
+> ✅ **#1538 (`feat/*`) — PLAN-0128 Step 2: the `tag` subcommand.** 6 files,
+> +953/−8. `_tag.py` per §2.5 — plan-then-write (an unaddressable key, a
+> colliding id or an over-long append aborts with every file untouched),
+> append-never-insert onto the anchor line, adoption, the trailing-comment rule,
+> `line-length` **read** from `pyproject.toml` not assumed, the proof line,
+> `--dry-run`. 🔴 **`anchor_row_for()` extracted as the SINGLE derivation** of
+> "which line is a claim's anchor" (`tools/probe_coverage.py`); reader and writer
+> both call it — two copies agreeing today are free to drift, silently (a tag one
+> line off enumerates `unattached`, or lands interior and leaks into the `source`
+> it names). `resolved_differ` re-resolves every tagged key after the write
+> against its pre-write `(owner, source, occurrence)`; a mismatch restores and
+> exits 2.
+>
+> 🔴 **SD-e's BINDING MEASUREMENT came in and the ruling STANDS.** `tag
+> --dry-run` over the three PLAN-0126 story batteries: page **14 of 43**, drift
+> **7 of 15**, scenario **4 of 11** — **25 of 69 (36%)**. The rule was *"if
+> `overlong` exceeds half of `addressed`, the id scheme is wrong, not the
+> asserts"*; it does not, so SD-e was **not reopened** (Code's call, stated
+> rather than silent). ⚠️ Drift at **47%** sits three claims from the line.
+>
+> 🔴 **A probe went GREEN and the green was the finding.** 9l removed the
+> plan-phase refusal outright and the exit code stayed 2 — the tool's own re-lint
+> refused the result instead. That assertion is **over-determined by two
+> independent mechanisms**, so no single-subject mutation can redden it: 9l was
+> **deleted, not re-aimed**, and exempted with that measurement. 9b carries the
+> real weight — exit held at 2, SHA assertion reddened.
+>
+> ✅ **#1537 (`docs/*`) — the s313 reconcile, and it was not routine.** The **RD
+> rotation ledger was a full reconcile behind** (s312's RD rotation had landed in
+> the *sibling* CF ledger) — `was an error (bookkeeping)`, no rotation lost; both
+> fresh ledger entries came in **over the ~900 B cap** (1,089 / 1,033 B), a cap
+> the scribe is bound by but cannot measure; and 🔴 **seven slices had to rotate,
+> not three** — a `git diff --unified=0` of the scribe's edit caught four
+> *replaced* units worth 3,473 B that would have been deleted rather than moved.
+> STATUS **63,406 → 63,362 B — 44 B smaller while adding a session.**
+>
+> **Evidence, printed not asserted:** PR-2 battery `claims 29 · RED 13 · exempted
+> 16 · GAPS 0 · stale 0`, `COVERAGE COMPLETE`, `BATTERY PASS`;
+> `BATTERY-DEFINITIONS: OK (54 batteries, 691 probes)`, 0 findings (was 53/678);
+> **5416 passed, 8 skipped** (s313 read 5410 — exactly the 6 new AC-9 tests);
+> ruff clean over 793 files; `mypy --strict services/ verticals/` Success 204
+> files; `CI_WAIT: PASS sha=381c7d3`.
+>
+> ⚠️ **AC-10's drift `addressed` expectation is wrong, in two places that nearly
+> cancel:** it expects **14** (*"15 probes on 14 distinct claims"*); the artifact
+> has **17 probes** and **two** shared key pairs (`P4h`/`P4l`, `P4m`/`P4n`), so
+> 17 − 2 = **15** — which is why the PLAN's own text says the tool's `addressed=`
+> is the reading that counts.
+
+_[its own Current-Focus rotation-ledger entry (s314), verbatim:]_
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **314** — ONE, the **third consecutive** reconcile at ONE and again a measurement, not a default. 🔴 **THIS (s314) reconcile rotates the s313 block (3,362 B as its own `>` run) AND the s313 ledger entry (840 B) together**, carved from `git show HEAD:docs/STATUS.md`. Keeping s313 leaves only **2,174 B** headroom against **~4,556 B** of additions — short **~2,382 B**; rotating frees **4,202 B**, a **6,376 B** budget. Cause unchanged: **Active TODOs 41,250 B = 65.1%** and the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; that split is.]_
