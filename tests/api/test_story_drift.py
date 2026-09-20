@@ -52,7 +52,11 @@ def _ontology() -> dict[str, Any]:
 
 def _procedure() -> Procedure:
     matches = [p for p in load_procedures(_VERTICAL).procedures if p.procedure_id == _PROCEDURE_ID]
-    assert len(matches) == 1, f"{_PROCEDURE_ID} occurs {len(matches)}x in the fleet procedures"
+    assert (
+        len(matches) == 1
+    ), (
+        f"{_PROCEDURE_ID} occurs {len(matches)}x in the fleet procedures"
+    )  # claim: plan-0126-story-drift/P4-proc
     return matches[0]
 
 
@@ -67,7 +71,11 @@ def _real_ladder() -> list[tuple[int, str]]:
 
 def _real_ceiling() -> float:
     ceilings = {truck["minor_repair_ceiling_thb"] for truck in synthetic.truck_records()}
-    assert len(ceilings) == 1, f"the seed trucks no longer share one ceiling: {ceilings}"
+    assert (
+        len(ceilings) == 1
+    ), (
+        f"the seed trucks no longer share one ceiling: {ceilings}"
+    )  # claim: plan-0126-story-drift/P4-ceil
     return float(ceilings.pop())
 
 
@@ -76,7 +84,10 @@ def test_object_types_equal_the_ontology() -> None:
     real = list(_ontology()["object_types"])
     pinned = _block()["ontology"]["object_types"]
     print(f"real={len(real)} pinned={len(pinned)}")
-    assert (sorted(pinned), len(pinned)) == (sorted(real), len(real))
+    assert (sorted(pinned), len(pinned)) == (
+        sorted(real),
+        len(real),
+    )  # claim: plan-0126-story-drift/P4a
 
 
 # (b)
@@ -86,7 +97,7 @@ def test_link_types_equal_the_ontology() -> None:
     )
     pinned = sorted(tuple(row) for row in _block()["ontology"]["link_types"])
     print(f"real={len(real)} pinned={len(pinned)}")
-    assert pinned == real
+    assert pinned == real  # claim: plan-0126-story-drift/P4b
 
 
 # (c)
@@ -104,8 +115,10 @@ def test_undeclared_refs_equal_the_refs_the_ontology_leaves_undeclared() -> None
     real = sorted(refs - declared)
     pinned = sorted(tuple(row) for row in _block()["ontology"]["undeclared_refs"])
     print(f"refs={len(refs)} declared={len(declared)} undeclared_real={real}")
-    assert real, "the computed undeclared set is empty — the reading found no refs at all"
-    assert pinned == real
+    assert real, (
+        "the computed undeclared set is empty — the reading found no refs at all"
+    )  # claim: plan-0126-story-drift/P4c0
+    assert pinned == real  # claim: plan-0126-story-drift/P4c
 
 
 # (d)
@@ -126,7 +139,7 @@ def test_steps_and_gates_equal_the_loaded_procedure() -> None:
         {k: v["kind"] for k, v in block["gates"].items()},
         block["gates"]["quote_gate"]["criterion"] in [rule.criterion for rule in quote_gate.rules],
         block["gates"]["approve"]["autonomy"],
-    ) == (real_steps, real_gates, True, str(approve.autonomy))
+    ) == (real_steps, real_gates, True, str(approve.autonomy))  # claim: plan-0126-story-drift/P4d
 
 
 # (d2) — s309: act 4's sub-line named `fulfill` as the step with llm_assist, by hand, while the
@@ -139,7 +152,7 @@ def test_llm_assist_steps_equal_the_loaded_procedure() -> None:
     ]
     pinned = _block()["procedure"]["llm_assist_steps"]
     print(f"real={real} pinned={pinned}")
-    assert pinned == real
+    assert pinned == real  # claim: plan-0126-story-drift/P4m
 
 
 # (e)
@@ -147,7 +160,7 @@ def test_tiers_equal_the_loaded_doa_ladder() -> None:
     real = _real_ladder()
     pinned = [(tier["min_amount"], tier["role"]) for tier in _block()["rules"]["tiers"]]
     print(f"real={real}")
-    assert pinned == real
+    assert pinned == real  # claim: plan-0126-story-drift/P4e
 
 
 # (f)
@@ -165,7 +178,7 @@ def test_sod_and_event_kind_equal_the_loaded_procedure() -> None:
         _PROCEDURE_ID,
         real_kind,
         True,
-    )
+    )  # claim: plan-0126-story-drift/P4f
 
 
 # (g)
@@ -182,7 +195,11 @@ def test_rule_constants_equal_sourcing_and_the_seed() -> None:
         Decimal(rules["three_quote_threshold_thb"]),
         rules["min_distinct_vendors"],
         float(rules["minor_repair_ceiling_thb"]),
-    ) == (sourcing.THREE_QUOTE_THRESHOLD_THB, sourcing.MIN_DISTINCT_VENDORS, ceiling)
+    ) == (
+        sourcing.THREE_QUOTE_THRESHOLD_THB,
+        sourcing.MIN_DISTINCT_VENDORS,
+        ceiling,
+    )  # claim: plan-0126-story-drift/P4g
 
 
 # (h)
@@ -210,7 +227,7 @@ def test_every_case_outcome_is_the_real_rules_outcome() -> None:
         print(f"case[{index}] {case['truck']} {case['amount_thb']} real={real}")
         if case["expected"] != real:
             mismatches.append((index, case["expected"], real))
-    assert mismatches == [], f"pinned vs real: {mismatches}"
+    assert mismatches == [], f"pinned vs real: {mismatches}"  # claim: plan-0126-story-drift/P4h
 
 
 # (i)
@@ -241,7 +258,11 @@ def test_non_illustrative_cases_are_seeded_and_the_illustrative_one_is_not() -> 
     )
     # One comparison, not `a and b`: a conjunction stops at its first false operand, so a
     # single probe could only ever witness one half of it (tools/probe_coverage.py flags it).
-    assert (seed_matches > 0, seed_matches, illustrative_matches) == (True, len(real_cases), 0)
+    assert (seed_matches > 0, seed_matches, illustrative_matches) == (
+        True,
+        len(real_cases),
+        0,
+    )  # claim: plan-0126-story-drift/P4i
 
 
 # (j)
@@ -260,7 +281,7 @@ def test_emitter_keys_equal_generate_all(tmp_path: Path) -> None:
         [],
         False,
         False,
-    )
+    )  # claim: plan-0126-story-drift/P4j
 
 
 # (k)
@@ -283,4 +304,8 @@ def test_the_block_is_well_formed() -> None:
         if not value
     ]
     print(f"delimiters={counts} empties={empties} cases={len(block['cases'])}")
-    assert (counts, empties, len(block["cases"]) >= 3) == ((1, 1), [], True)
+    assert (counts, empties, len(block["cases"]) >= 3) == (
+        (1, 1),
+        [],
+        True,
+    )  # claim: plan-0126-story-drift/P4k

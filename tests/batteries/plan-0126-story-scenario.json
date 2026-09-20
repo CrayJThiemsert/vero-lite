@@ -9,7 +9,7 @@
       "old": "<meta name=\"ui-profile\" content=\"dev\" />",
       "new": "<meta name=\"ui-profile\" content=\"dev-anchor-removed\" />",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|console.status_code == 200|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-root",
       "note": "the console index fails loud on the published profile: the visitor's first GET is a 500"
     },
     {
@@ -18,7 +18,7 @@
       "old": "<script src=\"assets/app.js?v=c52\"></script>",
       "new": "<script src=\"assets/app-main.js?v=c52\"></script>",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|\"assets/app.js\" in console.text|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-appjs",
       "note": "the console stops loading app.js"
     },
     {
@@ -27,7 +27,7 @@
       "old": "href: '/story/'",
       "new": "href: '/explainer/'",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|\"href: '/story/'\" in app_js.text|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-link",
       "note": "the console no longer carries the link the visitor clicks"
     },
     {
@@ -36,7 +36,7 @@
       "old": "        if isinstance(response, FileResponse) and self._is_root_index(response):",
       "new": "        if isinstance(response, FileResponse) and str(response.path).endswith(\"index.html\"):",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|page.status_code == 200|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-page",
       "note": "Trap 1 returns: the console loads, the story page is a 500"
     },
     {
@@ -45,7 +45,7 @@
       "old": "        response.headers[\"Content-Security-Policy\"] = _OCT_CSP",
       "new": "        pass",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|page.headers.get(\"content-security-policy\") == _OCT_CSP|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-csp",
       "note": "the page is served without the console CSP"
     },
     {
@@ -54,7 +54,7 @@
       "old": "<script type=\"module\" src=\"story.js?v=c3\"></script>",
       "new": "<script type=\"module\" src=\"stori.js?v=c3\"></script>",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|failed == {}|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8b",
       "note": "the served page references a file that 404s"
     },
     {
@@ -63,17 +63,18 @@
       "old": "  <link rel=\"stylesheet\" href=\"story.css?v=c3\" />\n",
       "new": "",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|{ \"/story/story.css\", \"/story/story-data.js\", \"/story/story.js\", \"/story/three.module.min.js\", } <= set(statuses)|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-set",
       "note": "the served page never requests story.css: nothing fails, the required-file set is incomplete"
     },
     {
       "name": "P8-three",
       "subject": "tests/api/test_story_scenario.py",
-      "old": "    assert len(three.encode()) > 100_000, \"the served Three.js is not a real library build\"",
-      "new": "    assert len(three.encode()) > 1_000_000, \"the served Three.js is not a real library build\"",
+      "old": "len(three.encode()) > 100_000",
+      "new": "len(three.encode()) > 1_000_000",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|len(three.encode()) > 100_000|#0",
-      "note": "floor raised above the vendored build's measured 670,681 bytes: proves the size assert reads the served body (a same-size substitute cannot be written as a text mutation of a 655 KB minified file)"
+      "expect_claim": "@plan-0126-story-scenario/P8-three",
+      "note": "floor raised above the vendored build's measured 670,681 bytes: proves the size assert reads the served body (a same-size substitute cannot be written as a text mutation of a 655 KB minified file)",
+      "why": "re-anchored in PLAN-0128 Step 3: the previous anchor was the whole one-line assert, which `tag --reflow` explodes, leaving it at zero occurrences. The mutation is unchanged (100_000 -> 1_000_000); only the text used to locate it is now the sub-expression the reflow preserves."
     },
     {
       "name": "P8a",
@@ -81,7 +82,7 @@
       "old": "\"basis\": \"under_threshold\"",
       "new": "\"basis\": \"three_quotes\"",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|case[\"expected\"] == real|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8a",
       "note": "case 3's served basis disagrees with the real rule"
     },
     {
@@ -90,11 +91,11 @@
       "old": "\"outcome\": \"approved\"}},\n      {\"truck\": \"truck-03\", \"what\": \"เกียร์เสียงดัง\", \"amount_thb\": 15000, \"distinct_vendors\": 1, \"sole_source\": false,\n       \"illustrative\": false,\n       \"expected\": {\"breach\": true, \"sourcing_pass\": true, \"basis\": \"under_threshold\", \"tier_role\": \"ผจก.เดินรถ\", \"outcome\": \"approved\"}}",
       "new": "\"outcome\": \"approved\"}}",
       "node_id": "tests/api/test_story_scenario.py::test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules",
-      "expect_claim": "test_a_published_visitor_reaches_the_story_and_its_data_is_the_real_rules|checked >= 3|#0",
+      "expect_claim": "@plan-0126-story-scenario/P8-count",
       "note": "the served block carries two cases (both still correct): only the count reddens"
     }
   ],
   "exemptions": {
-    "_ladder|approve.governance_content is not None|#0": "type narrowing for Step.governance_content (Optional); removing the approve step's governance content from procedures.yaml fails load_procedures validation before this line is reached"
+    "@plan-0126-story-scenario/exempt-1": "type narrowing for Step.governance_content (Optional); removing the approve step's governance content from procedures.yaml fails load_procedures validation before this line is reached"
   }
 }
