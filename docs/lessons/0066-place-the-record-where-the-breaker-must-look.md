@@ -56,8 +56,8 @@ three of them sit on refusal *prose* rather than on control flow: R6 on
 *second*, format-clean refusal. Reword any of the three and the same `always_run` lint
 reddens. **Those sentences are the supervised copies; everything below this line is not.**
 
-> ⚠️ The paragraph above first read *"That is the **only** `--reflow` sentence in the repo
-> that cannot rot quietly."* It was refuted by the battery the same paragraph cites — R10
+> ⚠️ This section first closed with *"That is the **only** `--reflow` sentence in the repo
+> that cannot rot quietly."* It was refuted by the battery this section cites — R10
 > alone disproves it. A uniqueness claim is a negative claim wearing a positive sentence,
 > and *A claim about where a record lives is still a claim*, below, applies to it in full.
 > The correction is kept here rather than smoothed away, because *what* was wrong is the
