@@ -27,7 +27,7 @@ supervised.
 | Surface | Names the flag? | Who breaks it | Forced to see it? |
 |---|:-:|---|---|
 | The refusal message, `tools/probe_battery/_tag.py:358` | ✅ | anyone editing that string | 🟢 **yes** — see below |
-| CLI `--help`, `tools/probe_battery/__main__.py:209` | ✅ | anyone editing the parser | 🔴 no — prose, no guard |
+| CLI `--help`, `tools/probe_battery/__main__.py:204` | ✅ | anyone editing the parser | 🔴 no — prose, no guard |
 | `tests/batteries/README.md:30,57` | ✅ | anyone editing that README | 🔴 no — prose, no guard |
 | `tools/probe_battery/README.md` | ❌ **0 hits** | — | 🔴 the gap this session closed |
 | `docs/plans/done/0128-*.md` (106,521 B) | ✅ | anyone | 🔴 **never, by design** |
@@ -72,13 +72,22 @@ home for the reasoning lineage that only has to stay *readable*.
 > passes.**"*
 
 Measured this session: **twelve** pre-commit hooks invoke a `tools/` script, and **not one
-of the fourteen `tools/` paths named in `.pre-commit-config.yaml` reads a README** — every
-one returns 0, against a positive control (`tools/README.md` itself) returning 1. ⚠️ The
-first cut of this measurement used `grep -rln README tools/*.py`, which cannot see
-`tools/handoffs/` or `tools/vero_bridge/`; the glob was the instrument, and it was narrower
-than the claim it was asked to support. Prose has no guard anywhere in this repo. That is
-not an argument against prose — it is the reason prose must never be the *only* home for
-something load-bearing.
+of the thirteen `tools/` paths named in `.pre-commit-config.yaml` reads a README** — all
+thirteen return 0, against a positive control (`tools/README.md` itself) returning 1.
+
+⚠️ **That denominator took three instruments to get right, and the third one is the
+lesson.** The first cut used `grep -rln README tools/*.py`, which cannot see
+`tools/handoffs/` or `tools/vero_bridge/`. The second, `grep -o 'tools/[^ ]*\.py'` over
+`.pre-commit-config.yaml`, returned **fourteen** — because `tests/tools/test_guards_hold_on_the_real_tree.py`,
+named in a *comment* at L97, contains `tools/` as a substring. Anchoring the pattern to a
+word boundary does **not** separate them: `tests/tools/` has a word boundary before `tools`
+too. What separated them was asking the filesystem — and the same loop had been running
+`grep -c README` against that phantom path and **scoring its 0 alongside the real ones**. A
+negative reading taken over a set you have not confirmed exists is not a weak reading; it
+is a vacuous one, and it reports success in the same voice as a real one.
+
+Prose has no guard anywhere in this repo. That is not an argument against prose — it is the
+reason prose must never be the *only* home for something load-bearing.
 
 ## The corollary that saved work this session
 
@@ -116,6 +125,19 @@ working shape, already present in two archived goals from 2026-09-11, is
 **`error` and `fail` are different readings and the distinction is the diagnosis.** A
 criterion that cannot run is an unsupervised criterion wearing a guard's uniform — the same
 defect as a doc nobody reads, in a surface that looks mechanical.
+
+### The supervision that caught this page
+
+Both documents in this change were written under a goal whose `judge` criteria were fixed
+**before** either existed, and the `goal-evaluator` returned **FAIL on two of the three**:
+a sentence in the README asserting that `reflowed=` joins the proof line, which
+`_tag.py:551-554` explicitly refuses to do (*"Its own line, never appended to the proof
+line"*), and the fourteen-vs-thirteen count two paragraphs above. Both are fixed here.
+
+That is the rule of this lesson turned on the lesson itself. Neither defect was reachable
+by re-reading; both were reachable by a criterion written in advance and judged by
+something that had not authored the text. **The record went where its breaker had to
+look, and its breaker was the one who found the errors in it.**
 
 ## What this does not settle
 

@@ -168,8 +168,6 @@ re-verified afterwards. Any failure restores everything.
 python -m tools.probe_battery tag tests/batteries/my-battery.json --reflow
 ```
 
-The proof line then carries `reflowed=<n>` alongside the fields below.
-
 🔴 **Do not explode the statements by hand first.** The source text is what an untagged
 key is derived from, so rewriting it makes the re-run refuse every one of them as an
 `unaddressable key` — tag first, reflow second, because surviving a reflow is exactly
