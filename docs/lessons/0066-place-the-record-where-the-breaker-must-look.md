@@ -101,8 +101,11 @@ too. What separated them was asking the filesystem — and the same loop had bee
 negative reading taken over a set you have not confirmed exists is not a weak reading; it
 is a vacuous one, and it reports success in the same voice as a real one.
 
-Prose has no guard anywhere in this repo. That is not an argument against prose — it is the
-reason prose must never be the *only* home for something load-bearing.
+Several of these guards do read prose files — `check_status_citations.py`,
+`check_plan_archive_refs.py` and `check_measure_staleness.py` all run over `docs/`. What
+none of them checks is whether a *sentence* is true; each verifies a lexical shape, a
+resolvable path, or two artifacts agreeing with each other. That is not an argument against
+prose — it is the reason prose must never be the *only* home for something load-bearing.
 
 ## The corollary that saved work this session
 
@@ -149,13 +152,12 @@ both. The refuted claims, what each rested on, and which round caught it are rec
 `evaluations[]` inside `.claude/state/goal.json` — appended by the evaluator, whose write
 is hook-narrowed to that one file.
 
-**This page does not restate that history, and the omission is the point.** Two drafts of
-this section did: each summarised how many defects there had been and of what kind, and
-each summary was itself refuted in the next round — once on the count, once on the split
-between fact-defects and cross-reference defects. A summary of a trail that is still
-growing cannot stay true, and nothing reddens when it stops being true. The trail is the
-supervised copy; a retelling here would be an unsupervised one, which is the failure this
-whole page is about.
+**This page does not restate that history, and the omission is the point.** Successive
+drafts of this section tried to, and each attempt was itself refuted in the next round.
+The grounds are in `evaluations[]`; they are deliberately not repeated here, because a
+summary of a still-growing trail cannot stay true and nothing reddens when it stops being
+true. The trail is the supervised copy; a retelling here would be an unsupervised one,
+which is the failure this whole page is about.
 
 What survives retelling is the rule, because a rule is not a claim about the trail:
 **a positional cross-reference — "two paragraphs above", "see below" — is a claim about the
