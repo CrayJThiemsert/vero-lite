@@ -162,7 +162,7 @@ originals.
 **`--reflow` is the answer to the over-long refusal, and the order is not negotiable.**
 Add it when the refusal names an append that would exceed `line-length`: the tag is
 written **first**, then `ruff format` explodes the statement, and every tag is
-re-verified afterwards. Any failure restores everything.
+re-verified afterwards.
 
 ```bash
 python -m tools.probe_battery tag tests/batteries/my-battery.json --reflow
