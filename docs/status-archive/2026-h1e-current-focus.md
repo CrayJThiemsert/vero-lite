@@ -1531,3 +1531,71 @@ _[the session-314 Current-Focus block, verbatim:]_
 _[its own Current-Focus rotation-ledger entry (s314), verbatim:]_
 
 _[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **314** — ONE, the **third consecutive** reconcile at ONE and again a measurement, not a default. 🔴 **THIS (s314) reconcile rotates the s313 block (3,362 B as its own `>` run) AND the s313 ledger entry (840 B) together**, carved from `git show HEAD:docs/STATUS.md`. Keeping s313 leaves only **2,174 B** headroom against **~4,556 B** of additions — short **~2,382 B**; rotating frees **4,202 B**, a **6,376 B** budget. Cause unchanged: **Active TODOs 41,250 B = 65.1%** and the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; that split is.]_
+
+### Rotated at the s316 reconcile — the session-315 Current-Focus block and its rotation-ledger entry [the window stays ONE (316) — the **fifth consecutive** reconcile at ONE (312, 313, 314, 315, 316), and again a measurement rather than a default: STATUS opened at **64,528 B**, only **1,008 B** under R1's 65,536 B ceiling, and the s315 block alone was **4,001 B** — the s316 block fits only in its place; STATUS lands at **62,435 B**. The cause is unchanged and is not window width: **Active TODOs at 41,417 B of HEAD's 64,528 B** and the ratified `CRAY'S DIRECTION (s276)` split still unbuilt. The s315 ledger line carried its #1543 extension and travels whole. Both slices carved from `git show HEAD:docs/STATUS.md`, never from the scribe's return (R6 clause 1). Each probed ABSENT here first against a positive control (=1) and a fabricated needle (=0); absence from the new STATUS asserted separately (=0).]
+
+_[the session-315 Current-Focus block, verbatim:]_
+
+> **Session 315, 2026-09-20/21 (#1540, #1541, #1543 — all merged) — PLAN-0128's
+> Step-3 remedy measured a DEAD END, and its closeout found the guard that should
+> have been reading its ticks asleep. main `8ece7df1`, 0 open PRs.**
+>
+> ✅ **#1540 (`feat/*`) — Step 3: the three PLAN-0126 story batteries address
+> every claim by a tag, and `tag --reflow` is new.** 15 files, +844/−1459. Three
+> proof lines all `resolved_differ=0`, `reflowed=14/7/4` = **25**, exactly SD-e's
+> overlong count. `witnessed RED:` **unchanged** across the migration: page
+> 41→41, drift 15→15, scenario 10→10 — the address changed, the evidence did not
+> (§Verification (3)). Generator, guard and that guard's battery retired
+> **together**.
+>
+> 🔴 **The remedy §2.5 and Step 3 both prescribed does not exist.** *"…explodes
+> the statement so its anchor line is short…and re-runs `tag`"* — exploding
+> **rewrites the source text the key is derived from**, so every exploded claim
+> comes back an `unaddressable key`. It has to be **tag first, reflow second** —
+> the tool's work, not the author's. Cray typed the close: **a `--reflow` flag**,
+> over a config hack or a PLAN amendment.
+>
+> ✅ **#1541 (`docs/*`) — amendments (a)-(e), `plan-drafter`-authored** (PLAN-0128
+> is `Accepted` ⇒ G1-gated for Code). 1 file, +15/−13. Each was a value the draft
+> **computed by reading** and then stated as a criterion: (a) 17 paths → three
+> `*_claim_tags*.py` modules; (b) AC-5's twins → the stamped `#1/2`/`#0/2`; (c)
+> Step 1's `51` → 52, as a delta; (d) AC-10's drift 14 → **15**; (e) AC-9's
+> reddening assertions for 9a/9c/9d, 9m's witness, 9l's deletion. 🔴 **SD-2 is a
+> PRECEDENT, not a one-off:** (d)'s 43/15/11 are **recorded readings under an
+> independent-instrument rule** — AC-10 now says *"this PLAN records the
+> readings, it does not predict them"*. It changes what an AC's figures **are**.
+>
+> **Evidence, printed not asserted:** `plan-0128-pr3-tag-reflow.json` — claims
+> 20, RED 14, exempted 6, GAPS 0, `PROBE-COVERAGE: COMPLETE`;
+> `BATTERY-DEFINITIONS: OK (54 batteries, 696 probes)` (was 54/691: −1/−9
+> retired, +1/+14 added); **5417 passed, 8 skipped**; ruff + `mypy --strict`.
+>
+> ⚠️ **Step 3 left three gaps drafted NOWHERE, and the drafter found four more:**
+> its file list omits `tests/batteries/README.md`, whose *"edit the generator,
+> never the JSON"* section went false on that deletion (#1540 rewrote it);
+> **Step 3.5 is MOOT** — the row it orders rewritten rotated to
+> `status-archive/2026-h1-status.md:330`; and the dead end above. Then Step 2's
+> *"(probes 9a–9h)"* against the battery's **13**; §2.2's twin key still `#1`,
+> pre-dating #1525's stamp; AC-6's *Artifact* omits the shipped
+> `…_both_probes_and_exempts_one_tag_is_an_overlap`; `**Batteries:**` (L10)
+> un-backticked. **Cray's call:** a second amendment round, or not.
+>
+> ✅ **#1543 (`docs/*`) — Step 5 closeout: PLAN-0128 COMPLETE, archived
+> to `done/`, 11/11 ACs ticked.** 🔴 **The finding beats the closeout:
+> `check_ac_consistency.py` Check 3 had NEVER ONCE evaluated PLAN-0128** —
+> **two causes, each hiding the other**: `**Batteries:**` never backticked
+> (an instruction the PLAN recorded TWICE) and `_BINDING_SENTENCE` matched
+> **case-sensitively** against a sentence every PLAN capitalises. It reached
+> **3 of 11** active PLANs — with **PLAN-0119's 9**, twenty ticks no guard had
+> read. ✅ Fixed, plus a **review-closed AC** (`read`/`ruling` in the matcher
+> because the variety was counted). Not a skip: a mutated copy reddened
+> **1/3/5** gaps on AC-1/AC-12/AC-10, control **0**; the repair then killed its
+> own battery (`…check3.json` **DEAD**), repaired with 3 WITNESSED probes and 1
+> **deleted for coming back GREEN** — s314's probe-9l precedent, now twice.
+> **Evidence:** `5422 passed, 8 skipped`; `OK (54 batteries, 699 probes)`;
+> `clean — 98 AC(s) / 10 active PLAN(s)`; `unregistered=0`; `CI_WAIT: PASS
+> sha=524aae6`.
+
+_[its own Current-Focus rotation-ledger entry (s315), verbatim:]_
+
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **315** — ONE, the **FOURTH consecutive** reconcile at ONE, measured again, not defaulted. 🔴 **THIS (s315) reconcile rotates the s314 block AND the s314 ledger entry together**, from `git show HEAD:docs/STATUS.md`: keeping s314 puts the file ~800 B over the 63,808 B it must not exceed; rotating it lands under. Cause unchanged for the fourth time — **Active TODOs ~65%** (41,250 B, s314's measure) with the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; four ONEs in a row is the evidence to schedule that split. ➕ **#1543: no rotation — the s315 block was EXTENDED (R4).**]_

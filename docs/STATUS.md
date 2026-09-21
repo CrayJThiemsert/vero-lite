@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-09-21T01:05+07:00
-session: 315
-current_batch: "s315 (#1540, #1541, #1543 merged) — PLAN-0128 COMPLETE + archived; closeout found Check 3 of `check_ac_consistency.py` had never once evaluated it — two causes, each hiding the other. 0 open PRs."
+last_updated: 2026-09-22T00:05+07:00
+session: 316
+current_batch: "s316 (#1545, #1546 merged) — `tag --reflow` documented in the module README; lesson 0066 shipped, its verdict trail rehomed to `docs/logs/`; PLAN-0128 closeout item ① ruled by Cray. 0 open PRs."
 current_actor: code
-blocked_on: "Cray: PLAN-0128 closeout's 3 calls (`tag --reflow`'s AC; PLAN-0119 blind to Check 3; check3's 3 gaps); story deploy go + Access PIN + G1; live-structuring time; specimen ledger; PLAN-0125 AC-14 + detect-secrets."
-next_action: "Code: PLAN-0128 is DONE — no next step in it. Absent a Cray ruling, the alternatives are PLAN-0127 PR-2 (also unlocks live-structuring replay, AC-1/AC-2) or PLAN-0125 Step 4."
-head_commit: 8ece7df
-recent_commits: [8ece7df1, e3e87af0, 73f523ef, 6c5f97c3, a914aaae, c41b345e, 8ff3908d, 8b8a4ebf, 1b4416a7, 5f7c45b3]
+blocked_on: "Cray: PLAN-0128 closeout's 3 calls (PLAN-0119 blind to Check 3; check3's 3 gaps; 2nd-amendment round?); story deploy go + Access PIN + G1; live-structuring time; specimen ledger; PLAN-0125 AC-14 + detect-secrets."
+next_action: "Code: absent a Cray ruling, PLAN-0127 PR-2 (also unlocks live-structuring replay, AC-1/AC-2) or PLAN-0125 Step 4."
+head_commit: 70ae76d
+recent_commits: [70ae76d3, 1a3894a9, bf919c01, 8ece7df1, e3e87af0, 73f523ef, 6c5f97c3, a914aaae, c41b345e, 8ff3908d]
 ---
 
 # vero-lite — Project Status
@@ -18,67 +18,44 @@ recent_commits: [8ece7df1, e3e87af0, 73f523ef, 6c5f97c3, a914aaae, c41b345e, 8ff
 
 ## Current Focus
 
-> **Session 315, 2026-09-20/21 (#1540, #1541, #1543 — all merged) — PLAN-0128's
-> Step-3 remedy measured a DEAD END, and its closeout found the guard that should
-> have been reading its ticks asleep. main `8ece7df1`, 0 open PRs.**
+> **Session 316, 2026-09-21/22 (#1545, #1546 — both merged) — `tag --reflow`
+> reached the README §8 names, under an Axis-B goal judged SEVEN times; its
+> verdict trail then needed a tracked home. main `70ae76d3`, 0 open PRs.**
 >
-> ✅ **#1540 (`feat/*`) — Step 3: the three PLAN-0126 story batteries address
-> every claim by a tag, and `tag --reflow` is new.** 15 files, +844/−1459. Three
-> proof lines all `resolved_differ=0`, `reflowed=14/7/4` = **25**, exactly SD-e's
-> overlong count. `witnessed RED:` **unchanged** across the migration: page
-> 41→41, drift 15→15, scenario 10→10 — the address changed, the evidence did not
-> (§Verification (3)). Generator, guard and that guard's battery retired
-> **together**.
+> ✅ **#1545 (`docs/*`, squash `1a3894a9`, merged by Cray).** A `tag --reflow`
+> block now sits in `tools/probe_battery/README.md`, inside
+> `### Migrating a text-keyed battery`: the mechanics home `CLAUDE.md` §8 names
+> had **0** `--reflow` mentions, `tests/batteries/README.md` **2**. New lesson
+> **0066**: *name who would make a sentence false, then check they are forced
+> to see it.*
 >
-> 🔴 **The remedy §2.5 and Step 3 both prescribed does not exist.** *"…explodes
-> the statement so its anchor line is short…and re-runs `tag`"* — exploding
-> **rewrites the source text the key is derived from**, so every exploded claim
-> comes back an `unaddressable key`. It has to be **tag first, reflow second** —
-> the tool's work, not the author's. Cray typed the close: **a `--reflow` flag**,
-> over a config hack or a PLAN amendment.
+> 🔴 **Goal-gated, on Cray's typed route pick** — an Axis-B goal (ADR-0018)
+> declared *before* the work, as a live test. Its first declaration scored
+> `error` on **4 of 5** checks (C1 `fail`, the real gap): the gate runs argv
+> **from the Windows side**, so POSIX paths cannot execute. Re-declared via
+> `wsl.exe --exec bash <absolute>.sh`; the first archived, not deleted
+> (PLAN-0123 R8). The `goal-evaluator` judged #1545 **seven times**: J3 PASS
+> all seven, J1 PASS from round 3, **J2 FAIL rounds 3–7**; merged at round 7.
 >
-> ✅ **#1541 (`docs/*`) — amendments (a)-(e), `plan-drafter`-authored** (PLAN-0128
-> is `Accepted` ⇒ G1-gated for Code). 1 file, +15/−13. Each was a value the draft
-> **computed by reading** and then stated as a criterion: (a) 17 paths → three
-> `*_claim_tags*.py` modules; (b) AC-5's twins → the stamped `#1/2`/`#0/2`; (c)
-> Step 1's `51` → 52, as a delta; (d) AC-10's drift 14 → **15**; (e) AC-9's
-> reddening assertions for 9a/9c/9d, 9m's witness, 9l's deletion. 🔴 **SD-2 is a
-> PRECEDENT, not a one-off:** (d)'s 43/15/11 are **recorded readings under an
-> independent-instrument rule** — AC-10 now says *"this PLAN records the
-> readings, it does not predict them"*. It changes what an AC's figures **are**.
+> ✅ **#1546 (`docs/*`, squash `70ae76d3`, merged by Code on Cray's typed
+> "merge #1546") repaired the three round-7 defects that reached `main`.** The
+> lesson pointed at `.claude/state/goal.json`, which `.gitignore:77` excludes;
+> `docs/logs/2026-09-21-s316-goal-gate-seven-rounds.md` is the tracked trail —
+> **7 of 7** fingerprints bound to the commit each judged, by recomputing the
+> gate's own `work_fingerprint()`. 🔴 **Merged with NO evaluator round** — Cray
+> declined round 8; the goal closed `released-unevaluated`.
 >
-> **Evidence, printed not asserted:** `plan-0128-pr3-tag-reflow.json` — claims
-> 20, RED 14, exempted 6, GAPS 0, `PROBE-COVERAGE: COMPLETE`;
-> `BATTERY-DEFINITIONS: OK (54 batteries, 696 probes)` (was 54/691: −1/−9
-> retired, +1/+14 added); **5417 passed, 8 skipped**; ruff + `mypy --strict`.
+> ✅ **Cray ruled (typed): PLAN-0128 closeout item ① = option ②** — no
+> retroactive AC; the flag rode in under Step 3, and
+> `tests/batteries/plan-0128-pr3-tag-reflow.json` is its record. Written into
+> PLAN-0128's `**Batteries:**` line.
 >
-> ⚠️ **Step 3 left three gaps drafted NOWHERE, and the drafter found four more:**
-> its file list omits `tests/batteries/README.md`, whose *"edit the generator,
-> never the JSON"* section went false on that deletion (#1540 rewrote it);
-> **Step 3.5 is MOOT** — the row it orders rewritten rotated to
-> `status-archive/2026-h1-status.md:330`; and the dead end above. Then Step 2's
-> *"(probes 9a–9h)"* against the battery's **13**; §2.2's twin key still `#1`,
-> pre-dating #1525's stamp; AC-6's *Artifact* omits the shipped
-> `…_both_probes_and_exempts_one_tag_is_an_overlap`; `**Batteries:**` (L10)
-> un-backticked. **Cray's call:** a second amendment round, or not.
->
-> ✅ **#1543 (`docs/*`) — Step 5 closeout: PLAN-0128 COMPLETE, archived
-> to `done/`, 11/11 ACs ticked.** 🔴 **The finding beats the closeout:
-> `check_ac_consistency.py` Check 3 had NEVER ONCE evaluated PLAN-0128** —
-> **two causes, each hiding the other**: `**Batteries:**` never backticked
-> (an instruction the PLAN recorded TWICE) and `_BINDING_SENTENCE` matched
-> **case-sensitively** against a sentence every PLAN capitalises. It reached
-> **3 of 11** active PLANs — with **PLAN-0119's 9**, twenty ticks no guard had
-> read. ✅ Fixed, plus a **review-closed AC** (`read`/`ruling` in the matcher
-> because the variety was counted). Not a skip: a mutated copy reddened
-> **1/3/5** gaps on AC-1/AC-12/AC-10, control **0**; the repair then killed its
-> own battery (`…check3.json` **DEAD**), repaired with 3 WITNESSED probes and 1
-> **deleted for coming back GREEN** — s314's probe-9l precedent, now twice.
-> **Evidence:** `5422 passed, 8 skipped`; `OK (54 batteries, 699 probes)`;
-> `clean — 98 AC(s) / 10 active PLAN(s)`; `unregistered=0`; `CI_WAIT: PASS
-> sha=524aae6`.
+> ⚠️ **Found, NOT fixed:** `_goal_state.Evaluation` has no field for an
+> evaluator's surfaced decisions and `save_goal` strips unknown fields — an SD
+> survives only inside a verdict's reason. **SD-2 (round 6) was lost that
+> way**; SD-1 survived. Tracked home: the `docs/logs` record above.
 
-_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **315** — ONE, the **FOURTH consecutive** reconcile at ONE, measured again, not defaulted. 🔴 **THIS (s315) reconcile rotates the s314 block AND the s314 ledger entry together**, from `git show HEAD:docs/STATUS.md`: keeping s314 puts the file ~800 B over the 63,808 B it must not exceed; rotating it lands under. Cause unchanged for the fourth time — **Active TODOs ~65%** (41,250 B, s314's measure) with the ratified `CRAY'S DIRECTION (s276)` split unbuilt. Window width is not the lever; four ONEs in a row is the evidence to schedule that split. ➕ **#1543: no rotation — the s315 block was EXTENDED (R4).**]_
+_[Current-Focus rotation ledger — **CURRENT window only** (R2, Cray s250; ~900 B per entry, Cray s267); earlier entries travel with their blocks into [`2026-h1e-current-focus.md`](status-archive/2026-h1e-current-focus.md). Window = **316** — ONE, the **FIFTH consecutive** reconcile at ONE, measured again, not defaulted. 🔴 **THIS (s316) reconcile rotates the s315 block AND the s315 ledger entry (with its #1543 extension) together**, from `git show HEAD:docs/STATUS.md`: HEAD had **1,008 B** of headroom (the caller's measure) and the s315 block is **4,001 B** — the s316 block fits only in its place. Cause unchanged, re-measured: Active TODOs is **41,417 B of HEAD's 64,528 B** — the lever is that section, not window width.]_
 
 
 ## Prior focus (archived)
@@ -98,6 +75,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-09-21/22 | **s316 (#1545, #1546) — `tag --reflow` reached the module README §8 names; lesson 0066; the goal-gate verdict trail got a tracked home.** 🔴 An Axis-B goal judged #1545 seven times (J2 FAIL rounds 3–7); #1546 merged `released-unevaluated`. 🔴 Cray ruled PLAN-0128 closeout ① = option ② (no retroactive AC). ⚠️ `save_goal` strips an evaluator's SDs — SD-2 lost; not fixed. | `70ae76d3` / [#1545](https://github.com/CrayJThiemsert/vero-lite/pull/1545) / [#1546](https://github.com/CrayJThiemsert/vero-lite/pull/1546) / `docs/logs/2026-09-21-s316-goal-gate-seven-rounds.md` |
 | 2026-09-20/21 | **s315 (#1540, #1541, #1543) — PLAN-0128 Step 3 SHIPPED on tags; the step's OWN prescribed remedy measured a DEAD END, closed by a `tag --reflow` flag (Cray, typed).** ✅ `reflowed=14/7/4` = 25 = SD-e's count; `witnessed RED:` unchanged 41/15/10; 5417 passed; `OK (54 batteries, 696 probes)`; GAPS 0. 🔴 Amendments (a)-(e) landed (#1541); **SD-2 is a PRECEDENT** — an AC's figures are recorded readings under an independent instrument, not predictions. 🔴 Three new Step-3 gaps + four same-class defects, drafted nowhere. 🔴 **#1543 — Step 5 closeout: PLAN-0128 COMPLETE + archived (11/11 ACs), and it uncovered `check_ac_consistency.py` Check 3 had NEVER evaluated the PLAN** — two causes each hiding the other (un-backticked `**Batteries:**`, case-sensitive `_BINDING_SENTENCE`); **3 of 11** PLANs reached, **PLAN-0119's 9 ticks still unread**. ✅ Fixed (review/read/ruling-closed ACs now understood); mutation **1/3/5** vs control **0**; `5422 passed`; `OK (54 batteries, 699 probes)`. | `8ece7df1` / [#1540](https://github.com/CrayJThiemsert/vero-lite/pull/1540) / [#1541](https://github.com/CrayJThiemsert/vero-lite/pull/1541) / [#1543](https://github.com/CrayJThiemsert/vero-lite/pull/1543) / `docs/plans/done/0128-*.md` · `tools/check_ac_consistency.py` |
 | 2026-09-20 | **s314 (#1537, #1538) — PLAN-0128 Step 2 SHIPPED: the `tag` subcommand; SD-e's binding measurement came in at 25 of 69 (36%), so the id scheme STANDS** (Code's call, stated not silent; drift at 47% is the margin to watch). 🔴 `anchor_row_for()` extracted as the **single derivation** of a claim's anchor — reader and writer share it; `resolved_differ` restores and exits 2 on any drift. 🔴 A probe went **GREEN and the green was the finding** — the assertion is over-determined by two mechanisms, so 9l was deleted, not re-aimed. ✅ 5416 passed; `OK (54 batteries, 691 probes)`; GAPS 0. 🔴 **FIVE** G1-gated PLAN-0128 amendments now owed (was three). | `c41b345e` / [#1537](https://github.com/CrayJThiemsert/vero-lite/pull/1537) / [#1538](https://github.com/CrayJThiemsert/vero-lite/pull/1538) / `tools/probe_battery/_tag.py` · `tools/probe_coverage.py` · `docs/plans/done/0128-*.md` |
 | 2026-09-20 | **s313 (#1534, #1536, #1535) — PLAN-0128 Step 1 SHIPPED; §9's transplant question is SETTLED against BOTH readings §2.3 recorded.** 🔴 What refuses a hand transplant is the **coverage denominator** (`GAPS: 1` → battery FAIL), not the classifier's site comparison — which *is* fooled. ✅ 41 claims / 30 RED / GAPS 0; 5410 passed; `OK (53 batteries, 678 probes)`. 🔴 Cray ruled **(ก)** own test modules when AC-1…AC-7's paths opened 6 + 23 gaps; **three G1-gated amendments owed**. 🔴 Five story D-decisions ruled — D-D flipped to *derive AND pin* by measurement; D-E locked as **L7** (#1534). 🔴 Two typed sequencing rulings were tracked NOWHERE — second consecutive session (#1536). | `8b8a4ebf` / [#1534](https://github.com/CrayJThiemsert/vero-lite/pull/1534) / [#1535](https://github.com/CrayJThiemsert/vero-lite/pull/1535) / [#1536](https://github.com/CrayJThiemsert/vero-lite/pull/1536) / `docs/plans/done/0128-*.md` · `tests/batteries/plan-0128-pr1-claim-tags.json` |
@@ -107,8 +85,7 @@ than restated: the Active TODO owns that status.]_
 | 2026-09-18 | **s309 (#1516–#1519; #1512, #1513, #1515 confirmed merged) — PLAN-0127 RATIFIED (#1515: SD-1…SD-7 ruled, Step 1b added); the PLAN-0126 battery generator is TRACKED + guarded (#1516); story v2a + the act-0 disclosure shipped on Cray's typed gos (#1517, #1518); PLAN-0128 `Draft` (#1519).** ✅ Generator battery 9/9 WITNESSED, GAPS 0; act 5 overlap **110/110 → 0/110**; 5359 passed, 8 skipped. 🔴 The generator copy STATUS named was stale (35 probes vs the committed 41) — the next `?v=` bump would have deleted the AC-11/AC-3 witnesses silently. 🔴 `cache_bust_diff_check.py` does not cover the story page (`0 bumped` across both story PRs). | [#1516](https://github.com/CrayJThiemsert/vero-lite/pull/1516) / [#1517](https://github.com/CrayJThiemsert/vero-lite/pull/1517) / [#1518](https://github.com/CrayJThiemsert/vero-lite/pull/1518) / [#1519](https://github.com/CrayJThiemsert/vero-lite/pull/1519) / `docs/plans/done/0128-*.md` |
 | 2026-09-17 | **s306 + s308 (#1510–#1513) — the stream registry is ADVISORY (Cray, typed s306); codegen (A) go, (B) not opened; PLAN-0127 drafted (#1513); its PR-1 makes the generated DDL apply (#1512).** ✅ `applied=1 failed=6` → `applied=7 failed=0`, GAPS 0. 🔴 #1506's defects came from arming auto-merge before review. | [#1510](https://github.com/CrayJThiemsert/vero-lite/pull/1510) / [#1512](https://github.com/CrayJThiemsert/vero-lite/pull/1512) / [#1513](https://github.com/CrayJThiemsert/vero-lite/pull/1513) / `.claude/skills/stream-status/SKILL.md` |
 | 2026-09-16 | **s304–s307 (#1502, #1504–#1508) — PLAN-0125 Step 3's fact-pack contract is live; PLAN-0126 archived.** ✅ `measure.py --recipe status-reconcile`; batteries GAPS 0; 5344 passed, 0 failed; no AC ticked. 🔴 §2.3's recipe emitted nothing as written — fixed, `was an error (mechanism)`. 🔴 #1508 option A (Cray typed): the scribe keeps `Window = …` until ratification. 🔴 #1506 left four defects on main; corrective PR awaits Cray. | `29709f2` / [#1507](https://github.com/CrayJThiemsert/vero-lite/pull/1507) / [#1508](https://github.com/CrayJThiemsert/vero-lite/pull/1508) / `tools/measure.py` · PLAN-0125 §2.3 |
-| 2026-09-16 | **s303 (#1496; #1495–#1501) — PLAN-0125 Step 2's staleness guard is live, and PLAN-0126 closed AC-1…AC-11 with `/story/` deployed.** ✅ Battery 35/35 WITNESSED, GAPS 0; real tree `rc=0` with `stale_cited=0`; AC-11 `max_ms=96` against a pre-fixed 2000. 🔴 Cray's typed s303 rulings: **D1=(a)** `rerun_failed` is its own gating counter (`unavailable` in a shallow clone); **D2=(b)** `git diff <against_sha>..HEAD` **plus** `git diff HEAD`. 🔴 PLAN-0126's AC-3/AC-7 took **option (C)** — re-point the artifact lists **and** add the two missing witnesses, since relabelling alone leaves halves of AC-3's claim on greens no probe reddened. | `8b13e18` / [#1496](https://github.com/CrayJThiemsert/vero-lite/pull/1496) / [#1501](https://github.com/CrayJThiemsert/vero-lite/pull/1501) / `tools/check_measure_staleness.py` · PLAN-0125 §3.2 · PLAN-0126 |
-_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; ~900 B per entry, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md), the R4 base. Window = **315** — ONE, level with Current Focus. 🔴 **THIS (s315) reconcile rotates the oldest row (s302, #1493)** on the **count rule alone** — one row entered, so one leaves to hold the table at ten. Also to the base: this ledger's own s314 entry, the replaced PLAN-0128 TODO row (771 B — its one-off cap overrun is now SPENT, amendment (d) being on `main`) and the replaced Next-Steps blockquote. ✅ Both s315 entries stayed under the ~900 B cap — the #1537 failure (1,089 / 1,033 B) did not recur. ➕ **#1543: no row rotated (s315's row EXTENDED); the replaced PLAN-0128 TODO row + Next-Steps opener travel.**]_
+_[Recent-Decisions rotation ledger — **CURRENT window only** (R2; ~900 B per entry, Cray s267); earlier entries travel with their rows into [`2026-h1-status.md`](status-archive/2026-h1-status.md), the R4 base. Window = **316** — ONE, level with Current Focus. 🔴 **THIS (s316) reconcile rotates the oldest row (s303, #1496)** on the **count rule alone** — one row entered, so one leaves to hold the table at ten. Also to the base: this ledger's own s315 entry, its #1543 extension included. ➕ **Part 2 (s316): the replaced PLAN-0128 Active-TODO row and the replaced Next-Steps blockquote also travel to the base.**]_
 
 ## In-Flight Discussions
 
@@ -121,7 +98,8 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; ~900 B per e
 
 ## Active TODOs
 
-- [ ] **🆕 PLAN-0128 — claim tags: COMPLETE, 11/11 ACs ticked, ARCHIVED** (#1535, #1538, #1540, #1541, #1543). Four things it left open, tracked nowhere else: ① 🔴 **`tag --reflow` has NO AC** — full battery (20 claims, 14 RED, GAPS 0), but the flag arrived mid-Step-3 and an AC written after its evidence inverts §8; **Cray rules:** a retroactive AC, or a note that it rode in under Step 3 on its battery. ② 🔴 **PLAN-0119's 9 ticks stay invisible to Check 3** — no backticked `**Batteries:**` glob, no binding sentence; this session's fix does not reach it. ③ ⚠️ **check3's battery has 3 coverage gaps that PRE-DATE this session** (34 claims / 31 addressed at HEAD) — separate scope. ④ ⚠️ The older *2nd-amendment-round?* call is **unruled** — the archive may moot it, which is itself a ruling. **Read:** `docs/plans/done/0128-*.md`.
+- [ ] **🆕 PLAN-0128 — claim tags: COMPLETE, 11/11 ACs ticked, ARCHIVED** (#1535, #1538, #1540, #1541, #1543). Four things it left open — ① since ruled, ②–④ tracked nowhere else: ① ✅ **discharged — ruled s316 by Cray (typed pick): no retroactive AC for `tag --reflow`; it rode in under Step 3 and its battery is its record**, recorded on PLAN-0128's `**Batteries:**` line. ② 🔴 **PLAN-0119's 9 ticks stay invisible to Check 3** — no backticked `**Batteries:**` glob, no binding sentence; s315's fix does not reach it. ③ ⚠️ **check3's battery has 3 coverage gaps that PRE-DATE s315** (34 claims / 31 addressed at HEAD) — separate scope. ④ ⚠️ The older *2nd-amendment-round?* call is **unruled** — the archive may moot it, which is itself a ruling. **Read:** `docs/plans/done/0128-*.md`.
+- [ ] **🆕 `goal-evaluator` surfaced decisions are not durable — found s316, not fixed, no PLAN.** `_goal_state.Evaluation` has **no field** for them; its docstring records that `save_goal` silently strips unknown fields. An SD survives only if embedded in a verdict's `reason`: s316's **SD-2** (round 6) is absent from that round's entry — lost; SD-1 survived, embedded. **Read:** `docs/logs/2026-09-21-s316-goal-gate-seven-rounds.md`.
 - [ ] **🆕 PLAN-0127 — codegen generation stability (A): `Accepted` (ratified in #1515); PR-1 merged (#1512); SD-1…SD-7 ruled; AC-5/AC-11/AC-12 ticked; Step 1b added (SD-7 = b).** Next: **PR-2** (`feat/codegen-every-doc-suite`, AC-1/2/3/6-meta/7/8/9) and **Step 1b** (measure blocks) are independent and may run in parallel; then PR-3, PR-4 (`chore/*`), PR-5, Step 6 (runbook + scaffold-test extension), Step 7 closeout. **(B) runtime adoption stays unopened** (Cray, typed s306). PR-5 would discharge the Counterparty row's `generate core` and stale-runbook items. **Read:** `docs/plans/0127-*.md`.
 - [ ] **🆕 `status-scribe` cannot write from a worktree — the subagent is unusable for any session running in `.claude/worktrees/`.** `.claude/hooks/pretooluse_status_scribe_write_deny.py` resolves its allowlist against the **main** repo root (`REPO_ROOT = Path(__file__).resolve().parent.parent.parent`), so every absolute path to `docs/STATUS.md` from a worktree begins `.claude/worktrees/<name>/` and fails the allowlist. Measured s310: the scribe authored a complete reconcile, was denied, correctly refused to hunt for an evading path spelling, and returned the edits for Code to apply by hand. Two candidate fixes: normalize against the **worktree** root (`git rev-parse --show-toplevel`), or rule that `status-scribe` is only ever dispatched from the main checkout — the second is free but silently strands every worktree session. Same root cause as the 4 Cause-A hook tests that false-RED in a worktree.
 - [ ] **🆕 The `handoff-frontmatter` pre-commit gate cannot tell *"nothing to check"* from *"checked and clean"* — a vacuous green (§8).** `precommit_handoffs.py` scopes to the **highest-numbered** session dir only ("no legacy drag", s35), so an EMPTY newest dir yields zero files and the hook exits 0 having checked nothing. Measured s310 in-process: malformed in the newest dir `rc=1`; malformed in an older dir with the newest EMPTY **`rc=0`**; same without the empty dir `rc=1`. ✅ **s310's live silencing is FIXED** — a real handoff now sits in `.claude/handoffs/session-311/`, and the gate was re-proved live (planted malformed file → exit 1; removed → exit 0). 🔴 The design defect stands, and making the two outcomes distinguishable is the only fix that outlives any one dir. ⚠️ `main()` takes an `argv` root but `__main__` passes none, so a CLI run hits the REAL repo, `write_index()` included.
@@ -181,7 +159,7 @@ _[Recent-Decisions rotation ledger — **CURRENT window only** (R2; ~900 B per e
 
 ## Next Steps
 
-> **PLAN-0128 is DONE — there is no next step in it** (#1543 closed it out, ticked 11/11 and archived it). 🔴 **The next Code action is whatever Cray rules** on the four items the closeout left open (Active TODOs, PLAN-0128 row). **Absent a ruling, the standing alternatives:** PLAN-0127 **PR-2** — which also unlocks the live-structuring **replay** mechanism (AC-1/AC-2) — and Step 1b; else PLAN-0125 Step 4. ⚠️ Reconcile only from a fresh `main`, naming main's last merge commit as `head_commit`, or its own commit reds. **CRAY, carried:** the story deploy's **per-phase typed go** and the **Cloudflare Access PIN** (`DEPLOY.md` §7) — ⚠️ *who runs it* is no longer open in the old form (s313: one refusal, not a rule); G1, a sole-source fourth case amending L5, and G2–G4, a primer scene; **PLAN-0128's four closeout calls** (`tag --reflow`'s AC; PLAN-0119's unread ticks; check3's 3 pre-dating gaps; and the older *2nd-amendment-round?* call, ⚠️ **nowhere marked discharged**); a time for the live-structuring discussion; **classify the specimen ledger**; **PLAN-0125 AC-14's typed read** of §3.1 + §5; detect-secrets vs the full-hex `against_sha`; PLAN-0109's object-synonym gap and **AC-14's typed §8 go**; whether `adspend-probe/` should ever become a real `verticals/adspend/` (it moves the AT-2 census — a governance act); whether to prune the registered prunable worktrees; and **is a pilot live**, on which instance, since when? ⚠️ **The "34 orphan render dirs" item is RE-SCOPED:** s312 measured `.claude/state/` at **0** `*render*` dirs of 256, but **13 orphan `loop-counter.json.*.tmp`** and 7.55 MB. Re-scope before ruling. **Discharged this window:** PLAN-0128 **entire** — Step 3 (#1540), the five owed amendments (#1541), and the Step 5 closeout + archive (#1543); plus SD-e's overlong remedy, measured a dead end and replaced by `tag --reflow` on Cray's typed pick. **Opened:** `tag --reflow`'s missing AC, PLAN-0119's 9 ticks Check 3 cannot see, and the check3 battery's 3 pre-dating gaps.
+> **PLAN-0128 is DONE — there is no next step in it** (#1543 closed it out, ticked 11/11 and archived it). 🔴 **The next Code action is whatever Cray rules** on the three closeout items still pending (Active TODOs, PLAN-0128 row). **Absent a ruling, the standing alternatives:** PLAN-0127 **PR-2** — which also unlocks the live-structuring **replay** mechanism (AC-1/AC-2) — and Step 1b; else PLAN-0125 Step 4. ⚠️ Reconcile only from a fresh `main`, naming main's last merge commit as `head_commit`, or its own commit reds. **CRAY, carried:** the story deploy's **per-phase typed go** and the **Cloudflare Access PIN** (`DEPLOY.md` §7) — ⚠️ *who runs it* is no longer open in the old form (s313: one refusal, not a rule); G1, a sole-source fourth case amending L5, and G2–G4, a primer scene; **PLAN-0128's three closeout calls** (PLAN-0119's unread ticks; check3's 3 pre-dating gaps; and the older *2nd-amendment-round?* call, ⚠️ **nowhere marked discharged**); a time for the live-structuring discussion; **classify the specimen ledger**; **PLAN-0125 AC-14's typed read** of §3.1 + §5; detect-secrets vs the full-hex `against_sha`; PLAN-0109's object-synonym gap and **AC-14's typed §8 go**; whether `adspend-probe/` should ever become a real `verticals/adspend/` (it moves the AT-2 census — a governance act); whether to prune the registered prunable worktrees; and **is a pilot live**, on which instance, since when? ⚠️ **The "34 orphan render dirs" item is RE-SCOPED:** s312 measured `.claude/state/` at **0** `*render*` dirs of 256, but **13 orphan `loop-counter.json.*.tmp`** and 7.55 MB. Re-scope before ruling. **Discharged this window:** PLAN-0128 closeout item ① (Cray, typed, s316 — no retroactive AC); `tag --reflow` documented in the module README and lesson 0066 (#1545); the verdict trail rehomed to `docs/logs/` (#1546). **Opened:** the `goal-evaluator` surfaced-decision durability gap (Active TODOs).
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework, mapping layer, ORM emitter, base-Postgres → the custom-Postgres image, registry discovery). _[Corrected s153: dropped the stale "→ ADR-011+" and "→ PLAN-002 (≥ADR-014)" pointers — **ADR-011 does not exist** (earmark only, per the Active TODO above) and **PLAN-002 was never drafted** with its ADR floor moot; each item's corrected status lives in Active TODOs.]_
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
