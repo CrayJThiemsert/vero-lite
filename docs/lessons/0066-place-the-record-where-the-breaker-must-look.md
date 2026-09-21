@@ -60,7 +60,7 @@ reddens. **Those three anchors are the supervised copies; the other surfaces lis
 > ⚠️ This section first closed with *"That is the **only** `--reflow` sentence in the repo
 > that cannot rot quietly."* It was refuted by the battery this section cites — R10
 > alone disproves it. A uniqueness claim is a negative claim wearing a positive sentence,
-> and *A claim about where a record lives is still a claim*, below, applies to it in full.
+> and *A claim about where a record lives is still a claim* applies to it in full.
 > The correction is kept here rather than smoothed away, because *what* was wrong is the
 > point.
 
@@ -110,9 +110,8 @@ prose — it is the reason prose must never be the *only* home for something loa
 ## The corollary that saved work this session
 
 Before building a proof that "editing the refusal trips a guard", the catalogue was
-checked — and **P5 already witnessed it**, at s288, with 17 probes. A hand-rolled
-re-proof would have been the fourth instrument this session to be wrong about something
-the artifact had right.
+checked — and **P5 already witnessed it**, at s288, with 17 probes. A hand-rolled re-proof
+would have been one more instrument wrong about something the artifact had right.
 
 > **Before building an instrument, ask what already witnesses this.** `tools/README.md`
 > exists for exactly that question: *"listed so you don't rebuild one."*
@@ -144,29 +143,21 @@ working shape, already present in two archived goals from 2026-09-11, is
 criterion that cannot run is an unsupervised criterion wearing a guard's uniform — the same
 defect as a doc nobody reads, in a surface that looks mechanical.
 
-### The supervision that caught this page
+### One more rule, and where this page's own record lives
 
-Both documents in this change were written under a goal whose `judge` criteria were fixed
-**before** either existed, and successive rounds of the `goal-evaluator` refuted claims in
-both. The refuted claims, what each rested on, and which round caught it are recorded in
-`evaluations[]` inside `.claude/state/goal.json` — appended by the evaluator, whose write
-is hook-narrowed to that one file.
-
-**This page does not restate that history, and the omission is the point.** Successive
-drafts of this section tried to, and each attempt was itself refuted in the next round.
-The grounds are in `evaluations[]`; they are deliberately not repeated here, because a
-summary of a still-growing trail cannot stay true and nothing reddens when it stops being
-true. The trail is the supervised copy; a retelling here would be an unsupervised one,
-which is the failure this whole page is about.
-
-What survives retelling is the rule, because a rule is not a claim about the trail:
-**a positional cross-reference — "two paragraphs above", "see below" — is a claim about the
+**A positional cross-reference — "two paragraphs above", "see below" — is a claim about the
 document's own layout, and every edit falsifies some of them silently. Cite by name.**
 
-That is the rule of this lesson turned on the lesson itself. Neither defect was reachable
-by re-reading; both were reachable by a criterion written in advance and judged by
-something that had not authored the text. **The record went where its breaker had to
-look, and its breaker was the one who found the errors in it.**
+This page was drafted under a session goal whose `judge` criteria were fixed before it was
+written, and the `goal-evaluator` refuted claims in it across several rounds. Each refuted
+claim, the evidence it rested on, and the round that caught it are in `evaluations[]`
+inside `.claude/state/goal.json`, appended by the evaluator itself — its write is
+hook-narrowed to that one file (`.claude/hooks/pretooluse_goal_evaluator_write_deny.py`).
+
+That trail is the supervised copy. Earlier drafts of this section summarised it instead,
+and every summary was refuted in turn, on different grounds each time — which is the whole
+argument of this page arriving at its own last paragraph. **Read the trail; this page does
+not restate it.**
 
 ## What this does not settle
 
