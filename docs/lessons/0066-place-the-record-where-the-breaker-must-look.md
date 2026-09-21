@@ -29,7 +29,7 @@ supervised.
 | The refusal message, `tools/probe_battery/_tag.py:358` | ✅ | anyone editing that string | 🟢 **yes** — see below |
 | CLI `--help`, `tools/probe_battery/__main__.py:204` | ✅ | anyone editing the parser | 🔴 no — prose, no guard |
 | `tests/batteries/README.md:30,57` | ✅ | anyone editing that README | 🔴 no — prose, no guard |
-| `tools/probe_battery/README.md` | ❌ **0 hits** | — | 🔴 the gap this session closed |
+| `tools/probe_battery/README.md` | ❌ **0 hits before this change** | — | 🔴 the gap this session closed |
 | `docs/plans/done/0128-*.md` (106,521 B) | ✅ | anyone | 🔴 **never, by design** |
 
 Three of those readings are worth their own line.
@@ -46,8 +46,22 @@ Probe **`P5-a-vanished-anchor-is-not-reported`** in
 `check_battery_definitions.py` runs **`always_run: true`** at pre-commit, and its config
 comment states the reason outright: *"both deaths were authored by editing the code a
 battery points AT, never the battery file."* So rewording that refusal strands R6's anchor
-and the commit reddens. **That is the only `--reflow` sentence in the repo that cannot rot
-quietly.**
+and the commit reddens.
+
+And R6 is not alone. **All fourteen** of that battery's probes anchor inside `_tag.py`, and
+three of them sit on refusal *prose* rather than on control flow: R6 on
+`Re-run with --reflow to let` (`:358`), **R7** on
+`refuses every one of them as an unaddressable key.` (`:361`), and **R10** on
+`clean already, so that any formatting change afterwards is ` (`:367`) — a substring of the
+*second*, format-clean refusal. Reword any of the three and the same `always_run` lint
+reddens. **Those sentences are the supervised copies; everything below this line is not.**
+
+> ⚠️ The paragraph above first read *"That is the **only** `--reflow` sentence in the repo
+> that cannot rot quietly."* It was refuted by the battery the same paragraph cites — R10
+> alone disproves it. A uniqueness claim is a negative claim wearing a positive sentence,
+> and *A claim about where a record lives is still a claim*, below, applies to it in full.
+> The correction is kept here rather than smoothed away, because *what* was wrong is the
+> point.
 
 ### The one that is unsupervised forever
 
@@ -132,7 +146,17 @@ Both documents in this change were written under a goal whose `judge` criteria w
 **before** either existed, and the `goal-evaluator` returned **FAIL on two of the three**:
 a sentence in the README asserting that `reflowed=` joins the proof line, which
 `_tag.py:551-554` explicitly refuses to do (*"Its own line, never appended to the proof
-line"*), and the fourteen-vs-thirteen count two paragraphs above. Both are fixed here.
+line"*), and the fourteen-vs-thirteen count under *The surface that is silent about its own
+silence*. Both are fixed. A third round then refuted the uniqueness claim under *The one
+that is supervised, and why*, which is quoted back in place there.
+
+**Three of the four defects across those rounds were cross-references, not facts** — a
+count, a `:552` for a `:551`, and *"two paragraphs above"* for something eight paragraphs
+and four headings above. The repair for the last one was written *"two sections down"*, and
+that was wrong by four headings too. A positional cross-reference is a claim about the
+document's own layout, and every edit to the document falsifies some of them silently.
+**Cite a section by name; a name survives an edit, an offset does not.** All cross-references
+in this lesson are by name for that reason.
 
 That is the rule of this lesson turned on the lesson itself. Neither defect was reachable
 by re-reading; both were reachable by a criterion written in advance and judged by
@@ -158,3 +182,7 @@ flag's *mechanism* is supervised and where it is not; it takes no position on th
 4. An archived PLAN, a gitignored handoff, and a `docs/STATUS.md` row scheduled for
    rotation are all **expiring** homes. Reasoning lineage may live there; a live rule may
    not.
+5. **Cross-reference by name, never by offset.** "Two paragraphs above" is a claim about
+   layout that the next edit falsifies without reddening anything — three of this page's
+   own defects were that shape. A section title, a probe name, a symbol name: each is a
+   handle the breaker also has to touch.
