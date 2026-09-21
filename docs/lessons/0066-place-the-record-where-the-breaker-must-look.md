@@ -149,22 +149,27 @@ defect as a doc nobody reads, in a surface that looks mechanical.
 document's own layout, and every edit falsifies some of them silently. Cite by name.**
 
 This page was drafted under a session goal whose `judge` criteria were fixed before it was
-written, and the `goal-evaluator` refuted claims in it across several rounds. Each refuted
-claim, the evidence it rested on, and the round that caught it are in `evaluations[]`
-inside `.claude/state/goal.json`, appended by the evaluator itself — its write is
-hook-narrowed to that one file (`.claude/hooks/pretooluse_goal_evaluator_write_deny.py`).
+written, and the `goal-evaluator` refuted claims in it before it merged. The evaluator
+appends its verdicts to the session goal file — its write is hook-narrowed to that one file
+(`.claude/hooks/pretooluse_goal_evaluator_write_deny.py`) — but that file sits under the
+gitignored `.claude/state/`: per-machine, and rotated when a goal closes. By this page's own
+test that is an expiring home.
 
-That trail is the supervised copy. Earlier drafts of this section summarised it instead,
-and every summary was refuted in turn, on different grounds each time — which is the whole
-argument of this page arriving at its own last paragraph. **Read the trail; this page does
-not restate it.**
+The tracked record is
+[`docs/logs/2026-09-21-s316-goal-gate-seven-rounds.md`](../logs/2026-09-21-s316-goal-gate-seven-rounds.md):
+the seven rounds that judged PR #1545, each bound to the commit it judged by recomputing the
+gate's own fingerprint. Its scope is closed — a closed round does not change — so it can
+stay true where a running summary could not. **Read that record; this page does not restate
+it.**
 
 ## What this does not settle
 
-PLAN-0128's closeout left open whether `tag --reflow` gets a **retroactive AC** or a note
-that it rode in under Step 3 on its battery (`docs/STATUS.md`, PLAN-0128 pointer row, item
-①). **That question is Cray's and is not answered here.** This lesson records where the
-flag's *mechanism* is supervised and where it is not; it takes no position on the AC.
+PLAN-0128's closeout left open whether `tag --reflow` should get a **retroactive AC** or a
+note that it rode in under Step 3 on its battery. **Cray ruled that question, not this
+lesson:** no retroactive AC — the flag rode in under Step 3, and
+`tests/batteries/plan-0128-pr3-tag-reflow.json` is its record. The ruling is written into
+the archived PLAN itself, on its `**Batteries:**` line. This lesson records where the flag's
+*mechanism* is supervised and where it is not; it argues neither side of the AC question.
 
 ## How to apply it
 
