@@ -26,7 +26,7 @@ supervised.
 
 | Surface | Names the flag? | Who breaks it | Forced to see it? |
 |---|:-:|---|---|
-| The refusal message, `tools/probe_battery/_tag.py:358` | ✅ | anyone editing that string | 🟢 **yes** — see below |
+| The refusal message, `tools/probe_battery/_tag.py:358` | ✅ | anyone editing that string | 🟢 **yes** — *The one that is supervised, and why* |
 | CLI `--help`, `tools/probe_battery/__main__.py:204` | ✅ | anyone editing the parser | 🔴 no — prose, no guard |
 | `tests/batteries/README.md:30,57` | ✅ | anyone editing that README | 🔴 no — prose, no guard |
 | `tools/probe_battery/README.md` | ❌ **0 hits before this change** | — | 🔴 the gap this session closed |
@@ -54,7 +54,8 @@ three of them sit on refusal *prose* rather than on control flow: R6 on
 `refuses every one of them as an unaddressable key.` (`:361`), and **R10** on
 `clean already, so that any formatting change afterwards is ` (`:367`) — a substring of the
 *second*, format-clean refusal. Reword any of the three and the same `always_run` lint
-reddens. **Those sentences are the supervised copies; everything below this line is not.**
+reddens. **Those three anchors are the supervised copies; the other surfaces listed under
+*The measurement* are not.**
 
 > ⚠️ This section first closed with *"That is the **only** `--reflow` sentence in the repo
 > that cannot rot quietly."* It was refuted by the battery this section cites — R10
@@ -143,20 +144,22 @@ defect as a doc nobody reads, in a surface that looks mechanical.
 ### The supervision that caught this page
 
 Both documents in this change were written under a goal whose `judge` criteria were fixed
-**before** either existed, and the `goal-evaluator` returned **FAIL on two of the three**:
-a sentence in the README asserting that `reflowed=` joins the proof line, which
-`_tag.py:551-554` explicitly refuses to do (*"Its own line, never appended to the proof
-line"*), and the fourteen-vs-thirteen count under *The surface that is silent about its own
-silence*. Both are fixed. A third round then refuted the uniqueness claim under *The one
-that is supervised, and why*, which is quoted back in place there.
+**before** either existed, and successive rounds of the `goal-evaluator` refuted claims in
+both. The refuted claims, what each rested on, and which round caught it are recorded in
+`evaluations[]` inside `.claude/state/goal.json` — appended by the evaluator, whose write
+is hook-narrowed to that one file.
 
-**Three of the four defects across those rounds were cross-references, not facts** — a
-count, a `:552` for a `:551`, and *"two paragraphs above"* for something eight paragraphs
-and four headings above. The repair for the last one was written *"two sections down"*, and
-that was wrong by four headings too. A positional cross-reference is a claim about the
-document's own layout, and every edit to the document falsifies some of them silently.
-**Cite a section by name; a name survives an edit, an offset does not.** All cross-references
-in this lesson are by name for that reason.
+**This page does not restate that history, and the omission is the point.** Two drafts of
+this section did: each summarised how many defects there had been and of what kind, and
+each summary was itself refuted in the next round — once on the count, once on the split
+between fact-defects and cross-reference defects. A summary of a trail that is still
+growing cannot stay true, and nothing reddens when it stops being true. The trail is the
+supervised copy; a retelling here would be an unsupervised one, which is the failure this
+whole page is about.
+
+What survives retelling is the rule, because a rule is not a claim about the trail:
+**a positional cross-reference — "two paragraphs above", "see below" — is a claim about the
+document's own layout, and every edit falsifies some of them silently. Cite by name.**
 
 That is the rule of this lesson turned on the lesson itself. Neither defect was reachable
 by re-reading; both were reachable by a criterion written in advance and judged by
