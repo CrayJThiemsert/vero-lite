@@ -159,6 +159,27 @@ key, an id already used in that module, or an append that would exceed the proje
 is byte-identical; after a write, a failed re-enumeration restores from the in-memory
 originals.
 
+**`--reflow` is the answer to the over-long refusal, and the order is not negotiable.**
+Add it when the refusal names an append that would exceed `line-length`: the tag is
+written **first**, then `ruff format` explodes the statement, and every tag is
+re-verified afterwards. Any failure restores everything.
+
+```bash
+python -m tools.probe_battery tag tests/batteries/my-battery.json --reflow
+```
+
+The proof line then carries `reflowed=<n>` alongside the fields below.
+
+🔴 **Do not explode the statements by hand first.** The source text is what an untagged
+key is derived from, so rewriting it makes the re-run refuse every one of them as an
+`unaddressable key` — tag first, reflow second, because surviving a reflow is exactly
+what a tag is *for*.
+
+⚠️ **`--reflow` requires every module it will format to be `ruff format` clean already**,
+and refuses without writing otherwise — so that any formatting change afterwards is
+attributable to the tags this run wrote. If it refuses that way, format the module in its
+own commit, then re-run `tag`.
+
 The proof line is the evidence a PR body quotes:
 
 ```
