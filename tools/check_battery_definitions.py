@@ -32,10 +32,22 @@ carries text keys is the one this guard will red first — and the repair is
 **Scope, stated so a green is not over-read.** Passing here means every probe can
 address its claim and its anchor resolves. It does **not** mean any probe would
 redden — that needs the real run, and no offline check can answer it.
+
+🔴 **Reach: every COMMITTED battery, wherever it sits.** The first cut read only
+``tests/batteries/*.json``. Two tracked batteries lived beside their subject in
+``benchmarks/intake_extraction/`` instead, so this guard never opened them, and one was
+DEAD: probe S3's anchor had occurred 0 times since 2a112187 turned the one-line append it
+named into a multi-line constructor. The guard printed OK throughout. (Measured s317;
+both files now live in ``tests/batteries/``.) A location is a convention. What makes a
+file a battery is its content. So this guard lints the home glob **plus** every
+git-tracked ``*.json`` elsewhere whose text carries :data:`BATTERY_MARKER`, each file
+once. It fails closed when git cannot enumerate: "no stray battery" must never mean the
+same thing as "the guard did not look".
 """
 
 from __future__ import annotations
 
+import subprocess
 import sys
 from pathlib import Path
 
@@ -45,12 +57,77 @@ if str(REPO_ROOT) not in sys.path:  # pragma: no cover - import bootstrap
 
 from tools.probe_battery._lint import BatteryLintReport, lint_batteries  # noqa: E402
 
+#: The HOME. Everything here is linted whatever it contains: a file here that will not
+#: parse is a broken battery, not a non-battery.
 BATTERY_GLOB = "tests/batteries/*.json"
 
+#: What makes a JSON file a battery anywhere else: the key every battery carries. It is
+#: matched on the raw TEXT, never on a parsed object, so a battery with broken JSON is
+#: still FOUND and the lint then reports it unreadable. A parsed check would drop it
+#: silently, and a silent drop is the failure this reach exists to close. The cost: a
+#: non-battery JSON that spells this key gets linted and refused. That is loud, and it
+#: names the file.
+BATTERY_MARKER = '"claim_sources"'
 
-def find_batteries(root: Path) -> list[Path]:
-    """Every battery definition in the repo, sorted."""
-    return sorted(root.glob(BATTERY_GLOB))
+
+class EnumerationError(RuntimeError):
+    """``git ls-files`` could not enumerate the tree.
+
+    This is fatal. It never becomes an empty list, for the reason ``check_status_citations``
+    gives: a guard that cannot enumerate cannot certify anything. Scoping to tracked files
+    is also what keeps ``.claude/worktrees/`` out. Every directory there is a full copy of
+    this repo, batteries included, and a filesystem walk would lint all of them.
+    """
+
+
+def tracked_json(root: Path) -> list[Path]:
+    """Repo-relative paths of every git-tracked ``*.json`` under ``root``.
+
+    Raises :class:`EnumerationError` if git is unavailable or errors (fail-closed). A
+    pathspec ``*`` matches across ``/``, so this reaches every depth.
+    """
+    try:
+        # S603: fixed argv, no shell; `root` is a cwd, not an argument. S607: "git" via
+        # PATH, the same idiom as tools/check_status_citations.py.
+        proc = subprocess.run(  # noqa: S603
+            ["git", "ls-files", "-z", "--", "*.json"],  # noqa: S607
+            cwd=root,
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+    except FileNotFoundError as exc:  # git not on PATH
+        raise EnumerationError("git executable not found on PATH") from exc
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or "").strip() or f"exit {exc.returncode}"
+        raise EnumerationError(f"git ls-files failed in {root}: {detail}") from exc
+    return [Path(p) for p in proc.stdout.split("\0") if p]
+
+
+def carries_marker(text: str) -> bool:
+    """True if ``text`` is shaped like a battery definition (see :data:`BATTERY_MARKER`)."""
+    return BATTERY_MARKER in text
+
+
+def find_batteries(root: Path, tracked: list[Path]) -> list[Path]:
+    """Every battery definition in the repo, sorted, each exactly once.
+
+    ``tracked`` (repo-relative) is a parameter so the selection is testable without git.
+    """
+    home = set(root.glob(BATTERY_GLOB))
+    elsewhere: set[Path] = set()
+    for rel in tracked:
+        candidate = root / rel
+        try:
+            text = candidate.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            # A staged-but-deleted path is enumerated by git yet absent on disk.
+            continue
+        if carries_marker(text):
+            elsewhere.add(candidate)
+    # A union, never a concatenation. A home battery is tracked too, so both sources name
+    # it, and a battery counted twice is linted twice and inflates every printed count.
+    return sorted(home | elsewhere)
 
 
 def render(reports: list[BatteryLintReport], root: Path) -> str:
@@ -59,10 +136,13 @@ def render(reports: list[BatteryLintReport], root: Path) -> str:
     probes = sum(r.probes for r in reports)
     broken = [r for r in reports if not r.ok]
     findings = sum(len(r.findings) for r in reports)
+    home = root / Path(BATTERY_GLOB).parent
+    outside = sum(1 for r in reports if r.battery.parent != home)
 
     lines.append("BATTERY DEFINITION LINT — can every probe still address what it declares?")
     lines.append(
-        f"batteries: {len(reports)}   probes: {probes}   "
+        f"batteries: {len(reports)} (outside {Path(BATTERY_GLOB).parent.as_posix()}/: "
+        f"{outside})   probes: {probes}   "
         f"broken batteries: {len(broken)}   findings: {findings}"
     )
     lines.append("")
@@ -91,7 +171,17 @@ def render(reports: list[BatteryLintReport], root: Path) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     root = Path(argv[0]).resolve() if argv else REPO_ROOT
-    batteries = find_batteries(root)
+    try:
+        tracked = tracked_json(root)
+    except EnumerationError as exc:
+        print(
+            f"BATTERY-DEFINITIONS: CANNOT ENUMERATE tracked files ({exc}). Failing closed: "
+            f"a battery outside {BATTERY_GLOB} would go unlinted, and a clean report would "
+            "then say nothing.",
+            file=sys.stderr,
+        )
+        return 2  # fail closed: an unenumerated tree certifies nothing
+    batteries = find_batteries(root, tracked)
     if not batteries:
         # A zero-battery run must not read as a pass: the repo HAS batteries, so an
         # empty set means the glob stopped matching, not that everything is healthy.
