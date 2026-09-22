@@ -222,6 +222,88 @@ def _battery_sources(root: Path, pattern: str) -> tuple[set[str], int]:
     return sources, len(files)
 
 
+#: A ``**Batteries:**`` header line in ANY form, backticked or not. ``_BATTERIES`` binds only
+#: the backticked form; a bare one is the exact shape that hid PLAN-0128 from Check 3 until
+#: s315, so it is named in the error rather than left for the reader to spot.
+_BATTERIES_BARE = re.compile(r"^\*\*Batteries:\*\*", re.M)
+
+
+def _committed_batteries(root: Path, plan_name: str) -> list[str]:
+    """Committed battery files that show this PLAN rests its ticks on probe evidence.
+
+    Used only for a PLAN with NO backticked ``**Batteries:**`` header, to decide whether
+    that absence is a skip (nothing to read) or an error (evidence exists that Check 3 is
+    not reading). Measured s317: PLAN-0119 had 9 of 11 ACs ticked and six committed
+    batteries, declared neither way, and Check 3 skipped it with no output.
+
+    **Found by the naming convention, ``tests/batteries/plan-NNNN-*.json``, and nothing
+    else.** Every backticked header in the repo points at exactly that glob (nine of nine
+    at s317), so the convention is what a header would have said. The alternative —
+    reading the ``*.json`` paths out of the PLAN's own prose — was weighed and not taken:
+    it is a second parser over PLAN text (the s298 shape ``_own_text`` records), and a
+    PLAN that cites ANOTHER PLAN's battery would be accused of owning it. The cost is a
+    battery named off-convention or stored elsewhere stays invisible here; s317 moved the
+    one active-PLAN battery that was (PLAN-0119 AC-2's, from ``benchmarks/``).
+
+    Returns repo-relative POSIX paths, sorted, of the files that exist on disk.
+    """
+    number = plan_name.split("-", 1)[0]
+    return sorted(
+        path.relative_to(root).as_posix()
+        for path in root.glob(f"tests/batteries/plan-{number}-*.json")
+        if path.is_file()
+    )
+
+
+def _undeclared_gap(root: Path, plan_name: str, text: str, ticked: int) -> BatteryGap | None:
+    """The gap for a PLAN whose ``**Batteries:**`` header is missing or not backticked.
+
+    Scoped to PLANs that have actually TICKED something. A Draft with the binding sentence
+    and nothing ticked yet has no claim resting on absent evidence, and failing it would
+    block work before there is anything to cover — the check exists to catch an
+    unjustified tick, not an unstarted plan. Measured s278: unscoped, this fired on
+    PLAN-0121 at 0 of 8 ticked.
+
+    Two routes to an error, because either one is enough to show the ticks rest on probes:
+    committed batteries that belong to this PLAN (s317), or the binding sentence (s278).
+    Before s317 only the second existed, and a PLAN with batteries but no sentence was
+    skipped in silence — which is not a pass, only a check that did not run.
+    """
+    if not ticked:
+        return None
+    committed = _committed_batteries(root, plan_name)
+    if committed:
+        bare = (
+            " A `**Batteries:**` line is present but its glob is not backticked, and only a "
+            "backticked glob binds."
+            if _BATTERIES_BARE.search(text)
+            else ""
+        )
+        return BatteryGap(
+            plan=plan_name,
+            ac=None,
+            reason=(
+                f"{ticked} AC(s) ticked and {len(committed)} committed batter"
+                f"{'y' if len(committed) == 1 else 'ies'} belong to this PLAN "
+                f"({', '.join(committed)}), but no backticked `**Batteries:**` header points "
+                f"at them, so Check 3 has never read these ticks.{bare} fix: add a "
+                "`**Batteries:**` header whose backticked glob matches them."
+            ),
+        )
+    if _BINDING_SENTENCE in text.lower():
+        return BatteryGap(
+            plan=plan_name,
+            ac=None,
+            reason=(
+                f"{ticked} AC(s) ticked and this PLAN binds its ticks to "
+                "probe evidence, but it names no batteries. fix: commit the "
+                "definitions under tests/batteries/ and add a `**Batteries:**` "
+                "header line pointing at them."
+            ),
+        )
+    return None
+
+
 def _own_text(text: str, match: re.Match[str]) -> str:
     """One AC's own text: from its bold label to the end of its line, markers excluded.
 
@@ -329,24 +411,9 @@ def find_battery_gaps(root: Path) -> list[BatteryGap]:
         ticked = [n for flag, n in _AC_BOX.findall(text) if flag == "x"]
         match = _BATTERIES.search(text)
         if match is None:
-            # Scoped to PLANs that have actually TICKED something. A Draft with the
-            # binding sentence and nothing ticked yet has no claim resting on absent
-            # evidence, and failing it would block work before there is anything to
-            # cover — the check exists to catch an unjustified tick, not an unstarted
-            # plan. Measured s278: unscoped, this fired on PLAN-0121 at 0 of 8 ticked.
-            if _BINDING_SENTENCE in text.lower() and ticked:
-                out.append(
-                    BatteryGap(
-                        plan=plan.name,
-                        ac=None,
-                        reason=(
-                            f"{len(ticked)} AC(s) ticked and this PLAN binds its ticks to "
-                            "probe evidence, but it names no batteries. fix: commit the "
-                            "definitions under tests/batteries/ and add a `**Batteries:**` "
-                            "header line pointing at them."
-                        ),
-                    )
-                )
+            gap = _undeclared_gap(root, plan.name, text, len(ticked))
+            if gap is not None:
+                out.append(gap)
             continue
 
         sources, n_files = _battery_sources(root, match.group(1))
