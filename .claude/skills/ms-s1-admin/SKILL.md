@@ -1,6 +1,6 @@
 ---
 name: ms-s1-admin
-description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token. Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
+description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token, the `-EncodedCommand` form and its size ceiling, and which output must never be forwarded raw (docker labels carry the cloudflared credential paths). Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
 ---
 
 # MS-S1 MAX — operating the box over SSH
@@ -126,6 +126,34 @@ Elevated=True
 `$(…)`** — e.g. `ssh ms-s1 'Get-Service sshd'`. The moment a `$` appears, switch to
 the file+stdin form. Do not try to out-escape it.
 
+### ✅ Or encode it — `-EncodedCommand`
+
+The second form that works. **Measured 2026-10-08 (session 318):** a long read-only
+inventory script went over as a single base64 argument, with every brace, `$` and
+quote intact. PowerShell expects base64 of **UTF-16LE** text, so encode it on this
+side with python3:
+
+```bash
+B64=$(python3 -c 'import base64,sys; print(base64.b64encode(open(sys.argv[1],encoding="utf-8").read().encode("utf-16-le")).decode())' script.ps1)
+ssh -o BatchMode=yes ms-s1 "powershell -NoProfile -NonInteractive -EncodedCommand $B64"
+```
+
+Put both lines in a script file. `$B64` and `$(…)` are exactly what an inline
+`wsl bash -lc` string eats.
+
+**Stdin stays the default, because encoding has a size ceiling.**
+
+- The payload is about **2.7× the script**. Measured session 319: an 80-character
+  script encoded to 216 characters, and decoded back byte for byte.
+- One Windows command line is capped at 32,767 characters. That cap is general
+  Windows knowledge, not measured on this box.
+- So a script beyond roughly **12 K characters** will not fit.
+- Session 318's record says "about 22 K characters" without saying which length that
+  was. If the cap applies, it can only have been the encoded payload.
+
+Like stdin, this delivers the script intact and stops there: the stripped-`"` trap
+below still applies to what the script hands to a native exe.
+
 ## 🔴 The stripped-`"` trap — PowerShell eats double quotes on the way to a native exe
 
 **The `.ps1`-over-stdin form does NOT save you here, which is why this needs its own
@@ -207,12 +235,42 @@ tasks and firewall edits all succeed with no further elevation step.
 Treat this as a hazard, not a convenience: there is no second prompt between a typo
 and a stopped service. It is precisely why the §8 gate matters more now.
 
+**The box is not vero-lite's alone.** Since 2026-10-08, another project on the dev
+laptop reaches it through the same `ms-s1` alias. A change here can break work you
+cannot see from this repo.
+
+## Relaying what you read — some output must never leave raw
+
+A read-only command does not make its output safe to forward. **Measured 2026-10-08
+(session 318), during a read-only inventory:**
+
+- **Docker container labels carry host paths to the `cloudflared` credential files.**
+  - Never paste `docker ps --format json` or `docker inspect` output raw into a
+    handoff, a message, an Artifact or a commit.
+  - Parse it locally (the `{…}` trap above forces that anyway). Forward only name,
+    image, state and ports.
+- **Mask `$env:USERNAME` and `$env:COMPUTERNAME` at the source**, inside the `.ps1`,
+  whenever the output is headed somewhere shared. Do not edit the result afterwards.
+- **Fine to run unprompted:** `ollama list`, and `ollama show <model>` (metadata only;
+  it does not load the model).
+- **Not fine: `lms`, the LM Studio CLI.** It may start its background service on
+  first use, which would turn a read-only brief into a host-state change.
+  - This is not measured — session 318 deliberately did not run it. The risk alone
+    was reason enough.
+
 ## Known box state (verify, don't trust this list)
 
 - **Docker Desktop** — `com.docker.service`, `StartType Manual`, observed `Stopped`.
   It starts on *sign-in*, not boot. Any deployment story on this box has to deal
   with that.
+  - **A `Stopped` service does not mean the engine is down.** Measured 2026-10-08
+    (session 318): the service read `Stopped`/`Manual` while the engine was up and
+    the published `oct-*` containers were healthy.
+  - Ask the engine (`ssh ms-s1 docker ps`), not the service.
 - **Ollama** — running as a process, no autostart configured.
+  - The `llama-server.exe` in its process tree is Ollama's own bundled runner, in
+    `lib\ollama`, a child of `ollama.exe` (session 318). It is not a separate
+    llama.cpp install, and not a stray process to clean up.
 - Firewall: `OpenSSH-Server-In-TCP` scoped `Domain, Private`; the Ollama rule is
   scoped the same. Neither is exposed on `Public`.
 
@@ -230,5 +288,6 @@ Fuller symptom→cause table in the runbook §7.
 
 *Tier 2.6 skill (ADR-0017). Mechanics only — the host-state ASK-Cray gate is a
 binding rule in `CLAUDE.md` §8, not here. Sources: ADR-002 (network topology),
-`docs/runbooks/ms-s1-ssh-access.md` (setup + recovery). Companion: `ms-s1-ollama`
-for models and benchmarks.*
+`docs/runbooks/ms-s1-ssh-access.md` (setup + recovery). The session-318 measurements
+(2026-10-08) were recorded only in a gitignored handoff, so they are restated here
+in full. Companion: `ms-s1-ollama` for models and benchmarks.*
