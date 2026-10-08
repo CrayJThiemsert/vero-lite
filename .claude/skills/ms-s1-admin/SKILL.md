@@ -1,6 +1,6 @@
 ---
 name: ms-s1-admin
-description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token, the `-EncodedCommand` form and its size ceiling, and which output must never be forwarded raw (docker labels carry the cloudflared credential paths). Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
+description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token, the `-EncodedCommand` form and its size ceiling, why a long script over stdin can stop short silently, and which output must never be forwarded raw (docker labels carry the cloudflared credential paths). Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
 ---
 
 # MS-S1 MAX — operating the box over SSH
@@ -126,12 +126,16 @@ Elevated=True
 `$(…)`** — e.g. `ssh ms-s1 'Get-Service sshd'`. The moment a `$` appears, switch to
 the file+stdin form. Do not try to out-escape it.
 
+⚠️ **Stdin is safe for a short script, not a long one.** On a long script it can
+stop short without a word. See "Stdin or encoded" below before you send one.
+
 ### ✅ Or encode it — `-EncodedCommand`
 
-The second form that works. **Measured 2026-10-08 (session 318):** a long read-only
-inventory script went over as a single base64 argument, with every brace, `$` and
-quote intact. PowerShell expects base64 of **UTF-16LE** text, so encode it on this
-side with python3:
+The second form that works. **Measured 2026-10-08 (session 318):** a multi-line
+read-only inventory script ran end to end as a single base64 argument of about 22 K
+characters. It contained functions, script blocks, `$`, braces and quotes, and all of
+them arrived intact. PowerShell expects base64 of **UTF-16LE** text, so encode it on
+this side with python3:
 
 ```bash
 B64=$(python3 -c 'import base64,sys; print(base64.b64encode(open(sys.argv[1],encoding="utf-8").read().encode("utf-16-le")).decode())' script.ps1)
@@ -141,18 +145,48 @@ ssh -o BatchMode=yes ms-s1 "powershell -NoProfile -NonInteractive -EncodedComman
 Put both lines in a script file. `$B64` and `$(…)` are exactly what an inline
 `wsl bash -lc` string eats.
 
-**Stdin stays the default, because encoding has a size ceiling.**
+**Encoding has a size ceiling:**
 
-- The payload is about **2.7× the script**. Measured session 319: an 80-character
-  script encoded to 216 characters, and decoded back byte for byte.
+- The payload is about **2.7× the script** for ASCII text. Measured session 319: an
+  80-character script encoded to 216 characters, and decoded back byte for byte.
 - One Windows command line is capped at 32,767 characters. That cap is general
   Windows knowledge, not measured on this box.
-- So a script beyond roughly **12 K characters** will not fit.
-- Session 318's record says "about 22 K characters" without saying which length that
-  was. If the cap applies, it can only have been the encoded payload.
+- So a script beyond roughly **12 K characters** will not fit. Split it into several
+  calls.
 
 Like stdin, this delivers the script intact and stops there: the stripped-`"` trap
 below still applies to what the script hands to a native exe.
+
+### Stdin or encoded — they fail differently on a long script
+
+**Stdin `-Command -` can stop short, silently.** Measured sessions 221 and 223
+(2026-08). Until now this was recorded only in private session memory:
+
+- **Output is block-buffered to a redirected file.** The file stays at 0 bytes for the
+  whole run and flushes only at exit. A 0-byte file is not evidence that nothing
+  happened. In s221 the script had already removed two containers and a network.
+- **A child process can consume the rest of the script from stdin.** In s221 a
+  display-only `docker network ls` hung for 20 minutes. After it was `taskkill`ed,
+  PowerShell ran nothing further and sat forever.
+- **The tail can silently not run.** In s223 every step printed except the final
+  `if (…) { Write-Output 'VERDICT: PASS'; exit 0 }` — and `ssh` still returned rc=0. A
+  missing verdict token means "no verdict", never PASS.
+
+**`-EncodedCommand` should be immune to the second failure, by construction.** The
+script is an argument, not stdin, so no child can swallow it. That is reasoning, not a
+measurement; the s318 run above is the only evidence.
+
+**Which to use:**
+
+| Script | Form |
+|---|---|
+| Short | either |
+| Long, read-only | `-EncodedCommand`; split it if it passes the ceiling |
+| Multi-step and **state-changing** | neither as one script. Run individual `ssh` commands and verify each one — that is what finished the s221 migration after its script wedged |
+
+Whatever the form, print the values a verdict is computed from **at the step that
+measures them**. When s223's tail vanished, those intermediate lines survived and
+carried the result.
 
 ## 🔴 The stripped-`"` trap — PowerShell eats double quotes on the way to a native exe
 
@@ -288,6 +322,6 @@ Fuller symptom→cause table in the runbook §7.
 
 *Tier 2.6 skill (ADR-0017). Mechanics only — the host-state ASK-Cray gate is a
 binding rule in `CLAUDE.md` §8, not here. Sources: ADR-002 (network topology),
-`docs/runbooks/ms-s1-ssh-access.md` (setup + recovery). The session-318 measurements
-(2026-10-08) were recorded only in a gitignored handoff, so they are restated here
-in full. Companion: `ms-s1-ollama` for models and benchmarks.*
+`docs/runbooks/ms-s1-ssh-access.md` (setup + recovery). The measurements from
+sessions 221 and 223 (2026-08) and 318 (2026-10-08) were recorded only in private
+session memory and a gitignored handoff, so they are restated here in full. Companion: `ms-s1-ollama` for models and benchmarks.*
