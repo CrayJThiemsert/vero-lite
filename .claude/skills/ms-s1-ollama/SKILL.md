@@ -9,6 +9,16 @@ The LLM server (ADR-0002): **AMD Ryzen AI Max+ 395, 128 GB unified, gfx1151**,
 Ollama over ROCm. This skill is the **how-to** for reaching/warming/running it so
 the agent doesn't rediscover the incantations (and burn tokens) each session.
 
+⚠️ **Measured 2026-10-08 (session 318, read-only) — two qualifications to the line
+above:**
+
+- **"128 GB unified" is the total, not what a model gets.** Windows sees **63.65 GB**,
+  so about **64 GB is carved out as dedicated GPU memory**. The firmware UMA value is
+  inferred from that, not read, and a firmware change moves it.
+- **"over ROCm" is asserted, not re-measured.** No HIP SDK / ROCm is installed
+  system-wide; Vulkan 1.4 is. Ollama ships its own runtime in `lib\ollama`, and which
+  GPU backend it selects there was not checked.
+
 ## ⚠️ Host-state gate (binding rule lives elsewhere — do NOT rely on this skill to carry it)
 
 Warming or running a model on MS-S1 is a **host-state change**. The **binding
