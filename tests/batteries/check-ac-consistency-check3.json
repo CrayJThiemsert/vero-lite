@@ -24,22 +24,22 @@
     {
       "name": "C3-bindblind",
       "subject": "tools/check_ac_consistency.py",
-      "old": "if _BINDING_SENTENCE in text.lower() and ticked:",
-      "new": "if False:",
+      "old": "    if _BINDING_SENTENCE in text.lower():",
+      "new": "    if False:",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found",
       "expect_claim": "test_a_plan_that_binds_ticks_to_probes_but_names_no_battery_is_found|len(gaps) == 1 and gaps[0].ac is None and \"names no batteries\" in gaps[0].reason|#0",
       "note": "🔴 Reopens the silent-exemption door: omit the header line and every tick goes unchecked.",
-      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. The mutation is unchanged; only the text locating it moved."
+      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. Re-anchored again s317: the no-header branch moved into `_undeclared_gap`, where the tick scoping is an early return, so the sentence test stands alone. The mutation — the binding-sentence route switched off — is unchanged."
     },
     {
       "name": "C3-unscoped",
       "subject": "tools/check_ac_consistency.py",
-      "old": "if _BINDING_SENTENCE in text.lower() and ticked:",
-      "new": "if _BINDING_SENTENCE in text.lower():",
+      "old": "    if not ticked:\n        return None\n    committed",
+      "new": "    if not ticked and False:\n        return None\n    committed",
       "node_id": "tests/tools/test_check_ac_consistency.py::test_an_unstarted_plan_with_no_ticks_is_not_accused",
       "expect_claim": "test_an_unstarted_plan_with_no_ticks_is_not_accused|guard.find_battery_gaps(tmp_path) == []|#0",
       "note": "🔴 The measured false positive: unscoped, this fired on PLAN-0121 at 0 of 8 ticked. C3-bindblind stays green under it, so the two claims are separately witnessed.",
-      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. The mutation is unchanged; only the text locating it moved."
+      "why": "re-anchored s315: the comparison gained `.lower()` when Check 3 was found sleeping through a PLAN that wrote the binding sentence capitalised. Re-anchored again s317: the tick scoping is now the early return that opens `_undeclared_gap` and guards both routes. The mutation — the scoping switched off — is unchanged."
     },
     {
       "name": "C3-vacuous",
@@ -85,6 +85,87 @@
       "node_id": "tests/tools/test_check_ac_consistency.py::test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review[read]",
       "expect_claim": "test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review|guard.find_battery_gaps(tmp_path) == []|#0",
       "why": "narrow the matcher to `review` only — the matcher a reader would write from PLAN-0128's two examples alone. The counted-variety case (PLAN-0125's AC-14 closes on a READ) stops being exempt and its assertion reddens. Scoped to the [read] case: unscoped, the narrowing reddens both parametrised cases and the driver refuses the credit (measured — MISFIRE)."
+    },
+    {
+      "name": "C3-impl-exemption-gone",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if covered_by_a_test and not module.startswith(\"test_\"):\n                continue",
+      "new": "            if False:\n                continue",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_implementation_artifact_is_covered_through_its_test_module",
+      "expect_claim": "test_an_implementation_artifact_is_covered_through_its_test_module|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 The s283 false positive returns: an implementation module witnessed through its covered test module is accused again. Unwitnessed since s283 — one of the three gaps PLAN-0128's closeout recorded (item ③), closed s317."
+    },
+    {
+      "name": "C3-impl-exemption-unconditional",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        covered_by_a_test = any(m.startswith(\"test_\") and m in sources for m in modules)",
+      "new": "        covered_by_a_test = True",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_implementation_artifact_whose_test_module_is_also_uncovered_is_still_found",
+      "expect_claim": "test_an_implementation_artifact_whose_test_module_is_also_uncovered_is_still_found|reported == [\"hook_copies_audit.py\", \"test_hook_copies_audit.py\"]|#0",
+      "note": "🔴 The exemption goes blind: every implementation artifact passes whether or not its test module is covered, so only the test module is reported. PLAN-0128 closeout item ③, closed s317."
+    },
+    {
+      "name": "C3-impl-exemption-swallows-tests",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if covered_by_a_test and not module.startswith(\"test_\"):",
+      "new": "            if covered_by_a_test:",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_second_test_module_missing_from_the_denominator_is_still_found",
+      "expect_claim": "test_a_second_test_module_missing_from_the_denominator_is_still_found|[(g.ac, \"test_uncovered.py\" in g.reason) for g in gaps] == [(1, True)]|#0",
+      "note": "🔴 The exemption extends to TEST modules: pairing a covered test module with an uncovered one hides the uncovered half. PLAN-0128 closeout item ③, closed s317."
+    },
+    {
+      "name": "C3-undeclared-silent",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    if committed:\n        bare = (",
+      "new": "    if committed and False:\n        bare = (",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_ticked_plan_with_committed_batteries_but_no_header_is_found",
+      "expect_claim": "test_a_ticked_plan_with_committed_batteries_but_no_header_is_found|[(g.ac, \"never read these ticks\" in g.reason) for g in gaps] == [(None, True)]|#0",
+      "note": "🔴 The s317 route switched off: a ticked PLAN with committed batteries and no binding sentence falls through to the pre-s317 silent skip — PLAN-0119's state until s317."
+    },
+    {
+      "name": "C3-undeclared-unscoped",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "    if not ticked:\n        return None\n    committed = _committed_batteries(root, plan_name)",
+      "new": "    if False:\n        return None\n    committed = _committed_batteries(root, plan_name)",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_an_unticked_plan_with_committed_batteries_is_not_accused",
+      "expect_claim": "test_an_unticked_plan_with_committed_batteries_is_not_accused|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 s278's scoping lost on the new route: a battery committed ahead of the first tick accuses a plan still being worked. C3-undeclared-silent stays green under it."
+    },
+    {
+      "name": "C3-bare-header-unnamed",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if _BATTERIES_BARE.search(text)\n            else \"\"",
+      "new": "            if _BATTERIES_BARE.search(text) and False\n            else \"\"",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_a_bare_header_is_named_in_the_error",
+      "expect_claim": "test_a_bare_header_is_named_in_the_error|[(g.ac, \"not backticked\" in g.reason) for g in gaps] == [(None, True)]|#0",
+      "note": "🔴 The error still fires but stops naming PLAN-0128's s315 shape: a reader looking at a header that is plainly there goes hunting for a missing battery. The gap itself is still reported, so only the naming assertion reddens."
+    },
+    {
+      "name": "C3-scenario-nothing-stripped",
+      "subject": "tests/tools/test_check_ac_consistency.py",
+      "old": "if not line.startswith(\"**Batteries:**\")",
+      "new": "if not line.startswith(\"**Batteriez:**\")",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_scenario_the_real_plan_0119_without_its_header_is_found",
+      "expect_claim": "_copy_real_plan_0119|stripped != text|#0",
+      "note": "🔴 The positive control for the scenario: if the helper strips nothing, the 'real PLAN-0119 without its header' tree is the real tree with its header, and the scenario's gap assertion would be read against the wrong fixture."
+    },
+    {
+      "name": "C3-scenario-battery-lookup-blind",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "        for path in root.glob(f\"tests/batteries/plan-{number}-*.json\")",
+      "new": "        for path in root.glob(f\"tests/batteries/plan-{number}x-*.json\")",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_scenario_the_real_plan_0119_without_its_header_is_found",
+      "expect_claim": "test_scenario_the_real_plan_0119_without_its_header_is_found|got == [(\"0119-local-model-serving-policy.md\", None, True)]|#0",
+      "note": "🔴 The convention lookup finds nothing, so the real PLAN-0119 — six committed batteries, no binding sentence — is skipped in silence again: the exact pre-s317 tree. The helper's positive control stays green, so the red is the gap assertion's."
+    },
+    {
+      "name": "C3-scenario-overfire",
+      "subject": "tools/check_ac_consistency.py",
+      "old": "            if module in sources:\n                continue",
+      "new": "            if module in sources and False:\n                continue",
+      "node_id": "tests/tools/test_check_ac_consistency.py::test_scenario_the_real_plan_0119_with_its_header_is_clean",
+      "expect_claim": "test_scenario_the_real_plan_0119_with_its_header_is_clean|guard.find_battery_gaps(tmp_path) == []|#0",
+      "note": "🔴 Every named artifact is reported whether or not a battery covers it, so the real PLAN-0119 with its header — genuinely covered — is accused. The positive control for the scenario above: a check that accused every PLAN would pass there."
     }
   ],
   "exemptions": {

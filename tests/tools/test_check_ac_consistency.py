@@ -521,6 +521,106 @@ def test_a_read_or_a_ruling_closes_an_ac_as_surely_as_a_review(
     assert guard.find_battery_gaps(tmp_path) == []
 
 
+# --------------------------------------------------------------------------
+# Check 3, s317 — a PLAN whose ticks rest on committed batteries it never declared
+#
+# Measured s317: PLAN-0119 had 9 of 11 ACs ticked and six committed batteries, and
+# carried neither a backticked `**Batteries:**` header nor the binding sentence. Check 3
+# skipped it with no output and printed `clean` — the same run output as a PLAN it had
+# read and found covered. A header added in a temp copy surfaced 3 real gaps at once.
+# --------------------------------------------------------------------------
+
+
+def _undeclared_plan(flag: str, header: str = "") -> str:
+    """PLAN-0119's pre-s317 shape: a ticked AC with a `*Probes:*` pointer at a battery that
+    follows the naming convention, no binding sentence, and a header only if given."""
+    return (
+        "**Status:** Accepted\n"
+        + (header + "\n" if header else "")
+        + "\n"
+        + f"- [{flag}] **AC-1 [check] — a criterion.** *Artifact:* `tests/a/test_it.py`. "
+        + "*Probes:* `tests/batteries/plan-0119-ac1-x.json`.\n"
+    )
+
+
+def test_a_ticked_plan_with_committed_batteries_but_no_header_is_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 The s317 shape. No sentence, no header — before s317 this was a silent skip."""
+    _write(tmp_path, "docs/plans/0119-x.md", _undeclared_plan("x"))
+    _battery(tmp_path, "plan-0119-ac1-x.json", "tests/a/test_it.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "never read these ticks" in g.reason) for g in gaps] == [(None, True)]
+
+
+def test_an_unticked_plan_with_committed_batteries_is_not_accused(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🟢 s278's scoping survives the new route: a battery committed ahead of the first tick
+    is a plan being worked, not a tick resting on evidence nobody read."""
+    _write(tmp_path, "docs/plans/0119-x.md", _undeclared_plan(" "))
+    _battery(tmp_path, "plan-0119-ac1-x.json", "tests/a/test_it.py")
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
+def test_a_bare_header_is_named_in_the_error(guard: ModuleType, tmp_path: Path) -> None:
+    """🔴 PLAN-0128's s315 shape: the header line exists, its glob is not backticked, so
+    `_BATTERIES` never binds it. The error must say so — a reader looking at a header that
+    is plainly there would otherwise go hunting for a battery that is missing."""
+    _write(
+        tmp_path,
+        "docs/plans/0119-x.md",
+        _undeclared_plan("x", header="**Batteries:** tests/batteries/plan-0119-*.json"),
+    )
+    _battery(tmp_path, "plan-0119-ac1-x.json", "tests/a/test_it.py")
+    gaps = guard.find_battery_gaps(tmp_path)
+    assert [(g.ac, "not backticked" in g.reason) for g in gaps] == [(None, True)]
+
+
+def _copy_real_plan_0119(tmp_path: Path, keep_header: bool) -> int:
+    """PLAN-0119 as committed and its real battery files, into ``tmp_path``.
+
+    Returns how many battery files were copied, so a caller derives its expectation from
+    the tree instead of hard-coding a count that the next battery would falsify.
+    """
+    name = "0119-local-model-serving-policy.md"
+    text = (REPO_ROOT / "docs" / "plans" / name).read_text(encoding="utf-8")
+    if not keep_header:
+        stripped = "\n".join(
+            line for line in text.split("\n") if not line.startswith("**Batteries:**")
+        )
+        # Positive control: there was a header to strip, or this copy proves nothing.
+        assert stripped != text, "PLAN-0119 has no **Batteries:** line to strip"
+        text = stripped
+    _write(tmp_path, f"docs/plans/{name}", text)
+    files = sorted((REPO_ROOT / "tests" / "batteries").glob("plan-0119-*.json"))
+    for f in files:
+        _write(tmp_path, f"tests/batteries/{f.name}", f.read_text(encoding="utf-8"))
+    return len(files)
+
+
+def test_scenario_the_real_plan_0119_without_its_header_is_found(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🔴 Scenario (CLAUDE.md §8): the real producer — PLAN-0119's committed text and its
+    committed battery files — into the real consumer, with the one s317 edit undone. This
+    is the exact tree Check 3 skipped in silence until s317."""
+    n = _copy_real_plan_0119(tmp_path, keep_header=False)
+    gaps = guard.find_battery_gaps(tmp_path)
+    got = [(g.plan, g.ac, f"{n} committed batteries" in g.reason) for g in gaps]
+    assert got == [("0119-local-model-serving-policy.md", None, True)], [g.reason for g in gaps]
+
+
+def test_scenario_the_real_plan_0119_with_its_header_is_clean(
+    guard: ModuleType, tmp_path: Path
+) -> None:
+    """🟢 The same real tree with the header kept: every ticked AC's artifact is inside a
+    committed battery's denominator. The positive control for the scenario above — without
+    it, a check that accused every PLAN would pass there."""
+    _copy_real_plan_0119(tmp_path, keep_header=True)
+    assert guard.find_battery_gaps(tmp_path) == []
+
+
 def test_the_live_repo_has_no_battery_gaps(guard: ModuleType) -> None:
     """The guard must agree with the tree it ships in."""
     assert guard.find_battery_gaps(REPO_ROOT) == []
