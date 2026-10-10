@@ -8,8 +8,18 @@ no battery file, so the definition is reviewable only if it travels with the rep
 and it was skipped twice running. These files close that.
 
 Convention, from session 278: **a battery whose result is cited to close an acceptance
-criterion is committed here**, named `<plan-slug>-<step-or-scope>.json`. Precedent for
-committing a battery beside its subject: `benchmarks/intake_extraction/probe_battery.json`.
+criterion is committed here**, named `<plan-slug>-<step-or-scope>.json`.
+
+**This directory is the home, not the lint's boundary.** `check_battery_definitions` lints
+every file here, **plus** every git-tracked `*.json` anywhere else whose text carries
+`"claim_sources"`. It used to glob this directory only, and that was measured to be a hole
+(s317): the two PLAN-0118 batteries then lived beside their subject in
+`benchmarks/intake_extraction/`, the lint never read them, and probe S3 had been a
+zero-occurrence no-op since `2a112187` while the guard printed OK. Both now live here as
+`plan-0118-ac1-ac2-ac4-gold-scorer-runner.json` (S3's anchor repaired) and
+`plan-0118-ac6-generation-accounting.json`. Their coverage `GAPS` are a separate, known
+debt: PLAN-0118 recorded `PROBE-BATTERY: FAIL` on coverage only, and moving the files does
+not change it. The reach itself is witnessed by `check-battery-definitions-reach.json`.
 
 Convention, from PLAN-0128: **one claim, one key.** A probe's `expect_claim` is
 `tools.probe_coverage.Claim.stable_key`, which is `@<id>` when a trailing `# claim: <id>`
