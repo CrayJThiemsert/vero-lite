@@ -380,7 +380,8 @@ What exists. Verify it before relying on it; changing any of it is a host-state 
   - Reading the value back proves the write, not the effect: on 2026-10-20 the
     clipboard kept working after `fDisableClip=1` had been written. Write policy
     **before** starting the service, then test the behaviour itself.
-  - Clipboard is currently allowed. Drive and printer redirection are off.
+  - Clipboard is currently allowed (Cray's choice). Drive redirection is off, verified
+    after a reboot on 2026-10-20. Printer redirection is set off but was not tested.
   - Never set `MaxDisconnectionTime`. It logs a disconnected session off, which kills
     Docker Desktop and Ollama along with it.
 - **TermService is `StartType Manual` and still comes back after a reboot** while RDP
