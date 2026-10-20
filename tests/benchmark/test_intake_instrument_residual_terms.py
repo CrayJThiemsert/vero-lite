@@ -27,8 +27,10 @@ Why this is a module of its own rather than a section of
 whole of each file it names, and the driver FAILS on an uncovered claim
 (``passed = complete and not overlaps and ...``). Folding these tests into the
 80-claim scenario module would make a clean ``GAPS: 0`` unreachable for this step's
-battery. Measured while deciding: the pre-existing
-``probe_battery_accounting.json`` already reports ``GAPS: 57`` against that module.
+battery. Measured while deciding: the pre-existing accounting battery (then
+``benchmarks/intake_extraction/probe_battery_accounting.json``, now
+``tests/batteries/plan-0118-ac6-generation-accounting.json``) already reports
+``GAPS: 57`` against that module.
 """
 
 from __future__ import annotations
