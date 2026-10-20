@@ -19,9 +19,14 @@ appliance**: one firewall rule, TCP 11434, profile `Private,Domain`. Nothing els
 was reachable. That was sufficient while the only interaction was Ollama.
 
 It stopped being sufficient once deployment/ops questions arrived — Docker Desktop
-on MS-S1 is `StartType Manual` and was found `Stopped`, Ollama has no autostart,
-and scheduled tasks on the box could not be inspected at all. None of that is
-diagnosable over an HTTP model API.
+on MS-S1 is `StartType Manual` and was found `Stopped`, Ollama seemed to lack any
+autostart, and scheduled tasks on the box could not be inspected at all. None of that
+is diagnosable over an HTTP model API.
+
+⚠️ **Corrected 2026-10-20.** Ollama does autostart. A Startup-folder shortcut fires at
+the automatic sign-in (`AutoAdminLogon=1`), and a real reboot confirmed it. The current
+box state is kept in the `ms-s1-admin` skill.
+<!-- retired: "Ollama has no autostart" -->
 
 This runbook records the **verified** procedure that opened a second, LAN-only
 channel: OpenSSH on TCP 22, same profile scoping as the Ollama rule.

@@ -1,13 +1,15 @@
 ---
 name: ms-s1-admin
-description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token, the `-EncodedCommand` form and its size ceiling, why a long script over stdin can stop short silently, and which output must never be forwarded raw (docker labels carry the cloudflared credential paths). Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
+description: Operate the MS-S1 MAX box itself over SSH from WSL — inspect or change Windows services, Docker Desktop, scheduled tasks, files, firewall, and event logs on CRAY-MS-S1-MAX. Encodes the mechanics that otherwise corrupt commands silently: invoke via the `ssh ms-s1` alias (never hand-build `user@host` — the account name contains a space), pipe a `.ps1` file over stdin instead of inlining PowerShell (a `$` inside a `wsl bash -lc "ssh …"` string is eaten by TWO bash layers and vanishes with no error), and NEVER send braces to the host — the remote shell is PowerShell even for a plain `ssh ms-s1 <program>`, so the universal `docker … --format={{.Id}}` form returns `unknown shorthand flag: 'e' in -encodedCommand`; ask for plain JSON and parse it locally. Also records that the session carries a FULL elevated admin token, the `-EncodedCommand` form and its size ceiling, why a long script over stdin can stop short silently, and which output must never be forwarded raw (docker labels carry the cloudflared credential paths). It also records the 2026-10-20 remote-desktop setup: RDP reachable only over Tailscale, the tailnet ACL as the only filter for tailnet traffic, and TermService reading its policy only when it starts. Use whenever running any command on MS-S1 that is not an Ollama HTTP call — checking whether Docker or Ollama is up, reading Windows event logs, inspecting or editing scheduled tasks, or diagnosing why the box is not serving. For warming/running a model or the procedure-baseline benchmark use `ms-s1-ollama` instead.
 ---
 
 # MS-S1 MAX — operating the box over SSH
 
-MS-S1 (`CRAY-MS-S1-MAX`, `192.168.1.133`) is reachable two ways: **Ollama HTTP on
-11434** (models — see the `ms-s1-ollama` skill) and **SSH on 22** (the machine
-itself — this skill). SSH access was set up and verified 2026-07-25; the setup and
+MS-S1 (`CRAY-MS-S1-MAX`, `192.168.1.133`) is reachable three ways: **Ollama HTTP on
+11434** (models — see the `ms-s1-ollama` skill), **SSH on 22** (the machine
+itself — this skill), and, since 2026-10-20, **RDP on 3389 over Tailscale only** (a
+remote desktop — see *Remote desktop over Tailscale* below). SSH and Ollama stay on the
+LAN. SSH access was set up and verified 2026-07-25; the setup and
 recovery procedure is [`docs/runbooks/ms-s1-ssh-access.md`](../../../docs/runbooks/ms-s1-ssh-access.md).
 
 ## ⚠️ Host-state gate (binding rule lives elsewhere — do NOT rely on this skill to carry it)
@@ -294,19 +296,95 @@ A read-only command does not make its output safe to forward. **Measured 2026-10
 
 ## Known box state (verify, don't trust this list)
 
+- **Sign-in is automatic.** `AutoAdminLogon=1`: at boot Windows signs the main account
+  in at the console by itself, and that sign-in is what starts Docker Desktop and
+  Ollama. Measured 2026-10-20 with a real reboot: both came back with nobody touching
+  the box. Leave it alone unless Cray decides otherwise — the workloads depend on it.
 - **Docker Desktop** — `com.docker.service`, `StartType Manual`, observed `Stopped`.
-  It starts on *sign-in*, not boot. Any deployment story on this box has to deal
-  with that.
+  It starts on *sign-in*, not boot — from an `HKU\…\Run` entry of the main account
+  (measured 2026-10-20). Any deployment story on this box has to deal with that.
   - **A `Stopped` service does not mean the engine is down.** Measured 2026-10-08
     (session 318): the service read `Stopped`/`Manual` while the engine was up and
     the published `oct-*` containers were healthy.
   - Ask the engine (`ssh ms-s1 docker ps`), not the service.
-- **Ollama** — running as a process, no autostart configured.
+- **Ollama** — a process in the auto-signed-in user session, not a service. It is
+  started by `Ollama.lnk` in that account's Startup folder, about 8 s after sign-in
+  (measured 2026-10-20).
   - The `llama-server.exe` in its process tree is Ollama's own bundled runner, in
     `lib\ollama`, a child of `ollama.exe` (session 318). It is not a separate
     llama.cpp install, and not a stray process to clean up.
-- Firewall: `OpenSSH-Server-In-TCP` scoped `Domain, Private`; the Ollama rule is
-  scoped the same. Neither is exposed on `Public`.
+  - Other clients can hold a model loaded. On 2026-10-20 a Chrome tab on the box itself
+    kept `gpt-oss:20b` resident. Check `/api/ps` before anything that would interrupt
+    a model, such as a reboot.
+
+⚠️ **Corrected 2026-10-20.** The Ollama entry used to claim that no autostart was
+configured. Measured: the Startup-folder shortcut exists, and because sign-in is
+automatic it fires on every boot.
+<!-- retired: "running as a process, no autostart configured" -->
+
+- **Firewall** (measured 2026-10-20):
+  - `OpenSSH-Server-In-TCP` — `Domain, Private`, TCP 22, remote `Any`.
+  - **"Ollama API"** — **Profile `Any`**, remote `Any`, TCP 11434. Ollama is therefore
+    reachable from any network the box is attached to, not only Domain/Private as
+    ADR-002 specified. The remote-access work did not change this rule. Raise it with
+    Cray; do not fix it unasked.
+  - The remote-access rules and Tailscale's own rules: see the next section.
+
+⚠️ **Corrected 2026-10-20.** This entry used to say the Ollama rule had the same scope
+as the SSH rule and that neither was open on the `Public` profile. Measured: the Ollama
+rule is Profile `Any`.
+<!-- retired: "scoped the same. Neither is exposed on `Public`" -->
+
+## Remote desktop over Tailscale (set up 2026-10-20)
+
+What exists. Verify it before relying on it; changing any of it is a host-state change.
+
+- **Tailscale** runs on the box as a Windows service (`Automatic`) in *unattended*
+  mode, with `--accept-dns=false` (the box keeps its LAN DNS) and
+  `--accept-routes=false`, tagged `tag:server`. Tagged nodes have key expiry disabled.
+  - Read its state inside a `.ps1` with `tailscale status --json` and
+    `tailscale debug prefs`. The relevant prefs are `ForceDaemon`, `CorpDNS` and
+    `RouteAll`.
+  - The CLI is at `C:\Program Files\Tailscale\tailscale.exe`; do not rely on `PATH` in
+    an SSH session.
+- **RDP is on, and reachable only over the tailnet.**
+  - It was enabled with `Win32_TerminalServiceSetting.SetAllowTSConnections` using
+    `ModifyFirewallException=0`. The built-in `RemoteDesktop-*` firewall rules
+    (remote `Any`) are therefore still **disabled**. The Settings-app toggle would
+    have enabled them.
+  - The firewall group `Remote access via Tailscale` holds three rules: allow TCP 3389
+    from `100.64.0.0/10` and `fd7a:115c:a1e0::/48` on the `Tailscale` interface, and
+    block TCP **and** UDP 3389 from every range outside the tailnet. Block beats
+    allow, so the block rules hold even if something later adds an allow-from-`Any`.
+  - `Remove-NetFirewallRule -Group 'Remote access via Tailscale'` removes exactly those
+    three rules.
+- **For tailnet traffic, the tailnet ACL is the only filter.** Tailscale adds its own
+  `Tailscale-In` rules, which allow every protocol and port to the node's tailnet
+  address, and it sets its adapter to `Private`. Windows Firewall therefore passes all
+  tailnet traffic, and the tailnet policy alone decides what is reachable.
+  - That policy grants `tcp:3389` only. SSH (22) and Ollama (11434) are deliberately
+    **not** reachable over the tailnet.
+  - SSH stays LAN-only, and this skill's `ssh ms-s1` alias keeps using the LAN address.
+- **Connect over RDP as the main account, never as another account.**
+  - Connecting as the signed-in user moves the existing console session to RDP — the
+    session that runs Docker Desktop and Ollama. A different account would get a new
+    session instead.
+  - Measured 2026-10-20: GPU inference was unaffected before, during and after an RDP
+    session. Throughput matched, and the model stayed fully on the GPU.
+  - The unused second local account was removed from `Remote Desktop Users`. It is
+    still enabled for other uses.
+- **TermService reads the RDP policy key only when it starts.**
+  - The key is `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services`
+    (`fDisableCdm`, `fDisableCpm`, …). A value written there does nothing until the
+    service restarts or the box reboots.
+  - Reading the value back proves the write, not the effect: on 2026-10-20 the
+    clipboard kept working after `fDisableClip=1` had been written. Write policy
+    **before** starting the service, then test the behaviour itself.
+  - Clipboard is currently allowed. Drive and printer redirection are off.
+  - Never set `MaxDisconnectionTime`. It logs a disconnected session off, which kills
+    Docker Desktop and Ollama along with it.
+- **TermService is `StartType Manual` and still comes back after a reboot** while RDP
+  is enabled. Measured with a real reboot, 2026-10-20.
 
 ## Reading the SSH server's own log
 
@@ -324,4 +402,7 @@ Fuller symptom→cause table in the runbook §7.
 binding rule in `CLAUDE.md` §8, not here. Sources: ADR-002 (network topology),
 `docs/runbooks/ms-s1-ssh-access.md` (setup + recovery). The measurements from
 sessions 221 and 223 (2026-08) and 318 (2026-10-08) were recorded only in private
-session memory and a gitignored handoff, so they are restated here in full. Companion: `ms-s1-ollama` for models and benchmarks.*
+session memory and a gitignored handoff, so they are restated here in full. The
+2026-10-20 remote-access measurements (Tailscale, RDP, the reboot test) are recorded in
+a gitignored status file. The facts an operator needs are restated above, without
+addresses or account names. Companion: `ms-s1-ollama` for models and benchmarks.*

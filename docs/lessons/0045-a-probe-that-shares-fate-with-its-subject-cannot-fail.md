@@ -90,6 +90,16 @@ autostart is `Ollama.lnk` in the Startup folder — which fires on **interactive
 sign-in**, so a headless reboot leaves vero-lite with no LLM. A scheduled task
 ("run whether user is logged on or not") is the durable fix; it is a persistent
 host config change and needs Cray's go per `CLAUDE.md` §8. **Not done.**
+<!-- retired: "a headless reboot leaves vero-lite with no LLM" -->
+
+⚠️ **Corrected 2026-10-20.** A real reboot was measured. The box has
+`AutoAdminLogon=1`, so at boot Windows signs the main account in by itself and the
+Startup-folder shortcut fires. Ollama came back with nobody touching the box, and its
+process was up about 8 s after sign-in. The "no LLM after a headless reboot" outcome
+above therefore needs automatic sign-in to be *off*. Nobody recorded when automatic
+sign-in was enabled, so it is unknown whether the paragraph was wrong when written or
+was overtaken later. The scheduled-task fix still matters if automatic sign-in is ever
+turned off.
 
 ## Related
 
@@ -98,6 +108,7 @@ host config change and needs Cray's go per `CLAUDE.md` §8. **Not done.**
 - [#0035](0035-negative-measurement-needs-a-positive-control.md) — the same
   session's other instance: a grid that found no bug, with no control proving it
   could detect one
-- `.claude/skills/ms-s1-admin/SKILL.md` — records "Ollama — no autostart
-  configured", which is **imprecise**: a Startup-folder shortcut exists but is
-  interactive-sign-in only
+- `.claude/skills/ms-s1-admin/SKILL.md` — its Ollama entry used to deny any
+  autostart, which was **imprecise**: a Startup-folder shortcut exists. Corrected
+  there on 2026-10-20, together with the automatic sign-in that makes the shortcut
+  fire on every boot
