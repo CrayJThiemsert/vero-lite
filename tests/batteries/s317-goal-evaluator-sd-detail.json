@@ -1,0 +1,91 @@
+{
+  "claim_sources": [
+    "tests/handoffs/test_goal_evaluator_sd_durability.py"
+  ],
+  "probes": [
+    {
+      "name": "SD1-seed-control",
+      "subject": "tests/handoffs/test_goal_evaluator_sd_durability.py",
+      "old": "    raw[\"evaluations\"][0][\"surfaced\"] = [SD_TEXT]",
+      "new": "    raw[\"evaluations\"][0][\"surfaced_not\"] = [SD_TEXT]",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not",
+      "expect_claim": "test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not|\"surfaced\" in before[0]|#0",
+      "note": "The seed never writes the invented key. Without this control the last assertion ('surfaced' absent after the rewrite) would pass on a file that never held it."
+    },
+    {
+      "name": "SD3-no-rewrite",
+      "subject": ".claude/hooks/_goal_gate.py",
+      "old": "            detail=detail,\n        ),\n    )\n    save_goal(goal)\n    return True",
+      "new": "            detail=detail,\n        ),\n    )\n    return True",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not",
+      "expect_claim": "test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not|post > pre|#0",
+      "note": "The warn path records but never saves, so the file is untouched. Both durability assertions would then pass on the seed itself — this is the read that makes them mean 'survived a rewrite'."
+    },
+    {
+      "name": "SD4-detail-dropped",
+      "subject": ".claude/hooks/_goal_state.py",
+      "old": "            detail=str(data.get(\"detail\", \"\")),",
+      "new": "            detail=\"\",",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not",
+      "expect_claim": "test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not|after[0].get(\"detail\") == SD_TEXT|#0",
+      "note": "detail stops round-tripping — the pre-PLAN-0097 state, and the s316 loss moved onto the field the prompt now relies on. The rewrite still happens, so the count read stays green."
+    },
+    {
+      "name": "SD5-extra-key-emitted",
+      "subject": ".claude/hooks/_goal_state.py",
+      "old": "        if self.detail:\n            out[\"detail\"] = self.detail\n        return out",
+      "new": "        if self.detail:\n            out[\"detail\"] = self.detail\n        out[\"surfaced\"] = []\n        return out",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not",
+      "expect_claim": "test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not|\"surfaced\" not in after[0]|#0",
+      "note": "The rewritten entry carries a key named 'surfaced'. Proves the absence read looks at the REWRITTEN entry's keys; detail and the count stay green."
+    },
+    {
+      "name": "SD6-no-schema-block",
+      "subject": ".claude/agents/goal-evaluator.md",
+      "old": "   ```json\n   {",
+      "new": "   ```jsonc\n   {",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_every_key_the_prompt_tells_the_evaluator_to_write_survives_a_rewrite",
+      "expect_claim": "_schema_block|match|#0",
+      "note": "The schema block is no longer found. The helper must fail loudly rather than hand back an empty block whose key set is trivially a subset of anything."
+    },
+    {
+      "name": "SD7-prompt-names-a-stripped-key",
+      "subject": ".claude/agents/goal-evaluator.md",
+      "old": "     \"evaluator\": \"goal-evaluator\"\n   }",
+      "new": "     \"surfaced\": [],\n     \"evaluator\": \"goal-evaluator\"\n   }",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_every_key_the_prompt_tells_the_evaluator_to_write_survives_a_rewrite",
+      "expect_claim": "test_every_key_the_prompt_tells_the_evaluator_to_write_survives_a_rewrite|prompt_keys - schema_keys == set()|#0",
+      "note": "The prompt tells the evaluator to write a key Evaluation does not carry — the exact s316 shape. detail is still named, so the second read stays green."
+    },
+    {
+      "name": "SD8-detail-gone-from-schema",
+      "subject": ".claude/agents/goal-evaluator.md",
+      "old": "     \"detail\": \"<ONLY when you raise surfaced decisions: every one of them,\n                one per line — `SD-N: <the question> — <the options>`. Omit\n                the key entirely when you raise none.>\",\n",
+      "new": "",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_every_key_the_prompt_tells_the_evaluator_to_write_survives_a_rewrite",
+      "expect_claim": "test_every_key_the_prompt_tells_the_evaluator_to_write_survives_a_rewrite|\"detail\" in prompt_keys|#0",
+      "note": "The schema reverts to its pre-s317 form. Every remaining key survives a rewrite, so the subset read stays green — only this read notices the SD route is gone."
+    },
+    {
+      "name": "SD9-sd-template-silent",
+      "subject": ".claude/agents/goal-evaluator.md",
+      "old": "entry's `detail` (step 4) — this message is not persisted.",
+      "new": "entry (step 4) — this message is not persisted.",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_the_prompt_routes_surfaced_decisions_into_detail",
+      "expect_claim": "test_the_prompt_routes_surfaced_decisions_into_detail|\"`detail`\" in sd_section|#0",
+      "note": "The output template's SD section — where s316's SD-2 was written instead — stops pointing at detail. The step-4 rule is intact, so the second read stays green."
+    },
+    {
+      "name": "SD10-step4-rule-gone",
+      "subject": ".claude/agents/goal-evaluator.md",
+      "old": "**Surfaced decisions go into `detail` — your final message is not",
+      "new": "**Surfaced decisions go into the entry — your final message is not",
+      "node_id": "tests/handoffs/test_goal_evaluator_sd_durability.py::test_the_prompt_routes_surfaced_decisions_into_detail",
+      "expect_claim": "test_the_prompt_routes_surfaced_decisions_into_detail|\"Surfaced decisions go into `detail`\" in text|#0",
+      "note": "The binding sentence in step 4 no longer names the field. The SD template still mentions detail, so the first read stays green."
+    }
+  ],
+  "exemptions": {
+    "test_an_sd_in_detail_survives_the_gates_rewrite_and_an_invented_key_does_not|run_goal_gate({}) is None|#0": "A precondition, not this file's claim: a FAIL verdict at an unchanged fingerprint is warn-only and returns None. That behaviour is the gate's, pinned by tests/handoffs/test_goal_gate.py::TestChainCap::test_chain_cap_row_fingerprint_unchanged_no_redispatch; it is asserted here only so the rewrite that follows is the warn path's."
+  }
+}

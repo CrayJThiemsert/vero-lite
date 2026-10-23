@@ -132,12 +132,25 @@ transcript), and you must not accept narration as evidence when you find it.
                     "reason": "<does the on-disk work serve the ANCHOR (goal +
                                latest ratified amendment)? default DIVERGENT if
                                not demonstrable>"},
+     "detail": "<ONLY when you raise surfaced decisions: every one of them,
+                one per line — `SD-N: <the question> — <the options>`. Omit
+                the key entirely when you raise none.>",
      "evaluator": "goal-evaluator"
    }
    ```
 
    Never invent a timestamp (the agent-claimed-timestamp rule); never alter
    the fingerprint.
+
+   **Surfaced decisions go into `detail` — your final message is not
+   persisted.** The caller reads your final message once; the next
+   `goal-evaluator` round reads only `goal.json`. Measured s316: an SD raised
+   in round 6's final message and nowhere in its entry was invisible to round
+   7, which said so (`docs/logs/2026-09-21-s316-goal-gate-seven-rounds.md`).
+   `detail` is a first-class field of `Evaluation`
+   (`.claude/hooks/_goal_state.py`), so it survives the gate's rewrite of the
+   file; any key the schema does not name is **stripped** by that rewrite —
+   do not invent one (`surfaced`, `sds`, …) for this.
 5. **No state beyond the artifact.** The goal-file append plus your final
    message are the entire deliverable.
 
@@ -171,7 +184,8 @@ whole artifacts back.>
 ## Surfaced decisions
 
 <SD-N items only if a verdict hinges on a judgment call the caller/Cray
-should ratify; else "None.">
+should ratify; else "None.". Every SD listed here must ALSO be in your
+entry's `detail` (step 4) — this message is not persisted.>
 
 ## Residual gaps
 
