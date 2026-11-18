@@ -156,6 +156,13 @@ Put both lines in a script file. `$B64` and `$(…)` are exactly what an inline
 - So a script beyond roughly **12 K characters** will not fit. Split it into several
   calls.
 
+**Start every encoded script with `$ProgressPreference = 'SilentlyContinue'`.** Without
+it, cmdlets that report progress (`Get-NetTCPConnection`, `Get-ScheduledTask`, a first
+module load) write a `#< CLIXML` header and an `<Objs …>` block of progress records into
+**stdout**, mixed in with your output. Measured 2026-11-18 (read-only, one run each): the
+same two-cmdlet script printed 1,153 bytes including the CLIXML block without the line,
+and 8 bytes — just its done token — with it. `ssh` returned 0 both times.
+
 Like stdin, this delivers the script intact and stops there: the stripped-`"` trap
 below still applies to what the script hands to a native exe.
 
@@ -307,6 +314,12 @@ A read-only command does not make its output safe to forward. **Measured 2026-10
     (session 318): the service read `Stopped`/`Manual` while the engine was up and
     the published `oct-*` containers were healthy.
   - Ask the engine (`ssh ms-s1 docker ps`), not the service.
+  - **A container stopped by hand stays down through a reboot.** The published `oct-*`
+    services use `restart: unless-stopped`, which does not restart a container that
+    was stopped before the engine went down. Measured 2026-11-18: all seven had exited
+    cleanly (exit 0) about five weeks earlier, and the 2026-11-16 boot did not bring
+    them back. Who stopped them is not recorded. Never report the published systems as
+    up from this list or from a reboot — read `docker ps -a`.
 - **Ollama** — a process in the auto-signed-in user session, not a service. It is
   started by `Ollama.lnk` in that account's Startup folder, about 8 s after sign-in
   (measured 2026-10-20).
@@ -316,6 +329,12 @@ A read-only command does not make its output safe to forward. **Measured 2026-10
   - Other clients can hold a model loaded. On 2026-10-20 a Chrome tab on the box itself
     kept `gpt-oss:20b` resident. Check `/api/ps` before anything that would interrupt
     a model, such as a reboot.
+  - **Measure a model's memory with the GPU counters, not Working Set.** Measured
+    2026-11-18: `llama-server.exe` showed a 1.61 GiB Working Set while
+    `\GPU Process Memory(*)\Dedicated Usage` read 13.39 GiB for the same pid — the model
+    lives in GPU memory. `Get-Counter '\GPU Process Memory(*)\Dedicated Usage'` (the pid
+    is in the instance name) and `'\GPU Adapter Memory(*)\Dedicated Usage'` /
+    `'…\Shared Usage'` work over SSH and are read-only.
 
 ⚠️ **Corrected 2026-10-20.** The Ollama entry used to claim that no autostart was
 configured. Measured: the Startup-folder shortcut exists, and because sign-in is
@@ -327,7 +346,9 @@ automatic it fires on every boot.
   - **"Ollama API"** — **Profile `Any`**, remote `Any`, TCP 11434. Ollama is therefore
     reachable from any network the box is attached to, not only Domain/Private as
     ADR-002 specified. The remote-access work did not change this rule. Raise it with
-    Cray; do not fix it unasked.
+    Cray; do not fix it unasked. Re-measured 2026-11-18: unchanged — and the server
+    also accepts any browser origin (`OLLAMA_ORIGINS=*`; `ms-s1-ollama` →
+    *Server-side configuration*).
   - The remote-access rules and Tailscale's own rules: see the next section.
 
 ⚠️ **Corrected 2026-10-20.** This entry used to say the Ollama rule had the same scope
@@ -406,4 +427,6 @@ sessions 221 and 223 (2026-08) and 318 (2026-10-08) were recorded only in privat
 session memory and a gitignored handoff, so they are restated here in full. The
 2026-10-20 remote-access measurements (Tailscale, RDP, the reboot test) are recorded in
 a gitignored status file. The facts an operator needs are restated above, without
-addresses or account names. Companion: `ms-s1-ollama` for models and benchmarks.*
+addresses or account names. The 2026-11-18 additions come from one read-only check (an
+inventory masked at the source, plus a with/without control pair for the CLIXML line).
+Companion: `ms-s1-ollama` for models and benchmarks.*
