@@ -9,15 +9,22 @@ The LLM server (ADR-0002): **AMD Ryzen AI Max+ 395, 128 GB unified, gfx1151**,
 Ollama over ROCm. This skill is the **how-to** for reaching/warming/running it so
 the agent doesn't rediscover the incantations (and burn tokens) each session.
 
-⚠️ **Measured 2026-10-08 (session 318, read-only) — two qualifications to the line
-above:**
+⚠️ **Measured read-only on 2026-10-08 (session 318) and 2026-11-18 — two notes on the
+line above:**
 
 - **"128 GB unified" is the total, not what a model gets.** Windows sees **63.65 GB**,
   so about **64 GB is carved out as dedicated GPU memory**. The firmware UMA value is
   inferred from that, not read, and a firmware change moves it.
-- **"over ROCm" is asserted, not re-measured.** No HIP SDK / ROCm is installed
-  system-wide; Vulkan 1.4 is. Ollama ships its own runtime in `lib\ollama`, and which
-  GPU backend it selects there was not checked.
+- **"over ROCm" is now measured (2026-11-18): Ollama's *bundled* ROCm.** No HIP SDK /
+  ROCm is installed system-wide; Vulkan 1.4 is. Ollama ships its own runtimes in
+  `lib\ollama`, and the server log's `inference compute` line names the one it picked:
+  `library=ROCm compute=gfx1151`, from its bundled `rocm_v7_1`. The Vulkan device was
+  dropped as an integrated GPU even though `OLLAMA_VULKAN=1` is set — **the environment
+  does not tell you the backend; the log does.** Re-read it after an Ollama upgrade or
+  restart (how: *Server-side configuration* below).
+  - That line reported `total="99.7 GiB"` for the GPU, more than the ~64 GB carve-out.
+    The cause was not established.
+  <!-- retired: "which GPU backend it selects there was not checked" -->
 
 ## ⚠️ Host-state gate (binding rule lives elsewhere — do NOT rely on this skill to carry it)
 
@@ -107,6 +114,40 @@ mode tracking off. Measured at sessions 300 and 301, it does not.
 
 Once warm, `keep_alive` (default 15 m) holds it in VRAM; an active run keeps
 resetting the timer, so it stays warm for the whole benchmark.
+
+## Server-side configuration — read it, don't assume Ollama's defaults
+
+The server's settings are **Machine-scope environment variables on the host**, and the
+server prints the values it actually uses in a `server config` line each time it starts.
+Reading them is fine; setting them is host config (§8).
+
+Read 2026-11-18 (read-only), from the environment and confirmed in that log line:
+
+| Setting | Value | What it means for vero-lite |
+|---|---|---|
+| `OLLAMA_KEEP_ALIVE` | `6h` | A request that sends **no** `keep_alive` keeps its model resident for 6 h, not Ollama's 5-minute default. Every vero-lite client sends its own (`30m` app, `10m` Stop hook, `15m` `warm.sh`), so ours override it; other clients' requests may not. |
+| `OLLAMA_MAX_LOADED_MODELS` | `3` | Up to three models resident at once. The server will not keep a measurement to one model — unload between arms and read `/api/ps` (PLAN-0119 SD-5). |
+| `OLLAMA_NUM_PARALLEL` | `2` | Two slots per model. A small request can land on a slot holding another workload's cached prefix, so a slot's token count is not that request's prompt size (measured s290). |
+| `OLLAMA_CONTEXT_LENGTH` | `32768` | `/api/ps` showed `context_length: 32768` for a `gpt-oss:20b` loaded by a request that set no `num_ctx` — one reading for PLAN-0119 OQ-7, not a closure of it. |
+| `OLLAMA_HOST` | all interfaces | The listener is `::`, port 11434. What can reach it is decided by the firewall rule (`ms-s1-admin`). |
+| `OLLAMA_ORIGINS` | `*` | Any web origin may call the API from a browser. With the firewall rule at `Profile Any`, a page open in any browser that can reach the box can drive it. Raise it with Cray; do not change it unasked. |
+| others | `OLLAMA_FLASH_ATTENTION=1`, `OLLAMA_KV_CACHE_TYPE=q8_0`, `OLLAMA_VULKAN=1` | `OLLAMA_VULKAN=1` did not select Vulkan — see the backend note at the top. |
+
+Who set these is not recorded; vero-lite's own records only ever named `OLLAMA_HOST`.
+Treat the table as a dated reading and re-read it before a decision rests on a value.
+
+How to read them — inside a `.ps1` sent the `ms-s1-admin` way (`-EncodedCommand`):
+
+```powershell
+$e = [Environment]::GetEnvironmentVariables('Machine')
+foreach ($k in $e.Keys) { if ($k -like 'OLLAMA*') { "$k=$($e[$k])" } }
+# what the running server uses, and which GPU backend it picked:
+$log = Join-Path $env:LOCALAPPDATA 'Ollama\server.log'
+Select-String -Path $log -Pattern 'server config|inference compute' | Select-Object -Last 3
+```
+
+⚠️ The `server config` line also carries the models path, which contains the account
+name. Mask it at the source before the output goes anywhere shared.
 
 ## Listing tags by hand (if not using warm.sh)
 
@@ -204,6 +245,14 @@ remains sentinel + ETA rule — the ping is convenience, never load-bearing.
 - **Serialize** runs — one model on MS-S1 at a time, otherwise concurrent
   generations pollute each other's latency. Do not warm/generate against MS-S1
   while another measured run is in flight.
+  - **An open Code session is itself a client.** The Stop hook calls `gpt-oss:20b`
+    with `keep_alive` `10m` at every turn end (`.claude/hooks/_sonnet_classifier.py`),
+    including the turns of the session that launched the run. On 2026-11-18 a
+    read-only check found `gpt-oss:20b` resident with an expiry exactly 10 minutes
+    after a call that coincided with the checking session's own turn end. During a
+    measured run that call adds load to `gpt-oss:20b`, or adds a second resident
+    model when another model is being measured. Moving the hook off the box for the
+    run (`CLAUDE_CLASSIFIER_BACKEND=sonnet`) is a config change and Cray's call.
 
 ## Which models are on MS-S1 — read the live list, never a snapshot
 
@@ -229,4 +278,5 @@ binding rule in **`CLAUDE.md` §8**, not here (see the gate note at the top of
 this file). The *"active PLAN/handoff"* pointer this line carried until session
 241 was superseded at session 62 and corrected in-body at session 174; the
 footer was simply missed. Sources: ADR-0001 (pin), ADR-0002 (MS-S1), Lessons on
-MS-S1 reachability / verify-pin-before-override / process-check.*
+MS-S1 reachability / verify-pin-before-override / process-check, and the read-only
+checks of 2026-10-08 and 2026-11-18 (the backend line, the server-side table).*
