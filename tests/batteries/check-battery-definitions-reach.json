@@ -1,0 +1,146 @@
+{
+  "claim_sources": [
+    "tests/tools/test_check_battery_definitions_reach.py"
+  ],
+  "probes": [
+    {
+      "name": "U1-elsewhere-dropped",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tracked_battery_outside_the_home_is_found",
+      "expect_claim": "@battery-reach/U1",
+      "note": "🔴 THE regression: the guard's reach shrinks back to the home glob, which is exactly the s317 blindness. A tracked battery beside its subject must stop being found."
+    },
+    {
+      "name": "U1c-filesystem-scan-SIBLING-GREEN",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    for rel in tracked:",
+      "new": "    for rel in [p.relative_to(root) for p in root.rglob(\"*.json\")]:",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tracked_battery_outside_the_home_is_found",
+      "expect": "GREEN",
+      "expect_claim": "@battery-reach/U1",
+      "note": "control for U3: a filesystem walk still finds a file that is on disk, so this green is what shows U3's red comes from the untracked copy and not from a scan that broke"
+    },
+    {
+      "name": "U2-concatenated-not-unioned",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home) + sorted(elsewhere)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_home_battery_named_by_both_sources_is_listed_once",
+      "expect_claim": "@battery-reach/U2",
+      "note": "a tracked home battery is named by both sources; concatenating them lists it twice"
+    },
+    {
+      "name": "U3-control-elsewhere-dropped",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_an_untracked_copy_is_not_found",
+      "expect_claim": "@battery-reach/U3-control",
+      "note": "the positive control inside U3 is itself a claim, and it needs its own red: without it, 'the copy is absent' could be satisfied by a selection that finds nothing"
+    },
+    {
+      "name": "U3-filesystem-scan",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    for rel in tracked:",
+      "new": "    for rel in [p.relative_to(root) for p in root.rglob(\"*.json\")]:",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_an_untracked_copy_is_not_found",
+      "expect_claim": "@battery-reach/U3",
+      "note": "walk the disk instead of the index: the copy under .claude/worktrees/ is found. U3-control stays green under this mutation (the tracked file is on disk too), so the red is the copy's alone"
+    },
+    {
+      "name": "U4-control-elsewhere-dropped",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tracked_json_without_the_marker_is_not_found",
+      "expect_claim": "@battery-reach/U4-control",
+      "note": "U4's positive control, witnessed for the same reason as U3's"
+    },
+    {
+      "name": "U4-marker-ignored",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return BATTERY_MARKER in text",
+      "new": "    return True",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tracked_json_without_the_marker_is_not_found",
+      "expect_claim": "@battery-reach/U4",
+      "note": "the over-refusal direction: every tracked JSON becomes a battery. U4-control stays green, so the red belongs to the non-battery being selected"
+    },
+    {
+      "name": "U4c-marker-ignored-SIBLING-GREEN",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return BATTERY_MARKER in text",
+      "new": "    return True",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_home_battery_named_by_both_sources_is_listed_once",
+      "expect": "GREEN",
+      "expect_claim": "@battery-reach/U2",
+      "note": "control: over-selecting must not disturb the count-once union"
+    },
+    {
+      "name": "U5-parsed-not-text",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return BATTERY_MARKER in text",
+      "new": "    import json as _json\n\n    try:\n        return \"claim_sources\" in _json.loads(text)\n    except ValueError:\n        return False",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_battery_whose_json_is_broken_is_still_found",
+      "expect_claim": "@battery-reach/U5",
+      "note": "the tempting 'more precise' check: parse, then look for the key. A battery with broken JSON then drops out of scope silently instead of being reported unreadable"
+    },
+    {
+      "name": "U5c-parsed-SIBLING-GREEN",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return BATTERY_MARKER in text",
+      "new": "    import json as _json\n\n    try:\n        return \"claim_sources\" in _json.loads(text)\n    except ValueError:\n        return False",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tracked_battery_outside_the_home_is_found",
+      "expect": "GREEN",
+      "expect_claim": "@battery-reach/U1",
+      "note": "control: the parsed check still finds a well-formed battery, so U5's red is the broken-JSON case alone"
+    },
+    {
+      "name": "U6-enumeration-fails-open",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "        return 2  # fail closed: an unenumerated tree certifies nothing",
+      "new": "        tracked = []  # probe: fail OPEN, the swallowed-enumeration shape",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_a_tree_git_cannot_enumerate_fails_closed",
+      "expect_claim": "@battery-reach/U6",
+      "note": "the shape check_status_citations shipped with and then fixed: a failed enumeration swallowed into an empty list. The home battery lints clean, so the guard exits 0 on a tree it never enumerated"
+    },
+    {
+      "name": "S-rc-elsewhere-dropped",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_scenario_a_dead_battery_beside_its_subject_fails_the_guard",
+      "expect_claim": "@battery-reach/S-rc",
+      "note": "🔴 the scenario form of U1, through the real CLI and a real git index: the s317 tree exits 0 again, as it did on main"
+    },
+    {
+      "name": "S-named-basename-only",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "            report.battery.relative_to(root)\n",
+      "new": "            report.battery.name\n",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_scenario_a_dead_battery_beside_its_subject_fails_the_guard",
+      "expect_claim": "@battery-reach/S-named",
+      "note": "the exit stays 1 but the report says only 'probe_battery.json'. Outside the home, a bare name does not tell the author where the dead battery is"
+    },
+    {
+      "name": "S-finding-detail-dropped",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "            lines.append(f\"        - {finding.probe or '(battery)'}: {finding.detail}\")",
+      "new": "            lines.append(f\"        - {finding.probe or '(battery)'}\")",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_scenario_a_dead_battery_beside_its_subject_fails_the_guard",
+      "expect_claim": "@battery-reach/S-finding",
+      "note": "exit and location survive, but the rot class is gone from the report, and the repair of a zero-occurrence anchor differs from every other finding's"
+    },
+    {
+      "name": "S-count-concatenated",
+      "subject": "tools/check_battery_definitions.py",
+      "old": "    return sorted(home | elsewhere)",
+      "new": "    return sorted(home) + sorted(elsewhere)",
+      "node_id": "tests/tools/test_check_battery_definitions_reach.py::test_scenario_a_dead_battery_beside_its_subject_fails_the_guard",
+      "expect_claim": "@battery-reach/S-count",
+      "note": "the scenario form of U2: the tracked home battery is counted twice, so the header reads 3 where the tree holds 2. The three earlier assertions stay green, so this is the only one that can redden"
+    }
+  ],
+  "exemptions": {}
+}

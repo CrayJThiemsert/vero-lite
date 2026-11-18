@@ -251,11 +251,11 @@
     {
       "name": "S3-raw-attempt-capture-cut",
       "subject": "benchmarks/intake_extraction/run_benchmark.py",
-      "old": "        self.attempts.append(AttemptRecord(index=index, content=result.content, model=result.model))\n",
-      "new": "        pass  # probe: raw-attempt capture cut\n",
+      "old": "        self.attempts.append(\n            AttemptRecord(\n",
+      "new": "        (\n            AttemptRecord(\n",
       "node_id": "tests/benchmark/test_intake_extraction_scenario.py::test_the_artifact_carries_every_raw_attempt",
       "expect_claim": "test_the_artifact_carries_every_raw_attempt|record[\"attempt_count\"] == 2|#0",
-      "note": "AC-4's artifact completeness. Without the raw capture a scoring dispute is no longer re-adjudicable offline and would cost another live run (a §8 go) to settle"
+      "note": "AC-4's artifact completeness. Without the raw capture a scoring dispute is no longer re-adjudicable offline and would cost another live run (a §8 go) to settle. The mutation turns the success-path append into a bare expression: the record is still built, then discarded, so only the capture is cut. 🔴 ANCHOR REPAIRED when this file moved here from benchmarks/intake_extraction/probe_battery.json: it used to name the one-line append `self.attempts.append(AttemptRecord(index=index, content=result.content, model=result.model))`, which 2a112187 (PLAN-0118 Step 7, the generation-accounting fields) exploded into a multi-line constructor. From that commit on the anchor occurred 0 times, so S3 was a no-op whose green proved nothing, and the definition lint never saw it because it only globbed tests/batteries/"
     },
     {
       "name": "S4-retry-loop-not-driven",
